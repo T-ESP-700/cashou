@@ -1,5 +1,7 @@
+import { prisma } from './database';
+
 const server = Bun.serve({
-  port: 5173,
+  port: 3000,
   async fetch(req) {
     const url = new URL(req.url);
 
@@ -7,8 +9,8 @@ const server = Bun.serve({
       return new Response('OK');
     }
 
-    return new Response('Cashou Backoffice');
+    return new Response('Cashou Backend API');
   },
 });
 
-console.log(`Backoffice listening on http://localhost:${server.port}`);
+console.log(`Backend listening on http://localhost:${server.port}`);

@@ -1,11 +1,11 @@
 {
   "name": "cashou",
-  "module": "../index.ts",
+  "module": "src/index.ts",
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun run ../index.ts",
-    "start": "bun run ../index.ts",
+    "dev": "bun --watch src/index.ts",
+    "start": "bun run src/index.ts",
     "generate": "bunx prisma generate",
     "migrate": "bunx prisma migrate dev",
     "migrate:deploy": "bunx prisma migrate deploy",

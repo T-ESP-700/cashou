@@ -7,11 +7,10 @@
     "@types/bun": "latest"
   },
   "scripts": {
-    "dev": "bun run dev",
-    "build": "bun run build",
-    "preview": "bun run preview"
+    "dev": "bun --watch index.ts",
+    "build": "bun build ./index.ts --outdir=./dist --target=bun",
+    "start": "bun ./dist/index.js"
   },
-
   "peerDependencies": {
     "typescript": "^5"
   }
