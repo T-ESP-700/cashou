@@ -1,0 +1,50 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - APP_DB_URL=postgresql://postgres:password@db_app:5432/cashou_db?schema=public
+    depends_on:
+      - db_app
+
+  backoffice:
+    build:
+      context: ./backoffice
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - BACKOFFICE_DB_URL=postgresql://postgres:password@db_backoffice:5432/backoffice?schema=public
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+    depends_on:
+      - db_backoffice
+
+  db_app:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: cashou_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - app-db-data:/var/lib/postgresql/data
+
+  db_backoffice:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: backoffice
+    ports:
+      - "5433:5432"
+    volumes:
+      - backoffice-db-data:/var/lib/postgresql/data
+
+volumes:
+  app-db-data:
+  backoffice-db-data:

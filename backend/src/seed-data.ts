@@ -8,8 +8,8 @@ import {
   createNotification,
   getUserStats,
   getAllUsers
-} from './examples/user-operations'
-import prisma from './database'
+} from './examples/user-operations.ts'
+import prisma from './database.ts'
 
 /**
  * Fonction pour créer un jeu de données de test complet

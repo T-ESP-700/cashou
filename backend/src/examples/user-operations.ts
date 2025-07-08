@@ -1,4 +1,4 @@
-import prisma from '../database'
+import prisma from '../database.ts'
 
 // === GESTION DES UTILISATEURS ===
 

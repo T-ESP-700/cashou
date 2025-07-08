@@ -1,4 +1,4 @@
-import prisma from './src/database'
+import prisma from './backend/src/database'
 
 async function main() {
   console.log('🚀 Connexion à la base de données Cashou...')
