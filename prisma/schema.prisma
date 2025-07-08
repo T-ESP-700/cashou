@@ -1,0 +1,436 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Énumérations
+enum QuizType {
+  daily
+  MCQ
+}
+
+enum NotificationType {
+  quiz
+  news
+  reminder
+  Profile
+}
+
+// Tables principales
+model Level {
+  id               Int      @id @default(autoincrement())
+  title            String?
+  number           Int?
+  duration         Int?
+  speed            Int?
+  startBalance     Int?     @map("start_balance")
+  pointsRequired   Int?     @map("points_required")
+  description      String?
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  users         User[]
+  gameInstances GameInstance[]
+  levelGoals    LevelGoal[]
+  levelEvents   LevelEvent[]
+  quiz          Quiz[]
+
+  @@map("levels")
+}
+
+model Event {
+  id          Int      @id @default(autoincrement())
+  title       String?
+  description String?
+  hasImpact   Boolean? @map("has_impact")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  levelEvents  LevelEvent[]
+  eventAssets  EventAsset[]
+  impacts      Impact[]
+
+  @@map("events")
+}
+
+model Goal {
+  id          Int      @id @default(autoincrement())
+  title       String?
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  levelGoals LevelGoal[]
+
+  @@map("goals")
+}
+
+model LevelGoal {
+  id        Int      @id @default(autoincrement())
+  levelId   Int      @map("level_id")
+  goalId    Int      @map("goal_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  level Level @relation(fields: [levelId], references: [id])
+  goal  Goal  @relation(fields: [goalId], references: [id])
+
+  @@map("level_goals")
+}
+
+model LevelEvent {
+  id        Int      @id @default(autoincrement())
+  levelId   Int      @map("level_id")
+  eventId   Int      @map("event_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  level Level @relation(fields: [levelId], references: [id])
+  event Event @relation(fields: [eventId], references: [id])
+
+  @@map("level_events")
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  username      String?
+  discriminator String?
+  email         String?
+  passwordHash  String?   @map("password_hash")
+  lastActivity  DateTime? @map("last_activity")
+  levelId       Int       @map("level_id")
+  points        Int?
+  badges        String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  level         Level          @relation(fields: [levelId], references: [id])
+  gameInstances GameInstance[]
+  gameUsers     GameUser[]
+  userQuiz      UserQuiz[]
+  userAnswers   UserAnswer[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+model Wallet {
+  id             Int      @id @default(autoincrement())
+  userId         Int?     @map("user_id")
+  amount         Decimal?
+  gameInstanceId Int?     @map("game_instance_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  gameInstance GameInstance? @relation(fields: [gameInstanceId], references: [id])
+  transactions Transaction[]
+
+  @@map("wallets")
+}
+
+model GameInstance {
+  id             Int       @id @default(autoincrement())
+  type           String?
+  userId         Int?      @map("user_id")
+  levelId        Int?      @map("level_id")
+  startBalance   Int?      @map("start_balance")
+  isPaused       Boolean?  @map("is_paused")
+  actionRequired Boolean?  @map("action_required")
+  pausedAt       DateTime? @map("paused_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user         User?         @relation(fields: [userId], references: [id])
+  level        Level?        @relation(fields: [levelId], references: [id])
+  gameUsers    GameUser[]
+  wallets      Wallet[]
+  transactions Transaction[]
+
+  @@map("game_instances")
+}
+
+model GameUser {
+  id             Int       @id @default(autoincrement())
+  userId         Int?      @map("user_id")
+  gameInstanceId Int?      @map("game_instance_id")
+  isCreator      Boolean?  @map("is_creator")
+  joinAt         DateTime? @map("join_at")
+  status         String?
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user         User?         @relation(fields: [userId], references: [id])
+  gameInstance GameInstance? @relation(fields: [gameInstanceId], references: [id])
+
+  @@map("game_users")
+}
+
+model Asset {
+  id           Int      @id @default(autoincrement())
+  title        String?
+  symbol       String?
+  field        String?
+  description  String?
+  marketId     Int?     @map("market_id")
+  submarketId  Int?     @map("submarket_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  market          Market?          @relation(fields: [marketId], references: [id])
+  submarket       Submarket?       @relation(fields: [submarketId], references: [id])
+  assetHistories  AssetHistory[]
+  eventAssets     EventAsset[]
+  transactions    Transaction[]
+
+  @@map("assets")
+}
+
+model AssetHistory {
+  id        Int      @id @default(autoincrement())
+  assetId   Int?     @map("asset_id")
+  timestamp DateTime?
+  value     Int?
+  volume    Int?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  asset Asset? @relation(fields: [assetId], references: [id])
+
+  @@map("asset_histories")
+}
+
+model EventAsset {
+  id        Int       @id @default(autoincrement())
+  assetId   Int?      @map("asset_id")
+  eventId   Int?      @map("event_id")
+  date      DateTime?
+  value     Int?
+  volume    Int?
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  asset Asset? @relation(fields: [assetId], references: [id])
+  event Event? @relation(fields: [eventId], references: [id])
+
+  @@map("event_assets")
+}
+
+model Impact {
+  id           Int      @id @default(autoincrement())
+  eventId      Int?     @map("event_id")
+  fieldId      Int?     @map("field_id")
+  submarketId  Int?     @map("submarket_id")
+  coef         Int?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  event     Event?     @relation(fields: [eventId], references: [id])
+  field     Field?     @relation(fields: [fieldId], references: [id])
+  submarket Submarket? @relation(fields: [submarketId], references: [id])
+
+  @@map("impacts")
+}
+
+model Field {
+  id           Int      @id @default(autoincrement())
+  marketId     Int?     @map("market_id")
+  title        String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  market  Market?  @relation(fields: [marketId], references: [id])
+  impacts Impact[]
+
+  @@map("fields")
+}
+
+model Market {
+  id            Int      @id @default(autoincrement())
+  name          String?
+  description   String?
+  currentTrends String?  @map("current_trends")
+  dataSource    String?  @map("data_source")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  submarkets Submarket[]
+  assets     Asset[]
+  fields     Field[]
+
+  @@map("markets")
+}
+
+model Submarket {
+  id            Int      @id @default(autoincrement())
+  name          String?
+  description   String?
+  currentTrends String?  @map("current_trends")
+  dataSource    String?  @map("data_source")
+  marketId      Int?     @map("market_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  market  Market?  @relation(fields: [marketId], references: [id])
+  assets  Asset[]
+  impacts Impact[]
+
+  @@map("submarkets")
+}
+
+model Transaction {
+  id                Int       @id @default(autoincrement())
+  walletId          Int?      @map("wallet_id")
+  assetId           Int?      @map("asset_id")
+  gameInstanceId    Int?      @map("game_instance_id")
+  type              String?
+  quantity          Int?
+  unitPrice         Decimal?  @map("unit_price")
+  totalValue        Decimal?  @map("total_value")
+  transactionDate   DateTime? @map("transaction_date")
+  source            String?
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  wallet       Wallet?       @relation(fields: [walletId], references: [id])
+  asset        Asset?        @relation(fields: [assetId], references: [id])
+  gameInstance GameInstance? @relation(fields: [gameInstanceId], references: [id])
+
+  @@map("transactions")
+}
+
+model Quiz {
+  id        Int       @id @default(autoincrement())
+  type      QuizType?
+  title     String?
+  date      DateTime?
+  levelId   Int?      @map("level_id")
+  context   String?
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  level         Level?          @relation(fields: [levelId], references: [id])
+  userQuiz      UserQuiz[]
+  quizQuestions QuizQuestion[]
+
+  @@map("quiz")
+}
+
+model UserQuiz {
+  id          Int       @id @default(autoincrement())
+  quizId      Int?      @map("quiz_id")
+  userId      Int?      @map("user_id")
+  completedAt DateTime? @map("completed_at")
+  isCorrect   Boolean?  @map("is_correct")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  quiz Quiz? @relation(fields: [quizId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("user_quiz")
+}
+
+model Question {
+  id        Int      @id @default(autoincrement())
+  text      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  answers       Answer[]
+  userAnswers   UserAnswer[]
+  quizQuestions QuizQuestion[]
+
+  @@map("questions")
+}
+
+model Answer {
+  id         Int      @id @default(autoincrement())
+  questionId Int?     @map("question_id")
+  text       String?
+  isCorrect  Boolean? @map("is_correct")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  question    Question?    @relation(fields: [questionId], references: [id])
+  userAnswers UserAnswer[]
+
+  @@map("answers")
+}
+
+model UserAnswer {
+  id         Int      @id @default(autoincrement())
+  userId     Int?     @map("user_id")
+  questionId Int?     @map("question_id")
+  answerId   Int?     @map("answer_id")
+  accurate   Boolean?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user     User?     @relation(fields: [userId], references: [id])
+  question Question? @relation(fields: [questionId], references: [id])
+  answer   Answer?   @relation(fields: [answerId], references: [id])
+
+  @@map("user_answers")
+}
+
+model QuizQuestion {
+  id         Int      @id @default(autoincrement())
+  quizId     Int?     @map("quiz_id")
+  questionId Int?     @map("question_id")
+  position   Int?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  quiz     Quiz?     @relation(fields: [quizId], references: [id])
+  question Question? @relation(fields: [questionId], references: [id])
+
+  @@map("quiz_questions")
+}
+
+model Notification {
+  id        Int              @id @default(autoincrement())
+  userId    Int?             @map("user_id")
+  title     String?
+  message   String?
+  type      NotificationType?
+  typeId    Int?             @map("type_id")
+  isOpened  Boolean?         @map("is_opened")
+  sentAt    DateTime?        @map("sent_at")
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
