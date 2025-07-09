@@ -1,37 +1,79 @@
-# dependencies (bun install)
+# Dependencies (Bun/Node.js)
 node_modules
+bun.lockb
+.pnp.*
 
-# output
+# Build outputs
 out
 dist
+build
 *.tgz
 
-# code coverage
+# Code coverage
 coverage
 *.lcov
 
-# logs
+# Logs
 logs
-_.log
-report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
+*.log
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+npm-debug.log*
+bun-debug.log*
 
-# dotenv environment variable files
+# Environment variables
 .env
 .env.development.local
 .env.test.local
 .env.production.local
 .env.local
 
-# caches
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Prisma
+/generated/prisma
+prisma/migrations/*.sql
+
+# Caches
 .eslintcache
 .cache
 *.tsbuildinfo
+.turbo
 
-# IntelliJ based IDEs
+# IDE files
 .idea
+.vscode/settings.json
+.vscode/launch.json
 
-# Finder (MacOS) folder config
+# OS generated files
 .DS_Store
-.cursor
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-/generated/prisma
+# Cursor (keep mcp.json for project configuration)
+.cursor/logs
+.cursor/workspaceStorage
+.cursor/cache/
+.cursor/history/
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock

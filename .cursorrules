@@ -1,0 +1,109 @@
+# Cashou Project - Cursor Rules
+
+## Technology Stack
+- **Runtime**: Bun (prefer bun over npm/yarn)
+- **Language**: TypeScript
+- **Database**: PostgreSQL with Prisma ORM
+- **Containerization**: Docker & Docker Compose
+- **Architecture**: Backend API + Backoffice admin interface
+
+## Code Style & Standards
+
+### TypeScript
+- Use strict TypeScript configuration
+- Prefer `interface` over `type` for object shapes
+- Use proper typing for Prisma models and database operations
+- Always handle async/await properly with error catching
+- Use `const` assertions where appropriate
+
+### Bun Specific
+- Use `bun` commands instead of `npm` or `yarn`
+- Leverage Bun's built-in TypeScript support
+- Use `bun test` for testing when available
+- Use `bun --watch` for development
+
+### Database & Prisma
+- Always use Prisma Client for database operations
+- Follow Prisma naming conventions (camelCase for fields, PascalCase for models)
+- Use proper transactions for complex operations
+- Always validate data before database operations
+- Use Prisma Studio for database exploration: `bun run studio`
+
+### Project Structure
+- Keep database schemas in `backend/prisma/app/schema.prisma`
+- Store seed data in `backend/src/seed-data.ts`
+- Place examples and utilities in appropriate subdirectories
+- Maintain separation between backend and backoffice concerns
+
+### Docker
+- Use provided docker-compose.yml for development
+- Environment variables should be documented in README
+- Database connections use Docker service names
+- Maintain separate databases for app and backoffice
+
+### Error Handling
+- Always handle database connection errors
+- Use proper HTTP status codes
+- Log errors appropriately for debugging
+- Validate input data before processing
+
+### Development Workflow
+1. Start with `docker-compose up` for databases
+2. Run migrations: `bun run migrate`
+3. Generate Prisma client: `bun run generate`
+4. Use `bun run dev` for development
+5. Use `bun run studio` to explore data
+
+### Security
+- Never commit .env files
+- Use environment variables for sensitive data
+- Validate all user inputs
+- Use proper authentication patterns
+
+### Performance
+- Use Prisma's query optimization features
+- Implement proper database indexing
+- Use transactions for bulk operations
+- Monitor database query performance
+
+### Testing
+- Write tests for database operations
+- Test API endpoints thoroughly
+- Use appropriate test data, not production data
+- Clean up test data after tests
+
+## Specific Guidelines
+
+### When working with Prisma:
+- Always regenerate client after schema changes
+- Use proper field mapping (@map) for database columns
+- Implement proper relations between models
+- Use enums for predefined values
+
+### When working with Game Logic:
+- Follow the established patterns for users, levels, and game instances
+- Maintain proper wallet and transaction integrity
+- Handle quiz and notification systems carefully
+- Respect the game state management
+
+### Environment Setup:
+- Two databases: cashou_db (app) and backoffice (admin)
+- Use different ports: 5432 (app) and 5433 (backoffice)
+- Environment variables should match docker-compose.yml
+
+## Common Commands
+```bash
+# Development
+bun run dev             # Start development server
+bun run studio          # Open Prisma Studio
+
+# Database
+bun run generate        # Generate Prisma client
+bun run migrate         # Run migrations
+bun run db:seed         # Seed development data
+bun run db:empty        # Reset database
+
+# Docker
+docker-compose up       # Start all services
+docker-compose down     # Stop all services
+```

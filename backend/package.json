@@ -12,19 +12,20 @@
     "migrate:reset": "bunx prisma migrate reset",
     "studio": "bunx prisma studio",
     "db:check": "bunx prisma db pull --force",
+    "db:status": "bun run scripts/db-check.ts",
     "db:seed": "bun run src/seed-data.ts",
     "db:empty": "bunx prisma migrate reset --force"
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "@types/pg": "^8.15.4"
+    "@types/pg": "^8.15.4",
+    "prisma": "^6.11.1"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
     "@prisma/client": "^6.11.1",
-    "pg": "^8.16.3",
-    "prisma": "^6.11.1"
+    "pg": "^8.16.3"
   }
 }

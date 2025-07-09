@@ -6,7 +6,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - APP_DB_URL=postgresql://postgres:password@db_app:5432/cashou_db?schema=public
+      - APP_DB_URL=${APP_DB_URL}
     depends_on:
       - db_app
 
@@ -17,7 +17,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - BACKOFFICE_DB_URL=postgresql://postgres:password@db_backoffice:5432/backoffice?schema=public
+      - BACKOFFICE_DB_URL=${BACKOFFICE_DB_URL}
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
     depends_on:
