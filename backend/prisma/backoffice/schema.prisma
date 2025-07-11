@@ -1,5 +1,4 @@
-// schema.prisma
-
+// backoffice/prisma/app/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }

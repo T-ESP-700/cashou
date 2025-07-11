@@ -1,4 +1,38 @@
 services:
+  db_cashou:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_DB: "${POSTGRES_DB:-cashou_db}"
+    ports:
+      - "5432:5432"
+    volumes:
+      - cashou-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+
+  db_backoffice:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_DB: backoffice
+    ports:
+      - "5433:5432"
+    volumes:
+      - backoffice-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+
   backend:
     build:
       context: ./backend
@@ -6,9 +40,14 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - APP_DB_URL=${APP_DB_URL}
+      - CASHOU_DB_URL=${CASHOU_DB_URL}
     depends_on:
-      - db_app
+      db_cashou:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
 
   backoffice:
     build:
@@ -21,30 +60,11 @@ services:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
     depends_on:
-      - db_backoffice
-
-  db_app:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: cashou_db
-    ports:
-      - "5432:5432"
+      db_backoffice:
+        condition: service_healthy
     volumes:
-      - app-db-data:/var/lib/postgresql/data
-
-  db_backoffice:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: backoffice
-    ports:
-      - "5433:5432"
-    volumes:
-      - backoffice-db-data:/var/lib/postgresql/data
+      - ./backoffice/src:/app/src
 
 volumes:
-  app-db-data:
+  cashou-db-data:
   backoffice-db-data:

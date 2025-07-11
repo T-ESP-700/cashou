@@ -49,11 +49,11 @@ cp .env.example .env
 
 # Éditer avec vos valeurs
 # Pour Docker Compose (recommandé)
-APP_DB_URL="postgresql://postgres:password@localhost:5432/cashou_db?schema=public"
+CASHOU_DB_URL="postgresql://postgres:password@localhost:5432/cashou_db?schema=public"
 BACKOFFICE_DB_URL="postgresql://postgres:password@localhost:5433/backoffice?schema=public"
 
 # Pour PostgreSQL local
-# APP_DB_URL="postgresql://username:password@localhost:5432/cashou_db?schema=public"
+# CASHOU_DB_URL="postgresql://username:password@localhost:5432/cashou_db?schema=public"
 ```
 
 ## 📦 Installation des dépendances
@@ -373,7 +373,7 @@ Cela ouvrira une interface web sur `http://localhost:5555`.
 ### Services disponibles
 - **backend** : API principale (port 3000)
 - **backoffice** : Interface admin (port 5173)
-- **db_app** : PostgreSQL pour l'app (port 5432)
+- **db_cashou** : PostgreSQL pour l'app (port 5432)
 - **db_backoffice** : PostgreSQL pour le backoffice (port 5433)
 
 ### Commandes utiles

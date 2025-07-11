@@ -1,5 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// backend/prisma/app/schema.prisma
 
 generator client {
   provider = "prisma-client-js"
@@ -7,7 +6,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("APP_DB_URL")
+  url      = env("CASHOU_DB_URL")
 }
 
 // Énumérations
