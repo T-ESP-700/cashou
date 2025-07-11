@@ -2,7 +2,20 @@
 
 Ce projet utilise **Bun** comme runtime, **PostgreSQL** comme base de données et **Prisma** comme ORM.
 
+# Description
+Cette application éducative est un jeu sérieux qui transforme l'apprentissage
+de la finance en une expérience ludique et interactive. En relevant des défis et
+en prenant des décisions, les utilisateurs débloquent de nouvelles
+fonctionnalités et progressent dans leur compréhension des principes
+financiers et des stratégies d'investissement
+
 ## 🚀 Installation
+cloner le projet
+
+```bash
+git clone https://github.com/Frenchua09/cashou
+cd cashou
+```
 
 ### Prérequis
 
@@ -10,17 +23,53 @@ Ce projet utilise **Bun** comme runtime, **PostgreSQL** comme base de données e
 2. **PostgreSQL** installé et en cours d'exécution
 3. **Docker** et **Docker Compose** (recommandé pour le développement)
 
+## 📦 Installation des dépendances
+
+### Option 1: Installation depuis la racine (Recommandé)
+# Installation de toutes les dépendances (workspaces Bun)
+
+```bash
+bun install
+```
+
+# Ou installation complète
+```bash
+bun run install:all
+```
+
+### Option 2: Installation manuelle
+```bash
+# Backend
+cd backend
+bun install
+
+# Backoffice
+cd ../backoffice
+bun install
+```
+
 ### Configuration de la base de données
 
 #### Option 1: Avec Docker (Recommandé)
-```bash
+
 # Démarrer les services avec Docker Compose
-docker-compose up -d
+ ajouter le ficher .env à la du projet
+ .env à récupérer sur Notion 
+https://www.notion.so/rocktane/Fichier-d-environnement-env-22ae4b8c7ecb80609138fb8aec535c70
+
+ajouter le fichier .dockerignore dans le dossier backend et le dossier backoffice
+.dockerignore à récupérer sur Notion
+https://www.notion.so/rocktane/dockerignore-22ae4b8c7ecb80d68c3fe33153f60772
+
+# Démarrer les services Docker
+```bash
+docker compose up -d --build
+```
 
 # Les bases de données seront disponibles sur :
-# - App DB: localhost:5432 (cashou_db)
-# - Backoffice DB: localhost:5433 (backoffice)
-```
+# _ db_cashou: localhost:5432 (cashou_db)
+# — db_backoffice: localhost:5433 (backoffice)
+
 
 #### Option 2: PostgreSQL local
 ```bash
@@ -43,40 +92,14 @@ GRANT ALL PRIVILEGES ON DATABASE cashou_db TO cashou_user;
 ### Variables d'environnement
 
 Copiez le fichier exemple et configurez vos variables :
-```bash
 # Copier le template
 cp .env.example .env
 
 # Éditer avec vos valeurs
-# Pour Docker Compose (recommandé)
-CASHOU_DB_URL="postgresql://postgres:password@localhost:5432/cashou_db?schema=public"
-BACKOFFICE_DB_URL="postgresql://postgres:password@localhost:5433/backoffice?schema=public"
 
 # Pour PostgreSQL local
 # CASHOU_DB_URL="postgresql://username:password@localhost:5432/cashou_db?schema=public"
-```
 
-## 📦 Installation des dépendances
-
-### Option 1: Installation depuis la racine (Recommandé)
-```bash
-# Installation de toutes les dépendances (workspaces Bun)
-bun install
-
-# Ou installation complète
-bun run install:all
-```
-
-### Option 2: Installation manuelle
-```bash
-# Backend
-cd backend
-bun install
-
-# Backoffice
-cd ../backoffice
-bun install
-```
 
 ## 🗄️ Configuration de Prisma
 
