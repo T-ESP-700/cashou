@@ -2,9 +2,7 @@ name: CI/CD
 
 on:
   push:
-    branches: [main, dev, 'T-*']
   pull_request:
-    branches: [main, dev, 'T-*']
 
 jobs:
   backend-lint:
