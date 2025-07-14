@@ -49,7 +49,7 @@ jobs:
       run:
         working-directory: backend
     env:
-      CASHOU_DB_URL: ${{ vars.CASHOU_DB_URL }}
+      CASHOU_DB_URL: postgresql://postgres:password@localhost:5432/cashou_db?schema=public
     services:
       postgres:
         image: postgres:15-alpine
