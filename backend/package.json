@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "bun --watch src/index.ts",
     "start": "bun run src/index.ts",
+    "build": "tsc --noEmit",
+    "check": "bunx tsc --noEmit",
     "generate": "bunx prisma generate",
     "migrate": "bunx prisma migrate dev",
     "migrate:deploy": "bunx prisma migrate deploy",
