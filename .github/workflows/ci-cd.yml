@@ -13,6 +13,8 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    env:
+      ESLINT_USE_FLAT_CONFIG: "false"
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1
@@ -55,7 +57,7 @@ jobs:
         image: postgres:15-alpine
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_PASSWORD: password
           POSTGRES_DB: cashou_db
         ports:
           - 5432:5432

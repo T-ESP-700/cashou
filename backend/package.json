@@ -19,8 +19,11 @@
     "db:empty": "bunx prisma migrate reset --force"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
     "@types/bun": "latest",
     "@types/pg": "^8.15.4",
+    "@typescript-eslint/eslint-plugin": "^8.36.0",
+    "@typescript-eslint/parser": "^8.36.0",
     "eslint": "^9.31.0",
     "prisma": "^6.11.1"
   },
