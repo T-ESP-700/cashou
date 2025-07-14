@@ -48,6 +48,8 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    env:
+      CASHOU_DB_URL: ${{ vars.CASHOU_DB_URL }}
     services:
       postgres:
         image: postgres:15-alpine
