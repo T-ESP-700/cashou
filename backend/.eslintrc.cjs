@@ -1,4 +1,4 @@
-// backend/.eslintrc.js
+// backend/.eslintrc.cjs
 module.exports = {
     env: {
         node: true,
@@ -16,6 +16,6 @@ module.exports = {
     },
     plugins: ["@typescript-eslint"],
     rules: {
-        // tes règles perso…
+        // tes règles…
     },
 };
