@@ -13,7 +13,7 @@ financiers et des stratégies d'investissement
 cloner le projet
 
 ```bash
-git clone https://github.com/Frenchua09/cashou
+git clone https://github.com/T-ESP-700/cashou
 cd cashou
 ```
 
@@ -53,9 +53,9 @@ bun install
 #### Option 1: Avec Docker (Recommandé)
 
 # Démarrer les services avec Docker Compose
-Créer un ficher .env à la racine du projet
-Contenu du fichier à récupérer sur Notion :
-https://www.notion.so/rocktane/Fichier-d-environnement-env-22ae4b8c7ecb80609138fb8aec535c70
+- Créer un ficher .env à la racine du projet
+- Contenu du fichier à récupérer sur Notion :
+`https://www.notion.so/rocktane/Fichier-d-environnement-env-22ae4b8c7ecb80609138fb8aec535c70`
 
 # Démarrer les services Docker
 ```bash
@@ -318,10 +318,10 @@ cashou/                         # 🗂️ Monorepo avec workspaces Bun
 │   └── package.json            # 📦 Dépendances backoffice
 ├── docker-compose.yml          # 🐳 Configuration Docker
 ├── .cursor/
-│   └── mcp.json               # 🤖 Configuration MCP Context7 pour Cursor
-├── .cursorrules               # 📏 Règles Cursor pour le projet
-├── context7.json              # 📚 Configuration Context7 spécifique
-├── .gitignore                 # 🚫 Gitignore amélioré
+│   └── mcp.json                # 🤖 Configuration MCP Context7 pour Cursor
+├── .cursorrules                # 📏 Règles Cursor pour le projet
+├── context7.json               # 📚 Configuration Context7 spécifique
+├── .gitignore                  # 🚫 Gitignore amélioré
 ├── README.md                   # 📖 Documentation
 ├── ARCHITECTURE.md             # 🏗️ Documentation technique approfondie
 └── CLEANUP.md                  # 🧹 Documentation du nettoyage

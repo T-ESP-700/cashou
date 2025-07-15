@@ -7,7 +7,7 @@ COPY package.json bun.lock ./
 
 RUN bun install
 
-COPY ../.env .env
+COPY . .
 
 EXPOSE 3000
 
