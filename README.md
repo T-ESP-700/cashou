@@ -304,12 +304,7 @@ bun run db:seed
 bun run db:empty
 ```
 
-### 📚 Exemples d'opérations
-Les exemples d'opérations CRUD se trouvent dans `backend/src/examples/user-operations.ts` :
-- Gestion des utilisateurs et niveaux
-- Création de marchés et actifs
-- Instances de jeu et transactions
-- Quiz et notifications
+
 
 ## 🏗️ Structure du projet
 
@@ -328,8 +323,8 @@ cashou/                         # 🗂️ Monorepo avec workspaces Bun
 │   ├── src/
 │   │   ├── database.ts         # ⚙️ Configuration Prisma
 │   │   ├── seed-data.ts        # 🌱 Données de test (optionnel)
-│   │   └── examples/
-│   │       └── user-operations.ts  # 📖 Exemples CRUD complets
+│   │   
+│   │      
 │   ├── scripts/
 │   │   └── db-check.ts         # 🔍 Script de vérification DB
 │   ├── index.ts                # 🎯 Point d'entrée backend

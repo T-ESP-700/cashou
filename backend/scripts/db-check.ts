@@ -22,7 +22,6 @@ async function main() {
 
     if (userCount === 0) {
       console.log('\n✨ Base de données vide et prête à être utilisée !')
-      console.log('\n💡 Pour créer des données de test, utilisez les fonctions dans src/examples/user-operations.ts')
     }
 
   } catch (error) {
