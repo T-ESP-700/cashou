@@ -15,7 +15,6 @@ services:
       timeout: 10s
       retries: 10
 
-
   db_backoffice:
     image: postgres:15-alpine
     environment:
@@ -32,7 +31,6 @@ services:
       timeout: 10s
       retries: 10
 
-
   backend:
     build:
       context: ./backend
@@ -47,7 +45,6 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
-
 
   backoffice:
     build:

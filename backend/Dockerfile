@@ -7,8 +7,6 @@ COPY package.json bun.lock ./
 
 RUN bun install
 
-COPY ../.env .env
-
 EXPOSE 3000
 
 CMD ["bun", "run", "start"]
