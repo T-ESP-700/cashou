@@ -53,13 +53,9 @@ bun install
 #### Option 1: Avec Docker (Recommandé)
 
 # Démarrer les services avec Docker Compose
- ajouter le ficher .env à la du projet
- .env à récupérer sur Notion 
+Créer un ficher .env à la racine du projet
+Contenu du fichier à récupérer sur Notion :
 https://www.notion.so/rocktane/Fichier-d-environnement-env-22ae4b8c7ecb80609138fb8aec535c70
-
-ajouter le fichier .dockerignore dans le dossier backend et le dossier backoffice
-.dockerignore à récupérer sur Notion
-https://www.notion.so/rocktane/dockerignore-22ae4b8c7ecb80d68c3fe33153f60772
 
 # Démarrer les services Docker
 ```bash
@@ -88,18 +84,6 @@ GRANT ALL PRIVILEGES ON DATABASE cashou_db TO cashou_user;
 # Quitter psql
 \q
 ```
-
-### Variables d'environnement
-
-Copiez le fichier exemple et configurez vos variables :
-# Copier le template
-cp .env.example .env
-
-# Éditer avec vos valeurs
-
-# Pour PostgreSQL local
-# CASHOU_DB_URL="postgresql://username:password@localhost:5432/cashou_db?schema=public"
-
 
 ## 🗄️ Configuration de Prisma
 
@@ -323,8 +307,8 @@ cashou/                         # 🗂️ Monorepo avec workspaces Bun
 │   ├── src/
 │   │   ├── database.ts         # ⚙️ Configuration Prisma
 │   │   ├── seed-data.ts        # 🌱 Données de test (optionnel)
-│   │   
-│   │      
+│   │
+│   │
 │   ├── scripts/
 │   │   └── db-check.ts         # 🔍 Script de vérification DB
 │   ├── index.ts                # 🎯 Point d'entrée backend
@@ -462,7 +446,6 @@ Pour le déploiement en production :
 
 - **[README.md](README.md)** : Guide de démarrage et utilisation
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** : Documentation technique approfondie
-- **[CLEANUP.md](CLEANUP.md)** : Documentation du nettoyage effectué
 - **[.cursorrules](.cursorrules)** : Règles pour l'assistance IA
 - **[context7.json](context7.json)** : Configuration Context7 MCP
 

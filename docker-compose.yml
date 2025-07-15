@@ -39,8 +39,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
-    environment:
-      - CASHOU_DB_URL=${CASHOU_DB_URL}
+    env_file:
+      - .env
     depends_on:
       db_cashou:
         condition: service_healthy
