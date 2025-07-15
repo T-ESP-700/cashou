@@ -31,11 +31,11 @@ Cashou est une application de jeu financier construite avec une architecture mon
 ┌─────────────────────────────────────────┐
 │            Docker Compose               │
 │                                         │
-│  ┌─────────────┐  ┌─────────────────┐  │
-│  │ PostgreSQL  │  │   PostgreSQL    │  │
-│  │ Backoffice  │  │   App (Main)    │  │
-│  │ Port: 5433  │  │   Port: 5432    │  │
-│  └─────────────┘  └─────────────────┘  │
+│  ┌─────────────┐  ┌─────────────────┐   │
+│  │ PostgreSQL  │  │   PostgreSQL    │   │
+│  │ Backoffice  │  │   App (Main)    │   │
+│  │ Port: 5433  │  │   Port: 5432    │   │
+│  └─────────────┘  └─────────────────┘   │
 └─────────────────────────────────────────┘
 ```
 
