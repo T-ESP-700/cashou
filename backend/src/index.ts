@@ -1,4 +1,3 @@
-import { prisma } from './database';
 
 const server = Bun.serve({
   port: 3000,

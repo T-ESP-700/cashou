@@ -6,8 +6,7 @@ import {
   createGameInstance,
   createTransaction,
   createNotification,
-  getUserStats,
-  getAllUsers
+  getUserStats
 } from './examples/user-operations.ts'
 import prisma from './database.ts'
 
