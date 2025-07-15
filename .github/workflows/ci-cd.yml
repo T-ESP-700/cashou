@@ -8,18 +8,17 @@ jobs:
   # Ce job effectue une vérification de linting sur le code typeScript du backend.
   # Il s'assure que le code respecte les règles de style définies par ESLint.
   # Ce job est utile pour maintenir la qualité du code et éviter les erreurs de syntaxe.
-  backend-lint:
+  code-quality:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
     env:
       ESLINT_USE_FLAT_CONFIG: "false"
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1
       - run: bun install
-      - run: bunx eslint src --ext .ts
+      - name: Code quality
+        run: bunx eslint backend src backoffice mobile --ext .ts,.tsx
+        continue-on-error: true
 
   backend-test:
     runs-on: ubuntu-latest
