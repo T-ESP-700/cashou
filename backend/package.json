@@ -1,0 +1,37 @@
+{
+  "name": "cashou",
+  "module": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "build": "tsc --noEmit",
+    "check": "bunx tsc --noEmit",
+    "generate": "bunx prisma generate",
+    "migrate": "bunx prisma migrate dev",
+    "migrate:deploy": "bunx prisma migrate deploy",
+    "migrate:reset": "bunx prisma migrate reset",
+    "studio": "bunx prisma studio",
+    "db:check": "bunx prisma db pull --force",
+    "db:status": "bun run scripts/db-check.ts",
+    "db:seed": "bun run src/seed-data.ts",
+    "db:empty": "bunx prisma migrate reset --force"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@types/bun": "latest",
+    "@types/pg": "^8.15.4",
+    "@typescript-eslint/eslint-plugin": "^8.36.0",
+    "@typescript-eslint/parser": "^8.36.0",
+    "eslint": "^9.31.0",
+    "prisma": "^6.11.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.11.1",
+    "pg": "^8.16.3"
+  }
+}

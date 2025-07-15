@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "bunx",
+      "args": ["-y", "@upstash/context7-mcp"],
+      "description": "Context7 MCP Server - Up-to-date documentation for LLMs and AI code editors",
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}

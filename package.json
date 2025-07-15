@@ -1,0 +1,65 @@
+{
+  "name": "cashou-monorepo",
+  "version": "1.0.0",
+  "description": "Application de jeu financier avec PostgreSQL, Prisma, Bun et Docker",
+  "type": "module",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "backoffice"
+  ],
+  "scripts": {
+    "dev": "concurrently \"bun run dev:backend\" \"bun run dev:backoffice\"",
+    "dev:backend": "cd backend && bun run dev",
+    "dev:backoffice": "cd backoffice && bun run dev",
+    "build": "bun run build:backend && bun run build:backoffice",
+    "build:backend": "cd backend && bun run start",
+    "build:backoffice": "cd backoffice && bun run build",
+    "start": "concurrently \"bun run start:backend\" \"bun run start:backoffice\"",
+    "start:backend": "cd backend && bun run start",
+    "start:backoffice": "cd backoffice && bun run start",
+    "install:all": "bun install && cd backend && bun install && cd ../backoffice && bun install",
+    "clean": "rm -rf node_modules backend/node_modules backoffice/node_modules",
+    "generate": "cd backend && bunx prisma generate --schema=prisma/app/schema.prisma",
+    "migrate": "cd backend && bunx prisma migrate dev --schema=prisma/app/schema.prisma",
+    "migrate:deploy": "cd backend && bunx prisma migrate deploy --schema=prisma/app/schema.prisma",
+    "migrate:reset": "cd backend && bunx prisma migrate reset --schema=prisma/app/schema.prisma",
+    "studio": "cd backend && bunx prisma studio --schema=prisma/app/schema.prisma",
+    "db:seed": "cd backend && bun run db:seed",
+    "db:empty": "cd backend && bunx prisma migrate reset --force --schema=prisma/app/schema.prisma",
+    "db:check": "cd backend && bunx prisma db pull --force --schema=prisma/app/schema.prisma",
+    "db:status": "cd backend && bun run db:status",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:build": "docker-compose build",
+    "docker:logs": "docker-compose logs -f",
+    "docker:clean": "docker-compose down -v && docker system prune -f",
+    "setup": "bun run docker:up && bun run install:all && bun run generate && bun run migrate",
+    "reset": "bun run docker:down && bun run docker:clean && bun run docker:up && bun run migrate:reset"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "concurrently": "^8.2.2"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "keywords": [
+    "bun",
+    "typescript",
+    "postgresql",
+    "prisma",
+    "docker",
+    "gaming",
+    "finance"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/cashou.git"
+  },
+  "author": "Cashou Team",
+  "license": "MIT"
+}

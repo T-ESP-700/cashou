@@ -1,0 +1,70 @@
+services:
+  db_cashou:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_DB: "${POSTGRES_DB:-cashou_db}"
+    ports:
+      - "5432:5432"
+    volumes:
+      - cashou-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+
+  db_backoffice:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_DB: backoffice
+    ports:
+      - "5433:5432"
+    volumes:
+      - backoffice-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - CASHOU_DB_URL=${CASHOU_DB_URL}
+    depends_on:
+      db_cashou:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+
+  backoffice:
+    build:
+      context: ./backoffice
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - BACKOFFICE_DB_URL=${BACKOFFICE_DB_URL}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+    depends_on:
+      db_backoffice:
+        condition: service_healthy
+    volumes:
+      - ./backoffice/src:/app/src
+
+volumes:
+  cashou-db-data:
+  backoffice-db-data:

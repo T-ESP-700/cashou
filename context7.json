@@ -1,0 +1,34 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "Cashou - Gaming Platform",
+  "description": "Application de jeu financier avec PostgreSQL, Prisma, Bun et Docker. Système de niveaux, utilisateurs, transactions, quiz et notifications.",
+  "folders": [
+    "backend/src",
+    "backend/prisma",
+    "backoffice"
+  ],
+  "excludeFolders": [
+    "node_modules",
+    "dist",
+    "build",
+    ".git",
+    "backend/prisma/app/migrations"
+  ],
+  "excludeFiles": [
+    "bun.lockb",
+    "bun.lock",
+    ".DS_Store",
+    "*.log"
+  ],
+  "rules": [
+    "Utiliser Bun comme runtime au lieu de npm ou yarn",
+    "Utiliser Prisma Client pour toutes les opérations de base de données",
+    "Suivre les conventions de nommage Prisma (camelCase pour les champs, PascalCase pour les modèles)",
+    "Utiliser Docker Compose pour le développement avec deux bases PostgreSQL séparées",
+    "Appliquer les migrations avec 'bun run migrate' et générer le client avec 'bun run generate'",
+    "Maintenir la séparation entre les préoccupations backend et backoffice",
+    "Gérer correctement les transactions et l'intégrité des wallets dans la logique de jeu",
+    "Utiliser des variables d'environnement pour les données sensibles",
+    "Valider toutes les entrées utilisateur avant traitement"
+  ]
+}

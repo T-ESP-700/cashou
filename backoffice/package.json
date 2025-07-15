@@ -1,0 +1,17 @@
+{
+  "name": "backoffice",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "scripts": {
+    "dev": "bun --watch index.ts",
+    "build": "bun build ./index.ts --outdir=./dist --target=bun",
+    "start": "bun ./dist/index.js"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

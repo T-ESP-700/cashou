@@ -1,0 +1,112 @@
+name: CI/CD
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  # Ce job effectue une vérification de linting sur le code typeScript du backend.
+  # Il s'assure que le code respecte les règles de style définies par ESLint.
+  # Ce job est utile pour maintenir la qualité du code et éviter les erreurs de syntaxe.
+  code-quality:
+    runs-on: ubuntu-latest
+    env:
+      ESLINT_USE_FLAT_CONFIG: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+      - run: bun install
+      - name: Code quality
+        run: bunx eslint . --ext .ts,.tsx
+
+  backend-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+      - run: bun install
+      - run: bun test
+
+  backend-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+      - run: bun install
+      - name: Type-check & build
+        run: bun run build
+
+  # Ce job configure un environnement pour exécuter les migrations Prisma sur le backend.
+  prisma-migrate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      CASHOU_DB_URL: postgresql://postgres:password@localhost:5432/cashou_db?schema=public
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: cashou_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+      - run: bun install
+      - run: bunx prisma generate --schema=prisma/app/schema.prisma
+      - run: bunx prisma migrate deploy --schema=prisma/app/schema.prisma
+
+
+  backoffice-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backoffice
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+      - run: bun install
+      - run: bun test
+
+  backoffice-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backoffice
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+      - run: bun install
+      - run: bun run build
+
+  deploy:
+    needs: [ backend-build, backoffice-build, prisma-migrate ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy backend
+        run: echo "Deploying backend..."
+
+      - name: Deploy backoffice
+        run: echo "Deploying backoffice..."
+
+      - name: Deploy mobile app
+        run: echo "Deploying mobile app..."
+
+
