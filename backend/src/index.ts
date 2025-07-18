@@ -1,15 +1,22 @@
+import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
+import {appRouter} from "./server/routers";
 
 const server = Bun.serve({
-  port: 3000,
-  async fetch(req) {
-    const url = new URL(req.url);
+    port: process.env.PORT || 3000,
+    fetch(req) {
+        const url = new URL(req.url);
 
-    if (url.pathname === '/health') {
-      return new Response('OK');
-    }
+        if (url.pathname.startsWith("/trpc")) {
+            return fetchRequestHandler({
+                endpoint: "/trpc",
+                req,
+                router: appRouter,
+                createContext: () => ({}),
+            });
+        }
 
-    return new Response('Cashou Backend API');
-  },
+        return new Response("Not found", { status: 404 });
+    },
 });
 
-console.log(`Backend listening on http://localhost:${server.port}`);
+console.log(`🚀 Server running on http://localhost:${server.port}`);

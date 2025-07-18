@@ -21,17 +21,20 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@types/bun": "latest",
+    "@types/node": "^24.0.14",
     "@types/pg": "^8.15.4",
     "@typescript-eslint/eslint-plugin": "^8.36.0",
     "@typescript-eslint/parser": "^8.36.0",
     "eslint": "^9.31.0",
-    "prisma": "^6.11.1"
+    "prisma": "^6.11.1",
+    "typescript": "^5.0.0"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
     "@prisma/client": "^6.11.1",
+    "@trpc/server": "^11.4.3",
     "pg": "^8.16.3"
   }
 }
