@@ -1,7 +1,7 @@
 import { publicProcedure, router } from "../trcp";
 import { z } from "zod";
 import { userService } from "../../services/user.services";
-import { createUserValidator, updateUserValidator } from "../v";
+import { createUserValidator, updateUserValidator } from "../../validators/user.validator"; 
 
 export const userRouter = router({
     // 🔥 GET /users
