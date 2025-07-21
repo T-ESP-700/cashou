@@ -20,26 +20,27 @@
     "start:backoffice": "cd backoffice && bun run start",
     "install:all": "bun install && cd backend && bun install && cd ../backoffice && bun install",
     "clean": "rm -rf node_modules backend/node_modules backoffice/node_modules",
-    "generate": "cd backend && bunx prisma generate --schema=prisma/app/schema.prisma",
-    "migrate": "cd backend && bunx prisma migrate dev --schema=prisma/app/schema.prisma",
-    "migrate:deploy": "cd backend && bunx prisma migrate deploy --schema=prisma/app/schema.prisma",
-    "migrate:reset": "cd backend && bunx prisma migrate reset --schema=prisma/app/schema.prisma",
+    "generate": "bunx dotenv -e .env -- prisma generate --schema=backend/prisma/app/schema.prisma",
+    "migrate": "bunx dotenv -e .env -- prisma migrate dev --schema=backend/prisma/app/schema.prisma",
+    "migrate:deploy": "bunx dotenv -e .env -- prisma migrate deploy --schema=backend/prisma/app/schema.prisma",
+    "migrate:reset": "bunx dotenv -e .env -- prisma migrate reset --schema=backend/prisma/app/schema.prisma",
     "studio": "cd backend && bunx prisma studio --schema=prisma/app/schema.prisma",
     "db:seed": "cd backend && bun run db:seed",
     "db:empty": "cd backend && bunx prisma migrate reset --force --schema=prisma/app/schema.prisma",
     "db:check": "cd backend && bunx prisma db pull --force --schema=prisma/app/schema.prisma",
     "db:status": "cd backend && bun run db:status",
-    "docker:up": "docker-compose up -d",
-    "docker:down": "docker-compose down",
-    "docker:build": "docker-compose build",
-    "docker:logs": "docker-compose logs -f",
-    "docker:clean": "docker-compose down -v && docker system prune -f",
-    "setup": "bun run docker:up && bun run install:all && bun run generate && bun run migrate",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:build": "docker compose build",
+    "docker:logs": "docker compose logs -f",
+    "docker:clean": "docker compose down -v && docker system prune -f",
+    "setup": "bun run install:all && bun run docker:up && bun run generate && bun run migrate",
     "reset": "bun run docker:down && bun run docker:clean && bun run docker:up && bun run migrate:reset"
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "dotenv-cli": "^4.0.0"
   },
   "peerDependencies": {
     "typescript": "^5"
