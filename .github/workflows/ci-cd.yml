@@ -69,6 +69,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1
       - run: bun install
+      - name: Generate Prisma client
+        run: bunx prisma generate --schema=prisma/app/schema.prisma
       - name: Type-check & build
         run: bun run build
 
