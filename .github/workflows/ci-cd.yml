@@ -70,7 +70,7 @@ jobs:
       - uses: oven-sh/setup-bun@v1
       - run: bun install
       - name: Generate Prisma client
-        run: bunx prisma generate --schema=prisma/app/schema.prisma
+        run: bunx dotenv -e .env -- prisma generate --schema=prisma/app/schema.prisma
       - name: Type-check & build
         run: bun run build
 
