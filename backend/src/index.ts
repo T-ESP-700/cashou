@@ -1,5 +1,5 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
-import {appRouter} from "./trcp/routers/app.router.ts";
+import {appRouter} from "./trcp/routers/app.router";
 
 const server = Bun.serve({
     port: process.env.PORT || 3000,

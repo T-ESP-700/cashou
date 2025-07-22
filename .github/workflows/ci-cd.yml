@@ -30,20 +30,6 @@ jobs:
       - run: bun install
       - run: bun test
 
-  backend-build:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v1
-      - run: bun install
-      - name: Generate Prisma client
-        run: bunx prisma generate --schema=prisma/app/schema.prisma
-      - name: Type-check & build
-        run: bun run build
-
   # Ce job configure un environnement pour exécuter les migrations Prisma sur le backend.
   prisma-migrate:
     runs-on: ubuntu-latest
@@ -73,6 +59,18 @@ jobs:
       - run: bunx prisma generate --schema=prisma/app/schema.prisma
       - run: bunx prisma migrate deploy --schema=prisma/app/schema.prisma
 
+  backend-build:
+    needs: [ prisma-migrate ]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+      - run: bun install
+      - name: Type-check & build
+        run: bun run build
 
   backoffice-test:
     runs-on: ubuntu-latest
@@ -97,7 +95,7 @@ jobs:
       - run: bun run build
 
   deploy:
-    needs: [ backend-build, backoffice-build, prisma-migrate ]
+    needs: [ backoffice-build, backend-build ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
