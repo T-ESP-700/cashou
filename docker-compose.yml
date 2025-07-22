@@ -54,13 +54,12 @@ services:
       - "5173:5173"
     environment:
       - BACKOFFICE_DB_URL=${BACKOFFICE_DB_URL}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
     depends_on:
       db_backoffice:
         condition: service_healthy
     volumes:
       - ./backoffice/src:/app/src
+      - .env:/app/.env:ro
 
 volumes:
   cashou-db-data:
