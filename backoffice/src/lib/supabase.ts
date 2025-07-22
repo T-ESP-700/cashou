@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
@@ -109,7 +110,7 @@ export class AuthService {
     return session;
   }
 
-  static onAuthStateChange(callback: (event: string, session: any) => void) {
+  static onAuthStateChange(callback: (event: AuthChangeEvent, session: Session | null) => void) {
     return supabase.auth.onAuthStateChange(callback);
   }
 }
