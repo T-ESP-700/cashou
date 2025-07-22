@@ -1,8 +1,8 @@
 // src/server/routers/level.router.ts
 import { initTRPC } from "@trpc/server";
 import { z } from "zod";
-import { LevelService } from "../../services/level.service";
-import type { LevelCreateInput, LevelUpdateInput } from "../../services/level.service";
+import { LevelService } from "../services/level.service.ts";
+import type { LevelCreateInput, LevelUpdateInput } from "../services/level.service.ts";
 
 const t = initTRPC.create();
 const levelService = new LevelService();
