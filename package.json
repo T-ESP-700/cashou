@@ -24,7 +24,7 @@
     "migrate": " bunx prisma migrate dev --schema=backend/prisma/app/schema.prisma",
     "migrate:deploy": " bunx prisma migrate deploy --schema=backend/prisma/app/schema.prisma",
     "migrate:reset": "bunx prisma migrate reset --schema=backend/prisma/app/schema.prisma",
-    "studio": "bunx prisma studio --schema=backend/prisma/app/schema.prisma",
+    "studio": "bunx dotenv -e .env -- prisma studio --schema=backend/prisma/app/schema.prisma",
     "db:seed": "cd backend && bun run db:seed",
     "db:empty": "cd backend && bunx prisma migrate reset --force --schema=prisma/app/schema.prisma",
     "db:check": "cd backend && bunx prisma db pull --force --schema=prisma/app/schema.prisma",
