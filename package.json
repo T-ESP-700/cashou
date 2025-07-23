@@ -41,7 +41,7 @@
     "@types/bun": "latest",
     "@types/node": "^24.0.14",
     "concurrently": "^8.2.2",
-    "dotenv-cli": "^4.0.0"
+    "dotenv-cli": "^8.0.0"
   },
   "peerDependencies": {
     "typescript": "^5"
