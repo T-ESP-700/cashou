@@ -4,8 +4,9 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun --watch src/index.ts",
-    "start": "bun run src/index.ts",
+    "dev": "bun --watch --hot src/index.ts",
+    "start": "bun --watch --hot src/index.ts",
+    "start:docker": "bun --watch --hot src/index.ts",
     "build": "tsc --noEmit",
     "check": "bunx tsc --noEmit",
     "generate": "bunx prisma generate",
