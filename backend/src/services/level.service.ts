@@ -1,22 +1,10 @@
-// src/services/level.service.ts
-import { PrismaClient } from "@prisma/client";
 import type { Level } from "@prisma/client";
 import prisma from "../database";
-
-export type LevelCreateInput = {
-    title?: string;
-    number?: number;
-    duration?: number;
-    speed?: number;
-    startBalance?: number;
-    pointsRequired?: number;
-    description?: string;
-};
-
-export type LevelUpdateInput = Partial<LevelCreateInput>;
+import type {LevelCreateSchema, LevelDataSchema} from "../schemas-zod/level-schema.ts";
 
 export class LevelService {
-    async findAll() {
+
+    async findAll(): Promise<Level[]> {
         return prisma.level.findMany({
             include: {
                 levelGoals: { include: { goal: true } },
@@ -26,7 +14,7 @@ export class LevelService {
         });
     }
 
-    async findOne(id: number) {
+    async findOne(id: number): Promise<Level | null> {
         return prisma.level.findUnique({
             where: { id },
             include: {
@@ -36,18 +24,18 @@ export class LevelService {
         });
     }
 
-    async create(data: LevelCreateInput) {
+    async create(data: LevelCreateSchema): Promise<Level> {
         return prisma.level.create({ data });
     }
 
-    async update(id: number, data: LevelUpdateInput) {
+    async update(id: number, data: LevelDataSchema): Promise<Level> {
         return prisma.level.update({
             where: { id },
             data
         });
     }
 
-    async delete(id: number) {
+    async delete(id: number): Promise<Level> {
         return prisma.level.delete({ where: { id } });
     }
 }
