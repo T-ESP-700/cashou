@@ -31,69 +31,69 @@ services:
       timeout: 10s
       retries: 10
 
-  backend:
-    build:
-      context: .
-      dockerfile: ./backend/Dockerfile
-    ports:
-      - "3000:3000"
-    environment:
-      - DOCKER_CONTAINER=true
-      - NODE_ENV=development  # indique qu'on est en mode développement, pour activer des fonctionnalités de debug.
-      - FORCE_COLOR=1 # pour forcer l'affichage des couleurs dans les logs
-    env_file:
-      - .env
-    depends_on:
-      db_cashou:
-        condition: service_healthy
-    volumes:
-      # Hot reload : quand le code est localement modifié,
-      # les changements sont immédiatement reflétés dans le conteneur sans rebuild.
-      - ./backend/src:/app/backend/src:cached
-      - ./backend/src:/app/backend/src:cached
-      - ./backend/scripts:/app/backend/scripts:cached
-      # Évite d'écraser node_modules dans le conteneur
-      - /app/node_modules
-      - /app/backend/node_modules
-    # Améliorer les performances de synchronisation
-    develop:
-      watch:
-        - action: sync
-          path: ./backend/src
-          target: /app/backend/src
-        - action: sync
-          path: ./backend/prisma
-          target: /app/backend/prisma
-
-  backoffice:
-    build:
-      context: .
-      dockerfile: ./backoffice/Dockerfile
-    ports:
-      - "5173:5173"
-    environment:
-      - NODE_ENV=development
-      - BACKOFFICE_DB_URL=${BACKOFFICE_DB_URL}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-    depends_on:
-      db_backoffice:
-        condition: service_healthy
-    volumes:
-      # Hot reload : quand le code est localement modifié,
-      # les changements sont immédiatement reflétés dans le conteneur sans rebuild.
-      - ./backoffice/src:/app/backoffice/src:cached
-      - ./backoffice:/app/backoffice:cached
-      # Éviter d'écraser node_modules
-      - /app/node_modules
-      - /app/backoffice/node_modules
-    develop:
-      watch:
-        - action: sync
-          path: ./backoffice
-          target: /app/backoffice
-          ignore:
-            - node_modules/
+#  backend:
+#    build:
+#      context: .
+#      dockerfile: ./backend/Dockerfile
+#    ports:
+#      - "3000:3000"
+#    environment:
+#      - DOCKER_CONTAINER=true
+#      - NODE_ENV=development  # indique qu'on est en mode développement, pour activer des fonctionnalités de debug.
+#      - FORCE_COLOR=1 # pour forcer l'affichage des couleurs dans les logs
+#    env_file:
+#      - .env
+#    depends_on:
+#      db_cashou:
+#        condition: service_healthy
+#    volumes:
+#      # Hot reload : quand le code est localement modifié,
+#      # les changements sont immédiatement reflétés dans le conteneur sans rebuild.
+#      - ./backend/src:/app/backend/src:cached
+#      - ./backend/src:/app/backend/src:cached
+#      - ./backend/scripts:/app/backend/scripts:cached
+#      # Évite d'écraser node_modules dans le conteneur
+#      - /app/node_modules
+#      - /app/backend/node_modules
+#    # Améliorer les performances de synchronisation
+#    develop:
+#      watch:
+#        - action: sync
+#          path: ./backend/src
+#          target: /app/backend/src
+#        - action: sync
+#          path: ./backend/prisma
+#          target: /app/backend/prisma
+#
+#  backoffice:
+#    build:
+#      context: .
+#      dockerfile: ./backoffice/Dockerfile
+#    ports:
+#      - "5173:5173"
+#    environment:
+#      - NODE_ENV=development
+#      - BACKOFFICE_DB_URL=${BACKOFFICE_DB_URL}
+#      - SUPABASE_URL=${SUPABASE_URL}
+#      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+#    depends_on:
+#      db_backoffice:
+#        condition: service_healthy
+#    volumes:
+#      # Hot reload : quand le code est localement modifié,
+#      # les changements sont immédiatement reflétés dans le conteneur sans rebuild.
+#      - ./backoffice/src:/app/backoffice/src:cached
+#      - ./backoffice:/app/backoffice:cached
+#      # Éviter d'écraser node_modules
+#      - /app/node_modules
+#      - /app/backoffice/node_modules
+#    develop:
+#      watch:
+#        - action: sync
+#          path: ./backoffice
+#          target: /app/backoffice
+#          ignore:
+#            - node_modules/
 
 
 volumes:
