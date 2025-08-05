@@ -1,30 +1,41 @@
 //backend/src/database.ts
+// Configuration et initialisation du client Prisma pour la base de données
 import { PrismaClient } from '@prisma/client'
 
-// Récupérer l'URL depuis la variable d'environnement
+// Récupération de l'URL de la base de données depuis les variables d'environnement
 const databaseUrl = process.env.CASHOU_DB_URL;
 
-// Si nous sommes dans un conteneur Docker, remplacer localhost par db_cashou
+// Gestion de l'environnement Docker vs développement local
+// En Docker, on remplace 'localhost' par 'db_cashou' (nom du service Docker)
+// Cela permet de connecter les conteneurs entre eux via le réseau Docker
 const url = process.env.DOCKER_CONTAINER
     ? databaseUrl?.replace('localhost', 'db_cashou')
     : databaseUrl;
 
+// Factory pour créer une instance Prisma avec la configuration personnalisée
 const prismaClientSingleton = () => {
   return new PrismaClient({
     datasources: {
       db: {
-        url
+        url // URL de connexion calculée selon l'environnement
       }
     }
   });
 }
 
+// Extension du type global pour stocker l'instance Prisma
+// Nécessaire pour éviter la création de multiples connexions en développement
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
+// Pattern Singleton : une seule instance Prisma dans toute l'application
+// Réutilise l'instance existante ou en crée une nouvelle si nécessaire
 export const prisma = globalForPrisma.prisma ?? prismaClientSingleton()
 
+// En développement, stocke l'instance globalement pour éviter les reconnexions
+// lors du hot-reload (rechargement automatique du code)
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
+// Export par défaut pour faciliter l'importation
 export default prisma
