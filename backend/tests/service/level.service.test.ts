@@ -15,37 +15,50 @@ const mockPrisma = {
   $disconnect: mock()
 } as unknown as PrismaClient;
 
+// Constante pour la structure d'include réutilisable
+const LEVEL_INCLUDE_STRUCTURE = {
+  levelGoals: { include: { goal: true } },
+  levelEvents: { include: { event: true } }
+};
+
+// Fonction utilitaire pour réinitialiser tous les mocks
+const resetAllMocks = () => {
+  (mockPrisma.level.findMany as any).mockClear();
+  (mockPrisma.level.findUnique as any).mockClear();
+  (mockPrisma.level.create as any).mockClear();
+  (mockPrisma.level.update as any).mockClear();
+  (mockPrisma.level.delete as any).mockClear();
+};
+
+// Fonction utilitaire pour créer un niveau de test
+const createMockLevel = (overrides: Partial<Level> = {}): Level => ({
+  id: 1,
+  title: 'Niveau Test',
+  number: 1,
+  duration: 60,
+  speed: 1,
+  startBalance: 1000,
+  pointsRequired: 100,
+  description: 'Niveau de test',
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  ...overrides
+} as Level);
+
 describe('LevelService - Tests Unitaires', () => {
   let levelService: LevelService;
 
   beforeEach(() => {
     // Injection du mock Prisma dans le service
     levelService = new LevelService(mockPrisma);
-
-    // Reset tous les mocks
-    (mockPrisma.level.findMany as any).mockClear();
-    (mockPrisma.level.findUnique as any).mockClear();
-    (mockPrisma.level.create as any).mockClear();
-    (mockPrisma.level.update as any).mockClear();
-    (mockPrisma.level.delete as any).mockClear();
+    resetAllMocks();
   });
 
   describe('findAll', () => {
     it('devrait retourner tous les niveaux triés par numéro croissant', async () => {
       const mockLevels: Level[] = [
-        {
-          id: 1,
-          title: 'Niveau 1',
-          number: 1,
-          duration: 60,
-          speed: 1,
-          startBalance: 1000,
-          pointsRequired: 100,
-          description: 'Premier niveau',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        } as Level,
-        {
+        createMockLevel({ id: 1, title: 'Niveau 1', number: 1 }),
+        createMockLevel({
           id: 2,
           title: 'Niveau 2',
           number: 2,
@@ -53,10 +66,8 @@ describe('LevelService - Tests Unitaires', () => {
           speed: 2,
           startBalance: 1500,
           pointsRequired: 200,
-          description: 'Deuxième niveau',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        } as Level
+          description: 'Deuxième niveau'
+        })
       ];
 
       (mockPrisma.level.findMany as any).mockResolvedValue(mockLevels);
@@ -65,10 +76,7 @@ describe('LevelService - Tests Unitaires', () => {
 
       expect(result).toEqual(mockLevels);
       expect(mockPrisma.level.findMany).toHaveBeenCalledWith({
-        include: {
-          levelGoals: { include: { goal: true } },
-          levelEvents: { include: { event: true } }
-        },
+        include: LEVEL_INCLUDE_STRUCTURE,
         orderBy: { number: 'asc' }
       });
     });
@@ -86,24 +94,13 @@ describe('LevelService - Tests Unitaires', () => {
       const dbError = new Error('Erreur de connexion à la base de données');
       (mockPrisma.level.findMany as any).mockRejectedValue(dbError);
 
-      await expect(levelService.findAll()).rejects.toThrow('Erreur de connexion à la base de données');
+      expect(levelService.findAll()).rejects.toThrow('Erreur de connexion à la base de données');
     });
   });
 
   describe('findOne', () => {
     it('devrait retourner un niveau spécifique par son ID', async () => {
-      const mockLevel: Level = {
-        id: 1,
-        title: 'Niveau Test',
-        number: 1,
-        duration: 60,
-        speed: 1,
-        startBalance: 1000,
-        pointsRequired: 100,
-        description: 'Niveau de test',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as Level;
+      const mockLevel = createMockLevel();
 
       (mockPrisma.level.findUnique as any).mockResolvedValue(mockLevel);
 
@@ -112,10 +109,7 @@ describe('LevelService - Tests Unitaires', () => {
       expect(result).toEqual(mockLevel);
       expect(mockPrisma.level.findUnique).toHaveBeenCalledWith({
         where: { id: 1 },
-        include: {
-          levelGoals: { include: { goal: true } },
-          levelEvents: { include: { event: true } }
-        }
+        include: LEVEL_INCLUDE_STRUCTURE
       });
     });
 
@@ -140,12 +134,7 @@ describe('LevelService - Tests Unitaires', () => {
         description: 'Nouveau niveau créé'
       };
 
-      const createdLevel: Level = {
-        id: 3,
-        ...levelData,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as Level;
+      const createdLevel = createMockLevel({ id: 3, ...levelData });
 
       (mockPrisma.level.create as any).mockResolvedValue(createdLevel);
 
@@ -162,7 +151,7 @@ describe('LevelService - Tests Unitaires', () => {
         // Autres champs omis (undefined)
       };
 
-      const createdLevel: Level = {
+      const createdLevel = createMockLevel({
         id: 5,
         title: 'Test Optionnel',
         number: 5,
@@ -170,10 +159,8 @@ describe('LevelService - Tests Unitaires', () => {
         speed: null,
         startBalance: null,
         pointsRequired: null,
-        description: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as Level;
+        description: null
+      });
 
       (mockPrisma.level.create as any).mockResolvedValue(createdLevel);
 
@@ -194,18 +181,11 @@ describe('LevelService - Tests Unitaires', () => {
         pointsRequired: 250
       };
 
-      const updatedLevel: Level = {
-        id: 1,
+      const updatedLevel = createMockLevel({
         title: 'Niveau Mis à Jour',
-        number: 1,
         duration: 150,
-        speed: 1,
-        startBalance: 1000,
-        pointsRequired: 250,
-        description: 'Niveau original',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as Level;
+        pointsRequired: 250
+      });
 
       (mockPrisma.level.update as any).mockResolvedValue(updatedLevel);
 
@@ -224,18 +204,10 @@ describe('LevelService - Tests Unitaires', () => {
         // Seul le titre est modifié
       };
 
-      const updatedLevel: Level = {
+      const updatedLevel = createMockLevel({
         id: 2,
-        title: 'Titre Seul',
-        number: 1,
-        duration: 60,
-        speed: 1,
-        startBalance: 1000,
-        pointsRequired: 100,
-        description: 'Description originale',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as Level;
+        title: 'Titre Seul'
+      });
 
       (mockPrisma.level.update as any).mockResolvedValue(updatedLevel);
 
@@ -251,18 +223,10 @@ describe('LevelService - Tests Unitaires', () => {
 
   describe('delete', () => {
     it('devrait supprimer un niveau existant', async () => {
-      const deletedLevel: Level = {
-        id: 1,
+      const deletedLevel = createMockLevel({
         title: 'Niveau à Supprimer',
-        number: 1,
-        duration: 60,
-        speed: 1,
-        startBalance: 1000,
-        pointsRequired: 100,
-        description: 'Niveau qui sera supprimé',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as Level;
+        description: 'Niveau qui sera supprimé'
+      });
 
       (mockPrisma.level.delete as any).mockResolvedValue(deletedLevel);
 
@@ -286,12 +250,7 @@ describe('LevelService - Tests Unitaires', () => {
       };
 
       // CREATE
-      const createdLevel: Level = {
-        id: 10,
-        ...createData,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as Level;
+      const createdLevel = createMockLevel({ id: 10, ...createData });
 
       (mockPrisma.level.create as any).mockResolvedValue(createdLevel);
       const createResult = await levelService.create(createData);
@@ -318,10 +277,7 @@ describe('LevelService - Tests Unitaires', () => {
       expect(mockPrisma.level.create).toHaveBeenCalledWith({ data: createData });
       expect(mockPrisma.level.findUnique).toHaveBeenCalledWith({
         where: { id: 10 },
-        include: {
-          levelGoals: { include: { goal: true } },
-          levelEvents: { include: { event: true } }
-        }
+        include: LEVEL_INCLUDE_STRUCTURE
       });
       expect(mockPrisma.level.update).toHaveBeenCalledWith({
         where: { id: 10 },
@@ -338,22 +294,11 @@ describe('LevelService - Tests de Régression', () => {
 
   beforeEach(() => {
     levelService = new LevelService(mockPrisma);
-
-    // Reset tous les mocks
-    (mockPrisma.level.findMany as any).mockClear();
-    (mockPrisma.level.findUnique as any).mockClear();
-    (mockPrisma.level.create as any).mockClear();
-    (mockPrisma.level.update as any).mockClear();
-    (mockPrisma.level.delete as any).mockClear();
+    resetAllMocks();
   });
 
   describe('Cohérence des includes', () => {
     it('devrait utiliser la même structure d\'include pour findAll et findOne', async () => {
-      const expectedInclude = {
-        levelGoals: { include: { goal: true } },
-        levelEvents: { include: { event: true } }
-      };
-
       (mockPrisma.level.findMany as any).mockResolvedValue([]);
       (mockPrisma.level.findUnique as any).mockResolvedValue(null);
 
@@ -361,31 +306,26 @@ describe('LevelService - Tests de Régression', () => {
       await levelService.findOne(1);
 
       expect(mockPrisma.level.findMany).toHaveBeenCalledWith({
-        include: expectedInclude,
+        include: LEVEL_INCLUDE_STRUCTURE,
         orderBy: { number: 'asc' }
       });
 
       expect(mockPrisma.level.findUnique).toHaveBeenCalledWith({
         where: { id: 1 },
-        include: expectedInclude
+        include: LEVEL_INCLUDE_STRUCTURE
       });
     });
   });
 
   describe('Gestion des types optionnels', () => {
     it('devrait accepter les données avec des champs undefined', async () => {
-      const mockLevel: Level = {
-        id: 1,
-        title: 'Test',
-        number: 1,
+      const mockLevel = createMockLevel({
         duration: null,
         speed: null,
         startBalance: null,
         pointsRequired: null,
-        description: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as Level;
+        description: null
+      });
 
       (mockPrisma.level.create as any).mockResolvedValue(mockLevel);
 

@@ -19,7 +19,6 @@
     "db:seed": "bun run src/seed-data.ts",
     "db:empty": "bunx prisma migrate reset --force",
 
-    // Scripts de test avec référence au fichier config
     "test": "bun test --config ./test.config.ts",
     "test:watch": "bun test --config ./test.config.ts --watch",
     "test:coverage": "bun test --config ./test.config.ts --coverage",
