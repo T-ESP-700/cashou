@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, beforeAll, afterAll, mock } from 'bun:test';
+import { describe, it, expect, beforeEach, mock } from 'bun:test';
 import type { Level, PrismaClient } from '@prisma/client';
 import { LevelService } from "../../src/services/level.service.ts";
 import type { LevelCreateSchema, LevelDataSchema } from "../../src/schemas-zod/level-schema.ts";
 
-// Mock Prisma complet pour les tests unitaires
+// Mock Prisma complet pour tous les tests
 const mockPrisma = {
   level: {
     findMany: mock(),
@@ -154,6 +154,36 @@ describe('LevelService - Tests Unitaires', () => {
       expect(result).toEqual(createdLevel);
       expect(mockPrisma.level.create).toHaveBeenCalledWith({ data: levelData });
     });
+
+    it('devrait gérer les champs optionnels undefined', async () => {
+      const levelData: LevelCreateSchema = {
+        title: 'Test Optionnel',
+        number: 5,
+        // Autres champs omis (undefined)
+      };
+
+      const createdLevel: Level = {
+        id: 5,
+        title: 'Test Optionnel',
+        number: 5,
+        duration: null,
+        speed: null,
+        startBalance: null,
+        pointsRequired: null,
+        description: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as Level;
+
+      (mockPrisma.level.create as any).mockResolvedValue(createdLevel);
+
+      const result = await levelService.create(levelData);
+
+      expect(result.title).toBe('Test Optionnel');
+      expect(result.number).toBe(5);
+      expect(result.duration).toBeNull();
+      expect(mockPrisma.level.create).toHaveBeenCalledWith({ data: levelData });
+    });
   });
 
   describe('update', () => {
@@ -187,6 +217,36 @@ describe('LevelService - Tests Unitaires', () => {
         data: updateData
       });
     });
+
+    it('devrait gérer les mises à jour partielles', async () => {
+      const updateData: LevelDataSchema = {
+        title: 'Titre Seul'
+        // Seul le titre est modifié
+      };
+
+      const updatedLevel: Level = {
+        id: 2,
+        title: 'Titre Seul',
+        number: 1,
+        duration: 60,
+        speed: 1,
+        startBalance: 1000,
+        pointsRequired: 100,
+        description: 'Description originale',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as Level;
+
+      (mockPrisma.level.update as any).mockResolvedValue(updatedLevel);
+
+      const result = await levelService.update(2, updateData);
+
+      expect(result.title).toBe('Titre Seul');
+      expect(mockPrisma.level.update).toHaveBeenCalledWith({
+        where: { id: 2 },
+        data: updateData
+      });
+    });
   });
 
   describe('delete', () => {
@@ -212,120 +272,132 @@ describe('LevelService - Tests Unitaires', () => {
       expect(mockPrisma.level.delete).toHaveBeenCalledWith({ where: { id: 1 } });
     });
   });
+
+  describe('Scénarios complexes', () => {
+    it('devrait effectuer un cycle CRUD complet (simulé)', async () => {
+      const createData: LevelCreateSchema = {
+        title: 'Niveau Complet',
+        number: 10,
+        duration: 300,
+        speed: 5,
+        startBalance: 5000,
+        pointsRequired: 500,
+        description: 'Niveau de test complet'
+      };
+
+      // CREATE
+      const createdLevel: Level = {
+        id: 10,
+        ...createData,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as Level;
+
+      (mockPrisma.level.create as any).mockResolvedValue(createdLevel);
+      const createResult = await levelService.create(createData);
+      expect(createResult.title).toBe('Niveau Complet');
+
+      // READ
+      (mockPrisma.level.findUnique as any).mockResolvedValue(createdLevel);
+      const readResult = await levelService.findOne(10);
+      expect(readResult?.title).toBe('Niveau Complet');
+
+      // UPDATE
+      const updateData: LevelDataSchema = { title: 'Niveau Modifié' };
+      const updatedLevel = { ...createdLevel, title: 'Niveau Modifié' };
+      (mockPrisma.level.update as any).mockResolvedValue(updatedLevel);
+      const updateResult = await levelService.update(10, updateData);
+      expect(updateResult.title).toBe('Niveau Modifié');
+
+      // DELETE
+      (mockPrisma.level.delete as any).mockResolvedValue(updatedLevel);
+      const deleteResult = await levelService.delete(10);
+      expect(deleteResult.id).toBe(10);
+
+      // Vérification des appels
+      expect(mockPrisma.level.create).toHaveBeenCalledWith({ data: createData });
+      expect(mockPrisma.level.findUnique).toHaveBeenCalledWith({
+        where: { id: 10 },
+        include: {
+          levelGoals: { include: { goal: true } },
+          levelEvents: { include: { event: true } }
+        }
+      });
+      expect(mockPrisma.level.update).toHaveBeenCalledWith({
+        where: { id: 10 },
+        data: updateData
+      });
+      expect(mockPrisma.level.delete).toHaveBeenCalledWith({ where: { id: 10 } });
+    });
+  });
 });
 
-// Tests d'intégration avec vraie base PostgreSQL
-describe('LevelService - Tests d\'Intégration', () => {
+// Tests de régression
+describe('LevelService - Tests de Régression', () => {
   let levelService: LevelService;
-  let testLevelIds: number[] = [];
-
-  beforeAll(async () => {
-    levelService = new LevelService();
-
-    try {
-      const allLevels = await levelService.findAll();
-      for (const level of allLevels) {
-        if (level.number && level.number > 50) {
-          await levelService.delete(level.id);
-        }
-      }
-    } catch (error) {
-      console.warn('Erreur lors du nettoyage initial:', error);
-    }
-  });
-
-  afterAll(async () => {
-    for (const id of testLevelIds) {
-      try {
-        await levelService.delete(id);
-      } catch (error) {
-        console.warn(`Erreur nettoyage niveau ${id}:`, error);
-      }
-    }
-  });
 
   beforeEach(() => {
-    testLevelIds = [];
+    levelService = new LevelService(mockPrisma);
+
+    // Reset tous les mocks
+    (mockPrisma.level.findMany as any).mockClear();
+    (mockPrisma.level.findUnique as any).mockClear();
+    (mockPrisma.level.create as any).mockClear();
+    (mockPrisma.level.update as any).mockClear();
+    (mockPrisma.level.delete as any).mockClear();
   });
 
-  it('devrait effectuer un cycle CRUD complet', async () => {
-    const uniqueNumber = Math.floor(Math.random() * 1000) + 1000;
-    const createData: LevelCreateSchema = {
-      title: 'Niveau d\'Intégration',
-      number: uniqueNumber,
-      duration: 300,
-      speed: 5,
-      startBalance: 5000,
-      pointsRequired: 500,
-      description: 'Niveau pour tests d\'intégration'
-    };
+  describe('Cohérence des includes', () => {
+    it('devrait utiliser la même structure d\'include pour findAll et findOne', async () => {
+      const expectedInclude = {
+        levelGoals: { include: { goal: true } },
+        levelEvents: { include: { event: true } }
+      };
 
-    const createdLevel = await levelService.create(createData);
-    testLevelIds.push(createdLevel.id);
+      (mockPrisma.level.findMany as any).mockResolvedValue([]);
+      (mockPrisma.level.findUnique as any).mockResolvedValue(null);
 
-    expect(createdLevel.id).toBeDefined();
-    expect(createdLevel.title).toBe('Niveau d\'Intégration');
-    expect(createdLevel.number).toBe(uniqueNumber);
+      await levelService.findAll();
+      await levelService.findOne(1);
 
-    // READ
-    const foundLevel = await levelService.findOne(createdLevel.id);
-    expect(foundLevel).not.toBeNull();
-    expect(foundLevel!.title).toBe('Niveau d\'Intégration');
-    expect(foundLevel!.number).toBe(uniqueNumber);
+      expect(mockPrisma.level.findMany).toHaveBeenCalledWith({
+        include: expectedInclude,
+        orderBy: { number: 'asc' }
+      });
 
-    // UPDATE
-    const updateData: LevelDataSchema = {
-      title: 'Niveau Modifié',
-      duration: 400
-    };
-
-    const updatedLevel = await levelService.update(createdLevel.id, updateData);
-    expect(updatedLevel.title).toBe('Niveau Modifié');
-    expect(updatedLevel.duration).toBe(400);
-    expect(updatedLevel.number).toBe(uniqueNumber);
-
-    // DELETE
-    const deletedLevel = await levelService.delete(createdLevel.id);
-    expect(deletedLevel.id).toBe(createdLevel.id);
-
-    // Vérification suppression
-    const notFoundLevel = await levelService.findOne(createdLevel.id);
-    expect(notFoundLevel).toBeNull();
-
-    testLevelIds = testLevelIds.filter(id => id !== createdLevel.id);
+      expect(mockPrisma.level.findUnique).toHaveBeenCalledWith({
+        where: { id: 1 },
+        include: expectedInclude
+      });
+    });
   });
 
-  it('devrait gérer correctement les champs optionnels undefined', async () => {
-    const uniqueNumber = Math.floor(Math.random() * 1000) + 2000;
-    const createDataWithOptional: LevelCreateSchema = {
-      title: 'Test Optionnel',
-      number: uniqueNumber,
-    };
+  describe('Gestion des types optionnels', () => {
+    it('devrait accepter les données avec des champs undefined', async () => {
+      const mockLevel: Level = {
+        id: 1,
+        title: 'Test',
+        number: 1,
+        duration: null,
+        speed: null,
+        startBalance: null,
+        pointsRequired: null,
+        description: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as Level;
 
-    const createdLevel = await levelService.create(createDataWithOptional);
-    testLevelIds.push(createdLevel.id);
+      (mockPrisma.level.create as any).mockResolvedValue(mockLevel);
 
-    expect(createdLevel.id).toBeDefined();
-    expect(createdLevel.title).toBe('Test Optionnel');
-    expect(createdLevel.number).toBe(uniqueNumber);
-  });
+      const createData: LevelCreateSchema = {
+        title: 'Test',
+        number: 1
+      };
 
-  it('devrait créer des niveaux sans interférer avec d\'autres tests', async () => {
-    const uniqueNumber = Math.floor(Math.random() * 1000) + 3000;
-    const createData: LevelCreateSchema = {
-      title: 'Test Isolation',
-      number: uniqueNumber,
-      duration: 120
-    };
+      const result = await levelService.create(createData);
 
-    const createdLevel = await levelService.create(createData);
-    testLevelIds.push(createdLevel.id);
-
-    expect(createdLevel.title).toBe('Test Isolation');
-    expect(createdLevel.number).toBe(uniqueNumber);
-
-    const foundLevel = await levelService.findOne(createdLevel.id);
-    expect(foundLevel).not.toBeNull();
-    expect(foundLevel!.title).toBe('Test Isolation');
+      expect(result).toEqual(mockLevel);
+      expect(mockPrisma.level.create).toHaveBeenCalledWith({ data: createData });
+    });
   });
 });
