@@ -17,7 +17,15 @@
     "db:check": "bunx prisma db pull --force",
     "db:status": "bun run scripts/db-check.ts",
     "db:seed": "bun run src/seed-data.ts",
-    "db:empty": "bunx prisma migrate reset --force"
+    "db:empty": "bunx prisma migrate reset --force",
+
+    // Scripts de test avec référence au fichier config
+    "test": "bun test --config ./test.config.ts",
+    "test:watch": "bun test --config ./test.config.ts --watch",
+    "test:coverage": "bun test --config ./test.config.ts --coverage",
+    "test:unit": "bun test --config ./test.config.ts --testNamePattern='Unitaires'",
+    "test:integration": "bun test --config ./test.config.ts --testNamePattern='Intégration'",
+    "test:regression": "bun test --config ./test.config.ts --testNamePattern='Régression'"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
@@ -30,9 +38,6 @@
     "eslint": "^9.31.0",
     "prisma": "^6.11.1",
     "typescript": "^5.0.0"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
   },
   "dependencies": {
     "@prisma/client": "^6.11.1",

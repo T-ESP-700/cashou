@@ -1,17 +1,23 @@
 // Service métier pour la gestion des niveaux du jeu
 // Couche d'abstraction entre les routers et la base de données
-import type { Level } from "@prisma/client";
-import prisma from "../database";
+import type { Level, PrismaClient } from "@prisma/client";
+import defaultPrisma from "../database.ts";
 import type {LevelCreateSchema, LevelDataSchema} from "../schemas-zod/level-schema.ts";
 
 export class LevelService {
+    private prisma: PrismaClient;
+
+    // Permet d'injecter Prisma pour les tests
+    constructor(prismaClient?: PrismaClient) {
+        this.prisma = prismaClient || defaultPrisma;
+    }
 
     /**
      * Récupère tous les niveaux avec leurs relations
      * @returns Promise<Level[]> - Liste complète des niveaux triés par numéro croissant
      */
     async findAll(): Promise<Level[]> {
-        return prisma.level.findMany({
+        return this.prisma.level.findMany({
             include: {
                 // Inclut les objectifs du niveau avec les détails complets
                 levelGoals: { include: { goal: true } },
@@ -28,7 +34,7 @@ export class LevelService {
      * @returns Promise<Level | null> - Le niveau trouvé ou null si inexistant
      */
     async findOne(id: number): Promise<Level | null> {
-        return prisma.level.findUnique({
+        return this.prisma.level.findUnique({
             where: { id },
             include: {
                 // Même structure que findAll pour la cohérence des données
@@ -44,7 +50,7 @@ export class LevelService {
      * @returns Promise<Level> - Le niveau créé avec son ID généré
      */
     async create(data: LevelCreateSchema): Promise<Level> {
-        return prisma.level.create({ data });
+        return this.prisma.level.create({ data });
     }
 
     /**
@@ -54,7 +60,7 @@ export class LevelService {
      * @returns Promise<Level> - Le niveau mis à jour
      */
     async update(id: number, data: LevelDataSchema): Promise<Level> {
-        return prisma.level.update({
+        return this.prisma.level.update({
             where: { id },
             data
         });
@@ -66,6 +72,6 @@ export class LevelService {
      * @returns Promise<Level> - Le niveau supprimé (pour confirmation)
      */
     async delete(id: number): Promise<Level> {
-        return prisma.level.delete({ where: { id } });
+        return this.prisma.level.delete({ where: { id } });
     }
 }

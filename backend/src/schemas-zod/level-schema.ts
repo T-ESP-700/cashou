@@ -3,14 +3,15 @@
 import { z } from "zod";
 
 // Schéma de base contenant toutes les propriétés d'un niveau (sans l'ID auto-généré)
+// Utilisation de .nullish() au lieu de .optional() pour accepter null et undefined
 export const levelDataSchema = z.object({
-    title: z.string().min(1, "Le titre est requis").optional(),
-    number: z.number().int().positive().optional(),
-    duration: z.number().int().positive().optional(),
-    speed: z.number().int().positive().optional(),
-    startBalance: z.number().int().min(0).optional(),
-    pointsRequired: z.number().int().min(0).optional(),
-    description: z.string().optional(),
+    title: z.string().min(1, "Le titre est requis").nullish(),
+    number: z.number().int().positive().nullish(),
+    duration: z.number().int().positive().nullish(),
+    speed: z.number().int().positive().nullish(),
+    startBalance: z.number().int().min(0).nullish(),
+    pointsRequired: z.number().int().min(0).nullish(),
+    description: z.string().nullish(),
 });
 export type LevelDataSchema = z.infer<typeof levelDataSchema>;
 
