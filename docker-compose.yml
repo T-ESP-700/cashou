@@ -22,7 +22,7 @@ services:
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
       POSTGRES_DB: backoffice
     ports:
-      - "5433:5433"
+      - "5433:5432"
     volumes:
       - backoffice-db-data:/var/lib/postgresql/data
     healthcheck:
@@ -37,14 +37,17 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
+    environment:
+      - CASHOU_DB_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db_cashou:5432/${POSTGRES_DB:-cashou_db}
+      - NODE_ENV=production
     env_file:
       - .env
     depends_on:
       db_cashou:
         condition: service_healthy
     volumes:
-      - ./backend:/app
-      - /app/node_modules
+      - ./backend/src:/app/src
+      - ./backend/prisma:/app/prisma
 
   backoffice:
     build:
