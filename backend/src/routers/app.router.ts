@@ -2,6 +2,7 @@
 import { initTRPC } from "@trpc/server";
 import {levelRouter} from "./level.router.ts";
 import {eventRouter} from "./event.router.ts";
+import {goalRouter} from "./goal.router.ts";
 
 // Initialisation de tRPC - Framework pour créer des APIs type-safe
 const t = initTRPC.create();
@@ -10,6 +11,7 @@ const t = initTRPC.create();
 export const appRouter = t.router({
     level: levelRouter,
     event: eventRouter,
+    goal: goalRouter
 });
 
 // Export du type pour utilisation côté frontend (type-safety)
