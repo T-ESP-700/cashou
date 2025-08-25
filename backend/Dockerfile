@@ -1,25 +1,25 @@
+# backend/Dockerfile
 FROM oven/bun:1.0
 
 WORKDIR /app
 
-# Copier les fichiers de configuration du monorepo
-COPY package.json bun.lock* ./
-COPY backend/package.json ./backend/package.json
-COPY backoffice/package.json ./backoffice/package.json
+# Copier les fichiers de dépendances du backend
+COPY package.json bun.lock ./
 
-# Installer toutes les dépendances (workspaces)
+# Installer les dépendances du backend
 RUN bun install
 
 # Copier le code source du backend
-COPY backend/ ./backend/
+COPY . .
 
-# Se déplacer dans le backend
-WORKDIR /app/backend
-
-# Générer le client Prisma
+# Générer le client Prisma avec le bon chemin
 RUN bunx prisma generate --schema=prisma/app/schema.prisma
 
+# Vérifier que le client a été généré
+RUN ls -la node_modules/.prisma/client/
+
+# Exposer le port
 EXPOSE 3000
 
-# Utiliser le mode développement avec --watch
-CMD ["bun", "--watch", "--hot", "src/index.ts"]
+# Démarrer l'application
+CMD ["bun", "run", "start"]
