@@ -1,36 +1,31 @@
-/**
- * tests/router/level.router.test.ts
- * Tests du tRPC levelRouter avec createCaller, en mockant LevelService via patch du prototype.
- * Pas besoin de serveur HTTP.
- */
+// tests/router/level.router.test.ts
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-
-// IMPORTANT : adapte ce chemin à ton arborescence réelle.
-// D'après ta capture: src/routers/level.router.ts
+import type { Level } from "@prisma/client";
 import { levelRouter } from "../../src/routers/level.router";
-
-// On va patcher les méthodes de LevelService au niveau du prototype.
-// Comme le router crée une instance interne (new LevelService()),
-// remplacer le prototype suffit pour que l'instance utilise nos fonctions mockées.
 import { LevelService } from "../../src/services/level.service";
 
-type Call = [method: string, args: any];
+type Call =
+    | { method: "findAll"; args?: undefined }
+    | { method: "findOne"; args: { id: number } }
+    | { method: "create"; args: { data: Partial<Level> } }
+    | { method: "update"; args: { id: number; data: Partial<Level> } }
+    | { method: "delete"; args: { id: number } };
+
 const calls: Call[] = [];
 
-function makeLevel(id: number, over: Partial<any> = {}) {
+function makeLevel(id: number, over: Partial<Level> = {}): Level {
   const now = new Date();
   return {
     id,
-    title: `N${id}`,
-    number: null,
-    duration: null,
-    speed: null,
-    startBalance: null,
-    pointsRequired: null,
-    description: null,
-    createdAt: now,
-    updatedAt: now,
-    ...over,
+    title: over.title ?? `N${id}`,
+    number: over.number ?? null,
+    duration: over.duration ?? null,
+    speed: over.speed ?? null,
+    startBalance: over.startBalance ?? null,
+    pointsRequired: over.pointsRequired ?? null,
+    description: over.description ?? null,
+    createdAt: over.createdAt ?? now,
+    updatedAt: over.updatedAt ?? now,
   };
 }
 
@@ -45,39 +40,34 @@ const original = {
 beforeEach(() => {
   calls.length = 0;
 
-  LevelService.prototype.findAll = (async function (this: any) {
-    calls.push(["findAll", undefined]);
-    return [makeLevel(1, { title: "N1" })] as any;
-  }) as any;
+  LevelService.prototype.findAll = (async function (this: unknown): Promise<Level[]> {
+    calls.push({ method: "findAll" });
+    return [makeLevel(1, { title: "N1" })];
+  });
 
-  LevelService.prototype.findOne = (async function (this: any, id: number) {
-    calls.push(["findOne", { id }]);
+  LevelService.prototype.findOne = (async function (this: unknown, id: number): Promise<Level | null> {
+    calls.push({ method: "findOne", args: { id } });
     if (id === 404) return null;
-    return makeLevel(id) as any;
-  }) as any;
+    return makeLevel(id);
+  });
 
-  LevelService.prototype.create = (async function (this: any, data: any) {
-    calls.push(["create", { data }]);
-    return makeLevel(123, data) as any;
-  }) as any;
+  LevelService.prototype.create = (async function (this: unknown, data: Partial<Level>): Promise<Level> {
+    calls.push({ method: "create", args: { data } });
+    return makeLevel(123, data);
+  });
 
-  LevelService.prototype.update = (async function (
-    this: any,
-    id: number,
-    data: any
-  ) {
-    calls.push(["update", { id, data }]);
-    return makeLevel(id, data) as any;
-  }) as any;
+  LevelService.prototype.update = (async function (this: unknown, id: number, data: Partial<Level>): Promise<Level> {
+    calls.push({ method: "update", args: { id, data } });
+    return makeLevel(id, data);
+  });
 
-  LevelService.prototype.delete = (async function (this: any, id: number) {
-    calls.push(["delete", { id }]);
-    return { id } as any;
-  }) as any;
+  LevelService.prototype.delete = (async function (this: unknown, id: number): Promise<Pick<Level, "id">> {
+    calls.push({ method: "delete", args: { id } });
+    return { id };
+  }) as unknown as typeof LevelService.prototype.delete;
 });
 
 afterEach(() => {
-  // restore
   LevelService.prototype.findAll = original.findAll;
   LevelService.prototype.findOne = original.findOne;
   LevelService.prototype.create = original.create;
@@ -85,65 +75,65 @@ afterEach(() => {
   LevelService.prototype.delete = original.delete;
 });
 
+type Ctx = Parameters<typeof levelRouter.createCaller>[0];
+
 describe("level.router — createCaller (sans HTTP)", () => {
   it("level.getAll → appelle service.findAll et retourne la liste", async () => {
-    const caller = levelRouter.createCaller({} as any);
-    const res: any = await caller.getAll();
-    expect(res).toMatchObject([{ id: 1, title: "N1" } as any]);
-    const hit = calls.find((c) => c[0] === "findAll");
+    const caller = levelRouter.createCaller({} as Ctx);
+    const res = await caller.getAll();
+    expect(res).toMatchObject([{ id: 1, title: "N1" }]);
+    const hit = calls.find((c) => c.method === "findAll");
     expect(hit).toBeDefined();
   });
 
   it("level.getById → valide l'input et appelle service.findOne(id)", async () => {
-    const caller = levelRouter.createCaller({} as any);
-    const res: any = await caller.getById({ id: 7 });
-    expect(res).toMatchObject({ id: 7, title: "N7" } as any);
-    const hit = calls.find((c) => c[0] === "findOne");
-    expect(hit?.[1]).toEqual({ id: 7 });
+    const caller = levelRouter.createCaller({} as Ctx);
+    const res = await caller.getById({ id: 7 });
+    expect(res).toMatchObject({ id: 7, title: "N7" });
+    const hit = calls.find((c) => c.method === "findOne");
+    expect(hit?.args).toEqual({ id: 7 });
   });
 
   it("level.create → valide l'input (zod) puis appelle service.create(data)", async () => {
-    const caller = levelRouter.createCaller({} as any);
-    const payload = { title: "T", number: 1, duration: 10 };
-    const res: any = await caller.create(payload as any);
-    expect(res).toMatchObject({ id: 123, ...payload } as any);
-    const hit = calls.find((c) => c[0] === "create");
-    expect(hit?.[1]).toEqual({ data: payload });
+    const caller = levelRouter.createCaller({} as Ctx);
+    const payload: Partial<Level> = { title: "T", number: 1, duration: 10 };
+    const res = await caller.create(payload as unknown as never);
+    expect(res).toMatchObject({ id: 123, ...payload });
+    const hit = calls.find((c) => c.method === "create");
+    expect(hit?.args).toEqual({ data: payload });
   });
 
   it("level.update → appelle service.update(id, data)", async () => {
-    const caller = levelRouter.createCaller({} as any);
-    const res: any = await caller.update({ id: 99, data: { title: "Up" } } as any);
-    expect(res).toMatchObject({ id: 99, title: "Up" } as any);
-    const hit = calls.find((c) => c[0] === "update");
-    expect(hit?.[1]).toEqual({ id: 99, data: { title: "Up" } });
+    const caller = levelRouter.createCaller({} as Ctx);
+    const res = await caller.update({ id: 99, data: { title: "Up" } as Partial<Level> } as unknown as never);
+    expect(res).toMatchObject({ id: 99, title: "Up" });
+    const hit = calls.find((c) => c.method === "update");
+    expect(hit?.args).toEqual({ id: 99, data: { title: "Up" } });
   });
 
   it("level.delete → appelle service.delete(id)", async () => {
-    const caller = levelRouter.createCaller({} as any);
-    const res: any = await caller.delete({ id: 5 });
-    expect(res).toEqual({ id: 5 } as any);
-    const hit = calls.find((c) => c[0] === "delete");
-    expect(hit?.[1]).toEqual({ id: 5 });
+    const caller = levelRouter.createCaller({} as Ctx);
+    const res = await caller.delete({ id: 5 });
+    expect(res.id).toBe(5);
+    const hit = calls.find((c) => c.method === "delete");
+    expect(hit?.args).toEqual({ id: 5 });
   });
 });
 
 describe("level.router — validations Zod (erreurs attendues)", () => {
   it("getById avec id <= 0 → rejette", async () => {
-    const caller = levelRouter.createCaller({} as any);
-    expect(caller.getById({id: 0} as any)).rejects.toBeDefined();
-    expect(caller.getById({id: -1} as any)).rejects.toBeDefined();
+    const caller = levelRouter.createCaller({} as Ctx);
+    expect(caller.getById({id: 0} as unknown as never)).rejects.toBeDefined();
+    expect(caller.getById({id: -1} as unknown as never)).rejects.toBeDefined();
   });
 
   it("update avec id invalide → rejette", async () => {
-    const caller = levelRouter.createCaller({} as any);
-    expect(
-        caller.update({id: 0, data: {}} as any)
-    ).rejects.toBeDefined();
+    const caller = levelRouter.createCaller({} as Ctx);
+    expect(caller.update({id: 0, data: {}} as unknown as never)).rejects.toBeDefined();
   });
 
   it("delete avec id invalide → rejette", async () => {
-    const caller = levelRouter.createCaller({} as any);
-    expect(caller.delete({id: 0} as any)).rejects.toBeDefined();
+    const caller = levelRouter.createCaller({} as Ctx);
+    expect(caller.delete({id: 0} as unknown as never)).rejects.toBeDefined();
   });
 });

@@ -17,4 +17,13 @@ module.exports = {
     rules: {
         // tes règles…
     },
+
+    overrides: [
+        {
+            files: ["**/tests/**/*.{ts,tsx}"],
+            rules: {
+                "@typescript-eslint/no-explicit-any": "off"
+            }
+        }
+    ]
 };
