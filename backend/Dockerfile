@@ -13,6 +13,7 @@ RUN bun install
 COPY . .
 
 # Générer le client Prisma
+RUN bunx prisma generate --schema=prisma/app/schema.prisma
 
 # Exposer le port
 EXPOSE 3000

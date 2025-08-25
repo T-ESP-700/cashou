@@ -1,7 +1,11 @@
 
 import { MarketRoutes } from './routes/market.routes';
+import { QuizRoutes } from './routes/quiz.routes';
+import { LevelRoutes } from './routes/level.routes';
 
 const marketRoutes = new MarketRoutes();
+const quizRoutes = new QuizRoutes();
+const levelRoutes = new LevelRoutes();
 
 const server = Bun.serve({
   port: 3000,
@@ -18,6 +22,14 @@ const server = Bun.serve({
       return await marketRoutes.handleRequest(req);
     }
 
+    if (QuizRoutes.matches(url.pathname)) {
+      return await quizRoutes.handleRequest(req);
+    }
+
+    if (LevelRoutes.matches(url.pathname)) {
+      return await levelRoutes.handleRequest(req);
+    }
+
     // Default response
     if (url.pathname === '/') {
       return new Response(JSON.stringify({
@@ -25,7 +37,9 @@ const server = Bun.serve({
         version: '1.0.0',
         endpoints: {
           health: '/health',
-          markets: '/api/markets'
+          markets: '/api/markets',
+          quiz: '/api/quiz',
+          levels: '/api/levels'
         }
       }), {
         headers: { 'Content-Type': 'application/json' }
