@@ -1,12 +1,13 @@
+// tests/service/level.service.integration.test.ts
 import { describe, it, expect, afterAll } from "bun:test";
-import { PrismaClient } from "@prisma/client";
-import {LevelService} from "../../src/services/level.service.ts";
+import { PrismaClient, type Level } from "@prisma/client";
+import { LevelService } from "../../src/services/level.service";
 
 const shouldRun = !!process.env.CASHOU_DB_URL;
 
 (shouldRun ? describe : describe.skip)("LevelService — Tests d'intégration", () => {
   const prisma = new PrismaClient();
-  const service = new LevelService(prisma as any);
+  const service = new LevelService(prisma); // Suppression du "as unknown"
   let createdId: number | null = null;
 
   afterAll(async () => {
@@ -20,8 +21,7 @@ const shouldRun = !!process.env.CASHOU_DB_URL;
   });
 
   it("create → findOne → update → delete", async () => {
-    // create
-    const data = {
+    const data: Omit<Level, "id" | "createdAt" | "updatedAt"> = {
       title: "Niveau IT",
       number: 101,
       duration: 45,
@@ -30,22 +30,20 @@ const shouldRun = !!process.env.CASHOU_DB_URL;
       pointsRequired: 250,
       description: "Cas d'intégration",
     };
-    const created = await service.create(data as any);
+
+    const created = await service.create(data); // Suppression du "as unknown as Level"
     expect(created.id).toBeGreaterThan(0);
     createdId = created.id;
 
-    // findOne
     const fetched = await service.findOne(createdId!);
     expect(fetched?.id).toBe(createdId);
 
-    // update
-    const updated = await service.update(createdId!, { title: "Niveau IT (maj)" } as any);
+    const updated = await service.update(createdId!, { title: "Niveau IT (maj)" }); // Suppression du "as unknown as Level"
     expect(updated.title).toBe("Niveau IT (maj)");
 
-    // delete (et récréation pour clean in afterAll)
     const deleted = await service.delete(createdId!);
     expect(deleted.id).toBe(createdId);
-    // on remet pour afterAll (id différent, c'est ok)
+
     const again = await prisma.level.create({ data });
     createdId = again.id;
   });
