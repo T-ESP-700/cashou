@@ -1,0 +1,15 @@
+meta {
+  name: Get By Level Id
+  type: http
+  seq: 6
+}
+
+get {
+  url: http://localhost:3000/trpc/quiz.getByLevel?input={"levelId":1}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"levelId":1}
+}
