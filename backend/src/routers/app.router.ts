@@ -1,6 +1,7 @@
 // Router principal de l'application - Point central de regroupement de tous les sous-routers
 import { initTRPC } from "@trpc/server";
 import {levelRouter} from "./level.router.ts";
+import {eventRouter} from "./event.router.ts";
 
 // Initialisation de tRPC - Framework pour créer des APIs type-safe
 const t = initTRPC.create();
@@ -8,6 +9,7 @@ const t = initTRPC.create();
 // Router principal qui regroupe tous les sous-routers de l'application
 export const appRouter = t.router({
     level: levelRouter,
+    event: eventRouter,
 });
 
 // Export du type pour utilisation côté frontend (type-safety)
