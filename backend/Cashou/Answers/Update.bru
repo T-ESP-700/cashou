@@ -1,0 +1,22 @@
+meta {
+  name: Update
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:3000/trpc/answer.update
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 2,
+    "data": {
+      "questionId": 3,
+      "text": "Lyon",
+      "isCorrect": false
+    }
+  }
+}
