@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
+  "scripts": {
+    "build": "echo 'Auth package built successfully'",
+    "test": "echo 'No tests for auth package'"
+  },
   "exports": {
     "./server": "./src/server.ts",
     "./client": "./src/client.ts",

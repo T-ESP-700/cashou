@@ -19,14 +19,14 @@ export const authRouter = router({
           body: {
             email: input.email,
             password: input.password,
-            name: input.name,
+            name: input.name || '',
           },
         });
 
         return {
           success: true,
           user: result.user,
-          session: result.session,
+          token: result.token,
         };
       } catch (error: any) {
         throw new TRPCError({
@@ -56,7 +56,7 @@ export const authRouter = router({
         return {
           success: true,
           user: result.user,
-          session: result.session,
+          token: result.token,
         };
       } catch (error: any) {
         throw new TRPCError({
@@ -102,7 +102,7 @@ export const authRouter = router({
         await auth.api.forgetPassword({
           body: {
             email: input.email,
-            redirectTo: process.env.FRONTEND_URL + '/reset-password',
+            redirectTo: (process.env.FRONTEND_URL || 'http://localhost:3000') + '/reset-password',
           },
         });
 

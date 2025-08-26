@@ -6,7 +6,9 @@
   "scripts": {
     "generate": "prisma generate",
     "migrate": "prisma migrate dev",
-    "studio": "prisma studio"
+    "studio": "prisma studio",
+    "build": "prisma generate",
+    "test": "echo 'No tests for db-backoffice package'"
   },
   "dependencies": {
     "@prisma/client": "^6.14.0"

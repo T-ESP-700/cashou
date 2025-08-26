@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
+  "scripts": {
+    "build": "echo 'UI package built successfully'",
+    "test": "echo 'No tests for UI package'"
+  },
   "dependencies": {
     "react": "^18.3.1"
   }

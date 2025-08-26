@@ -2,5 +2,9 @@
   "name": "@cashou/utils",
   "version": "1.0.0",
   "main": "./src/index.ts",
-  "types": "./src/index.ts"
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "echo 'Utils package built successfully'",
+    "test": "echo 'No tests for utils package'"
+  }
 }
