@@ -1,0 +1,15 @@
+[workspace]
+packages = [
+  "apps/*",
+  "packages/@cashou/*"
+]
+
+[install]
+# Optimiser l'installation des dépendances
+production = false
+frozenLockfile = false
+
+[test]
+# Configuration des tests
+coverage = true
+coverageThreshold = 80

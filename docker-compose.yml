@@ -22,7 +22,7 @@ services:
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
       POSTGRES_DB: backoffice
     ports:
-      - "5433:5433"
+      - "5433:5432"
     volumes:
       - backoffice-db-data:/var/lib/postgresql/data
     healthcheck:
@@ -33,33 +33,33 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/backend/Dockerfile
     ports:
       - "3000:3000"
     env_file:
-      - .env
+      - .env.docker
     depends_on:
       db_cashou:
         condition: service_healthy
     volumes:
-      - ./backend:/app
-      - /app/node_modules
+      - ./apps/backend:/app/apps/backend
+      - ./packages:/app/packages
 
   backoffice:
     build:
-      context: ./backoffice
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/backoffice/Dockerfile
     ports:
       - "5173:5173"
-    environment:
-      - BACKOFFICE_DB_URL=${BACKOFFICE_DB_URL}
+    env_file:
+      - .env.docker
     depends_on:
       db_backoffice:
         condition: service_healthy
     volumes:
-      - ./backoffice/src:/app/src
-      - .env:/app/.env:ro
+      - ./apps/backoffice:/app/apps/backoffice
+      - ./packages:/app/packages
 
 volumes:
   cashou-db-data:

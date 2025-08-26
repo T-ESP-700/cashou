@@ -1,0 +1,116 @@
+### Test API endpoints
+# This file can be used with REST Client extension in VS Code
+# or with any HTTP client
+
+@baseUrl = http://localhost:3000
+@contentType = application/json
+
+### Health check
+GET {{baseUrl}}/health
+
+### tRPC health check
+GET {{baseUrl}}/api/trpc/health
+
+### Register a new user
+POST {{baseUrl}}/api/trpc/auth.register
+Content-Type: {{contentType}}
+
+{
+  "email": "test@example.com",
+  "password": "password123",
+  "name": "Test User"
+}
+
+### Login
+POST {{baseUrl}}/api/trpc/auth.login
+Content-Type: {{contentType}}
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+### Get current user (requires authentication)
+GET {{baseUrl}}/api/trpc/auth.me
+Authorization: Bearer YOUR_SESSION_TOKEN
+
+### Create a user (admin only)
+POST {{baseUrl}}/api/trpc/user.create
+Content-Type: {{contentType}}
+Authorization: Bearer ADMIN_SESSION_TOKEN
+
+{
+  "email": "newuser@example.com",
+  "username": "newuser",
+  "password": "password123",
+  "role": "USER",
+  "level": 1,
+  "points": 100
+}
+
+### List users (admin only)
+GET {{baseUrl}}/api/trpc/user.list?input={"limit":10,"offset":0}
+Authorization: Bearer ADMIN_SESSION_TOKEN
+
+### Get user by ID
+GET {{baseUrl}}/api/trpc/user.getById?input="USER_ID_HERE"
+Authorization: Bearer YOUR_SESSION_TOKEN
+
+### Update user profile
+POST {{baseUrl}}/api/trpc/user.updateProfile
+Content-Type: {{contentType}}
+Authorization: Bearer YOUR_SESSION_TOKEN
+
+{
+  "username": "newusername"
+}
+
+### Update user (admin)
+POST {{baseUrl}}/api/trpc/user.update
+Content-Type: {{contentType}}
+Authorization: Bearer ADMIN_SESSION_TOKEN
+
+{
+  "id": "USER_ID_HERE",
+  "email": "updated@example.com",
+  "level": 10,
+  "points": 1000
+}
+
+### Delete user (admin only)
+POST {{baseUrl}}/api/trpc/user.delete
+Content-Type: {{contentType}}
+Authorization: Bearer ADMIN_SESSION_TOKEN
+
+{
+  "input": "USER_ID_HERE"
+}
+
+### Better-Auth endpoints
+
+### Sign up with email
+POST {{baseUrl}}/api/auth/sign-up/email
+Content-Type: {{contentType}}
+
+{
+  "email": "user@example.com",
+  "password": "password123",
+  "name": "John Doe"
+}
+
+### Sign in with email
+POST {{baseUrl}}/api/auth/sign-in/email
+Content-Type: {{contentType}}
+
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+
+### Sign out
+POST {{baseUrl}}/api/auth/sign-out
+Authorization: Bearer YOUR_SESSION_TOKEN
+
+### Get session
+GET {{baseUrl}}/api/auth/session
+Authorization: Bearer YOUR_SESSION_TOKEN

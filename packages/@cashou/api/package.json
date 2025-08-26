@@ -1,0 +1,9 @@
+{
+  "name": "@cashou/api",
+  "version": "1.0.0",
+  "main": "./src/client.ts",
+  "types": "./src/client.ts",
+  "dependencies": {
+    "@trpc/client": "^11.5.0"
+  }
+}
