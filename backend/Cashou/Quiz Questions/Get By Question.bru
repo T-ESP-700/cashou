@@ -1,0 +1,15 @@
+meta {
+  name: Get By Question
+  type: http
+  seq: 7
+}
+
+get {
+  url: http://localhost:3000/trpc/quizQuestion.getByQuestion?input={"questionId":2}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"questionId":2}
+}
