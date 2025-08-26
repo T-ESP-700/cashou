@@ -1,0 +1,24 @@
+meta {
+  name: Create a market
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/trpc/market.create
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name": "Marché Crypto",
+    "description": "Marché des cryptomonnaies et tokens",
+    "currentTrends": "Bitcoin en consolidation, DeFi en croissance",
+    "dataSource": "CoinGecko + CoinMarketCap"
+  }
+}
+
+settings {
+  encodeUrl: true
+}
