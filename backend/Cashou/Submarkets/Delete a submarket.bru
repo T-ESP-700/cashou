@@ -1,0 +1,21 @@
+meta {
+  name: Delete a submarket
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}/trpc/submarket.delete
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 2
+  }
+}
+
+settings {
+  encodeUrl: true
+}

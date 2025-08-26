@@ -1,0 +1,24 @@
+meta {
+  name: Update a submarket
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/trpc/submarket.update
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 2,
+    "data": {
+      "name": "Toto"
+    }
+  }
+}
+
+settings {
+  encodeUrl: true
+}

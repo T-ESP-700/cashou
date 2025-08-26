@@ -2,6 +2,7 @@
 import { initTRPC } from "@trpc/server";
 import {levelRouter} from "./level.router.ts";
 import {marketRouter} from "./market.router.ts";
+import {submarketRouter} from "./submarket.router.ts";
 
 // Initialisation de tRPC - Framework pour créer des APIs type-safe
 const t = initTRPC.create();
@@ -10,6 +11,7 @@ const t = initTRPC.create();
 export const appRouter = t.router({
     level: levelRouter,
     market: marketRouter,
+    submarket: submarketRouter,
 });
 
 // Export du type pour utilisation côté frontend (type-safety)

@@ -1,0 +1,25 @@
+meta {
+  name: Create a submarket
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/trpc/submarket.create
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name": "DeFi Protocols",
+    "description": "Sous-marché des protocoles de finance décentralisée",
+    "currentTrends": "Innovation en yield farming et lending",
+    "dataSource": "DeFi Pulse + Messari",
+    "marketId": 1
+  }
+}
+
+settings {
+  encodeUrl: true
+}
