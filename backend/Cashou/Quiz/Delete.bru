@@ -1,11 +1,11 @@
 meta {
   name: Delete
   type: http
-  seq: 5
+  seq: 3
 }
 
 post {
-  url: http://localhost:3000/trpc/quiz.delete
+  url: {{base_url}}/trpc/quiz.delete
   body: json
   auth: inherit
 }

@@ -1,11 +1,11 @@
 meta {
   name: Get By Id
   type: http
-  seq: 4
+  seq: 5
 }
 
 get {
-  url: http://localhost:3000/trpc/question.getById?input={"id":2}
+  url: {{base_url}}/trpc/question.getById?input={"id":2}
   body: none
   auth: inherit
 }

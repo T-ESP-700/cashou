@@ -1,11 +1,11 @@
 meta {
   name: Get All
   type: http
-  seq: 5
+  seq: 4
 }
 
 get {
-  url: http://localhost:3000/trpc/question.getAll
+  url: {{base_url}}/trpc/question.getAll
   body: none
   auth: inherit
 }
