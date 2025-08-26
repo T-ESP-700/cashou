@@ -6,6 +6,7 @@ import {submarketRouter} from "./submarket.router.ts";
 import {fieldRouter} from "./field.router.ts";
 import {assetRouter} from "./asset.router.ts";
 import {eventRouter} from "./event.router.ts";
+import {assetHistoryRouter} from "./asset-history.router.ts";
 
 // Initialisation de tRPC - Framework pour créer des APIs type-safe
 const t = initTRPC.create();
@@ -18,6 +19,7 @@ export const appRouter = t.router({
     field: fieldRouter,
     asset: assetRouter,
     event: eventRouter,
+    assetHistory: assetHistoryRouter,
 });
 
 // Export du type pour utilisation côté frontend (type-safety)

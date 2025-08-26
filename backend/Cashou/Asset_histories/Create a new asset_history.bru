@@ -1,0 +1,24 @@
+meta {
+  name: Create a new asset_history
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/trpc/assetHistory.create
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "assetId": 1,
+    "timestamp": "2024-01-15T10:30:00Z",
+    "value": 165,
+    "volume": 980
+  }
+}
+
+settings {
+  encodeUrl: true
+}
