@@ -1,0 +1,20 @@
+meta {
+  name: Update
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:3000/trpc/question.update
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 1,
+    "data": {
+      "text": "Quelle est la nouvelle capitale de la France ?"
+    }
+  }
+}
