@@ -107,6 +107,23 @@ bun prisma migrate deploy
 bun prisma migrate reset
 ```
 
+### Tests avec Bun
+# Vérifier que Bun reconnaît la config
+```bash
+bun test --dry-run
+```
+
+```bash
+# Lancer les tests
+bun test
+```
+
+# Avec couverture
+```bash
+bun test --coverage
+```
+
+
 ## 🛠️ Scripts disponibles
 
 ### Scripts depuis la racine (Recommandé)
