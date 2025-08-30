@@ -4,6 +4,7 @@ import {levelRouter} from "./level.router.ts";
 import {eventRouter} from "./event.router.ts";
 import {goalRouter} from "./goal.router.ts";
 import { levelGoalRouter } from "./level-goal.router.ts";
+import { levelEventRouter } from "./level-event.router.ts";
 
 // Initialisation de tRPC - Framework pour créer des APIs type-safe
 const t = initTRPC.create();
@@ -13,7 +14,8 @@ export const appRouter = t.router({
     level: levelRouter,
     event: eventRouter,
     goal: goalRouter,
-    levelGoal: levelGoalRouter
+    levelGoal: levelGoalRouter,
+    levelEvent: levelEventRouter
 });
 
 // Export du type pour utilisation côté frontend (type-safety)
