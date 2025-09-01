@@ -2,6 +2,7 @@
 import { initTRPC } from "@trpc/server";
 import { MarketService } from "../services/market.service";
 import {marketCreateSchema, marketUpdateSchema, marketIdSchema} from "../schemas-zod/market-schema.ts";
+import {paginationSchema, marketSearchSchema, marketIdSchema as marketBusinessIdSchema} from "../schemas-zod/market-business-schema.ts";
 
 // Initialisation de tRPC pour ce router spécifique
 const t = initTRPC.create();
@@ -62,6 +63,56 @@ export const marketRouter = t.router({
         .input(marketIdSchema) // Validation de l'ID
         .mutation(async ({ input }) => {
             return await marketService.delete(input.id);
+        }),
+
+    // ===== ROUTES MÉTIERS =====
+
+    /**
+     * Liste paginée des marchés avec compteurs
+     * Endpoint: GET http://localhost:3000/trpc/market.list?input={"limit":20,"offset":0}
+     * @input PaginationSchema - Paramètres de pagination
+     * @returns Liste paginée des marchés avec compteurs d'actifs et sous-marchés
+     */
+    list: t.procedure
+        .input(paginationSchema)
+        .query(async ({ input }) => {
+            return await marketService.list(input.limit, input.offset);
+        }),
+
+    /**
+     * Recherche de marchés par mots-clés et tendances
+     * Endpoint: GET http://localhost:3000/trpc/market.search?input={"query":"tech","tag":"innovation","trend":"hausse"}
+     * @input MarketSearchSchema - Critères de recherche
+     * @returns Liste des marchés correspondants avec score de pertinence
+     */
+    search: t.procedure
+        .input(marketSearchSchema)
+        .query(async ({ input }) => {
+            return await marketService.search(input.query, input.tag, input.trend);
+        }),
+
+    /**
+     * Arbre complet d'un marché (marché + sous-marchés + compteurs d'actifs)
+     * Endpoint: GET http://localhost:3000/trpc/market.getTree?input={"marketId":1}
+     * @input MarketIdSchema - ID du marché
+     * @returns Arbre hiérarchique du marché avec compteurs
+     */
+    getTree: t.procedure
+        .input(marketBusinessIdSchema)
+        .query(async ({ input }) => {
+            return await marketService.getTree(input.marketId);
+        }),
+
+    /**
+     * Vue d'ensemble complète d'un marché
+     * Endpoint: GET http://localhost:3000/trpc/market.getOverview?input={"marketId":1}
+     * @input MarketIdSchema - ID du marché
+     * @returns Vue d'ensemble avec KPIs, top actifs et sous-marchés
+     */
+    getOverview: t.procedure
+        .input(marketBusinessIdSchema)
+        .query(async ({ input }) => {
+            return await marketService.getOverview(input.marketId);
         }),
 });
 
