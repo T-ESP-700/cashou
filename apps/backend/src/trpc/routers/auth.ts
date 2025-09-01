@@ -28,10 +28,11 @@ export const authRouter = router({
           user: result.user,
           token: result.token,
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Registration failed';
         throw new TRPCError({
           code: 'BAD_REQUEST',
-          message: error.message || 'Registration failed',
+          message,
         });
       }
     }),
@@ -58,7 +59,7 @@ export const authRouter = router({
           user: result.user,
           token: result.token,
         };
-      } catch (error: any) {
+      } catch {
         throw new TRPCError({
           code: 'UNAUTHORIZED',
           message: 'Invalid credentials',
@@ -74,7 +75,7 @@ export const authRouter = router({
       });
 
       return { success: true };
-    } catch (error) {
+    } catch {
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
         message: 'Logout failed',
@@ -110,10 +111,11 @@ export const authRouter = router({
           success: true,
           message: 'Password reset email sent',
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Failed to send reset email';
         throw new TRPCError({
           code: 'BAD_REQUEST',
-          message: error.message || 'Failed to send reset email',
+          message,
         });
       }
     }),
@@ -139,10 +141,11 @@ export const authRouter = router({
           success: true,
           message: 'Password reset successful',
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Failed to reset password';
         throw new TRPCError({
           code: 'BAD_REQUEST',
-          message: error.message || 'Failed to reset password',
+          message,
         });
       }
     }),

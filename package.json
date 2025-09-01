@@ -35,11 +35,11 @@
     "db:generate:backoffice": "cd packages/@cashou/db-backoffice && bunx prisma generate",
     "db:migrate:app": "cd packages/@cashou/db-app && bunx dotenv -e ../../../.env -- prisma migrate deploy",
     "db:migrate:backoffice": "cd packages/@cashou/db-backoffice && bunx dotenv -e ../../../.env -- prisma migrate deploy",
-    "docker:up": "docker-compose up -d",
-    "docker:down": "docker-compose down",
-    "docker:build": "docker-compose build",
-    "docker:logs": "docker-compose logs -f",
-    "docker:clean": "docker-compose down -v && docker system prune -f",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:build": "docker compose build",
+    "docker:logs": "docker compose logs -f",
+    "docker:clean": "docker compose down -v && docker system prune -f",
     "setup": "bun install && bun run docker:up && bun run generate && bun run migrate",
     "reset": "bun run docker:down && bun run docker:clean && bun run docker:up && bun run migrate:reset",
     "dev:all": "bun run dev",
@@ -48,8 +48,11 @@
   },
   "devDependencies": {
     "@types/node": "^20.19.11",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
     "concurrently": "^9.2.1",
     "dotenv-cli": "^10.0.0",
+    "eslint": "^9.34.0",
     "typescript": "^5.9.2"
   },
   "engines": {

@@ -3,8 +3,10 @@
  * This demonstrates how to use the API from a frontend application
  */
 
+/// <reference lib="dom" />
+
 import { createTRPCClient, httpBatchLink } from '@trpc/client';
-import type { AppRouter } from '../src/trpc';
+import type { AppRouter } from '../src/trpc/router';
 
 // Create tRPC client
 const client = createTRPCClient<AppRouter>({
@@ -29,11 +31,11 @@ async function registerUser() {
       password: 'securePassword123',
       name: 'John Doe',
     });
-    
+
     console.log('Registration successful:', result);
     // Store the session token
-    if (result.session) {
-      localStorage.setItem('sessionToken', result.session.token);
+    if (result.token) {
+      localStorage.setItem('sessionToken', result.token);
     }
     return result;
   } catch (error) {
@@ -48,11 +50,11 @@ async function loginUser() {
       email: 'user@example.com',
       password: 'securePassword123',
     });
-    
+
     console.log('Login successful:', result);
     // Store the session token
-    if (result.session) {
-      localStorage.setItem('sessionToken', result.session.token);
+    if (result.token) {
+      localStorage.setItem('sessionToken', result.token);
     }
     return result;
   } catch (error) {
@@ -134,62 +136,62 @@ async function deleteUser(userId: string) {
 // Better-Auth direct API usage (alternative to tRPC)
 class BetterAuthClient {
   private baseUrl = 'http://localhost:3000/api/auth';
-  
+
   async signUp(email: string, password: string, name?: string) {
     const response = await fetch(`${this.baseUrl}/sign-up/email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, name }),
     });
-    
+
     if (!response.ok) {
       throw new Error(`Sign up failed: ${response.statusText}`);
     }
-    
+
     return response.json();
   }
-  
+
   async signIn(email: string, password: string) {
     const response = await fetch(`${this.baseUrl}/sign-in/email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
-    
+
     if (!response.ok) {
       throw new Error(`Sign in failed: ${response.statusText}`);
     }
-    
+
     return response.json();
   }
-  
+
   async signOut(token: string) {
     const response = await fetch(`${this.baseUrl}/sign-out`, {
       method: 'POST',
-      headers: { 
+      headers: {
         'Authorization': `Bearer ${token}`,
       },
     });
-    
+
     if (!response.ok) {
       throw new Error(`Sign out failed: ${response.statusText}`);
     }
-    
+
     return response.json();
   }
-  
+
   async getSession(token: string) {
     const response = await fetch(`${this.baseUrl}/session`, {
       method: 'GET',
-      headers: { 
+      headers: {
         'Authorization': `Bearer ${token}`,
       },
     });
-    
+
     if (!response.ok) {
       throw new Error(`Get session failed: ${response.statusText}`);
     }
-    
+
     return response.json();
   }
 }
@@ -204,7 +206,7 @@ async function main() {
   await loginUser();
   await getCurrentUser();
   await updateProfile('newusername');
-  
+
   // Admin functions (requires admin role)
   // await listUsers();
   // await createUser({
@@ -212,7 +214,7 @@ async function main() {
   //   username: 'newuser',
   //   password: 'password123',
   // });
-  
+
   // Using Better-Auth directly
   const authClient = new BetterAuthClient();
   const signUpResult = await authClient.signUp('test@example.com', 'password123', 'Test User');

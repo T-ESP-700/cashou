@@ -1,6 +1,7 @@
 # Dependencies (Bun/Node.js)
 node_modules
 bun.lockb
+bun.lock
 .pnp.*
 
 # Build outputs
@@ -12,6 +13,9 @@ build
 # Code coverage
 coverage
 *.lcov
+.nyc_output
+coverage.json
+coverage-final.json
 
 # Logs
 logs
@@ -36,14 +40,25 @@ bun-debug.log*
 *.sqlite3
 
 # Prisma
-/generated/prisma
-prisma/migrations/*.sql
+node_modules/.prisma
+packages/*/node_modules/.prisma
+apps/*/node_modules/.prisma
 
 # Caches
 .eslintcache
 .cache
 *.tsbuildinfo
 .turbo
+
+# Vite specific
+.vite
+vite.config.*.timestamp-*
+
+# Bun specific
+.bun
+
+# Docker volumes (if any)
+/docker-data
 
 # IDE files
 .idea
@@ -60,10 +75,12 @@ ehthumbs.db
 Thumbs.db
 
 # Cursor (keep mcp.json for project configuration)
-.cursor/logs
-.cursor/workspaceStorage
-.cursor/cache/
-.cursor/history/
+.cursor/
+!.cursor/mcp.json
+
+# Claude
+.claude/
+!.claude/settings.json
 
 # Docker
 .dockerignore

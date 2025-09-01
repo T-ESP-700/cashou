@@ -1,5 +1,4 @@
 import { initTRPC, TRPCError } from '@trpc/server';
-import { z } from 'zod';
 import { auth } from '@cashou/auth/server';
 import { prisma } from '@cashou/db-app';
 
@@ -50,9 +49,9 @@ export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   });
 
   if (!user || user.role !== 'ADMIN') {
-    throw new TRPCError({ 
+    throw new TRPCError({
       code: 'FORBIDDEN',
-      message: 'Admin access required' 
+      message: 'Admin access required'
     });
   }
 

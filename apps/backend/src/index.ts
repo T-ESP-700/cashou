@@ -26,7 +26,7 @@ const server = Bun.serve({
     if (url.pathname.startsWith('/api/auth')) {
       try {
         console.log('Auth request:', req.method, url.pathname);
-        
+
         // Clone the request to read the body for debugging
         const clonedReq = req.clone();
         if (req.method === 'POST' && req.headers.get('content-type')?.includes('application/json')) {
@@ -37,14 +37,14 @@ const server = Bun.serve({
             console.error('Failed to parse request body:', e);
           }
         }
-        
+
         const response = await auth.handler(req);
-        
+
         // Add CORS headers to auth response
         Object.entries(corsHeaders).forEach(([key, value]) => {
           response.headers.set(key, value);
         });
-        
+
         return response;
       } catch (error) {
         console.error('Auth handler error:', error);
@@ -62,7 +62,7 @@ const server = Bun.serve({
         req,
         router: trpcRouter,
         createContext,
-        onError: ({ error, type, path, input, ctx, req }) => {
+        onError: ({ error, type: _type, path: _path, input: _input, ctx: _ctx, req: _req }) => {
           console.error('tRPC Error:', error);
         },
       });

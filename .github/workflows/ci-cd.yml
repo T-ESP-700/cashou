@@ -35,8 +35,6 @@ jobs:
   code-quality:
     runs-on: ubuntu-latest
     needs: install-deps
-    env:
-      ESLINT_USE_FLAT_CONFIG: "false"
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1
@@ -135,10 +133,76 @@ jobs:
         run: bun run --filter ${{ matrix.app }} test
         continue-on-error: true
 
+  # Tests API spécifiques pour le backend
+  backend-api-test:
+    runs-on: ubuntu-latest
+    needs: [install-deps, db-app-migrate]
+    env:
+      CASHOU_DB_URL: postgresql://postgres:password@localhost:5432/cashou_db?schema=public
+      BACKOFFICE_DB_URL: postgresql://postgres:password@localhost:5433/backoffice_db?schema=public
+    services:
+      postgres-app:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: cashou_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      postgres-backoffice:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: backoffice_db
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
+      - run: bun install --frozen-lockfile
+      - name: Generate Prisma client for app database
+        run: bun run db:generate:app
+      - name: Generate Prisma client for backoffice database
+        run: bun run db:generate:backoffice
+      - name: Run migrations for app database
+        run: bun run db:migrate:app
+      - name: Run migrations for backoffice database
+        run: bun run db:migrate:backoffice
+      - name: Start backend server
+        run: |
+          bun run --filter backend dev &
+          sleep 10
+      - name: Run API tests
+        run: bun run --filter backend test --timeout 30000
+      - name: Stop server
+        run: pkill -f "bun.*backend.*dev" || true
+
   # Build des applications
   apps-build:
     runs-on: ubuntu-latest
-    needs: install-deps
+    needs: [install-deps, backend-api-test]
     strategy:
       matrix:
         app: ['backend', 'backoffice']
