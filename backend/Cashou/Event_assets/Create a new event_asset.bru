@@ -6,8 +6,18 @@ meta {
 
 post {
   url: {{base_url}}/trpc/eventAsset.create
-  body: none
+  body: json
   auth: inherit
+}
+
+body:json {
+  {
+    "assetId": 1,
+    "eventId": 1,
+    "date": "2024-01-15",
+    "value": 200,
+    "volume": 1500
+  }
 }
 
 settings {

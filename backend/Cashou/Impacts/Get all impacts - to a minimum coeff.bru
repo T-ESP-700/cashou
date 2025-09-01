@@ -1,0 +1,19 @@
+meta {
+  name: Get all impacts > to a minimum coeff
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{base_url}}/trpc/impact.getByMinCoefficient?input={"minCoef":10}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"minCoef":10}
+}
+
+settings {
+  encodeUrl: true
+}
