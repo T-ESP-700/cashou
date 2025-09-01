@@ -1,0 +1,19 @@
+meta {
+  name: Heat Map of a market
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{base_url}}/trpc/market.getHeatmap?input={"marketId":1,"metric":"performance"}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"marketId":1,"metric":"performance"}
+}
+
+settings {
+  encodeUrl: true
+}
