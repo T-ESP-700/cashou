@@ -91,4 +91,67 @@ export class QuizService {
             // Pas d'include - retourne seulement les données de la table quiz
         });
     }
+
+    /**
+     * Récupère le Daily Quiz d'aujourd'hui
+     * @returns Promise<Quiz | null> - Le Daily Quiz du jour ou null si inexistant
+     */
+    async getTodaysDailyQuiz(): Promise<Quiz | null> {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Début de journée
+        
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1); // Fin de journée
+        
+        return this.prisma.quiz.findFirst({
+            where: {
+                type: 'DAILY',
+                date: {
+                    gte: today,
+                    lt: tomorrow
+                }
+            }
+        });
+    }
+
+    /**
+     * Vérifie si un Daily Quiz existe pour une date donnée
+     * @param date - Date à vérifier (format ISO string)
+     * @returns Promise<boolean> - true si un Daily Quiz existe pour cette date
+     */
+    async dailyQuizExists(date: string): Promise<boolean> {
+        const targetDate = new Date(date);
+        targetDate.setHours(0, 0, 0, 0); // Début de journée
+        
+        const nextDay = new Date(targetDate);
+        nextDay.setDate(nextDay.getDate() + 1); // Fin de journée
+        
+        const quiz = await this.prisma.quiz.findFirst({
+            where: {
+                type: 'DAILY',
+                date: {
+                    gte: targetDate,
+                    lt: nextDay
+                }
+            }
+        });
+        
+        return quiz !== null;
+    }
+
+    /**
+     * Récupère l'historique des Daily Quiz (les plus récents en premier)
+     * @param limit - Nombre maximum de quiz à retourner
+     * @returns Promise<Quiz[]> - Liste des Daily Quiz historiques
+     */
+    async getDailyHistory(limit: number = 30): Promise<Quiz[]> {
+        return this.prisma.quiz.findMany({
+            where: { type: 'DAILY' },
+            orderBy: { date: 'desc' },
+            take: limit
+            // Pas d'include - retourne seulement les données de la table quiz
+        });
+    }
+
+
 }

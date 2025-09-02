@@ -43,3 +43,23 @@ export const quizIdSchema = z.object({
     id: z.number().min(1, "L'ID doit être un nombre > 0")
 });
 export type QuizIdSchema = z.infer<typeof quizIdSchema>;
+
+// Schéma pour vérifier l'existence d'un Daily Quiz à une date
+export const quizDateCheckSchema = z.object({
+    date: z.string().refine(
+        (dateStr) => {
+            const dateRegex = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/;
+            return dateRegex.test(dateStr) && !isNaN(Date.parse(dateStr));
+        },
+        { message: "Format de date invalide. Utilisez YYYY-MM-DD ou ISO 8601 complet" }
+    )
+});
+export type QuizDateCheckSchema = z.infer<typeof quizDateCheckSchema>;
+
+// Schéma pour récupérer l'historique des Daily Quiz
+export const quizHistorySchema = z.object({
+    limit: z.number().min(1).max(100).optional().default(30)
+});
+export type QuizHistorySchema = z.infer<typeof quizHistorySchema>;
+
+

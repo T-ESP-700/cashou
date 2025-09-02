@@ -1,7 +1,7 @@
 // src/server/routers/quiz.router.ts
 import { initTRPC } from "@trpc/server";
 import { QuizService } from "../services/quiz.service";
-import {quizCreateSchema, quizUpdateSchema, quizIdSchema, QuizTypeEnum} from "../schemas-zod/quiz-schema.ts";
+import {quizCreateSchema, quizUpdateSchema, quizIdSchema, QuizTypeEnum, quizDateCheckSchema, quizHistorySchema} from "../schemas-zod/quiz-schema.ts";
 import { z } from "zod";
 
 // Initialisation de tRPC pour ce router spécifique
@@ -85,6 +85,37 @@ export const quizRouter = t.router({
         .input(z.object({ type: QuizTypeEnum }))
         .query(async ({ input }) => {
             return await quizService.findByType(input.type);
+        }),
+
+    /**
+     * Récupère le Daily Quiz d'aujourd'hui
+     * Endpoint: GET {{base_url}}/trpc/quiz.getTodaysDailyQuiz
+     * Pas de paramètre d'entrée requis
+     */
+    getTodaysDailyQuiz: t.procedure.query(async () => {
+        return await quizService.getTodaysDailyQuiz();
+    }),
+
+    /**
+     * Vérifie si un Daily Quiz existe pour une date donnée
+     * Endpoint: GET {{base_url}}/trpc/quiz.dailyQuizExists?input={"date":"2024-01-15"}
+     * @input {date: string} - Date à vérifier (format ISO ou YYYY-MM-DD)
+     */
+    dailyQuizExists: t.procedure
+        .input(quizDateCheckSchema)
+        .query(async ({ input }) => {
+            return await quizService.dailyQuizExists(input.date);
+        }),
+
+    /**
+     * Récupère l'historique des Daily Quiz
+     * Endpoint: GET {{base_url}}/trpc/quiz.getDailyHistory?input={"limit":30}
+     * @input {limit?: number} - Nombre maximum de quiz à retourner (défaut: 30, max: 100)
+     */
+    getDailyHistory: t.procedure
+        .input(quizHistorySchema)
+        .query(async ({ input }) => {
+            return await quizService.getDailyHistory(input.limit);
         }),
 });
 
