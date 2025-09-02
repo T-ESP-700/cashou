@@ -1,7 +1,55 @@
-node_modules
+# Node modules
+node_modules/
+*/node_modules/
+**/node_modules/
+
+# Logs
 npm-debug.log*
+yarn-debug.log*
 yarn-error.log*
+*.log
+
+# IDE et éditeurs
 .idea
+.vscode
+.DS_Store
+Thumbs.db
+
+# Git
 .git
 .github
+.gitignore
+
+# Documentation
 *.md
+README.md
+
+# Fichiers temporaires
+.tmp
+.temp
+tmp/
+temp/
+
+# Fichiers de test
+coverage/
+test-results/
+playwright-report/
+
+# Fichiers de build
+dist/
+build/
+out/
+
+# Fichiers d'environnement (sauf celui par défaut)
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Workspaces spécifiques - exclure le backoffice lors du build backend
+backoffice/
+
+# Docker
+docker-compose*.yml
+Dockerfile
+.dockerignore

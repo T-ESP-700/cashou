@@ -43,9 +43,9 @@
   },
   "dependencies": {
     "@prisma/client": "^6.11.1",
-    "@trpc/server": "^11.4.3",
-    "zod": "^4.0.5",
+    "@trpc/server": "^11.5.0",
     "dotenv": "^17.2.0",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "zod": "^4.0.5"
   }
 }

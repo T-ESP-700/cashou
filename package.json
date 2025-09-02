@@ -38,10 +38,17 @@
     "reset": "bun run docker:down && bun run docker:clean && bun run docker:up && bun run migrate:reset"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
     "@types/bun": "latest",
     "@types/node": "^24.0.14",
-    "concurrently": "^8.2.2",
-    "dotenv-cli": "^8.0.0"
+    "@types/pg": "^8.15.4",
+    "@typescript-eslint/eslint-plugin": "^8.36.0",
+    "@typescript-eslint/parser": "^8.36.0",
+    "dotenv-cli": "^8.0.0",
+    "eslint": "^9.31.0",
+    "prisma": "^6.11.1",
+    "typescript": "^5.0.0",
+    "concurrently": "^8.2.2"
   },
   "peerDependencies": {
     "typescript": "^5"
