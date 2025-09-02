@@ -6,7 +6,8 @@ import {
     quizQuestionUpdateSchema, 
     quizQuestionIdSchema,
     quizQuestionByQuizSchema,
-    quizQuestionByQuestionSchema
+    quizQuestionByQuestionSchema,
+    quizQuestionsWithAnswersSchema
 } from "../schemas-zod/quiz-question-schema.ts";
 
 // Initialisation de tRPC pour ce router spécifique
@@ -90,6 +91,17 @@ export const quizQuestionRouter = t.router({
         .input(quizQuestionByQuestionSchema)
         .query(async ({ input }) => {
             return await quizQuestionService.findByQuestion(input.questionId);
+        }),
+
+    /**
+     * Récupère toutes les questions d'un quiz avec leurs réponses
+     * Endpoint: GET http://localhost:3000/trpc/quizQuestion.getQuestionsWithAnswers?input={"quizId":1}
+     * @input {quizId: number} - ID du quiz, validé
+     */
+    getQuestionsWithAnswers: t.procedure
+        .input(quizQuestionsWithAnswersSchema)
+        .query(async ({ input }) => {
+            return await quizQuestionService.findQuestionsWithAnswersByQuiz(input.quizId);
         }),
 });
 

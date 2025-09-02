@@ -163,4 +163,25 @@ export class QuizQuestionService {
             // Pas d'include - retourne seulement les données de la table quiz_questions
         });
     }
+
+    /**
+     * Récupère toutes les questions d'un quiz avec leurs réponses
+     * @param quizId - Identifiant du quiz
+     * @returns Promise<Array> - Liste des questions avec leurs réponses, ordonnées par position
+     */
+    async findQuestionsWithAnswersByQuiz(quizId: number) {
+        return this.prisma.quizQuestion.findMany({
+            where: { quizId },
+            orderBy: { position: 'asc' },
+            include: {
+                question: {
+                    include: {
+                        answers: {
+                            orderBy: { id: 'asc' } // Ordre stable pour les réponses
+                        }
+                    }
+                }
+            }
+        });
+    }
 }

@@ -42,3 +42,9 @@ export const quizQuestionByQuestionSchema = z.object({
     questionId: z.number().min(1, "L'ID de la question doit être un nombre > 0")
 });
 export type QuizQuestionByQuestionSchema = z.infer<typeof quizQuestionByQuestionSchema>;
+
+// Schéma pour récupérer toutes les questions d'un quiz avec leurs réponses
+export const quizQuestionsWithAnswersSchema = z.object({
+    quizId: z.number().min(1, "L'ID du quiz doit être un nombre > 0")
+});
+export type QuizQuestionsWithAnswersSchema = z.infer<typeof quizQuestionsWithAnswersSchema>;
