@@ -35,6 +35,7 @@
     "docker:logs": "docker-compose logs -f",
     "docker:clean": "docker-compose down -v && docker system prune -f",
     "setup": "bun run install:all && bun run docker:up && bun run generate && bun run migrate",
+    "setup:seeds": "bun run install:all && bun run docker:up && bun run generate && bun run migrate && bun run db:seed",
     "reset": "bun run docker:down && bun run docker:clean && bun run docker:up && bun run migrate:reset"
   },
   "devDependencies": {
