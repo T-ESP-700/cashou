@@ -65,4 +65,22 @@ export class QuestionService {
     async delete(id: number): Promise<Question> {
         return this.prisma.question.delete({ where: { id } });
     }
+
+    /**
+     * Recherche des questions par mot-clé dans le texte
+     * @param keyword - Mot-clé à rechercher dans le texte de la question
+     * @returns Promise<Question[]> - Liste des questions contenant le mot-clé
+     */
+    async search(keyword: string): Promise<Question[]> {
+        return this.prisma.question.findMany({
+            where: {
+                text: {
+                    contains: keyword,
+                    mode: 'insensitive' // Recherche insensible à la casse
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+            // Pas d'include - retourne seulement les données de la table question
+        });
+    }
 }

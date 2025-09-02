@@ -1,7 +1,7 @@
 // src/server/routers/question.router.ts
 import { initTRPC } from "@trpc/server";
 import { QuestionService } from "../services/question.service";
-import {questionCreateSchema, questionUpdateSchema, questionIdSchema} from "../schemas-zod/question-schema.ts";
+import {questionCreateSchema, questionUpdateSchema, questionIdSchema, questionSearchSchema} from "../schemas-zod/question-schema.ts";
 
 // Initialisation de tRPC pour ce router spécifique
 const t = initTRPC.create();
@@ -62,6 +62,17 @@ export const questionRouter = t.router({
         .input(questionIdSchema) // Validation de l'ID
         .mutation(async ({ input }) => {
             return await questionService.delete(input.id);
+        }),
+
+    /**
+     * Recherche des questions par mot-clé
+     * Endpoint: GET {{base_url}}/trpc/question.search?input={"keyword":"bitcoin"}
+     * @input {keyword: string} - Mot-clé à rechercher dans le texte des questions
+     */
+    search: t.procedure
+        .input(questionSearchSchema)
+        .query(async ({ input }) => {
+            return await questionService.search(input.keyword);
         }),
 });
 

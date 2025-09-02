@@ -28,3 +28,9 @@ export const questionIdSchema = z.object({
     id: z.number().min(1, "L'ID doit être un nombre > 0")
 });
 export type QuestionIdSchema = z.infer<typeof questionIdSchema>;
+
+// Schéma pour la recherche par mot-clé
+export const questionSearchSchema = z.object({
+    keyword: z.string().min(1, "Le mot-clé est requis")
+});
+export type QuestionSearchSchema = z.infer<typeof questionSearchSchema>;
