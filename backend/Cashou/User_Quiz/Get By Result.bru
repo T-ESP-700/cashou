@@ -1,0 +1,15 @@
+meta {
+  name: Get By Result
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{base_url}}/trpc/userQuiz.getByResult?input={"isCorrect":true}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"isCorrect":true}
+}

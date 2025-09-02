@@ -5,6 +5,8 @@ import {quizRouter} from "./quiz.router.ts";
 import {questionRouter} from "./question.router.ts";
 import {quizQuestionRouter} from "./quiz-question.router.ts";
 import {answerRouter} from "./answer.router.ts";
+import {userRouter} from "./user.router.ts";
+import {userQuizRouter} from "./user-quiz.router.ts";
 
 // Initialisation de tRPC - Framework pour créer des APIs type-safe
 const t = initTRPC.create();
@@ -16,6 +18,8 @@ export const appRouter = t.router({
     question: questionRouter,
     quizQuestion: quizQuestionRouter,
     answer: answerRouter,
+    user: userRouter,
+    userQuiz: userQuizRouter,
 });
 
 // Export du type pour utilisation côté frontend (type-safety)

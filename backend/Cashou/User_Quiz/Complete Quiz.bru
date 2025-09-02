@@ -1,0 +1,18 @@
+meta {
+  name: Complete Quiz
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{base_url}}/trpc/userQuiz.completeQuiz
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 7,
+    "isCorrect": true
+  }
+}
