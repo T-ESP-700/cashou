@@ -1,0 +1,19 @@
+meta {
+  name: Get User Quiz By Type By User
+  type: http
+  seq: 20
+}
+
+get {
+  url: {{base_url}}/trpc/userQuiz.getStatsByType?input={"userId":9}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"userId":9}
+}
+
+settings {
+  encodeUrl: true
+}

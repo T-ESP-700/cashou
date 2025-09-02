@@ -70,3 +70,41 @@ export const userQuizByResultSchema = z.object({
     isCorrect: z.boolean()
 });
 export type UserQuizByResultSchema = z.infer<typeof userQuizByResultSchema>;
+
+// === NOUVEAUX SCHÉMAS POUR LES ROUTES PERSONNALISÉES ===
+
+// Schéma pour obtenir le statut d'un utilisateur sur un quiz
+export const userQuizStatusSchema = z.object({
+    userId: z.number().min(1, "L'ID de l'utilisateur doit être un nombre > 0"),
+    quizId: z.number().min(1, "L'ID du quiz doit être un nombre > 0")
+});
+export type UserQuizStatusSchema = z.infer<typeof userQuizStatusSchema>;
+
+// Schéma pour l'historique avec pagination
+export const userQuizHistorySchema = z.object({
+    userId: z.number().min(1, "L'ID de l'utilisateur doit être un nombre > 0"),
+    limit: z.number().min(1).max(100).optional().default(20),
+    offset: z.number().min(0).optional().default(0)
+});
+export type UserQuizHistorySchema = z.infer<typeof userQuizHistorySchema>;
+
+// Schéma pour les statistiques détaillées
+export const userQuizDetailedStatsSchema = z.object({
+    userId: z.number().min(1, "L'ID de l'utilisateur doit être un nombre > 0"),
+    period: z.enum(['week', 'month', 'year']).optional()
+});
+export type UserQuizDetailedStatsSchema = z.infer<typeof userQuizDetailedStatsSchema>;
+
+// Schéma pour le leaderboard
+export const userQuizLeaderboardSchema = z.object({
+    limit: z.number().min(1).max(100).optional().default(10),
+    period: z.enum(['daily', 'weekly', 'monthly']).optional()
+});
+export type UserQuizLeaderboardSchema = z.infer<typeof userQuizLeaderboardSchema>;
+
+// Schéma pour l'historique des daily quiz
+export const userQuizDailyHistorySchema = z.object({
+    userId: z.number().min(1, "L'ID de l'utilisateur doit être un nombre > 0"),
+    days: z.number().min(1).max(365).optional().default(30)
+});
+export type UserQuizDailyHistorySchema = z.infer<typeof userQuizDailyHistorySchema>;

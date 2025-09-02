@@ -9,7 +9,12 @@ import {
     userQuizByQuizSchema,
     startQuizSchema,
     completeQuizSchema,
-    userQuizByResultSchema
+    userQuizByResultSchema,
+    userQuizStatusSchema,
+    userQuizHistorySchema,
+    userQuizDetailedStatsSchema,
+    userQuizLeaderboardSchema,
+    userQuizDailyHistorySchema
 } from "../schemas-zod/user-quiz-schema.ts";
 import { z } from "zod";
 
@@ -163,6 +168,151 @@ export const userQuizRouter = t.router({
         .input(userQuizByQuizSchema)
         .query(async ({ input }) => {
             return await userQuizService.getQuizStats(input.quizId);
+        }),
+
+    // === NOUVELLES ROUTES PERSONNALISÉES ===
+
+    /**
+     * Obtenir le statut d'un utilisateur sur un quiz spécifique
+     * Endpoint: GET http://localhost:3000/trpc/userQuiz.getStatus?input={"userId":1,"quizId":1}
+     * @input {userId: number, quizId: number} - IDs de l'utilisateur et du quiz
+     */
+    getStatus: t.procedure
+        .input(userQuizStatusSchema)
+        .query(async ({ input }) => {
+            return await userQuizService.getStatus(input.userId, input.quizId);
+        }),
+
+    /**
+     * Obtenir tous les quiz en cours pour un utilisateur
+     * Endpoint: GET http://localhost:3000/trpc/userQuiz.getInProgressByUser?input={"userId":1}
+     * @input {userId: number} - ID de l'utilisateur
+     */
+    getInProgressByUser: t.procedure
+        .input(userQuizByUserSchema)
+        .query(async ({ input }) => {
+            return await userQuizService.getInProgressByUser(input.userId);
+        }),
+
+    /**
+     * Abandonner un quiz en cours
+     * Endpoint: POST http://localhost:3000/trpc/userQuiz.abandonQuiz
+     * @input {id: number} - ID de la participation au quiz
+     */
+    abandonQuiz: t.procedure
+        .input(userQuizIdSchema)
+        .mutation(async ({ input }) => {
+            return await userQuizService.abandonQuiz(input.id);
+        }),
+
+    /**
+     * Reprendre un quiz interrompu
+     * Endpoint: GET http://localhost:3000/trpc/userQuiz.resumeQuiz?input={"userId":1,"quizId":1}
+     * @input {userId: number, quizId: number} - IDs de l'utilisateur et du quiz
+     */
+    resumeQuiz: t.procedure
+        .input(userQuizStatusSchema)
+        .query(async ({ input }) => {
+            return await userQuizService.resumeQuiz(input.userId, input.quizId);
+        }),
+
+    /**
+     * Obtenir l'historique complet des quiz d'un utilisateur avec pagination
+     * Endpoint: GET http://localhost:3000/trpc/userQuiz.getHistoryByUser?input={"userId":1,"limit":20,"offset":0}
+     * @input {userId: number, limit?: number, offset?: number} - Paramètres de pagination
+     */
+    getHistoryByUser: t.procedure
+        .input(userQuizHistorySchema)
+        .query(async ({ input }) => {
+            return await userQuizService.getHistoryByUser(input.userId, input.limit, input.offset);
+        }),
+
+    /**
+     * Obtenir le temps écoulé depuis le début d'un quiz
+     * Endpoint: GET http://localhost:3000/trpc/userQuiz.getElapsedTime?input={"id":1}
+     * @input {id: number} - ID de la participation au quiz
+     */
+    getElapsedTime: t.procedure
+        .input(userQuizIdSchema)
+        .query(async ({ input }) => {
+            return await userQuizService.getElapsedTime(input.id);
+        }),
+
+    /**
+     * Statistiques détaillées d'un utilisateur avec période
+     * Endpoint: GET http://localhost:3000/trpc/userQuiz.getUserDetailedStats?input={"userId":1,"period":"month"}
+     * @input {userId: number, period?: 'week'|'month'|'year'} - ID utilisateur et période
+     */
+    getUserDetailedStats: t.procedure
+        .input(userQuizDetailedStatsSchema)
+        .query(async ({ input }) => {
+            return await userQuizService.getUserDetailedStats(input.userId, input.period);
+        }),
+
+    /**
+     * Obtenir le leaderboard des utilisateurs
+     * Endpoint: GET http://localhost:3000/trpc/userQuiz.getLeaderboard?input={"limit":10,"period":"weekly"}
+     * @input {limit?: number, period?: 'daily'|'weekly'|'monthly'} - Paramètres du classement
+     */
+    getLeaderboard: t.procedure
+        .input(userQuizLeaderboardSchema)
+        .query(async ({ input }) => {
+            return await userQuizService.getLeaderboard(input.limit, input.period);
+        }),
+
+    /**
+     * Statistiques par type de quiz (Daily vs MCQ)
+     * Endpoint: GET http://localhost:3000/trpc/userQuiz.getStatsByType?input={"userId":1}
+     * @input {userId: number} - ID de l'utilisateur
+     */
+    getStatsByType: t.procedure
+        .input(userQuizByUserSchema)
+        .query(async ({ input }) => {
+            return await userQuizService.getStatsByType(input.userId);
+        }),
+
+    /**
+     * Obtenir les séries de réussite (streaks)
+     * Endpoint: GET http://localhost:3000/trpc/userQuiz.getStreaks?input={"userId":1}
+     * @input {userId: number} - ID de l'utilisateur
+     */
+    getStreaks: t.procedure
+        .input(userQuizByUserSchema)
+        .query(async ({ input }) => {
+            return await userQuizService.getStreaks(input.userId);
+        }),
+
+    /**
+     * Vérifier si l'utilisateur a fait son daily quiz aujourd'hui
+     * Endpoint: GET http://localhost:3000/trpc/userQuiz.hasDoneDailyToday?input={"userId":1}
+     * @input {userId: number} - ID de l'utilisateur
+     */
+    hasDoneDailyToday: t.procedure
+        .input(userQuizByUserSchema)
+        .query(async ({ input }) => {
+            return await userQuizService.hasDoneDailyToday(input.userId);
+        }),
+
+    /**
+     * Obtenir l'historique des daily quiz
+     * Endpoint: GET http://localhost:3000/trpc/userQuiz.getDailyHistory?input={"userId":1,"days":30}
+     * @input {userId: number, days?: number} - ID utilisateur et nombre de jours
+     */
+    getDailyHistory: t.procedure
+        .input(userQuizDailyHistorySchema)
+        .query(async ({ input }) => {
+            return await userQuizService.getDailyHistory(input.userId, input.days);
+        }),
+
+    /**
+     * Obtenir la série de daily quiz consécutifs
+     * Endpoint: GET http://localhost:3000/trpc/userQuiz.getDailyStreak?input={"userId":1}
+     * @input {userId: number} - ID de l'utilisateur
+     */
+    getDailyStreak: t.procedure
+        .input(userQuizByUserSchema)
+        .query(async ({ input }) => {
+            return await userQuizService.getDailyStreak(input.userId);
         }),
 });
 
