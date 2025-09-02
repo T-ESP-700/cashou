@@ -48,3 +48,31 @@ export const quizQuestionsWithAnswersSchema = z.object({
     quizId: z.number().min(1, "L'ID du quiz doit être un nombre > 0")
 });
 export type QuizQuestionsWithAnswersSchema = z.infer<typeof quizQuestionsWithAnswersSchema>;
+
+// === NOUVEAUX SCHÉMAS POUR LES ROUTES PERSONNALISÉES ===
+
+// Schéma pour mélanger l'ordre des questions d'un quiz
+export const shuffleQuizOrderSchema = z.object({
+    quizId: z.number().min(1, "L'ID du quiz doit être un nombre > 0")
+});
+export type ShuffleQuizOrderSchema = z.infer<typeof shuffleQuizOrderSchema>;
+
+// Schéma pour rechercher dans les questions d'un quiz
+export const searchInQuizSchema = z.object({
+    quizId: z.number().min(1, "L'ID du quiz doit être un nombre > 0"),
+    keyword: z.string().min(1, "Le mot-clé est requis")
+});
+export type SearchInQuizSchema = z.infer<typeof searchInQuizSchema>;
+
+// Schéma pour valider la structure d'un quiz
+export const validateQuizStructureSchema = z.object({
+    quizId: z.number().min(1, "L'ID du quiz doit être un nombre > 0")
+});
+export type ValidateQuizStructureSchema = z.infer<typeof validateQuizStructureSchema>;
+
+// Schéma pour sélectionner aléatoirement des questions d'un quiz MCQ
+export const getRandomQuestionsSchema = z.object({
+    quizId: z.number().min(1, "L'ID du quiz doit être un nombre > 0"),
+    count: z.number().min(1).max(20).optional().default(3)
+});
+export type GetRandomQuestionsSchema = z.infer<typeof getRandomQuestionsSchema>;

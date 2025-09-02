@@ -202,7 +202,21 @@ async function main() {
         const currentQuiz = quiz[i];
         if (!currentQuiz) continue;
         
-        const questionsPerQuiz = Math.min(3, questions.length); // Max 3 questions par quiz
+        // NOUVEAU : Différencier selon le type de quiz
+        let questionsPerQuiz: number;
+        
+        if (currentQuiz.type === 'DAILY') {
+            // Daily Quiz : 3 questions exactement (comme avant)
+            questionsPerQuiz = Math.min(3, questions.length);
+        } else if (currentQuiz.type === 'MCQ') {
+            // Quiz MCQ : 5-8 questions pour permettre la sélection aléatoire
+            const minQuestions = 5;
+            const maxQuestions = Math.min(8, questions.length);
+            questionsPerQuiz = Math.floor(Math.random() * (maxQuestions - minQuestions + 1)) + minQuestions;
+        } else {
+            // Fallback
+            questionsPerQuiz = Math.min(3, questions.length);
+        }
         
         // Sélectionner des questions aléatoirement pour ce quiz
         const shuffledQuestions = [...questions].sort(() => Math.random() - 0.5);

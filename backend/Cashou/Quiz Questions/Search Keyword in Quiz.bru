@@ -1,0 +1,19 @@
+meta {
+  name: Search Keyword in Quiz
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{base_url}}/trpc/quizQuestion.searchInQuiz?input={"quizId":1,"keyword":"bitcoin"}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"quizId":1,"keyword":"bitcoin"}
+}
+
+settings {
+  encodeUrl: true
+}

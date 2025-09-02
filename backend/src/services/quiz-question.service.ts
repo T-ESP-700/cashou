@@ -184,4 +184,224 @@ export class QuizQuestionService {
             }
         });
     }
+
+    // === NOUVELLES MÉTHODES POUR LES ROUTES PERSONNALISÉES ===
+
+    /**
+     * Mélanger l'ordre des questions d'un quiz
+     * @param quizId - Identifiant du quiz
+     * @returns Promise<QuizQuestion[]> - Questions avec nouvelles positions
+     */
+    async shuffleQuizOrder(quizId: number) {
+        // Récupérer toutes les questions du quiz
+        const questions = await this.prisma.quizQuestion.findMany({
+            where: { quizId },
+            orderBy: { position: 'asc' }
+        });
+
+        if (questions.length === 0) {
+            throw new Error("Aucune question trouvée pour ce quiz");
+        }
+
+        // Mélanger les positions
+        const shuffledPositions = Array.from({ length: questions.length }, (_, i) => i + 1);
+        
+        // Algorithme de Fisher-Yates pour mélanger
+        for (let i = shuffledPositions.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledPositions[i], shuffledPositions[j]] = [shuffledPositions[j], shuffledPositions[i]];
+        }
+
+        // Mettre à jour les positions dans la base
+        const updatePromises = questions.map((question, index) =>
+            this.prisma.quizQuestion.update({
+                where: { id: question.id },
+                data: { position: shuffledPositions[index] }
+            })
+        );
+
+        await Promise.all(updatePromises);
+
+        // Retourner les questions avec leurs nouvelles positions
+        return this.prisma.quizQuestion.findMany({
+            where: { quizId },
+            orderBy: { position: 'asc' },
+            include: {
+                question: {
+                    select: {
+                        id: true,
+                        text: true
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Rechercher dans les questions d'un quiz par mot-clé
+     * @param quizId - Identifiant du quiz
+     * @param keyword - Mot-clé à rechercher
+     * @returns Promise<QuizQuestion[]> - Questions correspondantes
+     */
+    async searchInQuiz(quizId: number, keyword: string) {
+        return this.prisma.quizQuestion.findMany({
+            where: {
+                quizId,
+                question: {
+                    text: {
+                        contains: keyword,
+                        mode: 'insensitive'
+                    }
+                }
+            },
+            include: {
+                question: {
+                    select: {
+                        id: true,
+                        text: true
+                    }
+                }
+            },
+            orderBy: { position: 'asc' }
+        });
+    }
+
+    /**
+     * Valider la structure d'un quiz
+     * @param quizId - Identifiant du quiz
+     * @returns Promise<object> - Rapport de validation
+     */
+    async validateQuizStructure(quizId: number) {
+        const questions = await this.prisma.quizQuestion.findMany({
+            where: { quizId },
+            include: {
+                question: true
+            },
+            orderBy: { position: 'asc' }
+        });
+
+        const errors: string[] = [];
+        const warnings: string[] = [];
+
+        // Vérifier que le quiz existe
+        const quiz = await this.prisma.quiz.findUnique({
+            where: { id: quizId }
+        });
+
+        if (!quiz) {
+            errors.push(`Quiz avec l'ID ${quizId} introuvable`);
+            return {
+                isValid: false,
+                errors,
+                warnings,
+                questionsCount: 0,
+                positionIssues: []
+            };
+        }
+
+        // Vérifier les positions
+        const positions = questions.map(q => q.position).filter(p => p !== null);
+        const expectedPositions = Array.from({ length: positions.length }, (_, i) => i + 1);
+        const positionIssues: string[] = [];
+
+        // Vérifier la continuité des positions
+        positions.forEach((pos, index) => {
+            if (pos !== expectedPositions[index]) {
+                positionIssues.push(`Position ${pos} inattendue à l'index ${index + 1}`);
+            }
+        });
+
+        // Vérifier les doublons de positions
+        const duplicatePositions = positions.filter((pos, index) => positions.indexOf(pos) !== index);
+        if (duplicatePositions.length > 0) {
+            errors.push(`Positions dupliquées: ${duplicatePositions.join(', ')}`);
+        }
+
+        // Vérifier les questions manquantes
+        const missingQuestions = questions.filter(q => !q.question);
+        if (missingQuestions.length > 0) {
+            errors.push(`${missingQuestions.length} question(s) référencée(s) mais introuvable(s)`);
+        }
+
+        // Vérifier les positions nulles
+        const nullPositions = questions.filter(q => q.position === null);
+        if (nullPositions.length > 0) {
+            warnings.push(`${nullPositions.length} question(s) sans position définie`);
+        }
+
+        // Recommandations
+        if (questions.length === 0) {
+            warnings.push("Quiz vide - aucune question");
+        } else if (questions.length < 3) {
+            warnings.push("Quiz avec peu de questions (< 3)");
+        } else if (questions.length > 20) {
+            warnings.push("Quiz avec beaucoup de questions (> 20)");
+        }
+
+        return {
+            isValid: errors.length === 0,
+            errors,
+            warnings,
+            questionsCount: questions.length,
+            positionIssues,
+            quiz: {
+                id: quiz.id,
+                title: quiz.title,
+                type: quiz.type
+            }
+        };
+    }
+
+    /**
+     * Sélectionner aléatoirement des questions d'un quiz MCQ avec leurs réponses
+     * @param quizId - Identifiant du quiz
+     * @param count - Nombre de questions à sélectionner (défaut: 3)
+     * @returns Promise<QuizQuestion[]> - Questions sélectionnées aléatoirement
+     */
+    async getRandomQuestionsFromQuiz(quizId: number, count: number = 3) {
+        // Vérifier que le quiz existe et est de type MCQ
+        const quiz = await this.prisma.quiz.findUnique({
+            where: { id: quizId }
+        });
+
+        if (!quiz) {
+            throw new Error(`Quiz avec l'ID ${quizId} introuvable`);
+        }
+
+        if (quiz.type !== 'MCQ') {
+            throw new Error(`Cette route est réservée aux quiz MCQ. Le quiz ${quizId} est de type ${quiz.type}`);
+        }
+
+        // Récupérer toutes les questions du quiz
+        const allQuestions = await this.prisma.quizQuestion.findMany({
+            where: { quizId },
+            include: {
+                question: {
+                    include: {
+                        answers: {
+                            orderBy: { id: 'asc' }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (allQuestions.length === 0) {
+            throw new Error(`Aucune question trouvée pour le quiz ${quizId}`);
+        }
+
+        if (allQuestions.length < count) {
+            throw new Error(`Le quiz ${quizId} n'a que ${allQuestions.length} question(s), impossible d'en sélectionner ${count}`);
+        }
+
+        // Mélanger et sélectionner le nombre demandé
+        const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
+        const selectedQuestions = shuffled.slice(0, count);
+
+        // Réassigner des positions temporaires pour l'ordre de présentation
+        return selectedQuestions.map((question, index) => ({
+            ...question,
+            temporaryPosition: index + 1 // Position pour l'affichage (1, 2, 3...)
+        }));
+    }
 }

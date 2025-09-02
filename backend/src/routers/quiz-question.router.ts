@@ -7,7 +7,11 @@ import {
     quizQuestionIdSchema,
     quizQuestionByQuizSchema,
     quizQuestionByQuestionSchema,
-    quizQuestionsWithAnswersSchema
+    quizQuestionsWithAnswersSchema,
+    shuffleQuizOrderSchema,
+    searchInQuizSchema,
+    validateQuizStructureSchema,
+    getRandomQuestionsSchema
 } from "../schemas-zod/quiz-question-schema.ts";
 
 // Initialisation de tRPC pour ce router spécifique
@@ -102,6 +106,52 @@ export const quizQuestionRouter = t.router({
         .input(quizQuestionsWithAnswersSchema)
         .query(async ({ input }) => {
             return await quizQuestionService.findQuestionsWithAnswersByQuiz(input.quizId);
+        }),
+
+    // === NOUVELLES ROUTES PERSONNALISÉES ===
+
+    /**
+     * Mélanger l'ordre des questions d'un quiz
+     * Endpoint: POST http://localhost:3000/trpc/quizQuestion.shuffleQuizOrder
+     * @input {quizId: number} - ID du quiz
+     */
+    shuffleQuizOrder: t.procedure
+        .input(shuffleQuizOrderSchema)
+        .mutation(async ({ input }) => {
+            return await quizQuestionService.shuffleQuizOrder(input.quizId);
+        }),
+
+    /**
+     * Rechercher dans les questions d'un quiz par mot-clé
+     * Endpoint: GET http://localhost:3000/trpc/quizQuestion.searchInQuiz?input={"quizId":1,"keyword":"bitcoin"}
+     * @input {quizId: number, keyword: string} - ID du quiz et mot-clé
+     */
+    searchInQuiz: t.procedure
+        .input(searchInQuizSchema)
+        .query(async ({ input }) => {
+            return await quizQuestionService.searchInQuiz(input.quizId, input.keyword);
+        }),
+
+    /**
+     * Valider la structure d'un quiz
+     * Endpoint: GET http://localhost:3000/trpc/quizQuestion.validateQuizStructure?input={"quizId":1}
+     * @input {quizId: number} - ID du quiz à valider
+     */
+    validateQuizStructure: t.procedure
+        .input(validateQuizStructureSchema)
+        .query(async ({ input }) => {
+            return await quizQuestionService.validateQuizStructure(input.quizId);
+        }),
+
+    /**
+     * Sélectionner aléatoirement des questions d'un quiz MCQ
+     * Endpoint: GET http://localhost:3000/trpc/quizQuestion.getRandomQuestions?input={"quizId":1,"count":3}
+     * @input {quizId: number, count?: number} - ID du quiz MCQ et nombre de questions (défaut: 3)
+     */
+    getRandomQuestions: t.procedure
+        .input(getRandomQuestionsSchema)
+        .query(async ({ input }) => {
+            return await quizQuestionService.getRandomQuestionsFromQuiz(input.quizId, input.count);
         }),
 });
 
