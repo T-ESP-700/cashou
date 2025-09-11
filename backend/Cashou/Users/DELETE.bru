@@ -1,0 +1,17 @@
+meta {
+  name: DELETE
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/trpc/user.delete
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 2
+  }
+}

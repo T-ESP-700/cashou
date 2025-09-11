@@ -1,0 +1,21 @@
+meta {
+  name: UPDATE
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/trpc/user.update
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {  
+  "id": 1,
+    "data": {
+      "username": "john_updated",
+      "points": 150
+    }
+  }
+}

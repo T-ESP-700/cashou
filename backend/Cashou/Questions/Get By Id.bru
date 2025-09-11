@@ -1,0 +1,21 @@
+meta {
+  name: Get By Id
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/trpc/question.getById?input={"id":2}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"id":2}
+}
+
+body:json {
+  {
+    "id": 2
+  }
+}
