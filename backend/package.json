@@ -18,7 +18,6 @@
     "db:status": "bun run scripts/db-check.ts",
     "db:seed": "bun run src/seed-data.ts",
     "db:empty": "bunx prisma migrate reset --force",
-
     "test": "bun test",
     "test:unit": "bun test tests/service/level.service.unit.test.ts",
     "test:integration": "bun test tests/service/level.service.integration.test.ts",
@@ -31,7 +30,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
-    "@types/bun": "latest",
+    "@types/bun": "^1.2.21",
     "@types/node": "^24.0.14",
     "@types/pg": "^8.15.4",
     "@typescript-eslint/eslint-plugin": "^8.36.0",

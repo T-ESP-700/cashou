@@ -1,0 +1,19 @@
+meta {
+  name: Get the real-time snapshot of a market
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{base_url}}/trpc/market.getSnapshot?input={"marketId":1}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"marketId":1}
+}
+
+settings {
+  encodeUrl: true
+}
