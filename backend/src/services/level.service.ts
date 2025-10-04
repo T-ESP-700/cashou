@@ -1,6 +1,6 @@
 // Service métier pour la gestion des niveaux du jeu
 // Couche d'abstraction entre les routers et la base de données
-import type { Level, PrismaClient } from "@prisma/client";
+import type { Level, Goal, PrismaClient } from "@prisma/client";
 import defaultPrisma from "../database.ts";
 import type {LevelCreateSchema, LevelDataSchema} from "../schemas-zod/level-schema.ts";
 
@@ -73,5 +73,17 @@ export class LevelService {
      */
     async delete(id: number): Promise<Level> {
         return this.prisma.level.delete({ where: { id } });
+    }
+
+    /**
+     * Récupère la liste des objectifs (goals) associés à un niveau
+     * @param levelId - Identifiant du niveau
+     * @returns Promise<Goal[]> - Liste des objectifs du niveau
+     */
+    async findGoals(levelId: number): Promise<Goal[]> {
+        return this.prisma.goal.findMany({
+            where: { levelGoals: { some: { levelId } } },
+            orderBy: { title: 'asc' }
+        });
     }
 }

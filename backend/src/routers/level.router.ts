@@ -32,6 +32,17 @@ export const levelRouter = t.router({
         }),
 
     /**
+     * Récupère la liste des objectifs (goals) associés à un niveau
+     * Endpoint: GET http://localhost:3000/trpc/level.getGoals?input={"levelId":1}
+     * @input {levelId: number} - ID du niveau
+     */
+    getGoals: t.procedure
+        .input(levelIdSchema)
+        .query(async ({ input }) => {
+            return await levelService.findGoals(input.id);
+        }),
+
+    /**
      * Crée un nouveau Level
      * Endpoint: POST http://localhost:3000/trpc/level.create
      * @input LevelCreateSchema - Données du niveau à créer, validées automatiquement
