@@ -1,0 +1,96 @@
+// src/server/routers/asset.router.ts
+import { initTRPC } from "@trpc/server";
+import { AssetService } from "../services/asset.service";
+import {assetCreateSchema, assetUpdateSchema, assetIdSchema} from "../schemas-zod/asset-schema.ts";
+import { z } from "zod";
+
+// Initialisation de tRPC pour ce router spécifique
+const t = initTRPC.create();
+
+// Instance unique du service métier pour ce router
+const assetService = new AssetService();
+
+export const assetRouter = t.router({
+
+    /**
+     * Récupère tous les actifs
+     * Endpoint: GET http://localhost:3000/trpc/asset.getAll
+     * Pas de paramètre d'entrée requis
+     */
+    getAll: t.procedure.query(async () => {
+        return await assetService.findAll();
+    }),
+
+    /**
+     * Récupère un actif par son ID
+     * Endpoint: GET http://localhost:3000/trpc/asset.getById?input={"id":1}
+     * @input {id: number} - ID de l'actif recherché, validé par assetIdSchema
+     */
+    getById: t.procedure
+        .input(assetIdSchema) // Validation automatique de l'entrée
+        .query(async ({ input }) => {
+            return await assetService.findOne(input.id);
+        }),
+
+    /**
+     * Récupère tous les actifs d'un marché spécifique
+     * Endpoint: GET http://localhost:3000/trpc/asset.getByMarketId?input={"marketId":1}
+     * @input {marketId: number} - ID du marché parent
+     */
+    getByMarketId: t.procedure
+        .input(z.object({
+            marketId: z.number().min(1, "L'ID du marché doit être un nombre > 0")
+        }))
+        .query(async ({ input }) => {
+            return await assetService.findByMarketId(input.marketId);
+        }),
+
+    /**
+     * Récupère tous les actifs d'un sous-marché spécifique
+     * Endpoint: GET http://localhost:3000/trpc/asset.getBySubmarketId?input={"submarketId":1}
+     * @input {submarketId: number} - ID du sous-marché parent
+     */
+    getBySubmarketId: t.procedure
+        .input(z.object({
+            submarketId: z.number().min(1, "L'ID du sous-marché doit être un nombre > 0")
+        }))
+        .query(async ({ input }) => {
+            return await assetService.findBySubmarketId(input.submarketId);
+        }),
+
+    /**
+     * Crée un nouvel actif
+     * Endpoint: POST http://localhost:3000/trpc/asset.create
+     * @input AssetCreateSchema - Données de l'actif à créer, validées automatiquement
+     */
+    create: t.procedure
+        .input(assetCreateSchema) // Validation des données avant traitement
+        .mutation(async ({ input }) => { // mutation = opération de modification
+            return await assetService.create(input);
+        }),
+
+    /**
+     * Met à jour un actif existant
+     * Endpoint: POST http://localhost:3000/trpc/asset.update
+     * @input AssetUpdateSchema - ID + données à modifier, validées automatiquement
+     */
+    update: t.procedure
+        .input(assetUpdateSchema) // Validation de l'ID et des données
+        .mutation(async ({ input }) => {
+            return await assetService.update(input.id, input.data);
+        }),
+
+    /**
+     * Supprime un actif
+     * Endpoint: POST http://localhost:3000/trpc/asset.delete
+     * @input {id: number} - ID de l'actif à supprimer, validé par assetIdSchema
+     */
+    delete: t.procedure
+        .input(assetIdSchema) // Validation de l'ID
+        .mutation(async ({ input }) => {
+            return await assetService.delete(input.id);
+        }),
+});
+
+// Export du type pour utilisation côté frontend (IntelliSense et type-safety)
+export type AssetRouter = typeof assetRouter;

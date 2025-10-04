@@ -1,0 +1,15 @@
+meta {
+  name: Get all events
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/trpc/event.getAll
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}

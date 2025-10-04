@@ -1,0 +1,19 @@
+meta {
+  name: Get a market aggregated history for a given period
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{base_url}}/trpc/market.getHistory?input={"marketId":1,"from":"2024-01-01","to":"2024-01-31"}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"marketId":1,"from":"2024-01-01","to":"2024-01-31"}
+}
+
+settings {
+  encodeUrl: true
+}

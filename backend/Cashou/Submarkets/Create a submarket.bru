@@ -1,0 +1,25 @@
+meta {
+  name: Create a submarket
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/trpc/submarket.create
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "name": "Altcoins",
+      "description": "Cryptos alternatives (Solana, Cardano, etc.).",
+      "currentTrends": "Volatilité très élevée, innovation rapide.",
+      "dataSource": "CoinGecko",
+      "marketId": 1
+    }
+}
+
+settings {
+  encodeUrl: true
+}
