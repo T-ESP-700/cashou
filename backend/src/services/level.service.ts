@@ -86,4 +86,116 @@ export class LevelService {
             orderBy: { title: 'asc' }
         });
     }
+
+    /**
+     * Récupère la liste des événements associés à un niveau
+     * @param levelId - Identifiant du niveau
+     */
+    async findEvents(levelId: number) {
+        return this.prisma.event.findMany({
+            where: { levelEvents: { some: { levelId } } },
+            orderBy: { title: 'asc' }
+        });
+    }
+
+    /**
+     * Récupère un résumé: niveau + objectifs + événements
+     */
+    async getSummary(levelId: number) {
+        const level = await this.prisma.level.findUnique({
+            where: { id: levelId },
+            include: {
+                levelGoals: { include: { goal: true } },
+                levelEvents: { include: { event: true } }
+            }
+        });
+        const goals = level?.levelGoals.map(lg => lg.goal) ?? [];
+        const events = level?.levelEvents.map(le => le.event) ?? [];
+        return { level, goals, events };
+    }
+
+    /**
+     * Associer/remplacer les objectifs d'un niveau
+     */
+    async setGoals(levelId: number, goalIds: number[]) {
+        await this.prisma.$transaction([
+            this.prisma.levelGoal.deleteMany({ where: { levelId } }),
+            this.prisma.levelGoal.createMany({ data: goalIds.map(goalId => ({ levelId, goalId })) })
+        ]);
+        return this.findGoals(levelId);
+    }
+
+    /**
+     * Associer/remplacer les événements d'un niveau
+     */
+    async setEvents(levelId: number, eventIds: number[]) {
+        await this.prisma.$transaction([
+            this.prisma.levelEvent.deleteMany({ where: { levelId } }),
+            this.prisma.levelEvent.createMany({ data: eventIds.map(eventId => ({ levelId, eventId })) })
+        ]);
+        return this.findEvents(levelId);
+    }
+
+    /**
+     * Dupliquer un niveau (et ses associations)
+     */
+    async duplicate(levelId: number) {
+        const src = await this.prisma.level.findUnique({
+            where: { id: levelId },
+            include: { levelGoals: true, levelEvents: true }
+        });
+        if (!src) return null;
+        const baseData: Omit<Level, 'id' | 'createdAt' | 'updatedAt'> = {
+            title: src.title ?? null,
+            number: src.number ?? null,
+            duration: src.duration ?? null,
+            speed: src.speed ?? null,
+            startBalance: src.startBalance ?? null,
+            pointsRequired: src.pointsRequired ?? null,
+            description: src.description ?? null,
+        };
+        const newLevel = await this.prisma.level.create({
+            data: {
+                ...baseData,
+                title: (src.title ?? 'Niveau') + ' (copie)'
+            }
+        });
+        // Recréer les associations
+        if (src.levelGoals?.length) {
+            await this.prisma.levelGoal.createMany({ data: src.levelGoals.map(g => ({ levelId: newLevel.id, goalId: g.goalId })) });
+        }
+        if (src.levelEvents?.length) {
+            await this.prisma.levelEvent.createMany({ data: src.levelEvents.map(e => ({ levelId: newLevel.id, eventId: e.eventId })) });
+        }
+        return this.getSummary(newLevel.id);
+    }
+
+    /**
+     * Liste des niveaux avec progression utilisateur
+     */
+    async getUserLevels(userId: number): Promise<Array<{ level: Level; stars: number; points: number; unlocked: boolean }>> {
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) return [];
+        const levels = await this.prisma.level.findMany({ orderBy: { number: 'asc' } });
+        const result: Array<{ level: Level; stars: number; points: number; unlocked: boolean }> = [];
+        for (const lvl of levels) {
+            const stars = await this.prisma.userQuiz.count({
+                where: { userId, isCorrect: true, quiz: { levelId: lvl.id } }
+            });
+            const unlocked = (user.levelId >= lvl.id) || ((lvl.pointsRequired ?? 0) <= (user.points ?? 0));
+            result.push({ level: lvl, stars, points: user.points ?? 0, unlocked });
+        }
+        return result;
+    }
+
+    /**
+     * Savoir si l’utilisateur peut déverrouiller un niveau
+     */
+    async getAvailability(userId: number, levelId: number) {
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        const level = await this.prisma.level.findUnique({ where: { id: levelId } });
+        if (!user || !level) return { canUnlock: false, reason: 'NOT_FOUND' } as const;
+        const canUnlock = (level.pointsRequired ?? 0) <= (user.points ?? 0);
+        return { canUnlock, required: level.pointsRequired ?? 0, userPoints: user.points ?? 0 };
+    }
 }
