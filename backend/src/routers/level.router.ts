@@ -1,7 +1,7 @@
 // src/server/routers/level.router.ts
 import { initTRPC } from "@trpc/server";
 import { LevelService } from "../services/level.service";
-import { levelCreateSchema, levelUpdateSchema, levelIdSchema, userIdSchema, availabilitySchema, setGoalsSchema, setEventsSchema } from "../schemas-zod/level-schema.ts";
+import { levelCreateSchema, levelUpdateSchema, levelIdSchema, userIdSchema, availabilitySchema } from "../schemas-zod/level-schema.ts";
 
 // Initialisation de tRPC pour ce router spécifique
 const t = initTRPC.create();
@@ -86,27 +86,8 @@ export const levelRouter = t.router({
             return await levelService.getAvailability(input.userId, input.levelId);
         }),
 
-    /**
-     * Associer/remplacer les objectifs d'un niveau
-     * Endpoint: POST http://localhost:3000/trpc/level.setGoals
-     * @input {levelId: number, goalIds: number[]}
-     */
-    setGoals: t.procedure
-        .input(setGoalsSchema)
-        .mutation(async ({ input }) => {
-            return await levelService.setGoals(input.levelId, input.goalIds);
-        }),
 
-    /**
-     * Associer/remplacer les événements d'un niveau
-     * Endpoint: POST http://localhost:3000/trpc/level.setEvents
-     * @input {levelId: number, eventIds: number[]}
-     */
-    setEvents: t.procedure
-        .input(setEventsSchema)
-        .mutation(async ({ input }) => {
-            return await levelService.setEvents(input.levelId, input.eventIds);
-        }),
+
 
     /**
      * Dupliquer un niveau existant

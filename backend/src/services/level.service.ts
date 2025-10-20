@@ -104,36 +104,13 @@ export class LevelService {
     async getSummary(levelId: number) {
         const level = await this.prisma.level.findUnique({
             where: { id: levelId },
-            include: {
-                levelGoals: { include: { goal: true } },
-                levelEvents: { include: { event: true } }
-            }
         });
-        const goals = level?.levelGoals.map(lg => lg.goal) ?? [];
-        const events = level?.levelEvents.map(le => le.event) ?? [];
+        // Récupérer séparément les listes d'objectifs et d'événements
+        const [goals, events] = await Promise.all([
+            this.findGoals(levelId),
+            this.findEvents(levelId),
+        ]);
         return { level, goals, events };
-    }
-
-    /**
-     * Associer/remplacer les objectifs d'un niveau
-     */
-    async setGoals(levelId: number, goalIds: number[]) {
-        await this.prisma.$transaction([
-            this.prisma.levelGoal.deleteMany({ where: { levelId } }),
-            this.prisma.levelGoal.createMany({ data: goalIds.map(goalId => ({ levelId, goalId })) })
-        ]);
-        return this.findGoals(levelId);
-    }
-
-    /**
-     * Associer/remplacer les événements d'un niveau
-     */
-    async setEvents(levelId: number, eventIds: number[]) {
-        await this.prisma.$transaction([
-            this.prisma.levelEvent.deleteMany({ where: { levelId } }),
-            this.prisma.levelEvent.createMany({ data: eventIds.map(eventId => ({ levelId, eventId })) })
-        ]);
-        return this.findEvents(levelId);
     }
 
     /**
