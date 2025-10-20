@@ -93,6 +93,22 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    env:
+      DATABASE_URL: postgresql://postgres:password@localhost:5432/cashou_db?schema=public
+      CASHOU_DB_URL: postgresql://postgres:password@localhost:5432/cashou_db?schema=public
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: cashou_db
+        ports: [ "5432:5432" ]
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1
@@ -100,7 +116,7 @@ jobs:
         working-directory: .
       - run: bun install
       - name: Generate Prisma client
-        run: bunx prisma generate --schema=prisma/app/schema.prisma
+        run: bunx dotenv -e .env -- prisma generate --schema=prisma/app/schema.prisma
       - name: Type-check & build
         run: bun run build
 
