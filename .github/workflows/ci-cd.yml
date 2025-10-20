@@ -100,7 +100,7 @@ jobs:
         working-directory: .
       - run: bun install
       - name: Generate Prisma client
-        run: bunx dotenv -e .env -- prisma generate --schema=prisma/app/schema.prisma
+        run: bunx prisma generate --schema=prisma/app/schema.prisma
       - name: Type-check & build
         run: bun run build
 
