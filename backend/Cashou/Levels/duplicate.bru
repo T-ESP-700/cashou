@@ -1,18 +1,18 @@
 meta {
-  name: Delete a level
+  name: duplicate
   type: http
-  seq: 10
+  seq: 12
 }
 
 post {
-  url: {{base_url}}/trpc/level.delete
+  url: {{base_url}}/trpc/level.duplicate
   body: json
   auth: inherit
 }
 
 body:json {
   {
-    "id": 1
+    "id" : 1
   }
 }
 

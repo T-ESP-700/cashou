@@ -32,6 +32,8 @@ services:
       retries: 10
 
   backend:
+    build:
+      context: ./backend
     image: cashou-backend:latest
     ports:
       - "3000:3000"

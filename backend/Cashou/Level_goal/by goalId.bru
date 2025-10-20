@@ -1,17 +1,17 @@
 meta {
-  name: Get one level
+  name: by goalId
   type: http
-  seq: 3
+  seq: 8
 }
 
 get {
-  url: {{base_url}}/trpc/level.getById?input={"id":1}
+  url: {{base_url}}/trpclevelGoal.getByGoalId?input={"goalId":2}
   body: none
   auth: inherit
 }
 
 params:query {
-  input: {"id":1}
+  input: {"goalId":2}
 }
 
 settings {

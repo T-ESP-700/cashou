@@ -1,13 +1,17 @@
 meta {
-  name: Get all levels
+  name: Get an event
   type: http
   seq: 2
 }
 
 get {
-  url: {{base_url}}/trpc/level.getAll
+  url: {{base_url}}/trpc/event.getById?input={"id":1}
   body: none
   auth: inherit
+}
+
+params:query {
+  input: {"id":1}
 }
 
 settings {

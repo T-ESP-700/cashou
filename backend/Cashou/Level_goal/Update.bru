@@ -1,11 +1,11 @@
 meta {
-  name: Update a level
+  name: Update
   type: http
   seq: 9
 }
 
 post {
-  url: {{base_url}}/trpc/level.update
+  url: {{base_url}}/trpc/levelGoal.update
   body: json
   auth: inherit
 }
@@ -14,9 +14,8 @@ body:json {
   {
     "id": 1,
     "data": {
-      "title": "Nouveau titre",
-      "number": 2,
-      "description": "Nouvelle description"
+      "levelId": 1,
+      "goalId": 1
     }
   }
 }
