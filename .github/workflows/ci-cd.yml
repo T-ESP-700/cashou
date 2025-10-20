@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  # Ce job effectue une vérification de linting sur le code typeScript du backend.
+  # Ce job effectue une vérification de linting sur le code typeScript du backend,
   # Il s'assure que le code respecte les règles de style définies par ESLint.
   # Ce job est utile pour maintenir la qualité du code et éviter les erreurs de syntaxe.
   code-quality:
