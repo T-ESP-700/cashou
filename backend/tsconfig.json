@@ -27,7 +27,7 @@
     "noPropertyAccessFromIndexSignature": false,
 
     // Types configuration for Bun
-    "types": ["bun-types", "@types/node"],
+    "types": ["@types/bun", "@types/node"],
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
