@@ -1,0 +1,19 @@
+meta {
+  name: Get Temps écoulé depuis que le quiz a commencé
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{base_url}}/trpc/userQuiz.getElapsedTime?input={"id":1}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"id":1}
+}
+
+settings {
+  encodeUrl: true
+}

@@ -1,0 +1,19 @@
+meta {
+  name: Resume Quiz
+  type: http
+  seq: 24
+}
+
+get {
+  url: {{base_url}}/trpc/userQuiz.resumeQuiz?input={"userId":1,"quizId":1}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"userId":1,"quizId":1}
+}
+
+settings {
+  encodeUrl: true
+}

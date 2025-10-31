@@ -1,0 +1,19 @@
+meta {
+  name: Create
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/trpc/quizQuestion.create
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "quizId": 3,
+    "questionId": 2,
+    "position": 2
+  }
+}

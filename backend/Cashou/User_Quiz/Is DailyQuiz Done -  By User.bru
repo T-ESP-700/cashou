@@ -1,0 +1,19 @@
+meta {
+  name: Is DailyQuiz Done ?  By User
+  type: http
+  seq: 22
+}
+
+get {
+  url: {{base_url}}/trpc/userQuiz.hasDoneDailyToday?input={"userId":9}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"userId":9}
+}
+
+settings {
+  encodeUrl: true
+}

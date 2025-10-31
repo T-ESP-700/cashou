@@ -12,6 +12,13 @@ import {assetRouter} from "./asset.router.ts";
 import {assetHistoryRouter} from "./asset-history.router.ts";
 import {eventAssetRouter} from "./event-asset.router.ts";
 import {impactRouter} from "./impact.router.ts";
+import {quizRouter} from "./quiz.router.ts";
+import {questionRouter} from "./question.router.ts";
+import {quizQuestionRouter} from "./quiz-question.router.ts";
+import {answerRouter} from "./answer.router.ts";
+import {userRouter} from "./user.router.ts";
+import {userQuizRouter} from "./user-quiz.router.ts";
+import {userAnswerRouter} from "./user-answer.router.ts";
 
 // Initialisation de tRPC - Framework pour créer des APIs type-safe
 const t = initTRPC.create();
@@ -30,6 +37,13 @@ export const appRouter = t.router({
     assetHistory: assetHistoryRouter,
     eventAsset: eventAssetRouter,
     impact: impactRouter,
+    quiz: quizRouter,
+    question: questionRouter,
+    quizQuestion: quizQuestionRouter,
+    answer: answerRouter,
+    user: userRouter,
+    userQuiz: userQuizRouter,
+    userAnswer: userAnswerRouter,
 });
 
 // Export du type pour utilisation côté frontend (type-safety)

@@ -1,0 +1,19 @@
+meta {
+  name: Get Daily Quiz Histo
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{base_url}}/trpc/quiz.getDailyHistory?input={"limit":30}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"limit":30}
+}
+
+settings {
+  encodeUrl: true
+}
