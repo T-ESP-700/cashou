@@ -34,3 +34,30 @@ export const levelIdSchema = z.object({
     id: z.number().min(1, "L'ID doit être un nombre > 0")
 });
 export type LevelIdSchema = z.infer<typeof levelIdSchema>;
+
+// Schéma pour les routes nécessitant uniquement un userId
+export const userIdSchema = z.object({
+    userId: z.number().min(1, "L'ID utilisateur doit être > 0")
+});
+export type UserIdSchema = z.infer<typeof userIdSchema>;
+
+// Schéma pour vérifier la disponibilité (déverrouillage) d'un niveau par un utilisateur
+export const availabilitySchema = z.object({
+    userId: z.number().min(1, "L'ID utilisateur doit être > 0"),
+    levelId: z.number().min(1, "L'ID du niveau doit être > 0"),
+});
+export type AvailabilitySchema = z.infer<typeof availabilitySchema>;
+
+// Schéma pour associer/remplacer des objectifs à un niveau
+export const setGoalsSchema = z.object({
+    levelId: z.number().min(1, "L'ID du niveau doit être > 0"),
+    goalIds: z.array(z.number().min(1, "Chaque ID d'objectif doit être > 0")).default([])
+});
+export type SetGoalsSchema = z.infer<typeof setGoalsSchema>;
+
+// Schéma pour associer/remplacer des événements à un niveau
+export const setEventsSchema = z.object({
+    levelId: z.number().min(1, "L'ID du niveau doit être > 0"),
+    eventIds: z.array(z.number().min(1, "Chaque ID d'événement doit être > 0")).default([])
+});
+export type SetEventsSchema = z.infer<typeof setEventsSchema>;

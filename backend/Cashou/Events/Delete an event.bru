@@ -1,0 +1,22 @@
+meta {
+  name: Delete an event
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}/trpc/event.delete
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 1
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
