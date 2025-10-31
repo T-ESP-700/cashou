@@ -1,0 +1,21 @@
+meta {
+  name: Get Leaderboard (option period)
+  type: http
+  seq: 19
+}
+
+get {
+  url: {{base_url}}/trpc/userQuiz.getLeaderboard?input={"limit":10,"period":"monthly"}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"limit":10,"period":"monthly"}
+  ~input: {"limit":10,"period":"weekly"}
+  ~input: {"limit":10,"period":"daily"}
+}
+
+settings {
+  encodeUrl: true
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Get Today Quiz
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{base_url}}/trpc/quiz.getTodaysDailyQuiz
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}

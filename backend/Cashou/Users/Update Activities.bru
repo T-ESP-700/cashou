@@ -1,0 +1,11 @@
+meta {
+  name: Update Activities
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/trpc/user.updateLastActivity
+  body: none
+  auth: inherit
+}

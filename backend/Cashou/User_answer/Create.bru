@@ -1,0 +1,20 @@
+meta {
+  name: Create
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/trpc/userAnswer.create
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "userId": 1,
+    "questionId": 1,
+    "answerId": 3,
+    "accurate": true
+  }
+}

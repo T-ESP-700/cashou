@@ -1,0 +1,22 @@
+meta {
+  name: duplicate
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{base_url}}/trpc/level.duplicate
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id" : 1
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

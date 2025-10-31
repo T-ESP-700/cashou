@@ -1,0 +1,25 @@
+meta {
+  name: Update an event
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/trpc/event.update
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 1,
+    "data": {
+      "title": "Pandémie mondiale"
+    }
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

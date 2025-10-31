@@ -1,0 +1,24 @@
+meta {
+  name: Update a field
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}/trpc/field.update
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 1,
+    "data": {
+      "title": "Memecoins"
+    }
+  }
+}
+
+settings {
+  encodeUrl: true
+}

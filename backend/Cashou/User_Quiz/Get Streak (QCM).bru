@@ -1,0 +1,19 @@
+meta {
+  name: Get Streak (QCM)
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{base_url}}/trpc/userQuiz.getStreaks?input={"userId":9}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"userId":9}
+}
+
+settings {
+  encodeUrl: true
+}

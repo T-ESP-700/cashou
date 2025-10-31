@@ -4,11 +4,11 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "tsx watch index.ts",
+    "dev": "bun --watch index.ts",
     "dev:frontend": "vite",
-    "build": "tsc && vite build",
-    "build:server": "tsc index.ts --outDir dist",
-    "start": "node dist/index.js",
+    "build": "bun build ./index.ts --outdir=./dist --target=bun && vite build",
+    "start": "bun ./dist/index.js",
+    "start:prod": "bun ./dist/index.js",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -1,0 +1,21 @@
+meta {
+  name: Get Stats By User Id (option periode)
+  type: http
+  seq: 18
+}
+
+get {
+  url: {{base_url}}/trpc/userQuiz.getUserDetailedStats
+  body: none
+  auth: inherit
+}
+
+params:query {
+  ~input: {"userId":9,"period":"year"}
+  ~input: {"userId":1,"period":"month"}
+  ~input: {"userId":1,"period":"week"}
+}
+
+settings {
+  encodeUrl: true
+}
