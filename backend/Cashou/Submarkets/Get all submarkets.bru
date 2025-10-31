@@ -1,0 +1,15 @@
+meta {
+  name: Get all submarkets
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/trpc/submarket.getAll
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}

@@ -1,0 +1,19 @@
+meta {
+  name: Get markets by keywords and trends
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{base_url}}/trpc/market.search?input={"query":"tech","tag":"tech","trend":"tech"}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"query":"tech","tag":"tech","trend":"tech"}
+}
+
+settings {
+  encodeUrl: true
+}

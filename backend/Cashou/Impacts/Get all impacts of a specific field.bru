@@ -1,0 +1,19 @@
+meta {
+  name: Get all impacts of a specific field
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/trpc/impact.getByFieldId?input={"fieldId":1}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"fieldId":1}
+}
+
+settings {
+  encodeUrl: true
+}
