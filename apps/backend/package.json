@@ -8,7 +8,23 @@
     "start": "bun run src/index.ts",
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "bun test"
+    "test": "bun test",
+    "start:docker": "bun --watch --hot src/index.ts",
+    "check": "bunx tsc --noEmit",
+    "generate": "bunx prisma generate",
+    "migrate": "bunx prisma migrate dev",
+    "migrate:deploy": "bunx prisma migrate deploy",
+    "migrate:reset": "bunx prisma migrate reset",
+    "studio": "bunx prisma studio",
+    "db:check": "bunx prisma db pull --force",
+    "db:status": "bun run scripts/db-check.ts",
+    "db:seed": "bun run src/seed-data.ts",
+    "db:empty": "bunx prisma migrate reset --force",
+    "test:unit": "bun test tests/service/level.service.unit.test.ts",
+    "test:integration": "bun test tests/service/level.service.integration.test.ts",
+    "test:regression": "bun test tests/service/level.service.regression.test.ts",
+    "test:router": "bun test tests/router/level.router.test.ts",
+    "test:grep:unit": "bun test --grep='Tests unitaires'"
   },
   "dependencies": {
     "@cashou/auth": "workspace:*",
@@ -16,11 +32,21 @@
     "@cashou/utils": "workspace:*",
     "@trpc/server": "^11.5.0",
     "dotenv": "^17.2.1",
-    "zod": "^4.1.3"
+    "zod": "^4.1.3",
+    "@prisma/client": "^6.11.1",
+    "pg": "^8.16.3"
   },
   "devDependencies": {
-    "@trpc/client": "^11.5.0",
+    "@eslint/eslintrc": "^3.3.1",
     "@types/bun": "latest",
+    "@types/node": "^24.0.14",
+    "@types/pg": "^8.15.4",
+    "@typescript-eslint/eslint-plugin": "^8.36.0",
+    "@typescript-eslint/parser": "^8.36.0",
+    "dotenv-cli": "^8.0.0",
+    "eslint": "^9.31.0",
+    "prisma": "^6.11.1",
+    "@trpc/client": "^11.5.0",
     "typescript": "^5.9.2"
   }
 }

@@ -1,0 +1,19 @@
+meta {
+  name: Get Status By User And Quiz
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{base_url}}/trpc/userQuiz.getStatus?input={"userId":9,"quizId":12}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"userId":9,"quizId":12}
+}
+
+settings {
+  encodeUrl: true
+}

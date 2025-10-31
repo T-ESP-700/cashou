@@ -1,0 +1,24 @@
+meta {
+  name: Update an asset_history
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url}}/trpc/assetHistory.update
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 1, 
+    "data": {
+      "value": 160
+    }
+  }
+}
+
+settings {
+  encodeUrl: true
+}

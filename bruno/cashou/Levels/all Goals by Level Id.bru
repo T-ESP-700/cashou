@@ -1,0 +1,20 @@
+meta {
+  name: all Goals by Level Id
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}/trpc/level.getGoals?input={"id":1}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"id":1}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

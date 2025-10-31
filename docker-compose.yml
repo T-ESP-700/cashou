@@ -10,7 +10,7 @@ services:
     volumes:
       - cashou-db-data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
       timeout: 10s
       retries: 10
@@ -20,13 +20,13 @@ services:
     environment:
       POSTGRES_USER: "${POSTGRES_USER}"
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
-      POSTGRES_DB: backoffice
+      POSTGRES_DB: "backoffice"
     ports:
       - "5433:5432"
     volumes:
       - backoffice-db-data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
       timeout: 10s
       retries: 10
@@ -37,6 +37,10 @@ services:
       dockerfile: apps/backend/Dockerfile
     ports:
       - "3000:3000"
+    environment:
+      - DOCKER_CONTAINER=true
+      - NODE_ENV=development  # indique qu'on est en mode développement, pour activer des fonctionnalités de debug.
+      - FORCE_COLOR=1 # pour forcer l'affichage des couleurs dans les logs
     env_file:
       - .env.docker
     depends_on:
@@ -54,6 +58,11 @@ services:
       - "5173:5173"
     env_file:
       - .env.docker
+    environment:
+      - NODE_ENV=development
+      - BACKOFFICE_DB_URL=${BACKOFFICE_DB_URL}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
     depends_on:
       db_backoffice:
         condition: service_healthy

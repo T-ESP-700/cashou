@@ -12,15 +12,15 @@ datasource db {
 
 // Énumérations
 enum QuizType {
-  daily
-  MCQ
+  DAILY @map("Daily")
+  MCQ   @map("MCQ")
 }
 
 enum NotificationType {
-  quiz
-  news
-  reminder
-  Profile
+  QUIZ     @map("Quiz")
+  NEWS     @map("News")
+  REMINDER @map("Reminder")
+  PROFILE  @map("Profile")
 }
 
 // Modèle User avec better-auth + relations Cashou
@@ -98,16 +98,16 @@ model Verification {
 
 // Tables Cashou
 model Level {
-  id               Int      @id @default(autoincrement())
-  title            String?
-  number           Int?
-  duration         Int?
-  speed            Int?
-  startBalance     Int?     @map("start_balance")
-  pointsRequired   Int?     @map("points_required")
-  description      String?
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id             Int      @id @default(autoincrement())
+  title          String?
+  number         Int?
+  duration       Int?
+  speed          Int?
+  startBalance   Int?     @map("start_balance")
+  pointsRequired Int?     @map("points_required")
+  description    String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   // Relations
   gameInstances GameInstance[]
@@ -127,9 +127,9 @@ model Event {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
-  levelEvents  LevelEvent[]
-  eventAssets  EventAsset[]
-  impacts      Impact[]
+  levelEvents LevelEvent[]
+  eventAssets EventAsset[]
+  impacts     Impact[]
 
   @@map("events")
 }
@@ -183,6 +183,7 @@ model Market {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
+  gameInstances GameInstance[]
   submarkets Submarket[]
   fields     Field[]
   assets     Asset[]
@@ -193,15 +194,17 @@ model Market {
 model Submarket {
   id          Int      @id @default(autoincrement())
   marketId    Int?     @map("market_id")
+  gameInstanceId Int?  @map("game_instance_id")
   title       String?
   description String?
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
-  market  Market?  @relation(fields: [marketId], references: [id])
-  assets  Asset[]
-  impacts Impact[]
+  market       Market?       @relation(fields: [marketId], references: [id])
+  gameInstance GameInstance? @relation(fields: [gameInstanceId], references: [id])
+  assets       Asset[]
+  impacts      Impact[]
 
   @@map("submarkets")
 }
@@ -222,34 +225,33 @@ model Field {
 
 model Asset {
   id          Int      @id @default(autoincrement())
+  title       String?
+  symbol      String?
+  field       String?
+  description String?
   marketId    Int?     @map("market_id")
   submarketId Int?     @map("submarket_id")
-  name        String?
-  symbol      String?
-  price       Int?
-  variation   Int?
-  volume      Int?
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
-  market        Market?        @relation(fields: [marketId], references: [id])
-  submarket     Submarket?     @relation(fields: [submarketId], references: [id])
-  assetHistory  AssetHistory[]
-  eventAssets   EventAsset[]
-  transactions  Transaction[]
+  market         Market?        @relation(fields: [marketId], references: [id])
+  submarket      Submarket?     @relation(fields: [submarketId], references: [id])
+  assetHistories AssetHistory[]
+  eventAssets    EventAsset[]
+  transactions   Transaction[]
 
   @@map("assets")
 }
 
 model AssetHistory {
-  id        Int      @id @default(autoincrement())
-  assetId   Int?     @map("asset_id")
+  id        Int       @id @default(autoincrement())
+  assetId   Int?      @map("asset_id")
   timestamp DateTime?
   value     Int?
   volume    Int?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
   // Relations
   asset Asset? @relation(fields: [assetId], references: [id])
@@ -275,13 +277,13 @@ model EventAsset {
 }
 
 model Impact {
-  id           Int      @id @default(autoincrement())
-  eventId      Int?     @map("event_id")
-  fieldId      Int?     @map("field_id")
-  submarketId  Int?     @map("submarket_id")
-  coef         Int?
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id          Int      @id @default(autoincrement())
+  eventId     Int?     @map("event_id")
+  fieldId     Int?     @map("field_id")
+  submarketId Int?     @map("submarket_id")
+  coef        Int?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
   event     Event?     @relation(fields: [eventId], references: [id])
@@ -292,23 +294,22 @@ model Impact {
 }
 
 model GameInstance {
-  id             Int       @id @default(autoincrement())
-  type           String?
-  userId         String?   @map("user_id")
-  levelId        Int?      @map("level_id")
-  startBalance   Int?      @map("start_balance")
-  isPaused       Boolean?  @map("is_paused")
-  actionRequired Boolean?  @map("action_required")
-  pausedAt       DateTime? @map("paused_at")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+  id        Int      @id @default(autoincrement())
+  marketId  Int?     @map("market_id")
+  userId    String?  @map("user_id")
+  levelId   Int?     @map("level_id")
+  title     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
+  market       Market?       @relation(fields: [marketId], references: [id])
   user         User?         @relation(fields: [userId], references: [id])
   level        Level?        @relation(fields: [levelId], references: [id])
   gameUsers    GameUser[]
   wallets      Wallet[]
   transactions Transaction[]
+  submarkets   Submarket[]
 
   @@map("game_instances")
 }
@@ -347,17 +348,18 @@ model Wallet {
 }
 
 model Transaction {
-  id             Int       @id @default(autoincrement())
-  assetId        Int?      @map("asset_id")
-  walletId       Int?      @map("wallet_id")
-  gameInstanceId Int?      @map("game_instance_id")
-  type           String?
-  quantity       Int?
-  pricePerUnit   Decimal?  @map("price_per_unit")
-  totalAmount    Decimal?  @map("total_amount")
-  executedAt     DateTime? @map("executed_at")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+  id              Int       @id @default(autoincrement())
+  walletId        Int?      @map("wallet_id")
+  assetId         Int?      @map("asset_id")
+  gameInstanceId  Int?      @map("game_instance_id")
+  type            String?
+  quantity        Int?
+  unitPrice       Decimal?  @map("unit_price")
+  totalValue      Decimal?  @map("total_value")
+  transactionDate DateTime? @map("transaction_date")
+  source          String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   // Relations
   asset        Asset?        @relation(fields: [assetId], references: [id])

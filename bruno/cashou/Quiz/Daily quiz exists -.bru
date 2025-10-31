@@ -1,0 +1,19 @@
+meta {
+  name: Daily quiz exists ?
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{base_url}}/trpc/quiz.dailyQuizExists?input={"date":"2025-09-02"}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"date":"2025-09-02"}
+}
+
+settings {
+  encodeUrl: true
+}

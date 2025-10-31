@@ -44,16 +44,26 @@
     "reset": "bun run docker:down && bun run docker:clean && bun run docker:up && bun run migrate:reset",
     "dev:all": "bun run dev",
     "logs:backend": "cd apps/backend && bun run dev",
-    "logs:backoffice": "cd apps/backoffice && bun run dev"
+    "logs:backoffice": "cd apps/backoffice && bun run dev",
+    "install:all": "bun install && cd backend && bun install && cd ../backoffice && bun install",
+    "setup:seeds": "bun run install:all && bun run docker:up && bun run generate && bun run migrate && bun run db:seed"
   },
   "devDependencies": {
-    "@types/node": "^20.19.11",
-    "@typescript-eslint/eslint-plugin": "^8.0.0",
-    "@typescript-eslint/parser": "^8.0.0",
-    "concurrently": "^9.2.1",
-    "dotenv-cli": "^10.0.0",
-    "eslint": "^9.34.0",
-    "typescript": "^5.9.2"
+    "@eslint/eslintrc": "^3.3.1",
+    "@types/bun": "latest",
+    "@types/node": "^24.0.14",
+    "@types/pg": "^8.15.4",
+    "@typescript-eslint/eslint-plugin": "^8.36.0",
+    "@typescript-eslint/parser": "^8.36.0",
+    "bun-types": "^1.3.0",
+    "concurrently": "^8.2.2",
+    "dotenv-cli": "^8.0.0",
+    "eslint": "^9.31.0",
+    "prisma": "^6.11.1",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
   },
   "engines": {
     "bun": ">=1.0.0"
@@ -72,5 +82,8 @@
     "url": "git+https://github.com/T-ESP-700/cashou.git"
   },
   "author": "Cashou Team",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@trpc/server": "^11.4.3"
+  }
 }

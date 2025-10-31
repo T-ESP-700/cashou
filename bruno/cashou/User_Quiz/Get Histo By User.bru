@@ -1,0 +1,19 @@
+meta {
+  name: Get Histo By User
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{base_url}}/trpc/userQuiz.getHistoryByUser?input={"userId":9,"limit":20,"offset":0}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"userId":9,"limit":20,"offset":0}
+}
+
+settings {
+  encodeUrl: true
+}

@@ -1,0 +1,24 @@
+meta {
+  name: Update a market
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/trpc/market.update
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 1,
+    "data": {
+      "dataSource": "Instagram"
+    }
+  }
+}
+
+settings {
+  encodeUrl: true
+}

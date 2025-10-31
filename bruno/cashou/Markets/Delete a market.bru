@@ -1,0 +1,21 @@
+meta {
+  name: Delete a market
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}/trpc/market.delete
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 1
+  }
+}
+
+settings {
+  encodeUrl: true
+}

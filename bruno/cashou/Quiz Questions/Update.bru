@@ -1,0 +1,22 @@
+meta {
+  name: Update
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/trpc/quizQuestion.update
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 4,
+    "data": {
+      "quizId": 3,
+      "questionId": 2,
+      "position": 1
+    }
+  }
+}

@@ -1,0 +1,27 @@
+meta {
+  name: Update a level
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{base_url}}/trpc/level.update
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 1,
+    "data": {
+      "title": "Nouveau titre",
+      "number": 2,
+      "description": "Nouvelle description"
+    }
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

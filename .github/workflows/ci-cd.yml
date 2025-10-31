@@ -54,6 +54,7 @@ jobs:
         run: bun run typecheck
       - name: Code quality
         run: bunx eslint . --ext .ts,.tsx
+        working-directory: backend
 
   # Tests des packages partagés (uniquement ceux qui ont des tests)
   shared-packages-test:
@@ -237,8 +238,7 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password
           POSTGRES_DB: cashou_db
-        ports:
-          - 5432:5432
+        ports: [ "5432:5432" ]
         options: >-
           --health-cmd="pg_isready -U postgres"
           --health-interval=10s
