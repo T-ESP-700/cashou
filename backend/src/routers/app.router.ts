@@ -5,6 +5,13 @@ import {eventRouter} from "./event.router.ts";
 import {goalRouter} from "./goal.router.ts";
 import { levelGoalRouter } from "./level-goal.router.ts";
 import { levelEventRouter } from "./level-event.router.ts";
+import {marketRouter} from "./market.router.ts";
+import {submarketRouter} from "./submarket.router.ts";
+import {fieldRouter} from "./field.router.ts";
+import {assetRouter} from "./asset.router.ts";
+import {assetHistoryRouter} from "./asset-history.router.ts";
+import {eventAssetRouter} from "./event-asset.router.ts";
+import {impactRouter} from "./impact.router.ts";
 
 // Initialisation de tRPC - Framework pour créer des APIs type-safe
 const t = initTRPC.create();
@@ -15,7 +22,14 @@ export const appRouter = t.router({
     event: eventRouter,
     goal: goalRouter,
     levelGoal: levelGoalRouter,
-    levelEvent: levelEventRouter
+    levelEvent: levelEventRouter,
+    market: marketRouter,
+    submarket: submarketRouter,
+    field: fieldRouter,
+    asset: assetRouter,
+    assetHistory: assetHistoryRouter,
+    eventAsset: eventAssetRouter,
+    impact: impactRouter,
 });
 
 // Export du type pour utilisation côté frontend (type-safety)

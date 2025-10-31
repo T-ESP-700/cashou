@@ -1,0 +1,19 @@
+meta {
+  name: Get all assets for a specific submarket
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/trpc/asset.getBySubmarketId?input={"submarketId":1}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"submarketId":1}
+}
+
+settings {
+  encodeUrl: true
+}

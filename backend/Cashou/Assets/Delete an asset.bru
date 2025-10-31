@@ -1,0 +1,21 @@
+meta {
+  name: Delete an asset
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url}}/trpc/asset.delete
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 2
+  }
+}
+
+settings {
+  encodeUrl: true
+}
