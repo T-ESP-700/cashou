@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { router, publicProcedure, protectedProcedure } from '../..';
+import { router, publicProcedure, protectedProcedure } from '../';
 import { auth } from '@cashou/auth/server';
 import { TRPCError } from '@trpc/server';
 
