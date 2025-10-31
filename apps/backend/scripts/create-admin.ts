@@ -9,7 +9,7 @@ async function createAdminUser() {
   const name = process.env.ADMIN_NAME || 'Administrator';
 
   console.log('Creating admin user via API...');
-  
+
   try {
     // Create admin user via API
     const response = await fetch('http://localhost:3000/api/auth/sign-up/email', {
@@ -27,7 +27,7 @@ async function createAdminUser() {
     if (!response.ok) {
       const error = await response.text();
       console.error('Failed to create admin:', error);
-      
+
       // Try to sign in if user already exists
       if (response.status === 422) {
         console.log('User might already exist, trying to sign in...');
@@ -41,7 +41,7 @@ async function createAdminUser() {
             password,
           }),
         });
-        
+
         if (signInResponse.ok) {
           const data = await signInResponse.json();
           console.log('Admin user signed in successfully:', {
@@ -55,7 +55,7 @@ async function createAdminUser() {
     }
 
     const data = await response.json();
-    
+
     console.log('Admin user created successfully:', {
       id: data.user.id,
       email: data.user.email,
