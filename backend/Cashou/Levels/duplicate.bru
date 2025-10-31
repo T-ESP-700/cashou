@@ -1,18 +1,18 @@
 meta {
-  name: Delete an event
+  name: duplicate
   type: http
-  seq: 5
+  seq: 12
 }
 
 post {
-  url: {{base_url}}/trpc/event.delete
+  url: {{base_url}}/trpc/level.duplicate
   body: json
   auth: inherit
 }
 
 body:json {
   {
-    "id": 1
+    "id" : 1
   }
 }
 

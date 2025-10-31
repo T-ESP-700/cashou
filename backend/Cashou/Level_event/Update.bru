@@ -1,20 +1,22 @@
 meta {
-  name: Update an event
+  name: Update
   type: http
-  seq: 4
+  seq: 9
 }
 
 post {
-  url: {{base_url}}/trpc/event.update
+  url: {{base_url}}/trpc/levelEvent.update
   body: json
   auth: inherit
 }
 
 body:json {
   {
-    "id": 1,
+    "id": 6,
     "data": {
-      "title": "Pandémie mondiale"
+      "levelId": 1,
+      "eventId": 2
+      
     }
   }
 }

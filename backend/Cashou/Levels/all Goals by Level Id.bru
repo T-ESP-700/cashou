@@ -1,11 +1,11 @@
 meta {
-  name: Get one level
+  name: all Goals by Level Id
   type: http
-  seq: 3
+  seq: 4
 }
 
 get {
-  url: {{base_url}}/trpc/level.getById?input={"id":1}
+  url: {{base_url}}/trpc/level.getGoals?input={"id":1}
   body: none
   auth: inherit
 }

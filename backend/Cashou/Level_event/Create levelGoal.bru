@@ -1,18 +1,19 @@
 meta {
-  name: Delete an event
+  name: Create levelGoal
   type: http
-  seq: 5
+  seq: 1
 }
 
 post {
-  url: {{base_url}}/trpc/event.delete
+  url: {{base_url}}/trpc/levelEvent.create
   body: json
   auth: inherit
 }
 
 body:json {
   {
-    "id": 1
+    "levelId": 1,
+    "eventId": 2
   }
 }
 

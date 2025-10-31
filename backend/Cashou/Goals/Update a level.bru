@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{base_url}}/trpc/level.update
+  url: {{base_url}}/trpc/goal.update
   body: json
   auth: inherit
 }
@@ -14,9 +14,8 @@ body:json {
   {
     "id": 1,
     "data": {
-      "title": "Nouveau titre",
-      "number": 2,
-      "description": "Nouvelle description"
+      "title": "Objectif modifié - 3500 points",
+      "description": "Description mise à jour avec nouveaux critères"
     }
   }
 }
