@@ -1,0 +1,27 @@
+meta {
+  name: Create Notification
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/trpc/notification.create
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "user_id": 3,
+    "title": "Welcome to the Quiz Platform!",
+    "message": "You’ve successfully created your account. Start your first quiz now!",
+    "type": "QUIZ",
+    "type_id": 101,
+    "is_open": false,
+    "sent_at": "2025-10-31T14:00:00.000Z"
+  }
+}
+
+settings {
+  encodeUrl: true
+}
