@@ -1,110 +1,189 @@
-import { Users, Trophy, Brain, TrendingUp } from 'lucide-react';
+import React from 'react';
+import { 
+  Users, 
+  Gamepad2, 
+  TrendingUp, 
+  DollarSign, 
+  Trophy, 
+  Clock,
+  Target,
+  BarChart3
+} from 'lucide-react';
+import MetricCard from '../components/MetricCard';
+import ChartCard from '../components/ChartCard';
 
-const stats = [
-  {
-    name: 'Total Users',
-    value: '1,234',
-    icon: Users,
-    change: '+12.5%',
-    changeType: 'positive' as const,
-  },
-  {
-    name: 'Active Levels',
-    value: '24',
-    icon: Trophy,
-    change: '+3',
-    changeType: 'positive' as const,
-  },
-  {
-    name: 'Quiz Completed',
-    value: '5,678',
-    icon: Brain,
-    change: '+18.2%',
-    changeType: 'positive' as const,
-  },
-  {
-    name: 'Total Assets',
-    value: '156',
-    icon: TrendingUp,
-    change: '+8',
-    changeType: 'positive' as const,
-  },
-];
+const Dashboard: React.FC = () => {
+  // Données simulées - dans une vraie app, ces données viendraient de l'API
+  const metrics = {
+    totalUsers: 1247,
+    activeGameInstances: 89,
+    totalTransactions: 3456,
+    totalRevenue: 125430,
+    averageLevel: 3.2,
+    quizCompletionRate: 78,
+    averageSessionTime: 24,
+    totalLevels: 12
+  };
 
-export default function Dashboard() {
+  const recentActivity = [
+    { id: 1, user: 'Alice', action: 'Nouveau niveau débloqué', time: '2 min' },
+    { id: 2, user: 'Bob', action: 'Transaction réalisée', time: '5 min' },
+    { id: 3, user: 'Charlie', action: 'Quiz complété', time: '8 min' },
+    { id: 4, user: 'Diana', action: 'Nouvelle instance créée', time: '12 min' },
+  ];
+
+  const topPerformers = [
+    { rank: 1, username: 'Alice', level: 5, points: 1250 },
+    { rank: 2, username: 'Bob', level: 4, points: 980 },
+    { rank: 3, username: 'Charlie', level: 4, points: 920 },
+    { rank: 4, username: 'Diana', level: 3, points: 850 },
+  ];
+
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-2">Welcome to Cashou Backoffice</p>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div key={stat.name} className="card">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">{stat.name}</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">{stat.value}</p>
-                  <p
-                    className={`text-sm mt-2 ${
-                      stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
-                    }`}
-                  >
-                    {stat.change}
-                  </p>
-                </div>
-                <div className="p-4 bg-primary-50 rounded-lg">
-                  <Icon className="text-primary-600" size={24} />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="card">
-          <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
-          <div className="space-y-4">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="flex items-center justify-between py-3 border-b last:border-0">
-                <div>
-                  <p className="font-medium">User registered</p>
-                  <p className="text-sm text-gray-600">john.doe@example.com</p>
-                </div>
-                <span className="text-sm text-gray-500">2 min ago</span>
-              </div>
-            ))}
-          </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* En-tête */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard Jeu</h1>
+          <p className="text-gray-600 mt-2">
+            Vue d'ensemble des métriques et performances du jeu Cashou
+          </p>
         </div>
 
-        <div className="card">
-          <h2 className="text-xl font-semibold mb-4">Popular Levels</h2>
-          <div className="space-y-4">
-            {[
-              { name: 'Level 1: Introduction', plays: 234 },
-              { name: 'Level 2: Basic Trading', plays: 189 },
-              { name: 'Level 3: Market Analysis', plays: 156 },
-              { name: 'Level 4: Portfolio Management', plays: 123 },
-              { name: 'Level 5: Advanced Strategies', plays: 98 },
-            ].map((level, i) => (
-              <div key={i} className="flex items-center justify-between py-3 border-b last:border-0">
-                <div>
-                  <p className="font-medium">{level.name}</p>
-                  <p className="text-sm text-gray-600">{level.plays} plays</p>
+        {/* Métriques principales */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <MetricCard
+            title="Utilisateurs Totaux"
+            value={metrics.totalUsers.toLocaleString()}
+            icon={Users}
+            change={{ value: 12, isPositive: true }}
+            description="Joueurs inscrits"
+          />
+          <MetricCard
+            title="Instances Actives"
+            value={metrics.activeGameInstances}
+            icon={Gamepad2}
+            change={{ value: 8, isPositive: true }}
+            description="Parties en cours"
+          />
+          <MetricCard
+            title="Transactions Totales"
+            value={metrics.totalTransactions.toLocaleString()}
+            icon={TrendingUp}
+            change={{ value: 15, isPositive: true }}
+            description="Opérations financières"
+          />
+          <MetricCard
+            title="Revenus Totaux"
+            value={`${metrics.totalRevenue.toLocaleString()} €`}
+            icon={DollarSign}
+            change={{ value: 23, isPositive: true }}
+            description="Chiffre d'affaires"
+          />
+        </div>
+
+        {/* Métriques secondaires */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <MetricCard
+            title="Niveau Moyen"
+            value={metrics.averageLevel}
+            icon={Trophy}
+            change={{ value: 5, isPositive: true }}
+            description="Progression moyenne"
+          />
+          <MetricCard
+            title="Taux de Réussite Quiz"
+            value={`${metrics.quizCompletionRate}%`}
+            icon={Target}
+            change={{ value: 3, isPositive: true }}
+            description="Quiz complétés"
+          />
+          <MetricCard
+            title="Temps de Session Moyen"
+            value={`${metrics.averageSessionTime} min`}
+            icon={Clock}
+            change={{ value: -2, isPositive: false }}
+            description="Engagement utilisateur"
+          />
+          <MetricCard
+            title="Niveaux Disponibles"
+            value={metrics.totalLevels}
+            icon={BarChart3}
+            description="Contenu débloqué"
+          />
+        </div>
+
+        {/* Contenu principal */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Activité récente */}
+          <ChartCard title="Activité Récente">
+            <div className="space-y-4">
+              {recentActivity.map((activity) => (
+                <div key={activity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="font-medium text-gray-900">{activity.user}</p>
+                    <p className="text-sm text-gray-600">{activity.action}</p>
+                  </div>
+                  <span className="text-sm text-gray-500">{activity.time}</span>
                 </div>
-                <Trophy className="text-primary-600" size={20} />
+              ))}
+            </div>
+          </ChartCard>
+
+          {/* Top Performers */}
+          <ChartCard title="Top Performers">
+            <div className="space-y-4">
+              {topPerformers.map((performer) => (
+                <div key={performer.rank} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                      performer.rank === 1 ? 'bg-yellow-100 text-yellow-800' :
+                      performer.rank === 2 ? 'bg-gray-100 text-gray-800' :
+                      performer.rank === 3 ? 'bg-orange-100 text-orange-800' :
+                      'bg-blue-100 text-blue-800'
+                    }`}>
+                      {performer.rank}
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{performer.username}</p>
+                      <p className="text-sm text-gray-600">Niveau {performer.level}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium text-gray-900">{performer.points} pts</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ChartCard>
+        </div>
+
+        {/* Graphiques de performance */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+          <ChartCard title="Évolution des Utilisateurs (7 derniers jours)">
+            <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
+              <div className="text-center">
+                <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-500">Graphique d'évolution</p>
+                <p className="text-sm text-gray-400">Données simulées</p>
               </div>
-            ))}
-          </div>
+            </div>
+          </ChartCard>
+
+          <ChartCard title="Répartition par Niveau">
+            <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
+              <div className="text-center">
+                <Trophy className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-500">Graphique de répartition</p>
+                <p className="text-sm text-gray-400">Données simulées</p>
+              </div>
+            </div>
+          </ChartCard>
         </div>
       </div>
     </div>
   );
-}
+};
+
+export default Dashboard;
 

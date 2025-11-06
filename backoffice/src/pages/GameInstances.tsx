@@ -1,168 +1,192 @@
-import { Play, Pause, Eye, Trash2 } from 'lucide-react';
+import React from 'react';
+import { Gamepad2, Clock, Users as UsersIcon, Play, Pause } from 'lucide-react';
 
-export default function GameInstances() {
-  // Mock data
-  const instances = [
-    {
-      id: 1,
-      type: 'Solo',
-      user: 'john_doe',
-      level: 'Level 3',
-      startBalance: 20000,
-      currentBalance: 25430,
-      isPaused: false,
-      actionRequired: false,
-      createdAt: '2024-10-31 10:30',
+const GameInstances: React.FC = () => {
+  // Données simulées
+  const gameInstances = [
+    { 
+      id: 1, 
+      type: 'Solo', 
+      user: 'Alice', 
+      level: 5, 
+      startBalance: 1000, 
+      isPaused: false, 
+      createdAt: '2h',
+      participants: 1
     },
-    {
-      id: 2,
-      type: 'Multiplayer',
-      user: 'jane_smith',
-      level: 'Level 5',
-      startBalance: 30000,
-      currentBalance: 28650,
-      isPaused: true,
-      actionRequired: true,
-      createdAt: '2024-10-30 15:45',
+    { 
+      id: 2, 
+      type: 'Multiplayer', 
+      user: 'Bob', 
+      level: 4, 
+      startBalance: 800, 
+      isPaused: true, 
+      createdAt: '1h',
+      participants: 3
     },
-    {
-      id: 3,
-      type: 'Solo',
-      user: 'mike_wilson',
-      level: 'Level 2',
-      startBalance: 15000,
-      currentBalance: 17200,
-      isPaused: false,
-      actionRequired: false,
-      createdAt: '2024-10-31 09:15',
+    { 
+      id: 3, 
+      type: 'Solo', 
+      user: 'Charlie', 
+      level: 4, 
+      startBalance: 1200, 
+      isPaused: false, 
+      createdAt: '30 min',
+      participants: 1
     },
   ];
 
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Game Instances</h1>
-        <p className="text-gray-600 mt-2">Monitor active and paused game sessions</p>
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Instances de Jeu</h1>
+          <p className="text-gray-600 mt-2">
+            Gérez toutes les parties en cours et leurs participants
+          </p>
+        </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="card">
-          <p className="text-sm text-gray-600">Total Instances</p>
-          <p className="text-3xl font-bold text-gray-900 mt-2">3</p>
+        {/* Statistiques rapides */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex items-center">
+              <div className="p-3 bg-green-100 rounded-full">
+                <Play className="h-6 w-6 text-green-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Instances Actives</p>
+                <p className="text-2xl font-bold text-gray-900">2</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex items-center">
+              <div className="p-3 bg-yellow-100 rounded-full">
+                <Pause className="h-6 w-6 text-yellow-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Instances Pausées</p>
+                <p className="text-2xl font-bold text-gray-900">1</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex items-center">
+              <div className="p-3 bg-blue-100 rounded-full">
+                <Users className="h-6 w-6 text-blue-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Joueurs Actifs</p>
+                <p className="text-2xl font-bold text-gray-900">5</p>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="card">
-          <p className="text-sm text-gray-600">Active</p>
-          <p className="text-3xl font-bold text-green-600 mt-2">2</p>
-        </div>
-        <div className="card">
-          <p className="text-sm text-gray-600">Paused</p>
-          <p className="text-3xl font-bold text-orange-600 mt-2">1</p>
-        </div>
-        <div className="card">
-          <p className="text-sm text-gray-600">Needs Action</p>
-          <p className="text-3xl font-bold text-red-600 mt-2">1</p>
-        </div>
-      </div>
 
-      {/* Instances Table */}
-      <div className="card">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">ID</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Type</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">User</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Level</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Start Balance</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Current Balance</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Created</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {instances.map((instance) => {
-                const profit = instance.currentBalance - instance.startBalance;
-                const profitPercent = ((profit / instance.startBalance) * 100).toFixed(2);
-
-                return (
-                  <tr key={instance.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4 font-mono text-sm">#{instance.id}</td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-sm ${
-                          instance.type === 'Solo'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-purple-100 text-purple-700'
-                        }`}
-                      >
-                        {instance.type}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 font-medium">{instance.user}</td>
-                    <td className="py-3 px-4">{instance.level}</td>
-                    <td className="py-3 px-4">${instance.startBalance.toLocaleString()}</td>
-                    <td className="py-3 px-4">
-                      <div>
-                        <div className="font-semibold">${instance.currentBalance.toLocaleString()}</div>
-                        <div
-                          className={`text-xs ${
-                            profit >= 0 ? 'text-green-600' : 'text-red-600'
-                          }`}
-                        >
-                          {profit >= 0 ? '+' : ''}{profitPercent}%
+        {/* Liste des instances */}
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900">Instances en Cours</h3>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Instance
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Niveau
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Participants
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Statut
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Créée
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {gameInstances.map((instance) => (
+                  <tr key={instance.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10">
+                          <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
+                            <Gamepad2 className="h-5 w-5 text-purple-600" />
+                          </div>
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">Instance #{instance.id}</div>
+                          <div className="text-sm text-gray-500">Créée par {instance.user}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="py-3 px-4">
-                      <div className="flex flex-col gap-1">
-                        {instance.isPaused ? (
-                          <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs">
-                            Paused
-                          </span>
-                        ) : (
-                          <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
-                            Active
-                          </span>
-                        )}
-                        {instance.actionRequired && (
-                          <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">
-                            Action Required
-                          </span>
-                        )}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        instance.type === 'Multiplayer' 
+                          ? 'bg-blue-100 text-blue-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {instance.type}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      Niveau {instance.level}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+              <div className="flex items-center">
+                <UsersIcon className="h-4 w-4 text-gray-400 mr-1" />
+                <span className="text-sm text-gray-900">{instance.participants}</span>
+              </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        instance.isPaused 
+                          ? 'bg-yellow-100 text-yellow-800' 
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        {instance.isPaused ? 'Pausée' : 'Active'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <div className="flex items-center">
+                        <Clock className="h-4 w-4 text-gray-400 mr-1" />
+                        {instance.createdAt}
                       </div>
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-600">{instance.createdAt}</td>
-                    <td className="py-3 px-4">
-                      <div className="flex gap-2">
-                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="View">
-                          <Eye size={16} className="text-gray-600" />
-                        </button>
-                        <button
-                          className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
-                          title={instance.isPaused ? 'Resume' : 'Pause'}
-                        >
-                          {instance.isPaused ? (
-                            <Play size={16} className="text-blue-600" />
-                          ) : (
-                            <Pause size={16} className="text-blue-600" />
-                          )}
-                        </button>
-                        <button className="p-2 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
-                          <Trash2 size={16} className="text-red-600" />
-                        </button>
-                      </div>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button className="text-blue-600 hover:text-blue-900 mr-3">
+                        Voir
+                      </button>
+                      <button className="text-yellow-600 hover:text-yellow-900 mr-3">
+                        {instance.isPaused ? 'Reprendre' : 'Pauser'}
+                      </button>
+                      <button className="text-red-600 hover:text-red-900">
+                        Arrêter
+                      </button>
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
   );
-}
+};
 
+export default GameInstances;

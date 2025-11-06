@@ -1,136 +1,112 @@
-import { Search, Plus, Edit, Trash2, Mail } from 'lucide-react';
-import { useState } from 'react';
+import React from 'react';
+import { Users as UsersIcon, Search, Filter } from 'lucide-react';
 
-export default function Users() {
-  const [searchTerm, setSearchTerm] = useState('');
-
-  // Mock data - will be replaced with API calls
+const Users: React.FC = () => {
+  // Données simulées
   const users = [
-    {
-      id: 1,
-      username: 'john_doe',
-      email: 'john@example.com',
-      level: 'Level 3',
-      points: 1250,
-      badges: 'Beginner, Trader',
-      lastActivity: '2024-10-30',
-    },
-    {
-      id: 2,
-      username: 'jane_smith',
-      email: 'jane@example.com',
-      level: 'Level 5',
-      points: 3420,
-      badges: 'Expert, Analyst',
-      lastActivity: '2024-10-31',
-    },
-    {
-      id: 3,
-      username: 'mike_wilson',
-      email: 'mike@example.com',
-      level: 'Level 2',
-      points: 850,
-      badges: 'Beginner',
-      lastActivity: '2024-10-29',
-    },
+    { id: 1, username: 'Alice', email: 'alice@example.com', level: 5, points: 1250, lastActivity: '2 min' },
+    { id: 2, username: 'Bob', email: 'bob@example.com', level: 4, points: 980, lastActivity: '15 min' },
+    { id: 3, username: 'Charlie', email: 'charlie@example.com', level: 4, points: 920, lastActivity: '1h' },
+    { id: 4, username: 'Diana', email: 'diana@example.com', level: 3, points: 850, lastActivity: '2h' },
   ];
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Users</h1>
-          <p className="text-gray-600 mt-2">Manage user accounts and permissions</p>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Gestion des Utilisateurs</h1>
+          <p className="text-gray-600 mt-2">
+            Consultez et gérez tous les utilisateurs du jeu
+          </p>
         </div>
-        <button className="btn btn-primary flex items-center gap-2">
-          <Plus size={20} />
-          Add User
-        </button>
-      </div>
 
-      {/* Search and Filters */}
-      <div className="card mb-6">
-        <div className="flex gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              placeholder="Search users..."
-              className="input pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+        {/* Barre de recherche et filtres */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Rechercher un utilisateur..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+            <button className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+              <Filter className="h-5 w-5" />
+              <span>Filtres</span>
+            </button>
           </div>
-          <select className="input w-48">
-            <option>All Levels</option>
-            <option>Level 1</option>
-            <option>Level 2</option>
-            <option>Level 3</option>
-            <option>Level 4</option>
-            <option>Level 5</option>
-          </select>
         </div>
-      </div>
 
-      {/* Users Table */}
-      <div className="card">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Username</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Email</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Level</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Points</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Badges</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Last Activity</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-3 px-4 font-medium">{user.username}</td>
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <Mail size={16} className="text-gray-400" />
-                      {user.email}
-                    </div>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm">
-                      {user.level}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 font-semibold">{user.points.toLocaleString()}</td>
-                  <td className="py-3 px-4 text-sm text-gray-600">{user.badges}</td>
-                  <td className="py-3 px-4 text-sm text-gray-600">{user.lastActivity}</td>
-                  <td className="py-3 px-4">
-                    <div className="flex gap-2">
-                      <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                        <Edit size={16} className="text-gray-600" />
-                      </button>
-                      <button className="p-2 hover:bg-red-50 rounded-lg transition-colors">
-                        <Trash2 size={16} className="text-red-600" />
-                      </button>
-                    </div>
-                  </td>
+        {/* Tableau des utilisateurs */}
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Utilisateur
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Niveau
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Points
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Dernière Activité
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-200">
-          <p className="text-sm text-gray-600">Showing 1 to 3 of 3 users</p>
-          <div className="flex gap-2">
-            <button className="btn btn-secondary">Previous</button>
-            <button className="btn btn-primary">Next</button>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {users.map((user) => (
+                  <tr key={user.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10">
+                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                            <UsersIcon className="h-5 w-5 text-blue-600" />
+                          </div>
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{user.username}</div>
+                          <div className="text-sm text-gray-500">{user.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                        Niveau {user.level}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {user.points.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {user.lastActivity}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button className="text-blue-600 hover:text-blue-900 mr-3">
+                        Voir
+                      </button>
+                      <button className="text-red-600 hover:text-red-900">
+                        Suspendre
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
     </div>
   );
-}
+};
 
+export default Users;
