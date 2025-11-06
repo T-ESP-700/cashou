@@ -23,7 +23,7 @@ export class MarketService {
                 // Inclut les champs du marché
                 fields: true
             },
-            orderBy: { name: 'asc' }, // Tri par nom de marché croissant
+            orderBy: { title: 'asc' }, // Tri par titre de marché croissant
         });
     }
 
@@ -100,7 +100,7 @@ export class MarketService {
                     }
                 }
             },
-            orderBy: { name: 'asc' }
+            orderBy: { title: 'asc' }
         });
 
         // Transformer les données pour inclure les compteurs
@@ -126,23 +126,23 @@ export class MarketService {
     async search(query: string, tag?: string, trend?: string): Promise<Array<Market & { relevance: number }>> {
         const where: any = {
             OR: [
-                { name: { contains: query, mode: 'insensitive' } },
-                { description: { contains: query, mode: 'insensitive' } },
-                { currentTrends: { contains: query, mode: 'insensitive' } }
+                { title: { contains: query, mode: 'insensitive' } },
+                { description: { contains: query, mode: 'insensitive' } }
             ]
         };
 
         if (tag) {
-            where.OR.push({ name: { contains: tag, mode: 'insensitive' } });
+            where.OR.push({ title: { contains: tag, mode: 'insensitive' } });
         }
 
-        if (trend) {
-            where.currentTrends = { contains: trend, mode: 'insensitive' };
-        }
+        // Note: currentTrends field doesn't exist in schema, trend parameter is ignored for now
+        // if (trend) {
+        //     where.currentTrends = { contains: trend, mode: 'insensitive' };
+        // }
 
         const markets = await this.prisma.market.findMany({
             where,
-            orderBy: { name: 'asc' }
+            orderBy: { title: 'asc' }
         });
 
         // Calculer un score de pertinence simple
@@ -244,9 +244,8 @@ export class MarketService {
         let score = 0;
         const queryLower = query.toLowerCase();
 
-        if (market.name?.toLowerCase().includes(queryLower)) score += 50;
-        if (market.description?.toLowerCase().includes(queryLower)) score += 30;
-        if (market.currentTrends?.toLowerCase().includes(queryLower)) score += 20;
+        if (market.title?.toLowerCase().includes(queryLower)) score += 50;
+        if (market.description?.toLowerCase().includes(queryLower)) score += 50;
 
         return Math.min(score, 100);
     }
@@ -594,7 +593,7 @@ export class MarketService {
 
         return {
             market_id: market.id,
-            market_name: market.name,
+            market_name: market.title,
             timestamp: new Date().toISOString(),
             real_time_metrics: realTimeMetrics,
             alerts: alerts,
@@ -654,7 +653,7 @@ export class MarketService {
 
         return {
             market_id: marketId,
-            market_name: market.name,
+            market_name: market.title,
             period: {
                 from: from.toISOString(),
                 to: to.toISOString()
@@ -705,7 +704,7 @@ export class MarketService {
 
         return {
             market_id: marketId,
-            market_name: market.name,
+            market_name: market.title,
             metric: metric,
             generated_at: new Date().toISOString(),
             heatmap_data: heatmapData,
@@ -768,7 +767,7 @@ export class MarketService {
                 type: 'info',
                 severity: 'low',
                 message: `${emptySubmarkets.length} sous-marchés vides`,
-                details: emptySubmarkets.map((s: any) => ({ id: s.id, name: s.name }))
+                details: emptySubmarkets.map((s: any) => ({ id: s.id, title: s.title }))
             });
         }
 
@@ -1265,7 +1264,7 @@ export class MarketService {
         market.submarkets.forEach((submarket: any) => {
             const submarketData = {
                 submarket_id: submarket.id,
-                submarket_name: submarket.name,
+                submarket_name: submarket.title,
                 intensity: 0,
                 assets: [] as any[]
             };

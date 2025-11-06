@@ -20,7 +20,7 @@ export class QuizQuestionService {
         return this.prisma.quizQuestion.findMany({
             orderBy: [
                 { quizId: 'asc' },    // Tri par quiz d'abord
-                { position: 'asc' }   // Puis par position dans le quiz
+                { id: 'asc' }         // Puis par ID (ordre d'insertion)
             ],
             // Pas d'include - retourne seulement les données de la table quiz_questions
         });
@@ -46,33 +46,17 @@ export class QuizQuestionService {
      */
     async create(data: QuizQuestionCreateSchema): Promise<QuizQuestion> {
         // Vérifications d'unicité si quizId et les autres champs sont fournis
-        if (data.quizId) {
-            // 1. Vérification de l'unicité de la question dans le quiz
-            if (data.questionId) {
-                const existingQuestionInQuiz = await this.prisma.quizQuestion.findFirst({
-                    where: {
-                        quizId: data.quizId,
-                        questionId: data.questionId
-                    }
-                });
-
-                if (existingQuestionInQuiz) {
-                    throw new Error(`La question ${data.questionId} est déjà présente dans le quiz ${data.quizId}`);
+        if (data.quizId && data.questionId) {
+            // Vérification de l'unicité de la question dans le quiz
+            const existingQuestionInQuiz = await this.prisma.quizQuestion.findFirst({
+                where: {
+                    quizId: data.quizId,
+                    questionId: data.questionId
                 }
-            }
+            });
 
-            // 2. Vérification de l'unicité de la position dans le quiz
-            if (data.position) {
-                const existingPositionInQuiz = await this.prisma.quizQuestion.findFirst({
-                    where: {
-                        quizId: data.quizId,
-                        position: data.position
-                    }
-                });
-
-                if (existingPositionInQuiz) {
-                    throw new Error(`Une question existe déjà à la position ${data.position} pour le quiz ${data.quizId}`);
-                }
+            if (existingQuestionInQuiz) {
+                throw new Error(`La question ${data.questionId} est déjà présente dans le quiz ${data.quizId}`);
             }
         }
 
@@ -87,36 +71,19 @@ export class QuizQuestionService {
      * @throws Error si une autre question existe déjà à cette position pour ce quiz ou si la question est déjà dans ce quiz
      */
     async update(id: number, data: QuizQuestionDataSchema): Promise<QuizQuestion> {
-        // Vérifications d'unicité si quizId et les autres champs sont modifiés
-        if (data.quizId) {
-            // 1. Vérification de l'unicité de la question dans le quiz
-            if (data.questionId) {
-                const existingQuestionInQuiz = await this.prisma.quizQuestion.findFirst({
-                    where: {
-                        quizId: data.quizId,
-                        questionId: data.questionId,
-                        NOT: { id } // Exclure l'enregistrement qu'on est en train de modifier
-                    }
-                });
-
-                if (existingQuestionInQuiz) {
-                    throw new Error(`La question ${data.questionId} est déjà présente dans le quiz ${data.quizId}`);
+        // Vérifications d'unicité si quizId et questionId sont modifiés
+        if (data.quizId && data.questionId) {
+            // Vérification de l'unicité de la question dans le quiz
+            const existingQuestionInQuiz = await this.prisma.quizQuestion.findFirst({
+                where: {
+                    quizId: data.quizId,
+                    questionId: data.questionId,
+                    NOT: { id } // Exclure l'enregistrement qu'on est en train de modifier
                 }
-            }
+            });
 
-            // 2. Vérification de l'unicité de la position dans le quiz
-            if (data.position) {
-                const existingPositionInQuiz = await this.prisma.quizQuestion.findFirst({
-                    where: {
-                        quizId: data.quizId,
-                        position: data.position,
-                        NOT: { id } // Exclure l'enregistrement qu'on est en train de modifier
-                    }
-                });
-
-                if (existingPositionInQuiz) {
-                    throw new Error(`Une autre question existe déjà à la position ${data.position} pour le quiz ${data.quizId}`);
-                }
+            if (existingQuestionInQuiz) {
+                throw new Error(`La question ${data.questionId} est déjà présente dans le quiz ${data.quizId}`);
             }
         }
 
@@ -143,7 +110,7 @@ export class QuizQuestionService {
     async findByQuiz(quizId: number): Promise<QuizQuestion[]> {
         return this.prisma.quizQuestion.findMany({
             where: { quizId },
-            orderBy: { position: 'asc' } // Tri par position dans le quiz
+            orderBy: { id: 'asc' } // Tri par ID (ordre d'insertion)
             // Pas d'include - retourne seulement les données de la table quiz_questions
         });
     }
@@ -158,7 +125,7 @@ export class QuizQuestionService {
             where: { questionId },
             orderBy: [
                 { quizId: 'asc' },    // Tri par quiz
-                { position: 'asc' }   // Puis par position
+                { id: 'asc' }         // Puis par ID (ordre d'insertion)
             ]
             // Pas d'include - retourne seulement les données de la table quiz_questions
         });
@@ -172,7 +139,7 @@ export class QuizQuestionService {
     async findQuestionsWithAnswersByQuiz(quizId: number) {
         return this.prisma.quizQuestion.findMany({
             where: { quizId },
-            orderBy: { position: 'asc' },
+            orderBy: { id: 'asc' },
             include: {
                 question: {
                     include: {
@@ -189,43 +156,14 @@ export class QuizQuestionService {
 
     /**
      * Mélanger l'ordre des questions d'un quiz
+     * NOTE: Le champ 'position' n'existe pas dans le schéma. Cette méthode retourne simplement les questions dans un ordre aléatoire.
      * @param quizId - Identifiant du quiz
-     * @returns Promise<QuizQuestion[]> - Questions avec nouvelles positions
+     * @returns Promise<QuizQuestion[]> - Questions mélangées
      */
     async shuffleQuizOrder(quizId: number) {
         // Récupérer toutes les questions du quiz
         const questions = await this.prisma.quizQuestion.findMany({
             where: { quizId },
-            orderBy: { position: 'asc' }
-        });
-
-        if (questions.length === 0) {
-            throw new Error("Aucune question trouvée pour ce quiz");
-        }
-
-        // Mélanger les positions
-        const shuffledPositions = Array.from({ length: questions.length }, (_, i) => i + 1);
-        
-        // Algorithme de Fisher-Yates pour mélanger
-        for (let i = shuffledPositions.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffledPositions[i], shuffledPositions[j]] = [shuffledPositions[j], shuffledPositions[i]];
-        }
-
-        // Mettre à jour les positions dans la base
-        const updatePromises = questions.map((question, index) =>
-            this.prisma.quizQuestion.update({
-                where: { id: question.id },
-                data: { position: shuffledPositions[index] }
-            })
-        );
-
-        await Promise.all(updatePromises);
-
-        // Retourner les questions avec leurs nouvelles positions
-        return this.prisma.quizQuestion.findMany({
-            where: { quizId },
-            orderBy: { position: 'asc' },
             include: {
                 question: {
                     select: {
@@ -235,6 +173,19 @@ export class QuizQuestionService {
                 }
             }
         });
+
+        if (questions.length === 0) {
+            throw new Error("Aucune question trouvée pour ce quiz");
+        }
+
+        // Mélanger l'ordre des questions (Fisher-Yates shuffle)
+        const shuffled = [...questions];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+
+        return shuffled;
     }
 
     /**
@@ -262,7 +213,7 @@ export class QuizQuestionService {
                     }
                 }
             },
-            orderBy: { position: 'asc' }
+            orderBy: { id: 'asc' }
         });
     }
 
@@ -277,7 +228,7 @@ export class QuizQuestionService {
             include: {
                 question: true
             },
-            orderBy: { position: 'asc' }
+            orderBy: { id: 'asc' }
         });
 
         const errors: string[] = [];
@@ -294,39 +245,14 @@ export class QuizQuestionService {
                 isValid: false,
                 errors,
                 warnings,
-                questionsCount: 0,
-                positionIssues: []
+                questionsCount: 0
             };
-        }
-
-        // Vérifier les positions
-        const positions = questions.map(q => q.position).filter(p => p !== null);
-        const expectedPositions = Array.from({ length: positions.length }, (_, i) => i + 1);
-        const positionIssues: string[] = [];
-
-        // Vérifier la continuité des positions
-        positions.forEach((pos, index) => {
-            if (pos !== expectedPositions[index]) {
-                positionIssues.push(`Position ${pos} inattendue à l'index ${index + 1}`);
-            }
-        });
-
-        // Vérifier les doublons de positions
-        const duplicatePositions = positions.filter((pos, index) => positions.indexOf(pos) !== index);
-        if (duplicatePositions.length > 0) {
-            errors.push(`Positions dupliquées: ${duplicatePositions.join(', ')}`);
         }
 
         // Vérifier les questions manquantes
         const missingQuestions = questions.filter(q => !q.question);
         if (missingQuestions.length > 0) {
             errors.push(`${missingQuestions.length} question(s) référencée(s) mais introuvable(s)`);
-        }
-
-        // Vérifier les positions nulles
-        const nullPositions = questions.filter(q => q.position === null);
-        if (nullPositions.length > 0) {
-            warnings.push(`${nullPositions.length} question(s) sans position définie`);
         }
 
         // Recommandations
@@ -343,7 +269,6 @@ export class QuizQuestionService {
             errors,
             warnings,
             questionsCount: questions.length,
-            positionIssues,
             quiz: {
                 id: quiz.id,
                 title: quiz.title,

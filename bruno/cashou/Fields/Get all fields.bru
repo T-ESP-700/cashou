@@ -5,11 +5,12 @@ meta {
 }
 
 get {
-  url: {{base_url}}/trpc/field.getAll
+  url: {{base_url}}/api/trpc/field.getAll
   body: none
   auth: inherit
 }
 
 settings {
   encodeUrl: true
+  timeout: 0
 }

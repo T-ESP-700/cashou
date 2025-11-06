@@ -3,7 +3,6 @@ import { createContext } from './trpc';
 import { trpcRouter } from './trpc/router';
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 import { cors } from './middleware/cors';
-import { appRouter } from "./trpc/routers/app.router.ts";
 
 const server = Bun.serve({
   port: 3000,
@@ -23,24 +22,13 @@ const server = Bun.serve({
       return new Response('OK', { headers: corsHeaders });
     }
 
-        // Route d'accueil - Retourne un message simple pour vérifier que le serveur fonctionne
+    // Route d'accueil - Retourne un message simple pour vérifier que le serveur fonctionne
     if (url.pathname === "/") {
         return new Response("Cashou backend", {
             status: 200,
             headers: {
                 "Content-Type": "text/plain",
             },
-        });
-    }
-
-    // Routage des API tRPC - Toutes les routes commençant par /trpc sont gérées par tRPC
-    // tRPC permet de créer des APIs type-safe entre frontend et backend
-    if (url.pathname.startsWith("/trpc")) {
-        return fetchRequestHandler({
-            endpoint: "/trpc", // Point d'entrée des routes tRPC
-            req,
-            router: appRouter, // Router principal contenant toutes les routes API
-            createContext: () => ({}), // Contexte vide pour l'instant (peut contenir auth, db, etc.)
         });
     }
 

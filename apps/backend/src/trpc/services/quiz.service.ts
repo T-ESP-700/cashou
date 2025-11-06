@@ -18,7 +18,7 @@ export class QuizService {
      */
     async findAll(): Promise<Quiz[]> {
         return this.prisma.quiz.findMany({
-            orderBy: { date: 'desc' }, // Tri par date décroissante (plus récent en premier)
+            orderBy: { createdAt: 'desc' }, // Tri par date de création décroissante (plus récent en premier)
             // Pas d'include - retourne seulement les données de la table quiz
         });
     }
@@ -74,7 +74,7 @@ export class QuizService {
     async findByLevel(levelId: number): Promise<Quiz[]> {
         return this.prisma.quiz.findMany({
             where: { levelId },
-            orderBy: { date: 'desc' }
+            orderBy: { createdAt: 'desc' }
             // Pas d'include - retourne seulement les données de la table quiz
         });
     }
@@ -87,7 +87,7 @@ export class QuizService {
     async findByType(type: "DAILY" | "MCQ"): Promise<Quiz[]> {
         return this.prisma.quiz.findMany({
             where: { type },
-            orderBy: { date: 'desc' }
+            orderBy: { createdAt: 'desc' }
             // Pas d'include - retourne seulement les données de la table quiz
         });
     }
@@ -99,14 +99,14 @@ export class QuizService {
     async getTodaysDailyQuiz(): Promise<Quiz | null> {
         const today = new Date();
         today.setHours(0, 0, 0, 0); // Début de journée
-        
+
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1); // Fin de journée
-        
+
         return this.prisma.quiz.findFirst({
             where: {
                 type: 'DAILY',
-                date: {
+                createdAt: {
                     gte: today,
                     lt: tomorrow
                 }
@@ -122,20 +122,20 @@ export class QuizService {
     async dailyQuizExists(date: string): Promise<boolean> {
         const targetDate = new Date(date);
         targetDate.setHours(0, 0, 0, 0); // Début de journée
-        
+
         const nextDay = new Date(targetDate);
         nextDay.setDate(nextDay.getDate() + 1); // Fin de journée
-        
+
         const quiz = await this.prisma.quiz.findFirst({
             where: {
                 type: 'DAILY',
-                date: {
+                createdAt: {
                     gte: targetDate,
                     lt: nextDay
                 }
             }
         });
-        
+
         return quiz !== null;
     }
 
@@ -147,7 +147,7 @@ export class QuizService {
     async getDailyHistory(limit: number = 30): Promise<Quiz[]> {
         return this.prisma.quiz.findMany({
             where: { type: 'DAILY' },
-            orderBy: { date: 'desc' },
+            orderBy: { createdAt: 'desc' },
             take: limit
             // Pas d'include - retourne seulement les données de la table quiz
         });

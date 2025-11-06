@@ -24,7 +24,7 @@ export class FieldService {
                 // Inclut les impacts du champ
                 impacts: true
             },
-            orderBy: { title: 'asc' }, // Tri par titre de champ croissant
+            orderBy: { name: 'asc' }, // Tri par nom de champ croissant
         });
     }
 
@@ -56,7 +56,7 @@ export class FieldService {
                 // market: true,  // Supprimé car redondant - on connaît déjà le marketId
                 impacts: true
             },
-            orderBy: { title: 'asc' }
+            orderBy: { name: 'asc' }
         });
     }
 

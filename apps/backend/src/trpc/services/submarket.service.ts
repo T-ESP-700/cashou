@@ -26,7 +26,7 @@ export class SubmarketService {
                 // Inclut les impacts du sous-marché
                 impacts: true
             },
-            orderBy: { name: 'asc' }, // Tri par nom de sous-marché croissant
+            orderBy: { title: 'asc' }, // Tri par titre de sous-marché croissant
         });
     }
 
@@ -60,7 +60,7 @@ export class SubmarketService {
                 assets: true,
                 impacts: true
             },
-            orderBy: { name: 'asc' }
+            orderBy: { title: 'asc' }
         });
     }
 
