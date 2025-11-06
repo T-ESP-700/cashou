@@ -32,11 +32,15 @@ model User {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   image          String?
-  
+
+  // Cashou game progression
+  points         Int?      @default(0)
+  levelId        Int?      @map("level_id")
+
   // Relations better-auth
   accounts       Account[]
   sessions       Session[]
-  
+
   // Relations Cashou
   gameInstances GameInstance[]
   gameUsers     GameUser[]
@@ -51,10 +55,10 @@ model User {
 // Tables better-auth
 model Account {
   id                String    @id @default(cuid())
-  userId            String    @map("user_id")  
-  accountId         String    
+  userId            String    @map("user_id")
+  accountId         String
   providerId        String
-  
+
   accessToken       String?   @db.Text
   refreshToken      String?   @db.Text
   idToken           String?   @db.Text
@@ -64,9 +68,9 @@ model Account {
   password          String?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
-  
+
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@map("account")
 }
 
@@ -78,10 +82,10 @@ model Session {
   updatedAt         DateTime  @updatedAt
   ipAddress         String?
   userAgent         String?
-  
+
   userId            String    @map("user_id")
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@map("session")
 }
 
@@ -92,7 +96,7 @@ model Verification {
   expiresAt         DateTime
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
-  
+
   @@map("verification")
 }
 

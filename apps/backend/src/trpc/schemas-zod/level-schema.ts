@@ -37,13 +37,13 @@ export type LevelIdSchema = z.infer<typeof levelIdSchema>;
 
 // Schéma pour les routes nécessitant uniquement un userId
 export const userIdSchema = z.object({
-    userId: z.number().min(1, "L'ID utilisateur doit être > 0")
+    userId: z.string().min(1, "L'ID utilisateur est requis")
 });
 export type UserIdSchema = z.infer<typeof userIdSchema>;
 
 // Schéma pour vérifier la disponibilité (déverrouillage) d'un niveau par un utilisateur
 export const availabilitySchema = z.object({
-    userId: z.number().min(1, "L'ID utilisateur doit être > 0"),
+    userId: z.string().min(1, "L'ID utilisateur est requis"),
     levelId: z.number().min(1, "L'ID du niveau doit être > 0"),
 });
 export type AvailabilitySchema = z.infer<typeof availabilitySchema>;

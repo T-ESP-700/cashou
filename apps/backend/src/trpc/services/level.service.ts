@@ -1,8 +1,12 @@
 // Service métier pour la gestion des niveaux du jeu
 // Couche d'abstraction entre les routers et la base de données
-import type { Level, Goal, PrismaClient } from "@prisma/client";
+// Updated: Added User progression fields (points, levelId)
+import type { Level, Goal, PrismaClient, User } from "@prisma/client";
 import defaultPrisma from "../../database.ts";
 import type {LevelCreateSchema, LevelDataSchema} from "../schemas-zod/level-schema.ts";
+
+// Extended User type with progression fields (temporary until Prisma regenerates)
+type UserWithProgression = User & { points?: number | null; levelId?: number | null };
 
 export class LevelService {
     private prisma: PrismaClient;
@@ -139,10 +143,10 @@ export class LevelService {
         });
         // Recréer les associations
         if (src.levelGoals?.length) {
-            await this.prisma.levelGoal.createMany({ data: src.levelGoals.map(g => ({ levelId: newLevel.id, goalId: g.goalId })) });
+            await this.prisma.levelGoal.createMany({ data: src.levelGoals.map((g: { goalId: number }) => ({ levelId: newLevel.id, goalId: g.goalId })) });
         }
         if (src.levelEvents?.length) {
-            await this.prisma.levelEvent.createMany({ data: src.levelEvents.map(e => ({ levelId: newLevel.id, eventId: e.eventId })) });
+            await this.prisma.levelEvent.createMany({ data: src.levelEvents.map((e: { eventId: number }) => ({ levelId: newLevel.id, eventId: e.eventId })) });
         }
         return this.getSummary(newLevel.id);
     }
@@ -150,8 +154,8 @@ export class LevelService {
     /**
      * Liste des niveaux avec progression utilisateur
      */
-    async getUserLevels(userId: number): Promise<Array<{ level: Level; stars: number; points: number; unlocked: boolean }>> {
-        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    async getUserLevels(userId: string): Promise<Array<{ level: Level; stars: number; points: number; unlocked: boolean }>> {
+        const user = await this.prisma.user.findUnique({ where: { id: userId } }) as UserWithProgression | null;
         if (!user) return [];
         const levels = await this.prisma.level.findMany({ orderBy: { number: 'asc' } });
         const result: Array<{ level: Level; stars: number; points: number; unlocked: boolean }> = [];
@@ -159,17 +163,17 @@ export class LevelService {
             const stars = await this.prisma.userQuiz.count({
                 where: { userId, isCorrect: true, quiz: { levelId: lvl.id } }
             });
-            const unlocked = (user.levelId >= lvl.id) || ((lvl.pointsRequired ?? 0) <= (user.points ?? 0));
+            const unlocked = ((user.levelId ?? 0) >= lvl.id) || ((lvl.pointsRequired ?? 0) <= (user.points ?? 0));
             result.push({ level: lvl, stars, points: user.points ?? 0, unlocked });
         }
         return result;
     }
 
     /**
-     * Savoir si l’utilisateur peut déverrouiller un niveau
+     * Savoir si l'utilisateur peut déverrouiller un niveau
      */
-    async getAvailability(userId: number, levelId: number) {
-        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    async getAvailability(userId: string, levelId: number) {
+        const user = await this.prisma.user.findUnique({ where: { id: userId } }) as UserWithProgression | null;
         const level = await this.prisma.level.findUnique({ where: { id: levelId } });
         if (!user || !level) return { canUnlock: false, reason: 'NOT_FOUND' } as const;
         const canUnlock = (level.pointsRequired ?? 0) <= (user.points ?? 0);

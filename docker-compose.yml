@@ -49,6 +49,11 @@ services:
     volumes:
       - ./apps/backend:/app/apps/backend
       - ./packages:/app/packages
+      # Protect node_modules from being overwritten by local mounts
+      - /app/packages/@cashou/auth/node_modules
+      - /app/packages/@cashou/db-app/node_modules
+      - /app/packages/@cashou/utils/node_modules
+      - /app/apps/backend/node_modules
 
   backoffice:
     build:
@@ -69,6 +74,11 @@ services:
     volumes:
       - ./apps/backoffice:/app/apps/backoffice
       - ./packages:/app/packages
+      # Protect node_modules from being overwritten by local mounts
+      - /app/packages/@cashou/auth/node_modules
+      - /app/packages/@cashou/db-app/node_modules
+      - /app/packages/@cashou/utils/node_modules
+      - /app/apps/backoffice/node_modules
 
 volumes:
   cashou-db-data:
