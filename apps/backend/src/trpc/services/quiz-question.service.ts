@@ -1,6 +1,6 @@
 // Service métier pour la gestion des quiz-questions du jeu
 // Couche d'abstraction entre les routers et la base de données
-import type { QuizQuestion, PrismaClient } from "@prisma/client";
+import type { QuizQuestion, Question, PrismaClient } from "@prisma/client";
 import defaultPrisma from "../../database.ts";
 import type {QuizQuestionCreateSchema, QuizQuestionDataSchema} from "../schemas-zod/quiz-question-schema.ts";
 
@@ -250,7 +250,7 @@ export class QuizQuestionService {
         }
 
         // Vérifier les questions manquantes
-        const missingQuestions = questions.filter(q => !q.question);
+        const missingQuestions = questions.filter((q: QuizQuestion & { question: Question | null }) => !q.question);
         if (missingQuestions.length > 0) {
             errors.push(`${missingQuestions.length} question(s) référencée(s) mais introuvable(s)`);
         }

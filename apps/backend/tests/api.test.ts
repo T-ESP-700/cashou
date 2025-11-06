@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
+import { startServer } from '../src/index';
 
 describe('API Routes Tests', () => {
   let server: any;
 
   beforeAll(async () => {
-    // Import the server dynamically to avoid conflicts
-    await import('../src/index');
-    server = null; // Server starts automatically on import
+    // Start the server explicitly
+    server = startServer();
   });
 
   afterAll(async () => {

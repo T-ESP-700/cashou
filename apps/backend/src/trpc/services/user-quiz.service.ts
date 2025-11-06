@@ -1,6 +1,6 @@
 // Service métier pour la gestion des participations aux quiz (UserQuiz)
 // Couche d'abstraction entre les routers et la base de données
-import type { UserQuiz, PrismaClient } from "@prisma/client";
+import type { UserQuiz, Quiz, PrismaClient } from "@prisma/client";
 import defaultPrisma from "../../database.ts";
 import type {UserQuizCreateSchema, UserQuizDataSchema} from "../schemas-zod/user-quiz-schema.ts";
 
@@ -447,14 +447,17 @@ export class UserQuizService {
             })
         ]);
 
+        // Type helper for quiz data with included quiz relation
+        type UserQuizWithQuiz = UserQuiz & { quiz: { type: string; levelId: number | null } | null };
+
         // Analyse par type de quiz
-        const dailyQuizzes = quizData.filter(uq => uq.quiz?.type === 'DAILY');
-        const mcqQuizzes = quizData.filter(uq => uq.quiz?.type === 'MCQ');
+        const dailyQuizzes = quizData.filter((uq: UserQuizWithQuiz) => uq.quiz?.type === 'DAILY');
+        const mcqQuizzes = quizData.filter((uq: UserQuizWithQuiz) => uq.quiz?.type === 'MCQ');
 
         // Calcul des temps moyens (approximatif basé sur la différence entre création et completion)
-        const completedQuizzes = quizData.filter(uq => uq.completedAt);
-        const averageCompletionTime = completedQuizzes.length > 0 
-            ? completedQuizzes.reduce((acc, uq) => {
+        const completedQuizzes = quizData.filter((uq: UserQuizWithQuiz) => uq.completedAt);
+        const averageCompletionTime = completedQuizzes.length > 0
+            ? completedQuizzes.reduce((acc: number, uq: UserQuizWithQuiz) => {
                 const timeMs = uq.completedAt!.getTime() - uq.createdAt.getTime();
                 return acc + timeMs;
             }, 0) / completedQuizzes.length
@@ -465,13 +468,13 @@ export class UserQuizService {
             period,
             dailyQuizStats: {
                 total: dailyQuizzes.length,
-                completed: dailyQuizzes.filter(uq => uq.completedAt).length,
-                correct: dailyQuizzes.filter(uq => uq.isCorrect).length
+                completed: dailyQuizzes.filter((uq: UserQuizWithQuiz) => uq.completedAt).length,
+                correct: dailyQuizzes.filter((uq: UserQuizWithQuiz) => uq.isCorrect).length
             },
             mcqQuizStats: {
                 total: mcqQuizzes.length,
-                completed: mcqQuizzes.filter(uq => uq.completedAt).length,
-                correct: mcqQuizzes.filter(uq => uq.isCorrect).length
+                completed: mcqQuizzes.filter((uq: UserQuizWithQuiz) => uq.completedAt).length,
+                correct: mcqQuizzes.filter((uq: UserQuizWithQuiz) => uq.isCorrect).length
             },
             averageCompletionTimeMinutes: Math.round(averageCompletionTime / (1000 * 60))
         };
@@ -523,13 +526,14 @@ export class UserQuizService {
         });
 
         // Grouper par utilisateur et calculer les statistiques
+        type UserQuizWithUser = UserQuiz & { user: { id: number; username: string | null; points: number; levelId: number | null } | null };
         const userStatsMap = new Map<number, {
-            user: any;
+            user: { id: number; username: string | null; points: number; levelId: number | null };
             totalQuizzes: number;
             correctQuizzes: number;
         }>();
 
-        completedQuizzes.forEach(quiz => {
+        completedQuizzes.forEach((quiz: UserQuizWithUser) => {
             if (!quiz.user) return;
             
             const userId = quiz.user.id;
@@ -589,12 +593,12 @@ export class UserQuizService {
 
         // Calculer les stats pour Daily Quiz
         const dailyTotal = dailyQuizzes.length;
-        const dailyCorrect = dailyQuizzes.filter(quiz => quiz.isCorrect).length;
+        const dailyCorrect = dailyQuizzes.filter((quiz: UserQuiz) => quiz.isCorrect).length;
         const dailySuccessRate = dailyTotal > 0 ? (dailyCorrect / dailyTotal) * 100 : 0;
 
         // Calculer les stats pour MCQ
         const mcqTotal = mcqQuizzes.length;
-        const mcqCorrect = mcqQuizzes.filter(quiz => quiz.isCorrect).length;
+        const mcqCorrect = mcqQuizzes.filter((quiz: UserQuiz) => quiz.isCorrect).length;
         const mcqSuccessRate = mcqTotal > 0 ? (mcqCorrect / mcqTotal) * 100 : 0;
 
         return {
@@ -756,8 +760,8 @@ export class UserQuizService {
         }
 
         // Grouper par jour
-        const quizzesByDay = new Map<string, any>();
-        dailyQuizzes.forEach(quiz => {
+        const quizzesByDay = new Map<string, UserQuiz>();
+        dailyQuizzes.forEach((quiz: UserQuiz) => {
             if (quiz.completedAt) {
                 const day = quiz.completedAt.toISOString().split('T')[0];
                 if (!quizzesByDay.has(day) || quiz.isCorrect) {

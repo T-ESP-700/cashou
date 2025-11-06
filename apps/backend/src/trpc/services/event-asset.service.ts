@@ -1,6 +1,7 @@
 // Service métier pour la gestion des événements d'actifs du jeu
 // Couche d'abstraction entre les routers et la base de données
 import type { EventAsset, PrismaClient } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import defaultPrisma from "../../database.ts";
 import type {EventAssetCreateSchema, EventAssetDataSchema} from "../schemas-zod/event-asset-schema.ts";
 
@@ -104,7 +105,7 @@ export class EventAssetService {
      * @returns Promise<EventAsset> - L'événement d'actif créé avec son ID généré
      */
     async create(data: EventAssetCreateSchema): Promise<EventAsset> {
-        return this.prisma.$transaction(async (tx) => {
+        return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             // 1. Créer l'event_asset
             const eventAsset = await tx.eventAsset.create({ data });
 
@@ -132,7 +133,7 @@ export class EventAssetService {
      * @returns Promise<EventAsset> - L'événement d'actif mis à jour
      */
     async update(id: number, data: EventAssetDataSchema): Promise<EventAsset> {
-        return this.prisma.$transaction(async (tx) => {
+        return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             // 1. Récupérer l'event_asset existant pour connaître l'assetId
             const existingEventAsset = await tx.eventAsset.findUnique({
                 where: { id },
@@ -198,7 +199,7 @@ export class EventAssetService {
      * @returns Promise<EventAsset> - L'événement d'actif supprimé (pour confirmation)
      */
     async delete(id: number): Promise<EventAsset> {
-        return this.prisma.$transaction(async (tx) => {
+        return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             // 1. Récupérer l'event_asset pour connaître l'assetId et la date
             const eventAsset = await tx.eventAsset.findUnique({
                 where: { id },

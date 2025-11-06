@@ -4,85 +4,104 @@ import { trpcRouter } from './trpc/router';
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 import { cors } from './middleware/cors';
 
-const server = Bun.serve({
-  port: 3000,
-  async fetch(req) {
-    const url = new URL(req.url);
+// Server instance variable to track if server is already running
+let serverInstance: ReturnType<typeof Bun.serve> | null = null;
 
-    // CORS headers for all requests
-    const corsHeaders = cors();
+// Start server only if not already started and not in test mode during imports
+function startServer() {
+  if (serverInstance) {
+    return serverInstance;
+  }
 
-    // Handle CORS preflight requests
-    if (req.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders });
-    }
+  serverInstance = Bun.serve({
+    port: 3000,
+    async fetch(req) {
+      const url = new URL(req.url);
 
-    // Health check endpoint
-    if (url.pathname === '/health') {
-      return new Response('OK', { headers: corsHeaders });
-    }
+      // CORS headers for all requests
+      const corsHeaders = cors();
 
-    // Route d'accueil - Retourne un message simple pour vérifier que le serveur fonctionne
-    if (url.pathname === "/") {
-        return new Response("Cashou backend", {
-            status: 200,
-            headers: {
-                "Content-Type": "text/plain",
-            },
-        });
-    }
+      // Handle CORS preflight requests
+      if (req.method === 'OPTIONS') {
+        return new Response(null, { headers: corsHeaders });
+      }
 
-    // Better-auth endpoints
-    if (url.pathname.startsWith('/api/auth')) {
-      try {
-        console.log('Auth request:', req.method, url.pathname);
+      // Health check endpoint
+      if (url.pathname === '/health') {
+        return new Response('OK', { headers: corsHeaders });
+      }
 
-        // Clone the request to read the body for debugging
-        const clonedReq = req.clone();
-        if (req.method === 'POST' && req.headers.get('content-type')?.includes('application/json')) {
-          try {
-            const body = await clonedReq.json();
-            console.log('Request body:', body);
-          } catch (e) {
-            console.error('Failed to parse request body:', e);
+      // Route d'accueil - Retourne un message simple pour vérifier que le serveur fonctionne
+      if (url.pathname === "/") {
+          return new Response("Cashou Backend API", {
+              status: 200,
+              headers: {
+                  "Content-Type": "text/plain",
+              },
+          });
+      }
+
+      // Better-auth endpoints
+      if (url.pathname.startsWith('/api/auth')) {
+        try {
+          console.log('Auth request:', req.method, url.pathname);
+
+          // Clone the request to read the body for debugging
+          const clonedReq = req.clone();
+          if (req.method === 'POST' && req.headers.get('content-type')?.includes('application/json')) {
+            try {
+              const body = await clonedReq.json();
+              console.log('Request body:', body);
+            } catch (e) {
+              console.error('Failed to parse request body:', e);
+            }
           }
+
+          const response = await auth.handler(req);
+
+          // Add CORS headers to auth response
+          Object.entries(corsHeaders).forEach(([key, value]) => {
+            response.headers.set(key, value);
+          });
+
+          return response;
+        } catch (error) {
+          console.error('Auth handler error:', error);
+          return new Response(JSON.stringify({ error: 'Authentication error' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
         }
+      }
 
-        const response = await auth.handler(req);
-
-        // Add CORS headers to auth response
-        Object.entries(corsHeaders).forEach(([key, value]) => {
-          response.headers.set(key, value);
-        });
-
-        return response;
-      } catch (error) {
-        console.error('Auth handler error:', error);
-        return new Response(JSON.stringify({ error: 'Authentication error' }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      // tRPC endpoints
+      if (url.pathname.startsWith('/api/trpc')) {
+        return fetchRequestHandler({
+          endpoint: '/api/trpc',
+          req,
+          router: trpcRouter,
+          createContext,
+          onError: ({ error, type: _type, path: _path, input: _input, ctx: _ctx, req: _req }) => {
+            console.error('tRPC Error:', error);
+          },
         });
       }
-    }
 
-    // tRPC endpoints
-    if (url.pathname.startsWith('/api/trpc')) {
-      return fetchRequestHandler({
-        endpoint: '/api/trpc',
-        req,
-        router: trpcRouter,
-        createContext,
-        onError: ({ error, type: _type, path: _path, input: _input, ctx: _ctx, req: _req }) => {
-          console.error('tRPC Error:', error);
-        },
-      });
-    }
+      // Default response
+      return new Response('Cashou Backend API', { headers: corsHeaders });
+    },
+  });
 
-    // Default response
-    return new Response('Cashou Backend API', { headers: corsHeaders });
-  },
-});
+  console.log(`Backend listening on http://localhost:${serverInstance.port}`);
+  console.log('Auth endpoints available at http://localhost:3000/api/auth/*');
+  console.log('tRPC endpoints available at http://localhost:3000/api/trpc/*');
 
-console.log(`Backend listening on http://localhost:${server.port}`);
-console.log('Auth endpoints available at http://localhost:3000/api/auth/*');
-console.log('tRPC endpoints available at http://localhost:3000/api/trpc/*');
+  return serverInstance;
+}
+
+// Only start server if this file is run directly (not imported by tests)
+if (import.meta.main) {
+  startServer();
+}
+
+export { startServer, serverInstance };

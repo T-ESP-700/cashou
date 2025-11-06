@@ -1,15 +1,15 @@
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { createTRPCProxyClient, httpBatchLink } from '@trpc/client';
 import type { AppRouter } from '../src/trpc/router';
+import { startServer } from '../src/index';
 
 describe('tRPC Routes Tests', () => {
   let client: ReturnType<typeof createTRPCProxyClient<AppRouter>>;
   let server: any;
 
   beforeAll(async () => {
-    // Import the server dynamically to avoid conflicts
-    await import('../src/index');
-    server = null; // Server starts automatically on import
+    // Start the server explicitly
+    server = startServer();
 
     // Create tRPC client
     client = createTRPCProxyClient<AppRouter>({

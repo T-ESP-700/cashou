@@ -1,0 +1,36 @@
+{
+  "findManyArgs": {
+    "include": {
+      "levelGoals": {
+        "include": {
+          "goal": true
+        }
+      },
+      "levelEvents": {
+        "include": {
+          "event": true
+        }
+      }
+    },
+    "orderBy": {
+      "number": "asc"
+    }
+  },
+  "findUniqueArgs": {
+    "where": {
+      "id": 7
+    },
+    "include": {
+      "levelGoals": {
+        "include": {
+          "goal": true
+        }
+      },
+      "levelEvents": {
+        "include": {
+          "event": true
+        }
+      }
+    }
+  }
+}

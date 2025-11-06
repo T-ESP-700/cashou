@@ -104,7 +104,7 @@ export class MarketService {
         });
 
         // Transformer les données pour inclure les compteurs
-        const items = markets.map(market => ({
+        const items = markets.map((market: Market & { _count: { assets: number; submarkets: number } }) => ({
             ...market,
             assets_count: market._count.assets,
             submarkets_count: market._count.submarkets
@@ -146,7 +146,7 @@ export class MarketService {
         });
 
         // Calculer un score de pertinence simple
-        return markets.map(market => ({
+        return markets.map((market: Market) => ({
             ...market,
             relevance: this.calculateRelevance(market, query)
         }));
@@ -178,7 +178,7 @@ export class MarketService {
         }
 
         // Transformer les sous-marchés pour inclure les compteurs
-        const submarkets = market.submarkets.map(submarket => ({
+        const submarkets = market.submarkets.map((submarket: Submarket & { _count: { assets: number } }) => ({
             ...submarket,
             assets_count: submarket._count.assets
         }));
