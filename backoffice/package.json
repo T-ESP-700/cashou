@@ -12,6 +12,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.90.7",
+    "@trpc/client": "^11.5.0",
+    "@trpc/react-query": "^11.7.1",
     "lucide-react": "^0.552.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': {
+      '/trpc': {
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
@@ -17,4 +17,3 @@ export default defineConfig({
     outDir: 'dist/public',
   },
 });
-

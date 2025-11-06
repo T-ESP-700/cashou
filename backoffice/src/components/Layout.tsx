@@ -11,6 +11,7 @@ import {
   Menu,
 } from 'lucide-react';
 import { useState } from 'react';
+import logoImage from '../Logo.png';
 
 const menuItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -37,9 +38,14 @@ export default function Layout() {
       >
         <div className="flex items-center justify-between p-6">
           {sidebarOpen ? (
-            <h1 className="text-2xl font-bold text-primary-600">Cashou</h1>
+            <div className="flex items-center space-x-3">
+              <img src={logoImage} alt="Cashou Logo" className="h-8 w-8" />
+              <h1 className="text-2xl font-bold" style={{ color: '#CDDC39' }}>Cashou</h1>
+            </div>
           ) : (
-            <h1 className="text-2xl font-bold text-primary-600">C</h1>
+            <div className="flex items-center justify-center">
+              <img src={logoImage} alt="Cashou Logo" className="h-8 w-8" />
+            </div>
           )}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -81,4 +87,3 @@ export default function Layout() {
     </div>
   );
 }
-

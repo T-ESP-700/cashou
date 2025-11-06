@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Users,
   Gamepad2,
@@ -11,38 +11,103 @@ import {
 } from 'lucide-react';
 import MetricCard from '../components/MetricCard.tsx';
 import ChartCard from '../components/ChartCard.tsx';
+import { trpc } from '../utils/trpc';
 
 const Dashboard: React.FC = () => {
-  // Données simulées - dans une vraie app, ces données viendraient de l'API
-  const metrics = {
-    totalUsers: 1247,
-    activeGameInstances: 89,
-    totalTransactions: 3456,
-    totalRevenue: 125430,
-    averageLevel: 3.2,
-    quizCompletionRate: 78,
-    averageSessionTime: 24,
-    totalLevels: 12
-  };
+  // Fetch all data from API
+  const { data: users, isLoading: usersLoading } = trpc.user.getAll.useQuery();
+  const { data: levels, isLoading: levelsLoading } = trpc.level.getAll.useQuery();
+  const { data: quizzes, isLoading: quizzesLoading } = trpc.quiz.getAll.useQuery();
+  const { data: userQuizzes, isLoading: userQuizzesLoading } = trpc.userQuiz.getAll.useQuery();
+  const { data: topUsers, isLoading: topUsersLoading } = trpc.user.getTopUsers.useQuery({ limit: 4 });
 
-  const recentActivity = [
-    { id: 1, user: 'Alice', action: 'Nouveau niveau débloqué', time: '2 min' },
-    { id: 2, user: 'Bob', action: 'Transaction réalisée', time: '5 min' },
-    { id: 3, user: 'Charlie', action: 'Quiz complété', time: '8 min' },
-    { id: 4, user: 'Diana', action: 'Nouvelle instance créée', time: '12 min' },
-  ];
+  // Calculate metrics from data
+  const metrics = useMemo(() => {
+    const totalUsers = users?.length || 0;
+    const totalLevels = levels?.length || 0;
+    const totalQuizzes = quizzes?.length || 0;
+    const totalUserQuizzes = userQuizzes?.length || 0;
 
-  const topPerformers = [
-    { rank: 1, username: 'Alice', level: 5, points: 1250 },
-    { rank: 2, username: 'Bob', level: 4, points: 980 },
-    { rank: 3, username: 'Charlie', level: 4, points: 920 },
-    { rank: 4, username: 'Diana', level: 3, points: 850 },
-  ];
+    // Calculate average level
+    const usersWithLevels = users?.filter(u => u.levelId) || [];
+    const averageLevel = usersWithLevels.length > 0
+      ? usersWithLevels.reduce((sum, u) => sum + (u.levelId || 0), 0) / usersWithLevels.length
+      : 0;
 
+    // Calculate quiz completion rate
+    const completedQuizzes = userQuizzes?.filter(uq => uq.isCorrect !== null) || [];
+    const quizCompletionRate = totalQuizzes > 0
+      ? Math.round((completedQuizzes.length / totalQuizzes) * 100)
+      : 0;
 
+    // Calculate average points
+    const usersWithPoints = users?.filter(u => u.points) || [];
+    const averagePoints = usersWithPoints.length > 0
+      ? usersWithPoints.reduce((sum, u) => sum + (u.points || 0), 0) / usersWithPoints.length
+      : 0;
 
+    // Count active users (users with recent activity in last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const activeUsers = users?.filter(u =>
+      u.lastActivity && new Date(u.lastActivity) >= sevenDaysAgo
+    ).length || 0;
 
+    return {
+      totalUsers,
+      activeGameInstances: activeUsers, // Using active users as proxy
+      totalTransactions: totalUserQuizzes, // Using quiz completions as proxy
+      totalRevenue: Math.round(averagePoints * totalUsers * 0.1), // Estimated revenue
+      averageLevel: Math.round(averageLevel * 10) / 10,
+      quizCompletionRate,
+      averageSessionTime: 24, // This would need a specific endpoint
+      totalLevels
+    };
+  }, [users, levels, quizzes, userQuizzes]);
 
+  // Format recent activity from user quizzes
+  const recentActivity = useMemo(() => {
+    if (!userQuizzes || userQuizzes.length === 0) return [];
+
+    const recent = userQuizzes
+      .filter(uq => uq.completedAt)
+      .sort((a, b) => {
+        const dateA = new Date(a.completedAt!).getTime();
+        const dateB = new Date(b.completedAt!).getTime();
+        return dateB - dateA;
+      })
+      .slice(0, 4)
+      .map((uq, index) => {
+        const user = users?.find(u => u.id === uq.userId);
+        const completedAt = uq.completedAt ? new Date(uq.completedAt) : new Date();
+        const minutesAgo = Math.floor((Date.now() - completedAt.getTime()) / 60000);
+
+        return {
+          id: uq.id || index,
+          user: user?.username || 'Utilisateur',
+          action: uq.isCorrect ? 'Quiz complété avec succès' : 'Quiz complété',
+          time: minutesAgo < 60
+            ? `${minutesAgo} min`
+            : `${Math.floor(minutesAgo / 60)}h`
+        };
+      });
+
+    return recent;
+  }, [userQuizzes, users]);
+
+  // Format top performers from top users
+  const topPerformers = useMemo(() => {
+    if (!topUsers || topUsers.length === 0) return [];
+
+    return topUsers.slice(0, 4).map((user, index) => ({
+      rank: index + 1,
+      username: user.username || 'N/A',
+      level: user.levelId || 0,
+      points: user.points || 0
+    }));
+  }, [topUsers]);
+
+  const isLoading = usersLoading || levelsLoading || quizzesLoading || userQuizzesLoading || topUsersLoading;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -55,147 +120,167 @@ const Dashboard: React.FC = () => {
           </p>
         </div>
 
+        {/* Loading state */}
+        {isLoading && (
+          <div className="bg-white rounded-lg shadow-md p-8 text-center mb-8">
+            <p className="text-gray-600">Chargement des données...</p>
+          </div>
+        )}
+
         {/* Métriques principales */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <MetricCard
-            title="Utilisateurs Totaux"
-            value={metrics.totalUsers.toLocaleString()}
-            icon={Users}
-            change={{ value: 12, isPositive: true }}
-            description="Joueurs inscrits"
-          />
-          <MetricCard
-            title="Instances Actives"
-            value={metrics.activeGameInstances}
-            icon={Gamepad2}
-            change={{ value: 8, isPositive: true }}
-            description="Parties en cours"
-          />
-          <MetricCard
-            title="Transactions Totales"
-            value={metrics.totalTransactions.toLocaleString()}
-            icon={TrendingUp}
-            change={{ value: 15, isPositive: true }}
-            description="Opérations financières"
-          />
-          <MetricCard
-            title="Revenus Totaux"
-            value={`${metrics.totalRevenue.toLocaleString()} €`}
-            icon={DollarSign}
-            change={{ value: 23, isPositive: true }}
-            description="Chiffre d'affaires"
-          />
-        </div>
+        {!isLoading && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <MetricCard
+                title="Utilisateurs Totaux"
+                value={metrics.totalUsers.toLocaleString()}
+                icon={Users}
+                change={{ value: 12, isPositive: true }}
+                description="Joueurs inscrits"
+              />
+              <MetricCard
+                title="Utilisateurs Actifs"
+                value={metrics.activeGameInstances}
+                icon={Gamepad2}
+                change={{ value: 8, isPositive: true }}
+                description="Actifs cette semaine"
+              />
+              <MetricCard
+                title="Quiz Complétés"
+                value={metrics.totalTransactions.toLocaleString()}
+                icon={TrendingUp}
+                change={{ value: 15, isPositive: true }}
+                description="Total des quiz"
+              />
+              <MetricCard
+                title="Points Totaux"
+                value={`${metrics.totalRevenue.toLocaleString()}`}
+                icon={DollarSign}
+                change={{ value: 23, isPositive: true }}
+                description="Points accumulés"
+              />
+            </div>
 
-        {/* Métriques secondaires */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <MetricCard
-            title="Niveau Moyen"
-            value={metrics.averageLevel}
-            icon={Trophy}
-            change={{ value: 5, isPositive: true }}
-            description="Progression moyenne"
-          />
-          <MetricCard
-            title="Taux de Réussite Quiz"
-            value={`${metrics.quizCompletionRate}%`}
-            icon={Target}
-            change={{ value: 3, isPositive: true }}
-            description="Quiz complétés"
-          />
-          <MetricCard
-            title="Temps de Session Moyen"
-            value={`${metrics.averageSessionTime} min`}
-            icon={Clock}
-            change={{ value: -2, isPositive: false }}
-            description="Engagement utilisateur"
-          />
-          <MetricCard
-            title="Niveaux Disponibles"
-            value={metrics.totalLevels}
-            icon={BarChart3}
-            description="Contenu débloqué"
-          />
-        </div>
+            {/* Métriques secondaires */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <MetricCard
+                title="Niveau Moyen"
+                value={metrics.averageLevel}
+                icon={Trophy}
+                change={{ value: 5, isPositive: true }}
+                description="Progression moyenne"
+              />
+              <MetricCard
+                title="Taux de Réussite Quiz"
+                value={`${metrics.quizCompletionRate}%`}
+                icon={Target}
+                change={{ value: 3, isPositive: true }}
+                description="Quiz complétés"
+              />
+              <MetricCard
+                title="Temps de Session Moyen"
+                value={`${metrics.averageSessionTime} min`}
+                icon={Clock}
+                change={{ value: -2, isPositive: false }}
+                description="Engagement utilisateur"
+              />
+              <MetricCard
+                title="Niveaux Disponibles"
+                value={metrics.totalLevels}
+                icon={BarChart3}
+                description="Contenu débloqué"
+              />
+            </div>
 
-        {/* Contenu principal */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Activité récente */}
-          <ChartCard title="Activité Récente">
-            <div className="space-y-4">
-              {recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-900">{activity.user}</p>
-                    <p className="text-sm text-gray-600">{activity.action}</p>
+            {/* Contenu principal */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Activité récente */}
+              <ChartCard title="Activité Récente">
+                {recentActivity.length > 0 ? (
+                  <div className="space-y-4">
+                    {recentActivity.map((activity) => (
+                      <div key={activity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="font-medium text-gray-900">{activity.user}</p>
+                          <p className="text-sm text-gray-600">{activity.action}</p>
+                        </div>
+                        <span className="text-sm text-gray-500">{activity.time}</span>
+                      </div>
+                    ))}
                   </div>
-                  <span className="text-sm text-gray-500">{activity.time}</span>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>Aucune activité récente</p>
+                  </div>
+                )}
+              </ChartCard>
+
+              {/* Top Performers */}
+              <ChartCard title="Top Performers">
+                {topPerformers.length > 0 ? (
+                  <div className="space-y-4">
+                    {topPerformers.map((performer) => (
+                      <div key={performer.rank} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                            performer.rank === 1 ? 'bg-yellow-100 text-yellow-800' :
+                            performer.rank === 2 ? 'bg-gray-100 text-gray-800' :
+                            performer.rank === 3 ? 'bg-orange-100 text-orange-800' :
+                            'bg-blue-100 text-blue-800'
+                          }`}>
+                            {performer.rank}
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">{performer.username}</p>
+                            <p className="text-sm text-gray-600">Niveau {performer.level}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium text-gray-900">{performer.points} pts</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>Aucun performer disponible</p>
+                  </div>
+                )}
+              </ChartCard>
+            </div>
+
+            {/* Graphiques de performance */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+              <ChartCard title="Répartition par Niveau">
+                <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
+                  <div className="text-center">
+                    <Trophy className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-500">Graphique de répartition</p>
+                    <p className="text-sm text-gray-400">
+                      {users && users.length > 0
+                        ? `${users.length} utilisateurs répartis sur ${metrics.totalLevels} niveaux`
+                        : 'Aucune donnée disponible'}
+                    </p>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </ChartCard>
+              </ChartCard>
 
-
-
-          {/* Top Performers */}
-          <ChartCard title="Top Performers">
-            <div className="space-y-4">
-              {topPerformers.map((performer) => (
-                <div key={performer.rank} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                      performer.rank === 1 ? 'bg-yellow-100 text-yellow-800' :
-                      performer.rank === 2 ? 'bg-gray-100 text-gray-800' :
-                      performer.rank === 3 ? 'bg-orange-100 text-orange-800' :
-                      'bg-blue-100 text-blue-800'
-                    }`}>
-                      {performer.rank}
+              <ChartCard title="Statistiques Quiz">
+                <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
+                  <div className="text-center">
+                    <Target className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-500">Statistiques des quiz</p>
+                    <div className="mt-4 space-y-2 text-sm">
+                      <p className="text-gray-600">Total quiz: {metrics.totalTransactions}</p>
+                      <p className="text-gray-600">Taux de réussite: {metrics.quizCompletionRate}%</p>
+                      <p className="text-gray-600">Quiz disponibles: {quizzes?.length || 0}</p>
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{performer.username}</p>
-                      <p className="text-sm text-gray-600">Niveau {performer.level}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium text-gray-900">{performer.points} pts</p>
                   </div>
                 </div>
-              ))}
+              </ChartCard>
             </div>
-          </ChartCard>
-
-        </div>
-
-        {/* Graphiques de performance */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-          <ChartCard title="Évolution des Utilisateurs (7 derniers jours)">
-            <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-              <div className="text-center">
-                <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                <p className="text-gray-500">Graphique d'évolution</p>
-                <p className="text-sm text-gray-400">Données simulées</p>
-
-
-
-
-
-
-
-
-              </div>
-            </div>
-          </ChartCard>
-
-          <ChartCard title="Répartition par Niveau">
-            <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-              <div className="text-center">
-                <Trophy className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                <p className="text-gray-500">Graphique de répartition</p>
-                <p className="text-sm text-gray-400">Données simulées</p>
-              </div>
-            </div>
-          </ChartCard>
-        </div>
+          </>
+        )}
       </div>
     </div>
   );
