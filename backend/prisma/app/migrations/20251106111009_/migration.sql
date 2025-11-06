@@ -1,11 +1,11 @@
 -- CreateEnum
-CREATE TYPE "QuizType" AS ENUM ('daily', 'MCQ');
+CREATE TYPE "public"."QuizType" AS ENUM ('Daily', 'MCQ');
 
 -- CreateEnum
-CREATE TYPE "NotificationType" AS ENUM ('quiz', 'news', 'reminder', 'Profile');
+CREATE TYPE "public"."NotificationType" AS ENUM ('Quiz', 'News', 'Reminder', 'Profile');
 
 -- CreateTable
-CREATE TABLE "levels" (
+CREATE TABLE "public"."levels" (
     "id" SERIAL NOT NULL,
     "title" TEXT,
     "number" INTEGER,
@@ -21,7 +21,7 @@ CREATE TABLE "levels" (
 );
 
 -- CreateTable
-CREATE TABLE "events" (
+CREATE TABLE "public"."events" (
     "id" SERIAL NOT NULL,
     "title" TEXT,
     "description" TEXT,
@@ -33,7 +33,7 @@ CREATE TABLE "events" (
 );
 
 -- CreateTable
-CREATE TABLE "goals" (
+CREATE TABLE "public"."goals" (
     "id" SERIAL NOT NULL,
     "title" TEXT,
     "description" TEXT,
@@ -44,7 +44,7 @@ CREATE TABLE "goals" (
 );
 
 -- CreateTable
-CREATE TABLE "level_goals" (
+CREATE TABLE "public"."level_goals" (
     "id" SERIAL NOT NULL,
     "level_id" INTEGER NOT NULL,
     "goal_id" INTEGER NOT NULL,
@@ -55,7 +55,7 @@ CREATE TABLE "level_goals" (
 );
 
 -- CreateTable
-CREATE TABLE "level_events" (
+CREATE TABLE "public"."level_events" (
     "id" SERIAL NOT NULL,
     "level_id" INTEGER NOT NULL,
     "event_id" INTEGER NOT NULL,
@@ -66,7 +66,7 @@ CREATE TABLE "level_events" (
 );
 
 -- CreateTable
-CREATE TABLE "users" (
+CREATE TABLE "public"."users" (
     "id" SERIAL NOT NULL,
     "username" TEXT,
     "discriminator" TEXT,
@@ -83,7 +83,7 @@ CREATE TABLE "users" (
 );
 
 -- CreateTable
-CREATE TABLE "wallets" (
+CREATE TABLE "public"."wallets" (
     "id" SERIAL NOT NULL,
     "user_id" INTEGER,
     "amount" DECIMAL(65,30),
@@ -95,7 +95,7 @@ CREATE TABLE "wallets" (
 );
 
 -- CreateTable
-CREATE TABLE "game_instances" (
+CREATE TABLE "public"."game_instances" (
     "id" SERIAL NOT NULL,
     "type" TEXT,
     "user_id" INTEGER,
@@ -111,7 +111,7 @@ CREATE TABLE "game_instances" (
 );
 
 -- CreateTable
-CREATE TABLE "game_users" (
+CREATE TABLE "public"."game_users" (
     "id" SERIAL NOT NULL,
     "user_id" INTEGER,
     "game_instance_id" INTEGER,
@@ -125,7 +125,7 @@ CREATE TABLE "game_users" (
 );
 
 -- CreateTable
-CREATE TABLE "assets" (
+CREATE TABLE "public"."assets" (
     "id" SERIAL NOT NULL,
     "title" TEXT,
     "symbol" TEXT,
@@ -140,7 +140,7 @@ CREATE TABLE "assets" (
 );
 
 -- CreateTable
-CREATE TABLE "asset_histories" (
+CREATE TABLE "public"."asset_histories" (
     "id" SERIAL NOT NULL,
     "asset_id" INTEGER,
     "timestamp" TIMESTAMP(3),
@@ -153,7 +153,7 @@ CREATE TABLE "asset_histories" (
 );
 
 -- CreateTable
-CREATE TABLE "event_assets" (
+CREATE TABLE "public"."event_assets" (
     "id" SERIAL NOT NULL,
     "asset_id" INTEGER,
     "event_id" INTEGER,
@@ -167,7 +167,7 @@ CREATE TABLE "event_assets" (
 );
 
 -- CreateTable
-CREATE TABLE "impacts" (
+CREATE TABLE "public"."impacts" (
     "id" SERIAL NOT NULL,
     "event_id" INTEGER,
     "field_id" INTEGER,
@@ -180,7 +180,7 @@ CREATE TABLE "impacts" (
 );
 
 -- CreateTable
-CREATE TABLE "fields" (
+CREATE TABLE "public"."fields" (
     "id" SERIAL NOT NULL,
     "market_id" INTEGER,
     "title" TEXT,
@@ -191,7 +191,7 @@ CREATE TABLE "fields" (
 );
 
 -- CreateTable
-CREATE TABLE "markets" (
+CREATE TABLE "public"."markets" (
     "id" SERIAL NOT NULL,
     "name" TEXT,
     "description" TEXT,
@@ -204,7 +204,7 @@ CREATE TABLE "markets" (
 );
 
 -- CreateTable
-CREATE TABLE "submarkets" (
+CREATE TABLE "public"."submarkets" (
     "id" SERIAL NOT NULL,
     "name" TEXT,
     "description" TEXT,
@@ -218,7 +218,7 @@ CREATE TABLE "submarkets" (
 );
 
 -- CreateTable
-CREATE TABLE "transactions" (
+CREATE TABLE "public"."transactions" (
     "id" SERIAL NOT NULL,
     "wallet_id" INTEGER,
     "asset_id" INTEGER,
@@ -236,9 +236,9 @@ CREATE TABLE "transactions" (
 );
 
 -- CreateTable
-CREATE TABLE "quiz" (
+CREATE TABLE "public"."quiz" (
     "id" SERIAL NOT NULL,
-    "type" "QuizType",
+    "type" "public"."QuizType",
     "title" TEXT,
     "date" TIMESTAMP(3),
     "level_id" INTEGER,
@@ -250,7 +250,7 @@ CREATE TABLE "quiz" (
 );
 
 -- CreateTable
-CREATE TABLE "user_quiz" (
+CREATE TABLE "public"."user_quiz" (
     "id" SERIAL NOT NULL,
     "quiz_id" INTEGER,
     "user_id" INTEGER,
@@ -263,7 +263,7 @@ CREATE TABLE "user_quiz" (
 );
 
 -- CreateTable
-CREATE TABLE "questions" (
+CREATE TABLE "public"."questions" (
     "id" SERIAL NOT NULL,
     "text" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -273,7 +273,7 @@ CREATE TABLE "questions" (
 );
 
 -- CreateTable
-CREATE TABLE "answers" (
+CREATE TABLE "public"."answers" (
     "id" SERIAL NOT NULL,
     "question_id" INTEGER,
     "text" TEXT,
@@ -285,7 +285,7 @@ CREATE TABLE "answers" (
 );
 
 -- CreateTable
-CREATE TABLE "user_answers" (
+CREATE TABLE "public"."user_answers" (
     "id" SERIAL NOT NULL,
     "user_id" INTEGER,
     "question_id" INTEGER,
@@ -298,7 +298,7 @@ CREATE TABLE "user_answers" (
 );
 
 -- CreateTable
-CREATE TABLE "quiz_questions" (
+CREATE TABLE "public"."quiz_questions" (
     "id" SERIAL NOT NULL,
     "quiz_id" INTEGER,
     "question_id" INTEGER,
@@ -310,12 +310,12 @@ CREATE TABLE "quiz_questions" (
 );
 
 -- CreateTable
-CREATE TABLE "notifications" (
+CREATE TABLE "public"."notifications" (
     "id" SERIAL NOT NULL,
     "user_id" INTEGER,
     "title" TEXT,
     "message" TEXT,
-    "type" "NotificationType",
+    "type" "public"."NotificationType",
     "type_id" INTEGER,
     "is_opened" BOOLEAN,
     "sent_at" TIMESTAMP(3),
@@ -326,100 +326,100 @@ CREATE TABLE "notifications" (
 );
 
 -- AddForeignKey
-ALTER TABLE "level_goals" ADD CONSTRAINT "level_goals_level_id_fkey" FOREIGN KEY ("level_id") REFERENCES "levels"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."level_goals" ADD CONSTRAINT "level_goals_level_id_fkey" FOREIGN KEY ("level_id") REFERENCES "public"."levels"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "level_goals" ADD CONSTRAINT "level_goals_goal_id_fkey" FOREIGN KEY ("goal_id") REFERENCES "goals"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."level_goals" ADD CONSTRAINT "level_goals_goal_id_fkey" FOREIGN KEY ("goal_id") REFERENCES "public"."goals"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "level_events" ADD CONSTRAINT "level_events_level_id_fkey" FOREIGN KEY ("level_id") REFERENCES "levels"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."level_events" ADD CONSTRAINT "level_events_level_id_fkey" FOREIGN KEY ("level_id") REFERENCES "public"."levels"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "level_events" ADD CONSTRAINT "level_events_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "events"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."level_events" ADD CONSTRAINT "level_events_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "users" ADD CONSTRAINT "users_level_id_fkey" FOREIGN KEY ("level_id") REFERENCES "levels"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."users" ADD CONSTRAINT "users_level_id_fkey" FOREIGN KEY ("level_id") REFERENCES "public"."levels"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "wallets" ADD CONSTRAINT "wallets_game_instance_id_fkey" FOREIGN KEY ("game_instance_id") REFERENCES "game_instances"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."wallets" ADD CONSTRAINT "wallets_game_instance_id_fkey" FOREIGN KEY ("game_instance_id") REFERENCES "public"."game_instances"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "game_instances" ADD CONSTRAINT "game_instances_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."game_instances" ADD CONSTRAINT "game_instances_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "game_instances" ADD CONSTRAINT "game_instances_level_id_fkey" FOREIGN KEY ("level_id") REFERENCES "levels"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."game_instances" ADD CONSTRAINT "game_instances_level_id_fkey" FOREIGN KEY ("level_id") REFERENCES "public"."levels"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "game_users" ADD CONSTRAINT "game_users_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."game_users" ADD CONSTRAINT "game_users_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "game_users" ADD CONSTRAINT "game_users_game_instance_id_fkey" FOREIGN KEY ("game_instance_id") REFERENCES "game_instances"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."game_users" ADD CONSTRAINT "game_users_game_instance_id_fkey" FOREIGN KEY ("game_instance_id") REFERENCES "public"."game_instances"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "assets" ADD CONSTRAINT "assets_market_id_fkey" FOREIGN KEY ("market_id") REFERENCES "markets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."assets" ADD CONSTRAINT "assets_market_id_fkey" FOREIGN KEY ("market_id") REFERENCES "public"."markets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "assets" ADD CONSTRAINT "assets_submarket_id_fkey" FOREIGN KEY ("submarket_id") REFERENCES "submarkets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."assets" ADD CONSTRAINT "assets_submarket_id_fkey" FOREIGN KEY ("submarket_id") REFERENCES "public"."submarkets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "asset_histories" ADD CONSTRAINT "asset_histories_asset_id_fkey" FOREIGN KEY ("asset_id") REFERENCES "assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."asset_histories" ADD CONSTRAINT "asset_histories_asset_id_fkey" FOREIGN KEY ("asset_id") REFERENCES "public"."assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "event_assets" ADD CONSTRAINT "event_assets_asset_id_fkey" FOREIGN KEY ("asset_id") REFERENCES "assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."event_assets" ADD CONSTRAINT "event_assets_asset_id_fkey" FOREIGN KEY ("asset_id") REFERENCES "public"."assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "event_assets" ADD CONSTRAINT "event_assets_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "events"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."event_assets" ADD CONSTRAINT "event_assets_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "impacts" ADD CONSTRAINT "impacts_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "events"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."impacts" ADD CONSTRAINT "impacts_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "impacts" ADD CONSTRAINT "impacts_field_id_fkey" FOREIGN KEY ("field_id") REFERENCES "fields"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."impacts" ADD CONSTRAINT "impacts_field_id_fkey" FOREIGN KEY ("field_id") REFERENCES "public"."fields"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "impacts" ADD CONSTRAINT "impacts_submarket_id_fkey" FOREIGN KEY ("submarket_id") REFERENCES "submarkets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."impacts" ADD CONSTRAINT "impacts_submarket_id_fkey" FOREIGN KEY ("submarket_id") REFERENCES "public"."submarkets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "fields" ADD CONSTRAINT "fields_market_id_fkey" FOREIGN KEY ("market_id") REFERENCES "markets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."fields" ADD CONSTRAINT "fields_market_id_fkey" FOREIGN KEY ("market_id") REFERENCES "public"."markets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "submarkets" ADD CONSTRAINT "submarkets_market_id_fkey" FOREIGN KEY ("market_id") REFERENCES "markets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."submarkets" ADD CONSTRAINT "submarkets_market_id_fkey" FOREIGN KEY ("market_id") REFERENCES "public"."markets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "transactions" ADD CONSTRAINT "transactions_wallet_id_fkey" FOREIGN KEY ("wallet_id") REFERENCES "wallets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."transactions" ADD CONSTRAINT "transactions_wallet_id_fkey" FOREIGN KEY ("wallet_id") REFERENCES "public"."wallets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "transactions" ADD CONSTRAINT "transactions_asset_id_fkey" FOREIGN KEY ("asset_id") REFERENCES "assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."transactions" ADD CONSTRAINT "transactions_asset_id_fkey" FOREIGN KEY ("asset_id") REFERENCES "public"."assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "transactions" ADD CONSTRAINT "transactions_game_instance_id_fkey" FOREIGN KEY ("game_instance_id") REFERENCES "game_instances"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."transactions" ADD CONSTRAINT "transactions_game_instance_id_fkey" FOREIGN KEY ("game_instance_id") REFERENCES "public"."game_instances"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "quiz" ADD CONSTRAINT "quiz_level_id_fkey" FOREIGN KEY ("level_id") REFERENCES "levels"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."quiz" ADD CONSTRAINT "quiz_level_id_fkey" FOREIGN KEY ("level_id") REFERENCES "public"."levels"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "user_quiz" ADD CONSTRAINT "user_quiz_quiz_id_fkey" FOREIGN KEY ("quiz_id") REFERENCES "quiz"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."user_quiz" ADD CONSTRAINT "user_quiz_quiz_id_fkey" FOREIGN KEY ("quiz_id") REFERENCES "public"."quiz"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "user_quiz" ADD CONSTRAINT "user_quiz_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."user_quiz" ADD CONSTRAINT "user_quiz_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "answers" ADD CONSTRAINT "answers_question_id_fkey" FOREIGN KEY ("question_id") REFERENCES "questions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."answers" ADD CONSTRAINT "answers_question_id_fkey" FOREIGN KEY ("question_id") REFERENCES "public"."questions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "user_answers" ADD CONSTRAINT "user_answers_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."user_answers" ADD CONSTRAINT "user_answers_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "user_answers" ADD CONSTRAINT "user_answers_question_id_fkey" FOREIGN KEY ("question_id") REFERENCES "questions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."user_answers" ADD CONSTRAINT "user_answers_question_id_fkey" FOREIGN KEY ("question_id") REFERENCES "public"."questions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "user_answers" ADD CONSTRAINT "user_answers_answer_id_fkey" FOREIGN KEY ("answer_id") REFERENCES "answers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."user_answers" ADD CONSTRAINT "user_answers_answer_id_fkey" FOREIGN KEY ("answer_id") REFERENCES "public"."answers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "quiz_questions" ADD CONSTRAINT "quiz_questions_quiz_id_fkey" FOREIGN KEY ("quiz_id") REFERENCES "quiz"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."quiz_questions" ADD CONSTRAINT "quiz_questions_quiz_id_fkey" FOREIGN KEY ("quiz_id") REFERENCES "public"."quiz"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "quiz_questions" ADD CONSTRAINT "quiz_questions_question_id_fkey" FOREIGN KEY ("question_id") REFERENCES "questions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."quiz_questions" ADD CONSTRAINT "quiz_questions_question_id_fkey" FOREIGN KEY ("question_id") REFERENCES "public"."questions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."notifications" ADD CONSTRAINT "notifications_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
