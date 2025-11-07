@@ -1,6 +1,3 @@
-// Service métier pour la gestion des transactions du jeu
-// Couche d'abstraction entre les routers et la base de données
-
 import type { Transaction, PrismaClient } from "@prisma/client";
 import defaultPrisma from "../database.ts";
 import type {
@@ -11,7 +8,6 @@ import type {
 export class TransactionService {
   private prisma: PrismaClient;
 
-  // Injection de Prisma (utile pour les tests)
   constructor(prismaClient?: PrismaClient) {
     this.prisma = prismaClient || defaultPrisma;
   }

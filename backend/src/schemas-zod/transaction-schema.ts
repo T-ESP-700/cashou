@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const transactionTemplateSchema = z.object({
+export const transactionDataSchema = z.object({
   walletId: z.number().int().nullable().optional(),
   assetId: z.number().int().nullable().optional(),
   gameInstanceId: z.number().int().nullable().optional(),
@@ -12,8 +12,8 @@ export const transactionTemplateSchema = z.object({
   source: z.string().nullable().optional(),
 });
 
-export const transactionCreateSchema = transactionTemplateSchema;
-export const transactionUpdateSchema = transactionTemplateSchema.partial();
+export const transactionCreateSchema = transactionDataSchema;
+export const transactionUpdateSchema = transactionDataSchema.partial();
 
 export type TransactionCreateSchema = z.infer<typeof transactionCreateSchema>;
 export type TransactionUpdateSchema = z.infer<typeof transactionUpdateSchema>;

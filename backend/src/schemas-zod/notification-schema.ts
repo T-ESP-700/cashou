@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const notificationSchema = z.object({
+export const notificationDataSchema = z.object({
   id: z.number().int().positive(),
   user_id: z.number().int().positive(),
   title: z.string().min(1, "Title is required"),
@@ -17,7 +17,7 @@ export const notificationIdSchema = z.object({
   id: z.number().int().positive(),
 });
 
-export const notificationCreateSchema = notificationSchema.omit({
+export const notificationCreateSchema = notificationDataSchema.omit({
   id: true,
   created_at: true,
   updated_at: true,
@@ -28,6 +28,6 @@ export const notificationUpdateSchema = z.object({
   data: notificationCreateSchema.partial(),
 });
 
-export type NotificationSchema = z.infer<typeof notificationSchema>;
+export type NotificationSchema = z.infer<typeof notificationDataSchema>;
 export type NotificationCreateSchema = z.infer<typeof notificationCreateSchema>;
 export type NotificationUpdateSchema = z.infer<typeof notificationUpdateSchema>;
