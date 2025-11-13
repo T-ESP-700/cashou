@@ -11,6 +11,14 @@ interface CAC40Row {
   submarket: string;
 }
 
+interface CAC40HistoryRow {
+  date: string;
+  entreprise: string;
+  indice: string;
+  valeur: string;
+  volume: string;
+}
+
 async function parseCSV(filePath: string): Promise<CAC40Row[]> {
   const fileContent = readFileSync(filePath, 'utf-8');
   const lines = fileContent.split('\n').filter(line => line.trim());
@@ -47,8 +55,33 @@ async function parseCSV(filePath: string): Promise<CAC40Row[]> {
   return data;
 }
 
+async function parseHistoryCSV(filePath: string): Promise<CAC40HistoryRow[]> {
+  const fileContent = readFileSync(filePath, 'utf-8');
+  const lines = fileContent.split('\n').filter(line => line.trim());
+  
+  // Skip header and parse rows
+  const data: CAC40HistoryRow[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    
+    const parts = line.split(',');
+    if (parts.length >= 5) {
+      data.push({
+        date: parts[0],
+        entreprise: parts[1],
+        indice: parts[2],
+        valeur: parts[3],
+        volume: parts[4]
+      });
+    }
+  }
+  
+  return data;
+}
+
 async function seedCAC40Data() {
-  console.log('🌱 Seed CAC40 - Market, Submarket, Field et Asset uniquement\n');
+  console.log('🌱 Seed CAC40 - Market, Submarket, Field, Asset et AssetHistory\n');
 
   try {
     // Parse CSV file
@@ -153,12 +186,94 @@ async function seedCAC40Data() {
       }
     }
 
-    console.log('\n\n📈 Résumé du seed:');
+    console.log('\n\n📈 Résumé du seed des assets:');
     console.log('─'.repeat(50));
     console.log(`✅ Markets créés: ${marketCount}`);
     console.log(`✅ Submarkets créés: ${submarketCount}`);
     console.log(`✅ Fields créés: ${fieldCount}`);
     console.log(`✅ Assets créés: ${assetCount}`);
+    console.log('─'.repeat(50));
+
+    // Import AssetHistory data
+    console.log('\n\n📊 Import des données historiques...\n');
+    const historyPath = '/Users/chloee/Documents/epitech/finance/cac40_historique_25ans.csv';
+    console.log(`📂 Lecture du fichier: ${historyPath}`);
+    const historyData = await parseHistoryCSV(historyPath);
+    console.log(`✅ ${historyData.length} lignes d'historique parsées\n`);
+
+    let historyCount = 0;
+    let historySkipped = 0;
+    let batchSize = 1000;
+    let currentBatch: any[] = [];
+
+    console.log('⏳ Traitement des données historiques par lots de 1000...\n');
+
+    for (let i = 0; i < historyData.length; i++) {
+      const row = historyData[i];
+      
+      // Find the corresponding asset by symbol (indice)
+      const asset = await prisma.asset.findUnique({
+        where: { symbol: row.indice }
+      });
+
+      if (!asset) {
+        historySkipped++;
+        continue;
+      }
+
+      // Parse values
+      const valeur = parseFloat(row.valeur);
+      const volume = parseInt(row.volume);
+      const timestamp = new Date(row.date);
+
+      // Check if this history entry already exists
+      const existingHistory = await prisma.assetHistory.findFirst({
+        where: {
+          assetId: asset.id,
+          timestamp: timestamp
+        }
+      });
+
+      if (!existingHistory) {
+        currentBatch.push({
+          assetId: asset.id,
+          timestamp: timestamp,
+          value: Math.round(valeur * 100), // Convert to cents
+          volume: volume
+        });
+      } else {
+        historySkipped++;
+      }
+
+      // Insert batch when it reaches the size limit
+      if (currentBatch.length >= batchSize) {
+        await prisma.assetHistory.createMany({
+          data: currentBatch,
+          skipDuplicates: true
+        });
+        historyCount += currentBatch.length;
+        console.log(`  ✓ ${historyCount} entrées d'historique créées...`);
+        currentBatch = [];
+      }
+    }
+
+    // Insert remaining entries
+    if (currentBatch.length > 0) {
+      await prisma.assetHistory.createMany({
+        data: currentBatch,
+        skipDuplicates: true
+      });
+      historyCount += currentBatch.length;
+    }
+
+    console.log('\n\n📈 Résumé complet du seed:');
+    console.log('─'.repeat(50));
+    console.log(`✅ Markets créés: ${marketCount}`);
+    console.log(`✅ Submarkets créés: ${submarketCount}`);
+    console.log(`✅ Fields créés: ${fieldCount}`);
+    console.log(`✅ Assets créés: ${assetCount}`);
+    console.log(`✅ AssetHistory créés: ${historyCount}`);
+    console.log(`⏭️  AssetHistory ignorés (déjà existants): ${historySkipped}`);
     console.log('─'.repeat(50));
     console.log('\n✨ Seed terminé avec succès!\n');
 
