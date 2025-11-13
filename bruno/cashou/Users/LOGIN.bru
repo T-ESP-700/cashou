@@ -1,20 +1,19 @@
 meta {
-  name: CREATE
+  name: LOGIN
   type: http
-  seq: 1
+  seq: 7
 }
 
 post {
-  url: {{base_url}}/api/auth/sign-up/email
+  url: {{base_url}}/api/auth/sign-in/email
   body: json
   auth: none
 }
 
 body:json {
   {
-    "name": "John Doe",
-    "email": "john@example.com",
-    "password": "password123"
+    "email": "test@gmail.com",
+    "password": "azerty123456"
   }
 }
 

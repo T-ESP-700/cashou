@@ -15,6 +15,7 @@ function startServer() {
 
   serverInstance = Bun.serve({
     port: 3000,
+    hostname: '0.0.0.0', // Listen on all network interfaces
     async fetch(req) {
       const url = new URL(req.url);
 

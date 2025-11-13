@@ -3,8 +3,17 @@ import { router, protectedProcedure, adminProcedure } from '..';
 import { prisma } from '@cashou/db-app';
 import { TRPCError } from '@trpc/server';
 import { hash } from '@cashou/auth/server';
+import { UserService } from '../services/user.service';
 
 export const userRouter = router({
+  // Get all users without pagination
+  getAll: adminProcedure
+    .query(async () => {
+      const userService = new UserService();
+      const users = await userService.findAll();
+      return users;
+    }),
+
   // Get all users (admin only)
   list: adminProcedure
     .input(
@@ -60,7 +69,7 @@ export const userRouter = router({
         const requestingUser = await prisma.user.findUnique({
           where: { id: ctx.session.userId },
         });
-        
+
         if (requestingUser?.role !== 'ADMIN') {
           throw new TRPCError({
             code: 'FORBIDDEN',
@@ -116,8 +125,8 @@ export const userRouter = router({
       if (existing) {
         throw new TRPCError({
           code: 'CONFLICT',
-          message: existing.email === input.email 
-            ? 'Email already exists' 
+          message: existing.email === input.email
+            ? 'Email already exists'
             : 'Username already exists',
         });
       }
@@ -201,8 +210,8 @@ export const userRouter = router({
         if (existing) {
           throw new TRPCError({
             code: 'CONFLICT',
-            message: existing.email === input.email 
-              ? 'Email already exists' 
+            message: existing.email === input.email
+              ? 'Email already exists'
               : 'Username already exists',
           });
         }

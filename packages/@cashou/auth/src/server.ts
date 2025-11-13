@@ -4,6 +4,8 @@ import { prisma } from '@cashou/db-app';
 import bcrypt from 'bcryptjs';
 
 export const auth = betterAuth({
+  baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:3000',
+  basePath: '/api/auth',
   database: prismaAdapter(prisma, {
     provider: 'postgresql',
   }),
@@ -25,6 +27,10 @@ export const auth = betterAuth({
     accountLinking: {
       enabled: false, // Disable account linking for now
     },
+  },
+  trustedOrigins: ['*'], // Allow all origins in development (mobile app)
+  advanced: {
+    disableCSRFCheck: process.env.NODE_ENV === 'development', // Disable CSRF in development for mobile
   },
 });
 

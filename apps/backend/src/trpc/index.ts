@@ -13,10 +13,32 @@ export interface Context {
 
 // Create context function
 export async function createContext({ req }: { req: Request }): Promise<Context> {
-  // Get session from better-auth
-  const session = await auth.api.getSession({
-    headers: req.headers,
-  });
+  // Extract Bearer token from Authorization header
+  const authHeader = req.headers.get('authorization');
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+
+  let session: AuthSession | null = null;
+
+  if (bearerToken) {
+    // Validate Bearer token by checking database
+    const sessionData = await prisma.session.findUnique({
+      where: { token: bearerToken },
+      include: { user: true },
+    });
+
+    if (sessionData && sessionData.expiresAt > new Date()) {
+      // Token is valid and not expired
+      session = {
+        session: sessionData,
+        user: sessionData.user,
+      } as AuthSession;
+    }
+  } else {
+    // Fallback: try with cookies (for compatibility)
+    session = await auth.api.getSession({
+      headers: req.headers,
+    });
+  }
 
   return {
     req,
@@ -40,6 +62,7 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
     ctx: {
       ...ctx,
       session: ctx.session,
+      userId: ctx.session.user.id,
     },
   });
 });
@@ -53,7 +76,7 @@ export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
 
   // Temporary: Check if user exists (admin check will be added when role field exists)
   const user = await prisma.user.findUnique({
-    where: { id: ctx.session.user.id },
+    where: { id: ctx.userId },
   });
 
   if (!user) {
