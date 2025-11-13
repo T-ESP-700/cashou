@@ -36,6 +36,8 @@ const server = Bun.serve({
     if (url.pathname.startsWith('/api/auth')) {
       try {
         console.log('Auth request:', req.method, url.pathname);
+        console.log('Origin header:', req.headers.get('origin'));
+        console.log('Content-Type:', req.headers.get('content-type'));
 
         // Clone the request to read the body for debugging
         const clonedReq = req.clone();
@@ -48,7 +50,37 @@ const server = Bun.serve({
           }
         }
 
-        const response = await auth.handler(req);
+        // In development, add Origin header if missing (for tools like Bruno, Postman)
+        let requestToHandle = req;
+        if (process.env.NODE_ENV !== 'production' && !req.headers.get('origin')) {
+          // Create a new request with Origin header set to localhost
+          const headers = new Headers(req.headers);
+          headers.set('origin', 'http://localhost:3000');
+          
+          // Recreate the request with the new headers
+          requestToHandle = new Request(req.url, {
+            method: req.method,
+            headers: headers,
+            body: req.body,
+            // @ts-ignore - Bun specific
+            duplex: 'half',
+          });
+        }
+
+        const response = await auth.handler(requestToHandle);
+
+        // Log response status for debugging
+        console.log('Auth response status:', response.status);
+
+        // If response is not ok, log the error body
+        if (!response.ok) {
+          try {
+            const errorBody = await response.clone().text();
+            console.error('Auth error response:', errorBody);
+          } catch (e) {
+            console.error('Failed to read error response:', e);
+          }
+        }
 
         // Add CORS headers to auth response
         Object.entries(corsHeaders).forEach(([key, value]) => {
@@ -58,7 +90,12 @@ const server = Bun.serve({
         return response;
       } catch (error) {
         console.error('Auth handler error:', error);
-        return new Response(JSON.stringify({ error: 'Authentication error' }), {
+        console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+        return new Response(JSON.stringify({ 
+          error: 'Authentication error',
+          message: error instanceof Error ? error.message : String(error),
+          details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
+        }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });

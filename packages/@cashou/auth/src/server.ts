@@ -26,6 +26,18 @@ export const auth = betterAuth({
       enabled: false, // Disable account linking for now
     },
   },
+  // Trusted origins for development and production
+  // In development, accept common localhost origins and the one we inject for tools like Bruno
+  trustedOrigins: process.env.NODE_ENV === 'production'
+    ? (process.env.TRUSTED_ORIGINS?.split(',') || [])
+    : [
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'http://localhost:3001',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:3001',
+      ],
 });
 
 // Password hashing utilities
