@@ -19,6 +19,7 @@
     "db:check": "bunx prisma db pull --force",
     "db:status": "bun run scripts/db-check.ts",
     "db:seed": "bun run src/seed-data.ts",
+    "db:seed:cac40": "bun run scripts/seed-cac40.ts",
     "db:empty": "bunx prisma migrate reset --force",
     "test:unit": "bun test tests/service/level.service.unit.test.ts",
     "test:integration": "bun test tests/service/level.service.integration.test.ts",
