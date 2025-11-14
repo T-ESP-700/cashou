@@ -65,17 +65,21 @@ export const userRouter = router({
     .input(z.string())
     .query(async ({ input, ctx }) => {
       // Check if user is admin or requesting their own data
-      if (ctx.session.userId !== input) {
-        const requestingUser = await prisma.user.findUnique({
-          where: { id: ctx.session.userId },
+      const currentUserId = ctx.session?.user?.id;
+      if (!currentUserId) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Authentication required',
         });
+      }
 
-        if (requestingUser?.role !== 'ADMIN') {
-          throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: 'You can only view your own profile',
-          });
-        }
+      if (currentUserId !== input) {
+        // TODO: Implement admin check when role system is available
+        // For now, users can only view their own profile
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'You can only view your own profile',
+        });
       }
 
       const user = await prisma.user.findUnique({
@@ -169,12 +173,17 @@ export const userRouter = router({
       const { id, ...updateData } = input;
 
       // Check permissions
-      const requestingUser = await prisma.user.findUnique({
-        where: { id: ctx.session.userId },
-      });
+      const currentUserId = ctx.session?.user?.id;
+      if (!currentUserId) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Authentication required',
+        });
+      }
 
-      const isAdmin = requestingUser?.role === 'ADMIN';
-      const isSelf = ctx.session.userId === id;
+      // TODO: Implement admin check when role system is available
+      const isAdmin = false; // Temporary: no admin role system yet
+      const isSelf = currentUserId === id;
 
       if (!isAdmin && !isSelf) {
         throw new TRPCError({
@@ -240,7 +249,15 @@ export const userRouter = router({
     .input(z.string())
     .mutation(async ({ input, ctx }) => {
       // Prevent self-deletion
-      if (ctx.session.userId === input) {
+      const currentUserId = ctx.session?.user?.id;
+      if (!currentUserId) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Authentication required',
+        });
+      }
+
+      if (currentUserId === input) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message: 'You cannot delete your own account',
@@ -280,7 +297,13 @@ export const userRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const userId = ctx.session.userId;
+      const userId = ctx.session?.user?.id;
+      if (!userId) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Authentication required',
+        });
+      }
       const updateData: any = {};
 
       // If changing password, verify current password

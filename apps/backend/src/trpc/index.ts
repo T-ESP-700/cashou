@@ -81,8 +81,8 @@ export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
 
   if (!user) {
     throw new TRPCError({
-      code: 'FORBIDDEN',
-      message: 'Admin access required'
+      code: 'UNAUTHORIZED',
+      message: 'Authentication required'
     });
   }
 

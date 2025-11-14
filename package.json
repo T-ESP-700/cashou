@@ -46,6 +46,7 @@
     "db:migrate:app": "cd packages/@cashou/db-app && bunx dotenv -e ../../../.env -- prisma migrate deploy",
     "db:migrate:backoffice": "cd packages/@cashou/db-backoffice && bunx dotenv -e ../../../.env -- prisma migrate deploy",
     "db:seed": "cd apps/backend && bun run src/seed-data.ts",
+    "db:seed:cac40": "cd apps/backend && bun run scripts/seed-cac40.ts",
     "db:empty": "cd packages/@cashou/db-app && bunx dotenv -e ../../../.env -- prisma migrate reset --force",
     "db:check": "cd packages/@cashou/db-app && bunx dotenv -e ../../../.env -- prisma db pull --force",
     "db:status": "cd apps/backend && bun run scripts/db-check.ts",
@@ -54,7 +55,14 @@
     "docker:down": "docker compose down",
     "docker:build": "docker compose build",
     "docker:logs": "docker compose logs -f",
-    "docker:clean": "docker compose down -v && docker system prune -f"
+    "docker:clean": "docker compose down -v && docker system prune -f",
+    "setup": "bun install && bun run docker:up && bun run generate && bun run migrate",
+    "setup:cac40": "bun run setup && bun run db:seed:cac40",
+    "reset": "bun run docker:down && bun run docker:clean && bun run docker:up && bun run migrate:reset",
+    "logs:backend": "cd apps/backend && bun run dev",
+    "logs:backoffice": "cd apps/backoffice && bun run dev",
+    "install:all": "bun install && cd backend && bun install && cd ../backoffice && bun install",
+    "setup:seeds": "bun run install:all && bun run docker:up && bun run generate && bun run migrate && bun run db:seed"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",

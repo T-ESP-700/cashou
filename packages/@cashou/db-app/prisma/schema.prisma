@@ -216,7 +216,7 @@ model Submarket {
 model Field {
   id        Int      @id @default(autoincrement())
   marketId  Int?     @map("market_id")
-  name      String?
+  name      String?  @unique
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -230,7 +230,7 @@ model Field {
 model Asset {
   id          Int      @id @default(autoincrement())
   title       String?
-  symbol      String?
+  symbol      String?  @unique
   field       String?
   description String?
   marketId    Int?     @map("market_id")
