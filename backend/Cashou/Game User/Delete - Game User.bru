@@ -1,18 +1,18 @@
 meta {
-  name: Delete - Game Instance
+  name: Delete - Game User
   type: http
-  seq: 8
+  seq: 10
 }
 
 post {
-  url: {{base_url}}/trpc/gameInstance.delete
+  url: {{base_url}}/trpc/gameUser.delete
   body: json
   auth: inherit
 }
 
 body:json {
   {
-    "id": 4
+    "id": 9
   }
 }
 

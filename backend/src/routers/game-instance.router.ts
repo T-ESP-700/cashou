@@ -61,7 +61,7 @@ export const gameInstanceRouter = t.router({
 
   /**
    * Supprime une instance
-   * Endpoint: POST http://localhost:3000/trpc/gameInstance.delete?input={"id":1}
+   * Endpoint: POST http://localhost:3000/trpc/gameInstance.delete
    */
   delete: t.procedure
     .input(gameInstanceIdSchema)

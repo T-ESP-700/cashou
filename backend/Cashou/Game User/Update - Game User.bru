@@ -1,18 +1,19 @@
 meta {
-  name: Delete - Game Instance
+  name: Update - Game User
   type: http
   seq: 8
 }
 
 post {
-  url: {{base_url}}/trpc/gameInstance.delete
+  url: {{base_url}}/trpc/gameUser.updateStatus
   body: json
   auth: inherit
 }
 
 body:json {
   {
-    "id": 4
+    "id": 10,
+    "status": "inactive"
   }
 }
 

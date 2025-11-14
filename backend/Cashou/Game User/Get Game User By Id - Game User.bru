@@ -1,17 +1,17 @@
 meta {
-  name: Get Game Instances By Id
+  name: Get Game User By Id - Game User
   type: http
   seq: 3
 }
 
 get {
-  url: {{base_url}}/trpc/gameInstance.getById?input={"id":1}
+  url: {{base_url}}/trpc/gameUser.findById?input={"id":5}
   body: json
   auth: inherit
 }
 
 params:query {
-  input: {"id":1}
+  input: {"id":5}
 }
 
 settings {
