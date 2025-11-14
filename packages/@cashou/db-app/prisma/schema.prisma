@@ -25,21 +25,21 @@ enum NotificationType {
 
 // Modèle User avec better-auth + relations Cashou
 model User {
-  id             String    @id @default(cuid())
-  email          String    @unique
-  emailVerified  Boolean   @default(false)
-  name           String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  image          String?
+  id            String   @id @default(cuid())
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  name          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  image         String?
 
   // Cashou game progression
-  points         Int?      @default(0)
-  levelId        Int?      @map("level_id")
+  points  Int? @default(0)
+  levelId Int? @map("level_id")
 
   // Relations better-auth
-  accounts       Account[]
-  sessions       Session[]
+  accounts Account[]
+  sessions Session[]
 
   // Relations Cashou
   gameInstances GameInstance[]
@@ -54,48 +54,48 @@ model User {
 
 // Tables better-auth
 model Account {
-  id                String    @id @default(cuid())
-  userId            String    @map("user_id")
-  accountId         String
-  providerId        String
+  id         String @id @default(cuid())
+  userId     String @map("user_id")
+  accountId  String
+  providerId String
 
-  accessToken       String?   @db.Text
-  refreshToken      String?   @db.Text
-  idToken           String?   @db.Text
-  accessTokenExpiresAt DateTime?
+  accessToken           String?   @db.Text
+  refreshToken          String?   @db.Text
+  idToken               String?   @db.Text
+  accessTokenExpiresAt  DateTime?
   refreshTokenExpiresAt DateTime?
-  scope             String?
-  password          String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("account")
 }
 
 model Session {
-  id                String    @id @default(cuid())
-  expiresAt         DateTime
-  token             String    @unique
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  ipAddress         String?
-  userAgent         String?
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
 
-  userId            String    @map("user_id")
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("session")
 }
 
 model Verification {
-  id                String    @id @default(cuid())
-  identifier        String
-  value             String
-  expiresAt         DateTime
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@map("verification")
 }
@@ -188,21 +188,21 @@ model Market {
 
   // Relations
   gameInstances GameInstance[]
-  submarkets Submarket[]
-  fields     Field[]
-  assets     Asset[]
+  submarkets    Submarket[]
+  fields        Field[]
+  assets        Asset[]
 
   @@map("markets")
 }
 
 model Submarket {
-  id          Int      @id @default(autoincrement())
-  marketId    Int?     @map("market_id")
-  gameInstanceId Int?  @map("game_instance_id")
-  title       String?
-  description String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id             Int      @id @default(autoincrement())
+  marketId       Int?     @map("market_id")
+  gameInstanceId Int?     @map("game_instance_id")
+  title          String?
+  description    String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   // Relations
   market       Market?       @relation(fields: [marketId], references: [id])
@@ -223,6 +223,7 @@ model Field {
   // Relations
   market  Market?  @relation(fields: [marketId], references: [id])
   impacts Impact[]
+  assets  Asset[]
 
   @@map("fields")
 }
@@ -231,7 +232,7 @@ model Asset {
   id          Int      @id @default(autoincrement())
   title       String?
   symbol      String?  @unique
-  field       String?
+  fieldId     Int?     @map("field_id")
   description String?
   marketId    Int?     @map("market_id")
   submarketId Int?     @map("submarket_id")
@@ -241,9 +242,11 @@ model Asset {
   // Relations
   market         Market?        @relation(fields: [marketId], references: [id])
   submarket      Submarket?     @relation(fields: [submarketId], references: [id])
+  field          Field?         @relation(fields: [fieldId], references: [id])
   assetHistories AssetHistory[]
   eventAssets    EventAsset[]
   transactions   Transaction[]
+  impacts        Impact[]
 
   @@map("assets")
 }
@@ -268,8 +271,6 @@ model EventAsset {
   assetId   Int?      @map("asset_id")
   eventId   Int?      @map("event_id")
   date      DateTime?
-  value     Int?
-  volume    Int?
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
@@ -285,14 +286,17 @@ model Impact {
   eventId     Int?     @map("event_id")
   fieldId     Int?     @map("field_id")
   submarketId Int?     @map("submarket_id")
+  assetId     Int?     @map("asset_id")
   coef        Int?
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
+  // Note: Validation métier requise - doit avoir soit assetId, soit (submarketId + fieldId)
   event     Event?     @relation(fields: [eventId], references: [id])
   field     Field?     @relation(fields: [fieldId], references: [id])
   submarket Submarket? @relation(fields: [submarketId], references: [id])
+  asset     Asset?     @relation(fields: [assetId], references: [id])
 
   @@map("impacts")
 }
@@ -374,13 +378,13 @@ model Transaction {
 }
 
 model Quiz {
-  id          Int      @id @default(autoincrement())
-  levelId     Int?     @map("level_id")
+  id          Int       @id @default(autoincrement())
+  levelId     Int?      @map("level_id")
   title       String?
   description String?
   type        QuizType?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
   // Relations
   level         Level?         @relation(fields: [levelId], references: [id])

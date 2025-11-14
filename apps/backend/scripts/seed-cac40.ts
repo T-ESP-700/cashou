@@ -1,7 +1,14 @@
 import { PrismaClient } from '@cashou/db-app';
 import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
 const prisma = new PrismaClient();
+
+// Get project root directory (3 levels up from this script)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const projectRoot = join(__dirname, '../../..');
 
 interface CAC40Row {
   nom: string;
@@ -22,17 +29,17 @@ interface CAC40HistoryRow {
 async function parseCSV(filePath: string): Promise<CAC40Row[]> {
   const fileContent = readFileSync(filePath, 'utf-8');
   const lines = fileContent.split('\n').filter(line => line.trim());
-  
+
   // Skip header and parse rows
   const data: CAC40Row[] = [];
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
-    
+
     // Parse CSV with potential quoted fields
     const matches = line.match(/(?:^|,)("(?:[^"]|"")*"|[^,]*)/g);
     if (!matches || matches.length < 5) continue;
-    
+
     const fields = matches.map(field => {
       let cleaned = field.replace(/^,/, '').trim();
       if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
@@ -40,7 +47,7 @@ async function parseCSV(filePath: string): Promise<CAC40Row[]> {
       }
       return cleaned;
     });
-    
+
     if (fields[0] && fields[1]) { // Ensure we have at least name and ticker
       data.push({
         nom: fields[0],
@@ -51,20 +58,20 @@ async function parseCSV(filePath: string): Promise<CAC40Row[]> {
       });
     }
   }
-  
+
   return data;
 }
 
 async function parseHistoryCSV(filePath: string): Promise<CAC40HistoryRow[]> {
   const fileContent = readFileSync(filePath, 'utf-8');
   const lines = fileContent.split('\n').filter(line => line.trim());
-  
+
   // Skip header and parse rows
   const data: CAC40HistoryRow[] = [];
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
-    
+
     const parts = line.split(',');
     if (parts.length >= 5) {
       data.push({
@@ -76,7 +83,7 @@ async function parseHistoryCSV(filePath: string): Promise<CAC40HistoryRow[]> {
       });
     }
   }
-  
+
   return data;
 }
 
@@ -85,7 +92,7 @@ async function seedCAC40Data() {
 
   try {
     // Parse CSV file
-    const csvPath = '/Users/chloee/Documents/epitech/finance/cac40_liste_finale.csv';
+    const csvPath = join(projectRoot, 'cac40_liste_finale.csv');
     console.log(`📂 Lecture du fichier: ${csvPath}`);
     const data = await parseCSV(csvPath);
     console.log(`✅ ${data.length} lignes parsées\n`);
@@ -174,7 +181,7 @@ async function seedCAC40Data() {
           data: {
             title: row.nom,
             symbol: row.ticker,
-            field: row.secteur,
+            fieldId: field?.id,
             description: `Asset ${row.nom} dans le secteur ${row.secteur}`,
             marketId: market?.id,
             submarketId: submarket?.id
@@ -183,6 +190,14 @@ async function seedCAC40Data() {
         assetCount++;
       } else {
         console.log(`  ✓ Asset existe déjà: ${row.nom} (${row.ticker})`);
+        // Update existing asset with fieldId if needed
+        if (field && existingAsset.fieldId !== field.id) {
+          console.log(`  🔄 Mise à jour du fieldId pour: ${row.nom} (${row.ticker})`);
+          await prisma.asset.update({
+            where: { symbol: row.ticker },
+            data: { fieldId: field.id }
+          });
+        }
       }
     }
 
@@ -196,7 +211,7 @@ async function seedCAC40Data() {
 
     // Import AssetHistory data
     console.log('\n\n📊 Import des données historiques...\n');
-    const historyPath = '/Users/chloee/Documents/epitech/finance/cac40_historique_25ans.csv';
+    const historyPath = join(projectRoot, 'cac40_historique_25ans.csv');
     console.log(`📂 Lecture du fichier: ${historyPath}`);
     const historyData = await parseHistoryCSV(historyPath);
     console.log(`✅ ${historyData.length} lignes d'historique parsées\n`);
@@ -210,7 +225,7 @@ async function seedCAC40Data() {
 
     for (let i = 0; i < historyData.length; i++) {
       const row = historyData[i];
-      
+
       // Find the corresponding asset by symbol (indice)
       const asset = await prisma.asset.findUnique({
         where: { symbol: row.indice }
@@ -292,4 +307,3 @@ seedCAC40Data()
   .finally(async () => {
     await prisma.$disconnect();
   });
-

@@ -37,6 +37,7 @@
     "test": "bun run --filter '*' test",
     "typecheck": "bun run --filter '*' typecheck",
     "clean": "rm -rf node_modules apps/*/node_modules packages/@cashou/*/node_modules",
+    "generate": "bun run db:generate",
     "db:generate": "bun run db:generate:app && bun run db:generate:backoffice",
     "db:generate:app": "cd packages/@cashou/db-app && bunx prisma generate",
     "db:generate:backoffice": "cd packages/@cashou/db-backoffice && bunx prisma generate",
