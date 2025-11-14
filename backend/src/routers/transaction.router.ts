@@ -4,27 +4,15 @@ import { TransactionService } from "../services/transaction.service";
 import {
   transactionCreateSchema,
   transactionUpdateSchema,
+  transactionIdSchema,
+  walletIdSchema,
+  assetIdSchema,
+  transactionTypeSchema
 } from "../schemas-zod/transaction-schema.ts";
 
 const t = initTRPC.create();
 
 const transactionService = new TransactionService();
-
-const transactionIdSchema = z.object({
-  id: z.number().int().min(1, "L'ID de la transaction doit être positif"),
-});
-
-const walletIdSchema = z.object({
-  walletId: z.number().int().min(1, "L'ID du portefeuille est requis"),
-});
-
-const assetIdSchema = z.object({
-  assetId: z.number().int().min(1, "L'ID de l'actif est requis"),
-});
-
-const transactionTypeSchema = z.object({
-  type: z.string().min(1, "Le type de transaction est requis"),
-});
 
 export const transactionRouter = t.router({
 
@@ -66,6 +54,8 @@ export const transactionRouter = t.router({
       data: transactionUpdateSchema
     }))
     .mutation(async ({ input }) => {
+      console.log('Updating transaction', input.id);
+      console.log('Transaction Data', input.data);
       return await transactionService.update(input.id, input.data);
     }),
 
@@ -101,7 +91,7 @@ export const transactionRouter = t.router({
 
   /**
    * Récupère les transactions par type (achat, vente, etc.)
-   * Endpoint: GET http://localhost:3000/trpc/transaction.getByType?input={"type":"achat"}
+   * Endpoint: GET http://localhost:3000/trpc/transaction.getByType?input={"type":"SELL"}
    */
   getByType: t.procedure
     .input(transactionTypeSchema)
@@ -119,6 +109,3 @@ export const transactionRouter = t.router({
       return await transactionService.getTotalValueByWallet(input.walletId);
     }),
 });
-
-// Export du type pour le client
-export type TransactionRouter = typeof transactionRouter;

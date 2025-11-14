@@ -1,19 +1,18 @@
 meta {
-  name: Update - Game User
+  name: Delete Transaction - Transaction
   type: http
-  seq: 8
+  seq: 5
 }
 
 post {
-  url: {{base_url}}/trpc/gameUser.update
+  url: {{base_url}}/trpc/transaction.delete
   body: json
   auth: inherit
 }
 
 body:json {
   {
-    "id": 10,
-    "isCreator": false
+    "id": 11
   }
 }
 

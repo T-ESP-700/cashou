@@ -25,7 +25,6 @@ export class GameUserService {
 
   async update(id: number, data: GameUserUpdateSchema) {
     const parsed = GameUserUpdateSchema.parse(data);
-    console.log(parsed);
     return this.prisma.gameUser.update({ where: { id }, data: parsed });
   }
 
