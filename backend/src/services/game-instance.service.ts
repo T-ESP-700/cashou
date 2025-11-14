@@ -3,6 +3,7 @@ import defaultPrisma from "../database.ts";
 import type {
   GameInstanceCreateSchema,
   GameInstanceUpdateSchema,
+  GameInstanceUpdateWithIdSchema
 } from "../schemas-zod/game-instance-schema.ts";
 
 export class GameInstanceService {
@@ -46,30 +47,44 @@ export class GameInstanceService {
    * Crée une nouvelle instance de jeu
    */
   async create(data: GameInstanceCreateSchema): Promise<GameInstance> {
-    return this.prisma.gameInstance.create({ data });
+    const sanitizedData = {
+      ...data,
+      userId: data.userId ?? 0,
+      levelId: data.levelId ?? 0,
+      startBalance: data.startBalance ?? 0,
+    };
+    
+    return this.prisma.gameInstance.create({ data: sanitizedData });
   }
 
   /**
    * Met à jour une instance existante
    */
-   async update(data: GameInstanceUpdateSchema): Promise<GameInstance> {
-     // Nettoie les données en supprimant les champs undefined
+   // Service - CORRIGÉ
+   async update(data: GameInstanceUpdateWithIdSchema): Promise<GameInstance> {
+     const { id, ...updateData } = data;
+     
+     // Vérification que l'ID existe
+     if (!id) {
+       throw new Error("L'ID est requis pour la mise à jour");
+     }
+     
      const sanitizedData: Partial<GameInstanceUpdateSchema> = {};
      
-     // Copie uniquement les champs qui sont définis (incluant null)
-     if (data.type !== undefined) sanitizedData.type = data.type;
-     if (data.userId !== undefined) sanitizedData.userId = data.userId ?? 0;
-     if (data.levelId !== undefined) sanitizedData.levelId = data.levelId ?? 0;
-     if (data.startBalance !== undefined) sanitizedData.startBalance = data.startBalance ?? 0;
-     if (data.isPaused !== undefined) sanitizedData.isPaused = data.isPaused;
-     if (data.actionRequired !== undefined) sanitizedData.actionRequired = data.actionRequired;
-     if (data.pausedAt !== undefined) sanitizedData.pausedAt = data.pausedAt;
- 
+     if (updateData.type !== undefined) sanitizedData.type = updateData.type;
+     if (updateData.userId !== undefined) sanitizedData.userId = updateData.userId ?? 0;
+     if (updateData.levelId !== undefined) sanitizedData.levelId = updateData.levelId ?? 0;
+     if (updateData.startBalance !== undefined) sanitizedData.startBalance = updateData.startBalance ?? 0;
+     if (updateData.isPaused !== undefined) sanitizedData.isPaused = updateData.isPaused;
+     if (updateData.actionRequired !== undefined) sanitizedData.actionRequired = updateData.actionRequired;
+     if (updateData.pausedAt !== undefined) sanitizedData.pausedAt = updateData.pausedAt;
+   
      return this.prisma.gameInstance.update({
-       where: { id: data.id },
+       where: { id },
        data: sanitizedData,
      });
    }
+
 
 
   /**

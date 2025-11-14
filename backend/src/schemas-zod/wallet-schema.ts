@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const walletDataSchema = z.object({
   userId: z.number().int().nullable().optional(),
-  amount: z.string().nullable().optional(),
+  amount: z.number().nullable().optional(),
   gameInstanceId: z.number().int().nullable().optional(),
 });
 

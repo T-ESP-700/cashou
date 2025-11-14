@@ -3,7 +3,7 @@ import { z } from "zod";
 import { GameInstanceService } from "../services/game-instance.service";
 import {
   gameInstanceCreateSchema,
-  gameInstanceUpdateSchema,
+  gameInstanceUpdateWithIdSchema,
   gameInstanceIdSchema,
   gameInstanceBaseActionSchema
 } from "../schemas-zod/game-instance-schema.ts";
@@ -51,17 +51,17 @@ export const gameInstanceRouter = t.router({
 
   /**
    * Met à jour une instance
-   * Endpoint: POST http://localhost:3000/trpc/gameInstance.update
+   * Endpoint: POST http://localhost:3000/trpc/gameInstance.update?input={"id":1}
    */
   update: t.procedure
-    .input(z.object({ id: z.number().positive(), data: gameInstanceUpdateSchema }))
+    .input(gameInstanceUpdateWithIdSchema)
     .mutation(async ({ input }) => {
-      return await gameInstanceService.update(input.id, input.data);
+      return await gameInstanceService.update(input);
     }),
 
   /**
    * Supprime une instance
-   * Endpoint: POST http://localhost:3000/trpc/gameInstance.delete
+   * Endpoint: POST http://localhost:3000/trpc/gameInstance.delete?input={"id":1}
    */
   delete: t.procedure
     .input(gameInstanceIdSchema)

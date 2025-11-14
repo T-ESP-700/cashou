@@ -1,0 +1,26 @@
+meta {
+  name: By User Id - Wallets
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/trpc/wallet.getByUser?input={"userId":3}
+  body: json
+  auth: inherit
+}
+
+params:query {
+  input: {"userId":3}
+}
+
+body:json {
+  {
+    
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
