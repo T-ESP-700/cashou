@@ -89,7 +89,14 @@ export function CreateQuestionDialog({ open, onOpenChange, onSuccess }: CreateQu
 
   const updateAnswer = (index: number, field: keyof Answer, value: string | boolean) => {
     const newAnswers = [...answers];
-    newAnswers[index] = { ...newAnswers[index], [field]: value };
+    if (field === 'isCorrect' && value === true) {
+      // Only one answer can be correct - uncheck others
+      newAnswers.forEach((a, i) => {
+        newAnswers[i] = { ...a, isCorrect: i === index };
+      });
+    } else {
+      newAnswers[index] = { ...newAnswers[index], [field]: value };
+    }
     setAnswers(newAnswers);
   };
 
@@ -131,10 +138,11 @@ export function CreateQuestionDialog({ open, onOpenChange, onSuccess }: CreateQu
                 />
                 <label className="flex items-center gap-2 whitespace-nowrap">
                   <input
-                    type="checkbox"
+                    type="radio"
+                    name="correctAnswer"
                     checked={answer.isCorrect}
-                    onChange={(e) => updateAnswer(index, 'isCorrect', e.target.checked)}
-                    className="rounded border-gray-300"
+                    onChange={() => updateAnswer(index, 'isCorrect', true)}
+                    className="border-gray-300 text-green-600 focus:ring-green-500"
                   />
                   <span className="text-sm">Correct</span>
                 </label>

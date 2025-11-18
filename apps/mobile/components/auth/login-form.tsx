@@ -15,9 +15,11 @@ interface LoginFormProps {
   onSuccess?: () => void;
 }
 
+const isDev = process.env.EXPO_PUBLIC_DEV_MODE === 'true';
+
 export function LoginForm({ onSuccess }: LoginFormProps) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(isDev ? 'test@gmail.com' : '');
+  const [password, setPassword] = useState(isDev ? 'azerty123456' : '');
   const [isLoading, setIsLoading] = useState(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];

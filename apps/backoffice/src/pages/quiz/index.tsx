@@ -3,23 +3,23 @@ import { ColumnDef } from '@tanstack/react-table';
 import { DataTable } from '@/components/tables/DataTable';
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/lib/trpc';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Quiz {
   id: number;
   type: string | null;
   title: string | null;
-  date: Date | null;
   levelId: number | null;
-  context: string | null;
+  description: string | null;
+  date: Date | null;
 }
 
-export default function QuizzesPage() {
+export default function QuizPage() {
   const navigate = useNavigate();
   const utils = trpc.useUtils();
 
-  const { data: quizzes, isLoading } = trpc.quiz.getAll.useQuery();
+  const { data: quiz, isLoading } = trpc.quiz.getAll.useQuery();
 
   const deleteMutation = trpc.quiz.delete.useMutation({
     onSuccess: () => {
@@ -38,6 +38,13 @@ export default function QuizzesPage() {
   };
 
   const columns: ColumnDef<Quiz>[] = [
+    {
+      accessorKey: 'id',
+      header: 'ID',
+      cell: ({ row }) => (
+        <span className="font-mono text-gray-600">#{row.original.id}</span>
+      ),
+    },
     {
       accessorKey: 'type',
       header: 'Type',
@@ -81,7 +88,17 @@ export default function QuizzesPage() {
             size="sm"
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/quizzes/${row.original.id}/edit`);
+              navigate(`/quiz/${row.original.id}`);
+            }}
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/quiz/${row.original.id}/edit`);
             }}
           >
             <Pencil className="h-4 w-4" />
@@ -103,17 +120,17 @@ export default function QuizzesPage() {
   ];
 
   if (isLoading) {
-    return <div className="text-center py-8">Loading quizzes...</div>;
+    return <div className="text-center py-8">Loading quiz...</div>;
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Quizzes</h1>
-          <p className="text-gray-600 mt-1">Manage educational quizzes</p>
+          <h1 className="text-3xl font-bold text-gray-900">Quiz</h1>
+          <p className="text-gray-600 mt-1">Manage educational quiz</p>
         </div>
-        <Link to="/quizzes/create">
+        <Link to="/quiz/create">
           <Button className="gap-2">
             <Plus className="h-4 w-4" />
             Create Quiz
@@ -123,9 +140,9 @@ export default function QuizzesPage() {
 
       <DataTable
         columns={columns}
-        data={quizzes || []}
-        searchPlaceholder="Search quizzes..."
-        onRowClick={(row) => navigate(`/quizzes/${row.id}/edit`)}
+        data={quiz || []}
+        searchPlaceholder="Search quiz..."
+        onRowClick={(row) => navigate(`/quiz/${row.id}`)}
       />
     </div>
   );

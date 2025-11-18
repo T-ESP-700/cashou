@@ -40,7 +40,7 @@ const navigation: NavItem[] = [
     href: '/quiz',
     icon: BookOpen,
     children: [
-      { title: 'Quizzes', href: '/quizzes', icon: BookOpen },
+      { title: 'Quiz', href: '/quiz', icon: BookOpen },
       { title: 'Questions', href: '/questions', icon: HelpCircle },
       { title: 'Answers', href: '/answers', icon: MessageSquare },
     ],
@@ -102,8 +102,8 @@ export function Sidebar() {
                       className={cn(
                         'flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors',
                         isActive(child.href)
-                          ? 'text-gray-900 font-medium'
-                          : 'text-gray-600 hover:text-gray-900'
+                          ? 'bg-gray-100 text-gray-900 font-medium'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                       )}
                     >
                       {child.title}

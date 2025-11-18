@@ -3,7 +3,7 @@ import { ColumnDef } from '@tantml:function_calls';
 import { DataTable } from '@/components/tables/DataTable';
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/lib/trpc';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Question {
@@ -28,6 +28,13 @@ export default function QuestionsPage() {
 
   const columns: ColumnDef<Question>[] = [
     {
+      accessorKey: 'id',
+      header: 'ID',
+      cell: ({ row }) => (
+        <span className="font-mono text-gray-600">#{row.original.id}</span>
+      ),
+    },
+    {
       accessorKey: 'text',
       header: 'Question',
       cell: ({ row }) => {
@@ -40,6 +47,16 @@ export default function QuestionsPage() {
       header: 'Actions',
       cell: ({ row }) => (
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/questions/${row.original.id}`);
+            }}
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -83,7 +100,12 @@ export default function QuestionsPage() {
           </Button>
         </Link>
       </div>
-      <DataTable columns={columns} data={questions || []} searchPlaceholder="Search questions..." />
+      <DataTable
+        columns={columns}
+        data={questions || []}
+        searchPlaceholder="Search questions..."
+        onRowClick={(row) => navigate(`/questions/${row.id}`)}
+      />
     </div>
   );
 }

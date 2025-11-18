@@ -20,7 +20,7 @@ export const quizDataSchema = z.object({
         { message: "Format de date invalide. Utilisez YYYY-MM-DD ou ISO 8601 complet" }
     ).transform((str) => new Date(str)).nullish(),
     levelId: z.number().int().positive().nullish(),
-    context: z.string().nullish(),
+    description: z.string().nullish(),
 });
 export type QuizDataSchema = z.infer<typeof quizDataSchema>;
 

@@ -51,6 +51,7 @@ export default function TestScreen() {
   const [selectedAnswerId, setSelectedAnswerId] = useState<number | null>(null);
   const [userAnswers, setUserAnswers] = useState<{ questionId: number; answerId: number }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasAnswered, setHasAnswered] = useState(false);
 
   const currentQuestion = questions[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
@@ -99,6 +100,7 @@ export default function TestScreen() {
       setCurrentQuestionIndex(0);
       setUserAnswers([]);
       setSelectedAnswerId(null);
+      setHasAnswered(false);
     } catch (error) {
       console.error('Error loading quiz:', error);
       Alert.alert('Erreur', 'Impossible de charger le quiz');
@@ -119,6 +121,18 @@ export default function TestScreen() {
 
     if (!user || !currentQuestion) return;
 
+    // If already answered, move to next question
+    if (hasAnswered) {
+      if (isLastQuestion) {
+        handleFinishQuiz();
+      } else {
+        setCurrentQuestionIndex(currentQuestionIndex + 1);
+        setSelectedAnswerId(null);
+        setHasAnswered(false);
+      }
+      return;
+    }
+
     // Save the answer
     const newAnswer = {
       questionId: currentQuestion.id,
@@ -138,14 +152,7 @@ export default function TestScreen() {
       console.error('Error submitting answer:', error);
     } finally {
       setIsSubmitting(false);
-    }
-
-    // Move to next question or finish
-    if (isLastQuestion) {
-      handleFinishQuiz();
-    } else {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-      setSelectedAnswerId(null);
+      setHasAnswered(true);
     }
   };
 
@@ -163,6 +170,7 @@ export default function TestScreen() {
             setCurrentQuestionIndex(0);
             setUserAnswers([]);
             setSelectedAnswerId(null);
+            setHasAnswered(false);
             setQuizId('');
           },
         },
@@ -207,25 +215,38 @@ export default function TestScreen() {
             <View style={styles.answersContainer}>
               {currentQuestion?.answers.map((answer) => {
                 const isSelected = selectedAnswerId === answer.id;
+                const isCorrect = answer.isCorrect;
+                const showCorrect = hasAnswered && isCorrect;
+
+                let backgroundColor = theme.card;
+                let borderColor = theme.border;
+
+                if (showCorrect) {
+                  borderColor = '#22C55E';
+                } else if (isSelected) {
+                  backgroundColor = theme.accent;
+                  borderColor = theme.accent;
+                }
+
                 return (
                   <TouchableOpacity
                     key={answer.id}
                     style={[
                       styles.answerButton,
                       {
-                        backgroundColor: isSelected ? theme.accent : theme.card,
-                        borderColor: isSelected ? theme.accent : theme.border,
+                        backgroundColor,
+                        borderColor,
                       },
                     ]}
                     onPress={() => handleSelectAnswer(answer.id)}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || hasAnswered}
                   >
                     <Text
                       style={[
                         styles.answerText,
                         {
                           fontFamily: CashouTheme.fonts.body,
-                          color: isSelected ? '#1C1E33' : theme.text,
+                          color: isSelected && !hasAnswered ? '#1C1E33' : theme.text,
                         },
                       ]}
                     >
@@ -253,7 +274,7 @@ export default function TestScreen() {
               <ActivityIndicator color="#1C1E33" />
             ) : (
               <Text style={[styles.actionButtonText, { fontFamily: CashouTheme.fonts.subheading }]}>
-                {isLastQuestion ? 'Terminer' : 'Suivant'}
+                {isLastQuestion ? 'Valider' : 'Suivant'}
               </Text>
             )}
           </TouchableOpacity>
@@ -273,7 +294,7 @@ export default function TestScreen() {
             Test de Quiz
           </Text>
           <Text style={[styles.formSubtitle, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
-            Entrez l'ID du quiz que vous souhaitez tester
+            Entrez l&apos;ID du quiz que vous souhaitez tester
           </Text>
 
           <View style={styles.inputContainer}>

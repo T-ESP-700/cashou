@@ -17,8 +17,12 @@ import EditEventPage from './pages/events/[id]/edit';
 import GoalsPage from './pages/goals';
 import CreateGoalPage from './pages/goals/create';
 import EditGoalPage from './pages/goals/[id]/edit';
-import QuizzesPage from './pages/quizzes';
-import CreateQuizPage from './pages/quizzes/create';
+import QuizPage from './pages/quiz';
+import CreateQuizPage from './pages/quiz/create';
+import ShowQuizPage from './pages/quiz/[id]/show';
+import EditQuizPage from './pages/quiz/[id]/edit';
+import ShowQuestionPage from './pages/questions/[id]/show';
+import EditQuestionPage from './pages/questions/[id]/edit';
 import QuestionsPage from './pages/questions';
 import CreateQuestionPage from './pages/questions/create';
 import AnswersPage from './pages/answers';
@@ -46,10 +50,14 @@ function App() {
             <Route path="goals/:id/edit" element={<EditGoalPage />} />
 
             {/* Quiz System Routes */}
-            <Route path="quizzes" element={<QuizzesPage />} />
-            <Route path="quizzes/create" element={<CreateQuizPage />} />
+            <Route path="quiz" element={<QuizPage />} />
+            <Route path="quiz/create" element={<CreateQuizPage />} />
+            <Route path="quiz/:id" element={<ShowQuizPage />} />
+            <Route path="quiz/:id/edit" element={<EditQuizPage />} />
             <Route path="questions" element={<QuestionsPage />} />
             <Route path="questions/create" element={<CreateQuestionPage />} />
+            <Route path="questions/:id" element={<ShowQuestionPage />} />
+            <Route path="questions/:id/edit" element={<EditQuestionPage />} />
             <Route path="answers" element={<AnswersPage />} />
             <Route path="answers/create" element={<CreateAnswerPage />} />
 

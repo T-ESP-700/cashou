@@ -51,7 +51,7 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Quizzes</CardTitle>
+            <CardTitle>Quiz</CardTitle>
             <CardDescription>Système de quiz</CardDescription>
           </CardHeader>
           <CardContent>
@@ -93,7 +93,7 @@ export default function Dashboard() {
               </p>
             </a>
             <a
-              href="/quizzes"
+              href="/quiz"
               className="rounded-lg border p-4 hover:bg-gray-50 transition-colors"
             >
               <h3 className="font-medium">Créer un quiz</h3>

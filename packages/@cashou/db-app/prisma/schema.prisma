@@ -26,15 +26,17 @@ enum NotificationType {
 // Modèle User avec better-auth + relations Cashou
 model User {
   id            String    @id @default(cuid())
-  username      String?
-  discriminator String?
+  name          String?
   email         String?   @unique
   emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  username      String?
+  discriminator String?
   lastActivity  DateTime? @map("last_activity")
-  levelId       Int       @map("level_id")
+  levelId       Int       @default(0) @map("level_id")
   badges        String?
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
 
   // Cashou game progression
   points        Int?           @default(0)
@@ -389,6 +391,7 @@ model Quiz {
   title       String?
   description String?
   type        QuizType?
+  date        DateTime? @map("date")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 

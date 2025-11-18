@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { useColorScheme as useRNColorScheme } from 'react-native';
+import { useColorScheme as useRNColorScheme, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { HapticTab } from '@/components/haptic-tab';
@@ -31,17 +31,10 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="remove-outline" size={size || 28} color={isDark ? '#FFFFFF' : '#1C1E33'} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Quiz',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="help-circle-outline" size={size || 28} color={isDark ? '#FFFFFF' : '#1C1E33'} />
+          tabBarIcon: ({ size, focused }) => (
+            <View style={focused ? { backgroundColor: '#E87F00', borderRadius: 12, padding: 8 } : { padding: 8 }}>
+              <Ionicons name={(focused ? "home" : "home-outline") as any} size={size || 28} color="#1C1E33" />
+            </View>
           ),
         }}
       />
@@ -49,8 +42,10 @@ export default function TabLayout() {
         name="test"
         options={{
           title: 'Test',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="flask-outline" size={size || 28} color={isDark ? '#FFFFFF' : '#1C1E33'} />
+          tabBarIcon: ({ size, focused }) => (
+            <View style={focused ? { backgroundColor: '#E87F00', borderRadius: 12, padding: 8 } : { padding: 8 }}>
+              <Ionicons name={(focused ? "flask" : "flask-outline") as any} size={size || 28} color="#1C1E33" />
+            </View>
           ),
         }}
       />
@@ -58,8 +53,10 @@ export default function TabLayout() {
         name="wallet"
         options={{
           title: 'Wallet',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="logo-usd" size={size || 28} color={isDark ? '#FFFFFF' : '#1C1E33'} />
+          tabBarIcon: ({ size, focused }) => (
+            <View style={focused ? { backgroundColor: '#E87F00', borderRadius: 12, padding: 8 } : { padding: 8 }}>
+              <Ionicons name="logo-usd" size={size || 28} color="#1C1E33" />
+            </View>
           ),
           href: null, // Hide for now as route doesn't exist yet
         }}
@@ -68,8 +65,10 @@ export default function TabLayout() {
         name="learn"
         options={{
           title: 'Learn',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="book-outline" size={size || 28} color={isDark ? '#FFFFFF' : '#1C1E33'} />
+          tabBarIcon: ({ size, focused }) => (
+            <View style={focused ? { backgroundColor: '#E87F00', borderRadius: 12, padding: 8 } : { padding: 8 }}>
+              <Ionicons name={(focused ? "book" : "book-outline") as any} size={size || 28} color="#1C1E33" />
+            </View>
           ),
           href: null, // Hide for now as route doesn't exist yet
         }}
@@ -78,8 +77,10 @@ export default function TabLayout() {
         name="auth"
         options={{
           title: 'Account',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size || 28} color={isDark ? '#FFFFFF' : '#1C1E33'} />
+          tabBarIcon: ({ size, focused }) => (
+            <View style={focused ? { backgroundColor: '#E87F00', borderRadius: 12, padding: 8 } : { padding: 8 }}>
+              <Ionicons name={(focused ? "person" : "person-outline") as any} size={size || 28} color="#1C1E33" />
+            </View>
           ),
         }}
       />
