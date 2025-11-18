@@ -11,7 +11,11 @@ const AUTH_BASE_URL = Constants.expoConfig?.extra?.authUrl ||
   process.env.EXPO_PUBLIC_AUTH_URL ||
   'http://localhost:3000/api/auth';
 
-export function SignupForm() {
+interface SignupFormProps {
+  onSuccess?: () => void;
+}
+
+export function SignupForm({ onSuccess }: SignupFormProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -51,12 +55,15 @@ export function SignupForm() {
       } else {
         // Store the token
         await tokenStorage.setToken(data.token);
-        Alert.alert('Success', 'Account created successfully! You are now logged in.');
         // Clear form
         setName('');
         setEmail('');
         setPassword('');
         setConfirmPassword('');
+        // Call onSuccess callback to refresh user data (this will update the UI automatically)
+        if (onSuccess) {
+          await onSuccess();
+        }
       }
     } catch (error) {
       console.error('Signup error:', error);

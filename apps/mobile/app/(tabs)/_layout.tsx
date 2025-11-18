@@ -46,6 +46,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="test"
+        options={{
+          title: 'Test',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="flask-outline" size={size || 28} color={isDark ? '#FFFFFF' : '#1C1E33'} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="wallet"
         options={{
           title: 'Wallet',

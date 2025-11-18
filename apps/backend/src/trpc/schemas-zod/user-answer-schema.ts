@@ -5,7 +5,7 @@ import { z } from "zod";
 // Schéma de base contenant toutes les propriétés d'une réponse utilisateur (sans l'ID auto-généré)
 // Utilisation de .nullish() au lieu de .optional() pour accepter null et undefined
 export const userAnswerDataSchema = z.object({
-    userId: z.number().int().positive("L'ID de l'utilisateur doit être un nombre positif").nullish(),
+    userId: z.string().min(1, "L'ID de l'utilisateur doit être une chaîne non vide").nullish(),
     questionId: z.number().int().positive("L'ID de la question doit être un nombre positif").nullish(),
     answerId: z.number().int().positive("L'ID de la réponse doit être un nombre positif").nullish(),
     accurate: z.boolean().nullish(),
@@ -34,7 +34,7 @@ export type UserAnswerIdSchema = z.infer<typeof userAnswerIdSchema>;
 
 // Schéma pour rechercher les réponses d'un utilisateur
 export const userAnswerByUserSchema = z.object({
-    userId: z.number().min(1, "L'ID de l'utilisateur doit être un nombre > 0")
+    userId: z.string().min(1, "L'ID de l'utilisateur doit être une chaîne non vide")
 });
 export type UserAnswerByUserSchema = z.infer<typeof userAnswerByUserSchema>;
 
@@ -52,7 +52,7 @@ export type UserAnswerByAnswerSchema = z.infer<typeof userAnswerByAnswerSchema>;
 
 // Schéma pour enregistrer une réponse (action complète)
 export const submitAnswerSchema = z.object({
-    userId: z.number().min(1, "L'ID de l'utilisateur doit être un nombre > 0"),
+    userId: z.string().min(1, "L'ID de l'utilisateur doit être une chaîne non vide"),
     questionId: z.number().min(1, "L'ID de la question doit être un nombre > 0"),
     answerId: z.number().min(1, "L'ID de la réponse doit être un nombre > 0")
 });
@@ -66,7 +66,7 @@ export type UserAnswerByAccuracySchema = z.infer<typeof userAnswerByAccuracySche
 
 // Schéma pour rechercher les réponses d'un utilisateur à une question spécifique
 export const userAnswerByUserAndQuestionSchema = z.object({
-    userId: z.number().min(1, "L'ID de l'utilisateur doit être un nombre > 0"),
+    userId: z.string().min(1, "L'ID de l'utilisateur doit être une chaîne non vide"),
     questionId: z.number().min(1, "L'ID de la question doit être un nombre > 0")
 });
 export type UserAnswerByUserAndQuestionSchema = z.infer<typeof userAnswerByUserAndQuestionSchema>;

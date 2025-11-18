@@ -1,88 +1,68 @@
-import './index.css'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Auth } from '@/components/Auth'
+import './index.css';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'sonner';
+import { queryClient } from './lib/trpc';
+import { Layout } from './components/layout/Layout';
+
+// Pages
+import Dashboard from './pages/dashboard';
+import UiDemo from './pages/ui';
+import LevelsPage from './pages/levels';
+import CreateLevelPage from './pages/levels/create';
+import EditLevelPage from './pages/levels/[id]/edit';
+import EventsPage from './pages/events';
+import CreateEventPage from './pages/events/create';
+import EditEventPage from './pages/events/[id]/edit';
+import GoalsPage from './pages/goals';
+import CreateGoalPage from './pages/goals/create';
+import EditGoalPage from './pages/goals/[id]/edit';
+import QuizzesPage from './pages/quizzes';
+import CreateQuizPage from './pages/quizzes/create';
+import QuestionsPage from './pages/questions';
+import CreateQuestionPage from './pages/questions/create';
+import AnswersPage from './pages/answers';
+import CreateAnswerPage from './pages/answers/create';
 
 function App() {
-  const handleClick = () => {
-    alert('shadcn/ui Button works!')
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      <div className="container mx-auto p-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Backoffice
-          </h1>
-          <p className="text-gray-600">
-            React with Tailwind v4, tRPC, Zod, Zustand, and Better Auth
-          </p>
-        </div>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <Toaster position="top-right" />
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="ui" element={<UiDemo />} />
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <CardTitle>shadcn/ui</CardTitle>
-              <CardDescription>
-                Test des composants UI avec Tailwind v4
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <Button onClick={handleClick}>Test Button</Button>
-                <Button variant="outline" size="sm">
-                  Outline Button
-                </Button>
-                <Button variant="secondary" size="lg">
-                  Secondary Button
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+            {/* Game Management Routes */}
+            <Route path="levels" element={<LevelsPage />} />
+            <Route path="levels/create" element={<CreateLevelPage />} />
+            <Route path="levels/:id/edit" element={<EditLevelPage />} />
+            <Route path="events" element={<EventsPage />} />
+            <Route path="events/create" element={<CreateEventPage />} />
+            <Route path="events/:id/edit" element={<EditEventPage />} />
+            <Route path="goals" element={<GoalsPage />} />
+            <Route path="goals/create" element={<CreateGoalPage />} />
+            <Route path="goals/:id/edit" element={<EditGoalPage />} />
 
-          <Auth />
+            {/* Quiz System Routes */}
+            <Route path="quizzes" element={<QuizzesPage />} />
+            <Route path="quizzes/create" element={<CreateQuizPage />} />
+            <Route path="questions" element={<QuestionsPage />} />
+            <Route path="questions/create" element={<CreateQuestionPage />} />
+            <Route path="answers" element={<AnswersPage />} />
+            <Route path="answers/create" element={<CreateAnswerPage />} />
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Technologies</CardTitle>
-              <CardDescription>
-                Stack technique installé
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-1 text-sm">
-                <li>✅ React 19.1.0</li>
-                <li>✅ Tailwind CSS v4</li>
-                <li>✅ shadcn/ui</li>
-                <li>✅ tRPC</li>
-                <li>✅ Zod v4</li>
-                <li>✅ Zustand</li>
-                <li>✅ Supabase Auth</li>
-              </ul>
-            </CardContent>
-          </Card>
+            {/* Profile */}
+            <Route path="profile" element={<div>Profile - Coming soon</div>} />
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Next Steps</CardTitle>
-              <CardDescription>
-                Prochaines étapes de développement
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-1 text-sm text-gray-600">
-                <li>• Configurer tRPC</li>
-                <li>• ✅ Setup Supabase Auth</li>
-                <li>• Créer le store Zustand</li>
-                <li>• Ajouter plus de composants</li>
-              </ul>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
-  )
+            {/* Catch all */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </QueryClientProvider>
+  );
 }
 
-export default App
+export default App;

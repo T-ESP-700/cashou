@@ -1,17 +1,48 @@
 import React, { useState } from 'react';
-import { StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { LoginForm } from '@/components/auth/login-form';
 import { SignupForm } from '@/components/auth/signup-form';
+import { UserProfile } from '@/components/auth/user-profile';
+import { useAuth } from '@/hooks/use-auth';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 
 export default function AuthScreen() {
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
+  const { isAuthenticated, isLoading, refreshUser } = useAuth();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <ThemedView style={styles.container}>
+        <ThemedView style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.tint} />
+          <ThemedText style={styles.loadingText}>Loading...</ThemedText>
+        </ThemedView>
+      </ThemedView>
+    );
+  }
+
+  // Show user profile if authenticated
+  if (isAuthenticated) {
+    return (
+      <ThemedView style={styles.container}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <UserProfile />
+        </ScrollView>
+      </ThemedView>
+    );
+  }
+
+  // Show login/signup forms if not authenticated
   return (
     <ThemedView style={styles.container}>
       <ScrollView
@@ -69,7 +100,11 @@ export default function AuthScreen() {
         </ThemedView>
 
         <ThemedView style={styles.formContainer}>
-          {activeTab === 'login' ? <LoginForm /> : <SignupForm />}
+          {activeTab === 'login' ? (
+            <LoginForm onSuccess={refreshUser} />
+          ) : (
+            <SignupForm onSuccess={refreshUser} />
+          )}
         </ThemedView>
       </ScrollView>
     </ThemedView>
@@ -85,6 +120,16 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    opacity: 0.7,
   },
   header: {
     padding: 24,

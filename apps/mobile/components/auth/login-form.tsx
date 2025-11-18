@@ -11,7 +11,11 @@ const AUTH_BASE_URL = Constants.expoConfig?.extra?.authUrl ||
   process.env.EXPO_PUBLIC_AUTH_URL ||
   'http://localhost:3000/api/auth';
 
-export function LoginForm() {
+interface LoginFormProps {
+  onSuccess?: () => void;
+}
+
+export function LoginForm({ onSuccess }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -37,12 +41,19 @@ export function LoginForm() {
       if (!response.ok || data.error) {
         Alert.alert('Login Failed', data.error?.message || 'Invalid credentials');
       } else {
+        console.log('[LoginForm] Login successful, storing token...');
         // Store the token
         await tokenStorage.setToken(data.token);
-        Alert.alert('Success', 'Logged in successfully!');
+        console.log('[LoginForm] Token stored');
         // Clear form
         setEmail('');
         setPassword('');
+        // Call onSuccess callback to refresh user data (this will update the UI automatically)
+        if (onSuccess) {
+          console.log('[LoginForm] Calling onSuccess callback...');
+          await onSuccess();
+          console.log('[LoginForm] onSuccess completed');
+        }
       }
     } catch (error) {
       console.error('Login error:', error);

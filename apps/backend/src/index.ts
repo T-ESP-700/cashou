@@ -77,7 +77,7 @@ function startServer() {
 
       // tRPC endpoints
       if (url.pathname.startsWith('/api/trpc')) {
-        return fetchRequestHandler({
+        const response = await fetchRequestHandler({
           endpoint: '/api/trpc',
           req,
           router: trpcRouter,
@@ -86,6 +86,13 @@ function startServer() {
             console.error('tRPC Error:', error);
           },
         });
+
+        // Add CORS headers to tRPC response
+        Object.entries(corsHeaders).forEach(([key, value]) => {
+          response.headers.set(key, value);
+        });
+
+        return response;
       }
 
       // Default response

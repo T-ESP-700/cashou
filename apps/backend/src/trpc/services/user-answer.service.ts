@@ -71,7 +71,7 @@ export class UserAnswerService {
      * @param userId - Identifiant de l'utilisateur
      * @returns Promise<UserAnswer[]> - Liste des réponses de l'utilisateur
      */
-    async findByUser(userId: number): Promise<UserAnswer[]> {
+    async findByUser(userId: string): Promise<UserAnswer[]> {
         return this.prisma.userAnswer.findMany({
             where: { userId },
             orderBy: { createdAt: 'desc' }
@@ -125,7 +125,7 @@ export class UserAnswerService {
      * @param answerId - Identifiant de la réponse choisie
      * @returns Promise<UserAnswer> - La réponse enregistrée avec validation automatique
      */
-    async submitAnswer(userId: number, questionId: number, answerId: number): Promise<UserAnswer> {
+    async submitAnswer(userId: string, questionId: number, answerId: number): Promise<UserAnswer> {
         // Vérifier si l'utilisateur a déjà répondu à cette question
         const existingAnswer = await this.prisma.userAnswer.findFirst({
             where: { userId, questionId }
@@ -161,7 +161,7 @@ export class UserAnswerService {
      * @param questionId - Identifiant de la question
      * @returns Promise<UserAnswer | null> - La réponse trouvée ou null
      */
-    async findByUserAndQuestion(userId: number, questionId: number): Promise<UserAnswer | null> {
+    async findByUserAndQuestion(userId: string, questionId: number): Promise<UserAnswer | null> {
         return this.prisma.userAnswer.findFirst({
             where: { userId, questionId }
             // Pas d'include - retourne seulement les données de la table user_answers
@@ -174,7 +174,7 @@ export class UserAnswerService {
      * @param questionId - Identifiant de la question
      * @returns Promise<boolean> - true si l'utilisateur a déjà répondu
      */
-    async hasUserAnswered(userId: number, questionId: number): Promise<boolean> {
+    async hasUserAnswered(userId: string, questionId: number): Promise<boolean> {
         const answer = await this.findByUserAndQuestion(userId, questionId);
         return answer !== null;
     }
@@ -184,7 +184,7 @@ export class UserAnswerService {
      * @param userId - Identifiant de l'utilisateur
      * @returns Promise<object> - Statistiques (total, correctes, incorrectes, taux de réussite)
      */
-    async getUserStats(userId: number): Promise<{
+    async getUserStats(userId: string): Promise<{
         total: number;
         correct: number;
         incorrect: number;
