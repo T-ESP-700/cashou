@@ -1,6 +1,6 @@
 import { useForm, useWatch } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/forms/FormField';
@@ -67,6 +67,54 @@ export default function CreateQuizPage() {
   const { data: levels } = trpc.level.getAll.useQuery();
   const { data: questions } = trpc.question.getAll.useQuery();
 
+  // Fetch all Daily Quiz to get questions already used
+  const { data: allDailyQuizzes } = trpc.quiz.getByType.useQuery(
+    { type: 'DAILY' },
+    { enabled: selectedType === 'DAILY' }
+  );
+
+  // Fetch questions for all Daily Quiz
+  const [usedQuestionIds, setUsedQuestionIds] = useState<Set<number>>(new Set());
+  
+  useEffect(() => {
+    if (selectedType === 'DAILY' && allDailyQuizzes && allDailyQuizzes.length > 0) {
+      const fetchAllQuestions = async () => {
+        const questionIds = new Set<number>();
+        const promises = allDailyQuizzes
+          .filter((quiz) => quiz.id)
+          .map((quiz) => utils.client.quizQuestion.getByQuiz.query({ quizId: quiz.id! }));
+        
+        const results = await Promise.all(promises);
+        results.forEach((quizQuestions) => {
+          quizQuestions?.forEach((qq) => {
+            if (qq.questionId) {
+              questionIds.add(qq.questionId);
+            }
+          });
+        });
+        setUsedQuestionIds(questionIds);
+      };
+      fetchAllQuestions();
+    } else {
+      setUsedQuestionIds(new Set());
+    }
+  }, [selectedType, allDailyQuizzes, utils]);
+
+  // Filter questions to exclude those already used in Daily Quiz
+  const availableQuestions = useMemo(() => {
+    if (selectedType === 'DAILY' && usedQuestionIds.size > 0) {
+      return questions?.filter((q) => !usedQuestionIds.has(q.id)) || [];
+    }
+    return questions || [];
+  }, [selectedType, questions, usedQuestionIds]);
+
+  // Check if a Daily Quiz already exists for the selected date
+  const actualDateValue = getValues('date') || dateValue;
+  const { data: dailyQuizExists } = trpc.quiz.dailyQuizExists.useQuery(
+    { date: actualDateValue || '' },
+    { enabled: selectedType === 'DAILY' && !!actualDateValue }
+  );
+
   const createMutation = trpc.quiz.create.useMutation({
     onSuccess: async (data) => {
       const quizId = data.id;
@@ -97,7 +145,16 @@ export default function CreateQuizPage() {
     },
   });
 
-  const onSubmit = (data: QuizFormData) => {
+  const onSubmit = async (data: QuizFormData) => {
+    // Vérifier si un Daily Quiz existe déjà pour cette date
+    if (data.type === 'DAILY' && data.date) {
+      const exists = await utils.client.quiz.dailyQuizExists.query({ date: data.date });
+      if (exists) {
+        toast.error('Un Daily Quiz existe déjà pour cette date');
+        return;
+      }
+    }
+
     createMutation.mutate({
       type: data.type as 'DAILY' | 'MCQ',
       title: data.title,
@@ -117,7 +174,7 @@ export default function CreateQuizPage() {
   };
 
   const levelOptions = formatSelectOptions(levels, (l) => l.title || `Level ${l.number}`);
-  const questionOptions = formatSelectOptions(questions, (q) => {
+  const questionOptions = formatSelectOptions(availableQuestions, (q) => {
     const text = q.text || 'Unnamed Question';
     return text.length > 60 ? text.substring(0, 60) + '...' : text;
   });
@@ -125,21 +182,23 @@ export default function CreateQuizPage() {
   // Validation: type and title must be filled, date and description required for DAILY
   const isTypeFilled = selectedType && selectedType.trim() !== '';
   const isTitleFilled = titleValue && titleValue.trim() !== '';
-  // Get actual date value from form (in case browser sets default)
-  const actualDateValue = getValues('date') || dateValue;
+  // actualDateValue is already defined above for the query
   const isDateFilled = actualDateValue && actualDateValue.trim() !== '';
   const isDescriptionFilled = descriptionValue && descriptionValue.trim() !== '';
   
   // For DAILY quiz, date and description are required, and exactly 3 questions
   const isDailyValid = selectedType !== 'DAILY' || (isDateFilled && isDescriptionFilled);
   const hasExactly3Questions = selectedType !== 'DAILY' || selectedQuestionIds.length === 3;
+  // Check if Daily Quiz already exists for this date
+  const dateAlreadyUsed = selectedType === 'DAILY' && dailyQuizExists === true;
   
   const isSubmitDisabled = 
     createMutation.isPending || 
     !isTypeFilled || 
     !isTitleFilled || 
     !isDailyValid ||
-    !hasExactly3Questions;
+    !hasExactly3Questions ||
+    dateAlreadyUsed;
 
   // Determine error message to display
   const getErrorMessage = () => {
@@ -157,6 +216,9 @@ export default function CreateQuizPage() {
     }
     if (selectedType === 'DAILY' && selectedQuestionIds.length !== 3) {
       return 'Un Daily Quiz doit contenir exactement 3 questions';
+    }
+    if (dateAlreadyUsed) {
+      return 'Un Daily Quiz existe déjà pour cette date';
     }
     return null;
   };

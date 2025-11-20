@@ -109,7 +109,31 @@ export function CreateQuestionDialog({ open, onOpenChange, onSuccess }: CreateQu
     setAnswers(newAnswers);
   };
 
-  // Vérifications dans l'ordre : question → 4 réponses → correct
+  // Vérifier les réponses dupliquées (insensible à la casse et aux espaces)
+  const getDuplicateIndices = (): Set<number> => {
+    const duplicateIndices = new Set<number>();
+    const answerTexts = answers.map((a, i) => ({
+      text: a.text.trim().toLowerCase(),
+      index: i,
+    }));
+
+    for (let i = 0; i < answerTexts.length; i++) {
+      if (!answerTexts[i].text) continue; // Ignorer les champs vides
+      for (let j = i + 1; j < answerTexts.length; j++) {
+        if (!answerTexts[j].text) continue; // Ignorer les champs vides
+        if (answerTexts[i].text === answerTexts[j].text) {
+          duplicateIndices.add(i);
+          duplicateIndices.add(j);
+        }
+      }
+    }
+    return duplicateIndices;
+  };
+
+  const duplicateIndices = getDuplicateIndices();
+  const hasDuplicateAnswers = duplicateIndices.size > 0;
+
+  // Vérifications dans l'ordre : question → 4 réponses → correct → dupliqués
   const isQuestionFilled = questionText.trim() !== '';
   const allAnswersFilled = answers.every((answer) => answer.text.trim() !== '');
   const hasCorrectAnswer = answers.some((answer) => answer.isCorrect);
@@ -119,9 +143,10 @@ export function CreateQuestionDialog({ open, onOpenChange, onSuccess }: CreateQu
     createAnswerMutation.isPending || 
     !isQuestionFilled || 
     !allAnswersFilled || 
-    !hasCorrectAnswer;
+    !hasCorrectAnswer ||
+    hasDuplicateAnswers;
   
-  // Déterminer le message d'erreur à afficher dans l'ordre : question → réponses → correct
+  // Déterminer le message d'erreur à afficher dans l'ordre : question → réponses → correct → dupliqués
   const getErrorMessage = () => {
     if (!isQuestionFilled) {
       return 'Veuillez remplir le champ question';
@@ -131,6 +156,9 @@ export function CreateQuestionDialog({ open, onOpenChange, onSuccess }: CreateQu
     }
     if (!hasCorrectAnswer) {
       return 'Veuillez cocher au moins une réponse comme correcte';
+    }
+    if (hasDuplicateAnswers) {
+      return 'Les réponses ne doivent pas être identiques';
     }
     return null;
   };
@@ -189,7 +217,11 @@ export function CreateQuestionDialog({ open, onOpenChange, onSuccess }: CreateQu
                   value={answer.text}
                   onChange={(e) => updateAnswer(index, 'text', e.target.value)}
                   placeholder={`Réponse ${index + 1}`}
-                  className="flex-1 rounded-md border overflow-hidden border-gray-300 px-3 py-2 text-sm placeholder:text-gray-400"
+                  className={`flex-1 rounded-md border overflow-hidden px-3 py-2 text-sm placeholder:text-gray-400 ${
+                    duplicateIndices.has(index)
+                      ? 'border-red-500 bg-red-50 focus:border-red-500 focus:ring-red-500'
+                      : 'border-gray-300'
+                  }`}
                 />
                 <label className="flex items-center gap-2 whitespace-nowrap">
                   <input

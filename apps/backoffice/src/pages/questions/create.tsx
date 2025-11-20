@@ -93,7 +93,31 @@ export default function CreateQuestionPage() {
     setAnswers(newAnswers);
   };
 
-  // Vérifications dans l'ordre : question → 4 réponses → correct
+  // Vérifier les réponses dupliquées (insensible à la casse et aux espaces)
+  const getDuplicateIndices = (): Set<number> => {
+    const duplicateIndices = new Set<number>();
+    const answerTexts = answers.map((a, i) => ({
+      text: a.text.trim().toLowerCase(),
+      index: i,
+    }));
+
+    for (let i = 0; i < answerTexts.length; i++) {
+      if (!answerTexts[i].text) continue; // Ignorer les champs vides
+      for (let j = i + 1; j < answerTexts.length; j++) {
+        if (!answerTexts[j].text) continue; // Ignorer les champs vides
+        if (answerTexts[i].text === answerTexts[j].text) {
+          duplicateIndices.add(i);
+          duplicateIndices.add(j);
+        }
+      }
+    }
+    return duplicateIndices;
+  };
+
+  const duplicateIndices = getDuplicateIndices();
+  const hasDuplicateAnswers = duplicateIndices.size > 0;
+
+  // Vérifications dans l'ordre : question → 4 réponses → correct → dupliqués
   const isQuestionFilled = questionText.trim() !== '';
   const allAnswersFilled = answers.every((answer) => answer.text.trim() !== '');
   const hasCorrectAnswer = answers.some((answer) => answer.isCorrect);
@@ -103,9 +127,10 @@ export default function CreateQuestionPage() {
     createAnswerMutation.isPending || 
     !isQuestionFilled || 
     !allAnswersFilled || 
-    !hasCorrectAnswer;
+    !hasCorrectAnswer ||
+    hasDuplicateAnswers;
   
-  // Déterminer le message d'erreur à afficher dans l'ordre : question → réponses → correct
+  // Déterminer le message d'erreur à afficher dans l'ordre : question → réponses → correct → dupliqués
   const getErrorMessage = () => {
     if (!isQuestionFilled) {
       return 'Veuillez remplir le champ question';
@@ -115,6 +140,9 @@ export default function CreateQuestionPage() {
     }
     if (!hasCorrectAnswer) {
       return 'Veuillez cocher au moins une réponse comme correcte';
+    }
+    if (hasDuplicateAnswers) {
+      return 'Les réponses ne doivent pas être identiques';
     }
     return null;
   };
@@ -176,7 +204,11 @@ export default function CreateQuestionPage() {
                     value={answer.text}
                     onChange={(e) => updateAnswer(index, 'text', e.target.value)}
                     placeholder={`Réponse ${index + 1}`}
-                    className="flex-1 rounded-md border overflow-hidden border-gray-300 px-3 py-2 text-sm placeholder:text-gray-400"
+                    className={`flex-1 rounded-md border overflow-hidden px-3 py-2 text-sm placeholder:text-gray-400 ${
+                      duplicateIndices.has(index)
+                        ? 'border-red-500 bg-red-50 focus:border-red-500 focus:ring-red-500'
+                        : 'border-gray-300'
+                    }`}
                   />
                   <label className="flex items-center gap-2 whitespace-nowrap">
                     <input
@@ -204,9 +236,9 @@ export default function CreateQuestionPage() {
                     : 'Créer la Question'}
                 </Button>
                 {errorMessage && (
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg">
+                  <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-md max-w-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg">
                     {errorMessage}
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                    <div className="absolute top-full left-4 border-4 border-transparent border-t-gray-900"></div>
                   </div>
                 )}
               </div>
