@@ -19,6 +19,7 @@ interface Answer {
 export default function CreateQuestionPage() {
   const navigate = useNavigate();
   const utils = trpc.useUtils();
+  const [questionText, setQuestionText] = useState('');
   const [answers, setAnswers] = useState<Answer[]>([
     { text: '', isCorrect: false },
     { text: '', isCorrect: false },
@@ -26,15 +27,27 @@ export default function CreateQuestionPage() {
     { text: '', isCorrect: false },
   ]);
 
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<QuestionFormData>();
+  const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<QuestionFormData>();
 
   const createQuestionMutation = trpc.question.create.useMutation();
   const createAnswerMutation = trpc.answer.create.useMutation();
 
+  // Fonction pour ajouter " ?" si ce n'est pas déjà présent
+  const ensureQuestionMark = (text: string): string => {
+    const trimmed = text.trim();
+    if (trimmed && !trimmed.endsWith('?')) {
+      return trimmed + ' ?';
+    }
+    return trimmed;
+  };
+
   const onSubmit = async (data: QuestionFormData) => {
     try {
+      // Ajouter " ?" si nécessaire
+      const finalQuestionText = ensureQuestionMark(data.text);
+      
       // Create question first
-      const question = await createQuestionMutation.mutateAsync({ text: data.text });
+      const question = await createQuestionMutation.mutateAsync({ text: finalQuestionText });
 
       // Create all answers
       const validAnswers = answers.filter((a) => a.text.trim() !== '');
@@ -54,6 +67,7 @@ export default function CreateQuestionPage() {
       utils.question.getAll.invalidate();
       utils.answer.getAll.invalidate();
       reset();
+      setQuestionText('');
       setAnswers([
         { text: '', isCorrect: false },
         { text: '', isCorrect: false },
@@ -79,14 +93,23 @@ export default function CreateQuestionPage() {
     setAnswers(newAnswers);
   };
 
-  // Vérifier si au moins une réponse est marquée comme correcte
-  const hasCorrectAnswer = answers.some((answer) => answer.isCorrect);
-  // Vérifier si tous les 4 champs de réponse sont remplis
+  // Vérifications dans l'ordre : question → 4 réponses → correct
+  const isQuestionFilled = questionText.trim() !== '';
   const allAnswersFilled = answers.every((answer) => answer.text.trim() !== '');
-  const isSubmitDisabled = createQuestionMutation.isPending || createAnswerMutation.isPending || !hasCorrectAnswer || !allAnswersFilled;
+  const hasCorrectAnswer = answers.some((answer) => answer.isCorrect);
   
-  // Déterminer le message d'erreur à afficher
+  const isSubmitDisabled = 
+    createQuestionMutation.isPending || 
+    createAnswerMutation.isPending || 
+    !isQuestionFilled || 
+    !allAnswersFilled || 
+    !hasCorrectAnswer;
+  
+  // Déterminer le message d'erreur à afficher dans l'ordre : question → réponses → correct
   const getErrorMessage = () => {
+    if (!isQuestionFilled) {
+      return 'Veuillez remplir le champ question';
+    }
     if (!allAnswersFilled) {
       return 'Veuillez remplir tous les 4 champs de réponse';
     }
@@ -97,6 +120,23 @@ export default function CreateQuestionPage() {
   };
   
   const errorMessage = getErrorMessage();
+
+  // Gérer le changement du texte de la question
+  const handleQuestionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setQuestionText(value);
+    setValue('text', value);
+  };
+
+  // Ajouter " ?" automatiquement lors du blur
+  const handleQuestionBlur = (e: React.FocusEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    const finalValue = ensureQuestionMark(value);
+    if (finalValue !== value) {
+      setQuestionText(finalValue);
+      setValue('text', finalValue);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -109,15 +149,22 @@ export default function CreateQuestionPage() {
         <CardHeader><CardTitle>Informations de la Question</CardTitle></CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              label="Texte de la Question"
-              name="text"
-              type="textarea"
-              register={register}
-              errors={errors}
-              required
-              placeholder="Entrez votre question"
-            />
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-gray-700">
+                Texte de la Question <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                {...register('text', { required: 'Le texte de la question est requis' })}
+                value={questionText}
+                onChange={handleQuestionChange}
+                onBlur={handleQuestionBlur}
+                placeholder="Entrez votre question"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm min-h-[100px] resize-y placeholder:text-gray-400"
+              />
+              {errors.text && (
+                <p className="text-xs text-red-500">{errors.text.message as string}</p>
+              )}
+            </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Réponses</label>
@@ -129,7 +176,7 @@ export default function CreateQuestionPage() {
                     value={answer.text}
                     onChange={(e) => updateAnswer(index, 'text', e.target.value)}
                     placeholder={`Réponse ${index + 1}`}
-                    className="flex-1 rounded-md border overflow-hidden border-gray-300 px-3 py-2 text-sm"
+                    className="flex-1 rounded-md border overflow-hidden border-gray-300 px-3 py-2 text-sm placeholder:text-gray-400"
                   />
                   <label className="flex items-center gap-2 whitespace-nowrap">
                     <input

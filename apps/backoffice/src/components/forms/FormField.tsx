@@ -32,6 +32,7 @@ export function FormField<T extends Record<string, any>>({
     error
       ? 'border-red-500 focus:ring-red-500'
       : 'border-gray-300 focus:border-gray-500 focus:ring-gray-500',
+    'placeholder:text-gray-400',
     className
   );
 
