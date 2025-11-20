@@ -1,76 +1,48 @@
-import './index.css';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from 'sonner';
-import { queryClient } from './lib/trpc';
-import { Layout } from './components/layout/Layout';
-
-// Pages
-import Dashboard from './pages/dashboard';
-import UiDemo from './pages/ui';
-import LevelsPage from './pages/levels';
-import CreateLevelPage from './pages/levels/create';
-import EditLevelPage from './pages/levels/[id]/edit';
-import EventsPage from './pages/events';
-import CreateEventPage from './pages/events/create';
-import EditEventPage from './pages/events/[id]/edit';
-import GoalsPage from './pages/goals';
-import CreateGoalPage from './pages/goals/create';
-import EditGoalPage from './pages/goals/[id]/edit';
-import QuizPage from './pages/quiz';
-import CreateQuizPage from './pages/quiz/create';
-import ShowQuizPage from './pages/quiz/[id]/show';
-import EditQuizPage from './pages/quiz/[id]/edit';
-import ShowQuestionPage from './pages/questions/[id]/show';
-import EditQuestionPage from './pages/questions/[id]/edit';
-import QuestionsPage from './pages/questions';
-import CreateQuestionPage from './pages/questions/create';
-import AnswersPage from './pages/answers';
-import CreateAnswerPage from './pages/answers/create';
+import { useEffect } from 'react'
+import './index.css'
+import { Sidebar } from '@/components/layout/Sidebar'
+import { TopBar } from '@/components/layout/TopBar'
+import { EntityWorkspace } from '@/components/modules/EntityWorkspace'
+import { LevelsModule } from '@/components/modules/LevelsModule'
+import { QuizzesModule } from '@/components/modules/QuizzesModule'
+import { PlayersMonitor } from '@/components/modules/PlayersMonitor'
+import { AuthGate } from '@/components/auth/AuthGate'
+import { useBackofficeStore } from '@/store/useBackofficeStore'
+import type { BackofficeModule } from '@/lib/domain'
 
 function App() {
+  const module = useBackofficeStore((state) => state.module)
+
+  useEffect(() => {
+    useBackofficeStore.getState().initialize()
+  }, [])
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Toaster position="top-right" />
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="ui" element={<UiDemo />} />
-
-            {/* Game Management Routes */}
-            <Route path="levels" element={<LevelsPage />} />
-            <Route path="levels/create" element={<CreateLevelPage />} />
-            <Route path="levels/:id/edit" element={<EditLevelPage />} />
-            <Route path="events" element={<EventsPage />} />
-            <Route path="events/create" element={<CreateEventPage />} />
-            <Route path="events/:id/edit" element={<EditEventPage />} />
-            <Route path="goals" element={<GoalsPage />} />
-            <Route path="goals/create" element={<CreateGoalPage />} />
-            <Route path="goals/:id/edit" element={<EditGoalPage />} />
-
-            {/* Quiz System Routes */}
-            <Route path="quiz" element={<QuizPage />} />
-            <Route path="quiz/create" element={<CreateQuizPage />} />
-            <Route path="quiz/:id" element={<ShowQuizPage />} />
-            <Route path="quiz/:id/edit" element={<EditQuizPage />} />
-            <Route path="questions" element={<QuestionsPage />} />
-            <Route path="questions/create" element={<CreateQuestionPage />} />
-            <Route path="questions/:id" element={<ShowQuestionPage />} />
-            <Route path="questions/:id/edit" element={<EditQuestionPage />} />
-            <Route path="answers" element={<AnswersPage />} />
-            <Route path="answers/create" element={<CreateAnswerPage />} />
-
-            {/* Profile */}
-            <Route path="profile" element={<div>Profile - Coming soon</div>} />
-
-            {/* Catch all */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </QueryClientProvider>
-  );
+    <AuthGate>
+      <div className="flex min-h-[calc(100vh-36px)] bg-slate-50 text-slate-900">
+        <Sidebar />
+        <div className="flex flex-1 flex-col">
+          <TopBar />
+          <main className="flex-1 overflow-y-auto bg-gradient-to-b from-slate-50 to-slate-100 p-6">
+            {renderModule(module)}
+          </main>
+        </div>
+      </div>
+    </AuthGate>
+  )
 }
 
-export default App;
+function renderModule(module: BackofficeModule) {
+  switch (module) {
+    case 'levels':
+      return <LevelsModule />
+    case 'quizzes':
+      return <QuizzesModule />
+    case 'players':
+      return <PlayersMonitor />
+    default:
+      return <EntityWorkspace />
+  }
+}
+
+export default App

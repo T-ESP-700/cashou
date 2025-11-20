@@ -82,7 +82,7 @@ function startServer() {
           req,
           router: trpcRouter,
           createContext,
-          onError: ({ error, type: _type, path: _path, input: _input, ctx: _ctx, req: _req }) => {
+          onError: ({ error }) => {
             console.error('tRPC Error:', error);
           },
         });
