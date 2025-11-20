@@ -1,6 +1,6 @@
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/forms/FormField';
@@ -36,7 +36,32 @@ export default function CreateQuizPage() {
     handleSubmit,
     formState: { errors },
     setValue,
+    control,
+    getValues,
   } = useForm<QuizFormData>();
+
+  // Watch the type, title, date, and description fields for validation
+  const selectedType = useWatch({ control, name: 'type' });
+  const titleValue = useWatch({ control, name: 'title' });
+  const dateValue = useWatch({ control, name: 'date' });
+  const descriptionValue = useWatch({ control, name: 'description' });
+
+  // Reset date and level when type changes, or set default date for DAILY
+  useEffect(() => {
+    if (selectedType === 'DAILY') {
+      // Set today's date as default if date is empty
+      if (!dateValue) {
+        const today = new Date().toISOString().split('T')[0];
+        setValue('date', today);
+      }
+    } else if (selectedType !== 'DAILY') {
+      setValue('date', '');
+    }
+    if (selectedType !== 'MCQ') {
+      setSelectedLevelId(null);
+      setValue('levelId', null);
+    }
+  }, [selectedType, setValue, dateValue]);
 
   // Fetch levels and questions for selection
   const { data: levels } = trpc.level.getAll.useQuery();
@@ -97,6 +122,47 @@ export default function CreateQuizPage() {
     return text.length > 60 ? text.substring(0, 60) + '...' : text;
   });
 
+  // Validation: type and title must be filled, date and description required for DAILY
+  const isTypeFilled = selectedType && selectedType.trim() !== '';
+  const isTitleFilled = titleValue && titleValue.trim() !== '';
+  // Get actual date value from form (in case browser sets default)
+  const actualDateValue = getValues('date') || dateValue;
+  const isDateFilled = actualDateValue && actualDateValue.trim() !== '';
+  const isDescriptionFilled = descriptionValue && descriptionValue.trim() !== '';
+  
+  // For DAILY quiz, date and description are required, and exactly 3 questions
+  const isDailyValid = selectedType !== 'DAILY' || (isDateFilled && isDescriptionFilled);
+  const hasExactly3Questions = selectedType !== 'DAILY' || selectedQuestionIds.length === 3;
+  
+  const isSubmitDisabled = 
+    createMutation.isPending || 
+    !isTypeFilled || 
+    !isTitleFilled || 
+    !isDailyValid ||
+    !hasExactly3Questions;
+
+  // Determine error message to display
+  const getErrorMessage = () => {
+    if (!isTypeFilled) {
+      return 'Veuillez sélectionner un type de quiz';
+    }
+    if (!isTitleFilled) {
+      return 'Veuillez remplir le titre du quiz';
+    }
+    if (selectedType === 'DAILY' && !isDateFilled) {
+      return 'Veuillez remplir la date pour un Daily Quiz';
+    }
+    if (selectedType === 'DAILY' && !isDescriptionFilled) {
+      return 'Veuillez remplir la description pour un Daily Quiz';
+    }
+    if (selectedType === 'DAILY' && selectedQuestionIds.length !== 3) {
+      return 'Un Daily Quiz doit contenir exactement 3 questions';
+    }
+    return null;
+  };
+
+  const errorMessage = getErrorMessage();
+
   return (
     <>
       <div className="space-y-6">
@@ -137,24 +203,29 @@ export default function CreateQuizPage() {
                 placeholder="Enter quiz title"
               />
 
-              <FormField
-                label="Date"
-                name="date"
-                type="date"
-                register={register}
-                errors={errors}
-                placeholder="Select date for daily quiz"
-              />
+              {selectedType === 'DAILY' && (
+                <FormField
+                  label="Date"
+                  name="date"
+                  type="date"
+                  register={register}
+                  errors={errors}
+                  required
+                  placeholder="Select date for daily quiz"
+                />
+              )}
 
-              <RelationSelect
-                label="Level"
-                options={levelOptions}
-                value={selectedLevelId}
-                onChange={(value) => setSelectedLevelId(value ? Number(value) : null)}
-                placeholder="Select a level..."
-                onCreate={() => setShowLevelDialog(true)}
-                createLabel="Create Level"
-              />
+              {selectedType === 'MCQ' && (
+                <RelationSelect
+                  label="Level"
+                  options={levelOptions}
+                  value={selectedLevelId}
+                  onChange={(value) => setSelectedLevelId(value ? Number(value) : null)}
+                  placeholder="Select a level..."
+                  onCreate={() => setShowLevelDialog(true)}
+                  createLabel="Create Level"
+                />
+              )}
 
               <FormField
                 label="Description"
@@ -162,12 +233,15 @@ export default function CreateQuizPage() {
                 type="textarea"
                 register={register}
                 errors={errors}
+                required={selectedType === 'DAILY'}
                 placeholder="Enter quiz description"
               />
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-gray-700">Questions</label>
+                  <label className="text-sm font-medium text-gray-700">
+                    Questions <span className="text-red-500">*</span>
+                  </label>
                   <Button
                     type="button"
                     variant="outline"
@@ -187,9 +261,21 @@ export default function CreateQuizPage() {
               </div>
 
               <div className="flex gap-2 pt-4">
-                <Button type="submit" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? 'Creating...' : 'Create Quiz'}
-                </Button>
+                <div className="relative inline-block group">
+                  <Button
+                    type="submit"
+                    disabled={isSubmitDisabled}
+                    className="relative"
+                  >
+                    {createMutation.isPending ? 'Creating...' : 'Create Quiz'}
+                  </Button>
+                  {errorMessage && (
+                    <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-md max-w-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg">
+                      {errorMessage}
+                      <div className="absolute top-full left-4 border-4 border-transparent border-t-gray-900"></div>
+                    </div>
+                  )}
+                </div>
                 <Button
                   type="button"
                   variant="outline"
