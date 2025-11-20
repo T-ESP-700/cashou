@@ -23,6 +23,7 @@ const emptyData: BackofficeData = {
   eventAsset: [],
   impacts: [],
   players: [],
+  gameInstances: [],
 }
 
 const defaultRange = () => {

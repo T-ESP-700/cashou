@@ -198,6 +198,17 @@ export interface PlayerSnapshot {
   lastActivity?: string
 }
 
+export interface GameInstance {
+  id: number
+  title?: string | null
+  status?: string | null
+  marketId?: number | null
+  levelId?: number | null
+  userId?: string | null
+  createdAt?: string | Date | null
+  updatedAt?: string | Date | null
+}
+
 export interface MarketKpis {
   total_assets?: number
   total_submarkets?: number
@@ -346,4 +357,5 @@ export interface BackofficeData {
   eventAsset: EventAsset[]
   impacts: Impact[]
   players?: PlayerSnapshot[]
+  gameInstances?: GameInstance[]
 }

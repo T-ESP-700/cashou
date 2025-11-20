@@ -169,6 +169,7 @@ export async function fetchBackofficeDataset(): Promise<BackofficeData> {
     eventAsset: eventAsset as EventAsset[],
     impacts: impacts as Impact[],
     players: [],
+    gameInstances: [],
   }
 }
 

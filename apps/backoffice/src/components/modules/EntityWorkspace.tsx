@@ -130,6 +130,7 @@ export function EntityWorkspace({ moduleKey }: { moduleKey?: BackofficeModule } 
     setIsSubmitting(true)
     setStatus(null)
     const payload = sanitizePayload(config.fields, formValues)
+    const isEditing = Boolean(selectedRecord && selectedRecordId !== '__new__')
     try {
       if (selectedRecord && selectedRecordId !== '__new__') {
         await handler.update({ id: selectedRecord.id, data: payload })
@@ -139,6 +140,9 @@ export function EntityWorkspace({ moduleKey }: { moduleKey?: BackofficeModule } 
       setStatus({ type: 'success', message: 'Synchronisé avec succès' })
       await refresh()
       selectRecord(null)
+      if (!isEditing) {
+        setFormValues({})
+      }
     } catch (error) {
       setStatus({
         type: 'error',
@@ -311,24 +315,6 @@ export function EntityWorkspace({ moduleKey }: { moduleKey?: BackofficeModule } 
             </div>
           </form>
 
-          {selectedRecord && (
-            <div className="mt-6 rounded-2xl bg-slate-50 p-4 text-xs text-slate-600">
-              <p className="font-semibold text-slate-900">Métadonnées</p>
-              <ul className="mt-2 space-y-1">
-                {Object.entries(selectedRecord)
-                  .filter(([key]) => !['id', 'createdAt', 'updatedAt'].includes(key))
-                  .slice(0, 6)
-                  .map(([key, value]) => (
-                    <li key={key} className="flex justify-between">
-                      <span className="uppercase tracking-wide">{key}</span>
-                      <span className="text-slate-500">
-                        {resolveDisplayValue(key, value, dynamicOptions)}
-                      </span>
-                    </li>
-                  ))}
-              </ul>
-            </div>
-          )}
         </section>
       </div>
     </div>

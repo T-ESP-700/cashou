@@ -17,6 +17,7 @@ import type {
   Quiz,
   QuizQuestion,
   Submarket,
+  GameInstance,
 } from './domain'
 
 const sampleLevels: Level[] = [
@@ -167,6 +168,25 @@ const sampleImpacts: Impact[] = [
   },
 ]
 
+const sampleGameInstances: GameInstance[] = [
+  {
+    id: 501,
+    title: 'Session Alpha',
+    status: 'en cours',
+    marketId: 1,
+    levelId: 2,
+    userId: 'user-1',
+  },
+  {
+    id: 502,
+    title: 'Session Beta',
+    status: 'en préparation',
+    marketId: 2,
+    levelId: 1,
+    userId: 'user-2',
+  },
+]
+
 export const mockBackofficeData: BackofficeData = {
   levels: sampleLevels,
   goals: [
@@ -228,6 +248,7 @@ export const mockBackofficeData: BackofficeData = {
       lastActivity: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
     },
   ],
+  gameInstances: sampleGameInstances,
 }
 
 export const mockUpdatedAt = () => new Date().toISOString()
