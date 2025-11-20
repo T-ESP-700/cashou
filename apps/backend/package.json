@@ -19,7 +19,7 @@
     "studio": "bunx prisma studio",
     "db:check": "bunx prisma db pull --force",
     "db:status": "bun run scripts/db-check.ts",
-    "db:seed": "bun run src/seed-data.ts",
+    "db:seed": "bun run scripts/seed-backoffice.ts",
     "db:empty": "bunx prisma migrate reset --force",
     "test:unit": "bun test tests/service/level.service.unit.test.ts",
     "test:integration": "bun test tests/service/level.service.integration.test.ts",

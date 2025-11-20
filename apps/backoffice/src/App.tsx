@@ -1,88 +1,45 @@
+import { useEffect } from 'react'
 import './index.css'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Auth } from '@/components/Auth'
+import { Sidebar } from '@/components/layout/Sidebar'
+import { TopBar } from '@/components/layout/TopBar'
+import { EntityWorkspace } from '@/components/modules/EntityWorkspace'
+import { LevelsModule } from '@/components/modules/LevelsModule'
+import { QuizzesModule } from '@/components/modules/QuizzesModule'
+import { PlayersMonitor } from '@/components/modules/PlayersMonitor'
+import { useBackofficeStore } from '@/store/useBackofficeStore'
+import type { BackofficeModule } from '@/lib/domain'
 
 function App() {
-  const handleClick = () => {
-    alert('shadcn/ui Button works!')
-  }
+  const module = useBackofficeStore((state) => state.module)
+
+  useEffect(() => {
+    useBackofficeStore.getState().initialize()
+  }, [])
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      <div className="container mx-auto p-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Backoffice
-          </h1>
-          <p className="text-gray-600">
-            React with Tailwind v4, tRPC, Zod, Zustand, and Better Auth
-          </p>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <CardTitle>shadcn/ui</CardTitle>
-              <CardDescription>
-                Test des composants UI avec Tailwind v4
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <Button onClick={handleClick}>Test Button</Button>
-                <Button variant="outline" size="sm">
-                  Outline Button
-                </Button>
-                <Button variant="secondary" size="lg">
-                  Secondary Button
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Auth />
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Technologies</CardTitle>
-              <CardDescription>
-                Stack technique installé
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-1 text-sm">
-                <li>✅ React 19.1.0</li>
-                <li>✅ Tailwind CSS v4</li>
-                <li>✅ shadcn/ui</li>
-                <li>✅ tRPC</li>
-                <li>✅ Zod v4</li>
-                <li>✅ Zustand</li>
-                <li>✅ Supabase Auth</li>
-              </ul>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Next Steps</CardTitle>
-              <CardDescription>
-                Prochaines étapes de développement
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-1 text-sm text-gray-600">
-                <li>• Configurer tRPC</li>
-                <li>• ✅ Setup Supabase Auth</li>
-                <li>• Créer le store Zustand</li>
-                <li>• Ajouter plus de composants</li>
-              </ul>
-            </CardContent>
-          </Card>
-        </div>
+    <div className="flex min-h-screen bg-slate-50 text-slate-900">
+      <Sidebar />
+      <div className="flex flex-1 flex-col">
+        <TopBar />
+        <main className="flex-1 overflow-y-auto bg-gradient-to-b from-slate-50 to-slate-100 p-6">
+          {renderModule(module)}
+        </main>
       </div>
     </div>
   )
+}
+
+function renderModule(module: BackofficeModule) {
+  switch (module) {
+    case 'levels':
+      return <LevelsModule />
+    case 'quizzes':
+      return <QuizzesModule />
+    case 'players':
+      return <PlayersMonitor />
+    default:
+      return <EntityWorkspace />
+  }
 }
 
 export default App
