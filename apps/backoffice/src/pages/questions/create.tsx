@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,40 +11,161 @@ interface QuestionFormData {
   text: string;
 }
 
+interface Answer {
+  text: string;
+  isCorrect: boolean;
+}
+
 export default function CreateQuestionPage() {
   const navigate = useNavigate();
   const utils = trpc.useUtils();
+  const [answers, setAnswers] = useState<Answer[]>([
+    { text: '', isCorrect: false },
+    { text: '', isCorrect: false },
+    { text: '', isCorrect: false },
+    { text: '', isCorrect: false },
+  ]);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<QuestionFormData>();
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<QuestionFormData>();
 
-  const createMutation = trpc.question.create.useMutation({
-    onSuccess: () => {
-      toast.success('Question created successfully');
+  const createQuestionMutation = trpc.question.create.useMutation();
+  const createAnswerMutation = trpc.answer.create.useMutation();
+
+  const onSubmit = async (data: QuestionFormData) => {
+    try {
+      // Create question first
+      const question = await createQuestionMutation.mutateAsync({ text: data.text });
+
+      // Create all answers
+      const validAnswers = answers.filter((a) => a.text.trim() !== '');
+      if (validAnswers.length > 0) {
+        await Promise.all(
+          validAnswers.map((answer) =>
+            createAnswerMutation.mutateAsync({
+              questionId: question.id,
+              text: answer.text,
+              isCorrect: answer.isCorrect,
+            })
+          )
+        );
+      }
+
+      toast.success('Question créée avec ses réponses');
       utils.question.getAll.invalidate();
+      utils.answer.getAll.invalidate();
+      reset();
+      setAnswers([
+        { text: '', isCorrect: false },
+        { text: '', isCorrect: false },
+        { text: '', isCorrect: false },
+        { text: '', isCorrect: false },
+      ]);
       navigate('/questions');
-    },
-    onError: (error) => {
-      toast.error(`Failed to create question: ${error.message}`);
-    },
-  });
+    } catch (error: any) {
+      toast.error(`Échec de la création de la question: ${error.message}`);
+    }
+  };
+
+  const updateAnswer = (index: number, field: keyof Answer, value: string | boolean) => {
+    const newAnswers = [...answers];
+    if (field === 'isCorrect' && value === true) {
+      // Only one answer can be correct - uncheck others
+      newAnswers.forEach((a, i) => {
+        newAnswers[i] = { ...a, isCorrect: i === index };
+      });
+    } else {
+      newAnswers[index] = { ...newAnswers[index], [field]: value };
+    }
+    setAnswers(newAnswers);
+  };
+
+  // Vérifier si au moins une réponse est marquée comme correcte
+  const hasCorrectAnswer = answers.some((answer) => answer.isCorrect);
+  // Vérifier si tous les 4 champs de réponse sont remplis
+  const allAnswersFilled = answers.every((answer) => answer.text.trim() !== '');
+  const isSubmitDisabled = createQuestionMutation.isPending || createAnswerMutation.isPending || !hasCorrectAnswer || !allAnswersFilled;
+  
+  // Déterminer le message d'erreur à afficher
+  const getErrorMessage = () => {
+    if (!allAnswersFilled) {
+      return 'Veuillez remplir tous les 4 champs de réponse';
+    }
+    if (!hasCorrectAnswer) {
+      return 'Veuillez cocher au moins une réponse comme correcte';
+    }
+    return null;
+  };
+  
+  const errorMessage = getErrorMessage();
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Create Question</h1>
-        <Button variant="outline" onClick={() => navigate('/questions')}>Cancel</Button>
+        <h1 className="text-3xl font-bold">Créer une Question</h1>
+        <Button variant="outline" onClick={() => navigate('/questions')}>Annuler</Button>
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Question Information</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Informations de la Question</CardTitle></CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit((data) => createMutation.mutate({ text: data.text }))} className="space-y-4">
-            <FormField label="Question Text" name="text" type="textarea" register={register} errors={errors} required />
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              label="Texte de la Question"
+              name="text"
+              type="textarea"
+              register={register}
+              errors={errors}
+              required
+              placeholder="Entrez votre question"
+            />
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Réponses</label>
+
+              {answers.map((answer, index) => (
+                <div key={index} className="flex gap-2 items-start">
+                  <input
+                    type="text"
+                    value={answer.text}
+                    onChange={(e) => updateAnswer(index, 'text', e.target.value)}
+                    placeholder={`Réponse ${index + 1}`}
+                    className="flex-1 rounded-md border overflow-hidden border-gray-300 px-3 py-2 text-sm"
+                  />
+                  <label className="flex items-center gap-2 whitespace-nowrap">
+                    <input
+                      type="radio"
+                      name="correctAnswer"
+                      checked={answer.isCorrect}
+                      onChange={() => updateAnswer(index, 'isCorrect', true)}
+                      className="border-gray-300 text-green-600 focus:ring-green-500"
+                    />
+                    <span className="text-sm">Correcte</span>
+                  </label>
+                </div>
+              ))}
+            </div>
+
             <div className="flex gap-2 pt-4">
-              <Button type="submit" disabled={createMutation.isPending}>
-                {createMutation.isPending ? 'Creating...' : 'Create'}
+              <div className="relative inline-block group">
+                <Button
+                  type="submit"
+                  disabled={isSubmitDisabled}
+                  className="relative"
+                >
+                  {createQuestionMutation.isPending || createAnswerMutation.isPending
+                    ? 'Création...'
+                    : 'Créer la Question'}
+                </Button>
+                {errorMessage && (
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg">
+                    {errorMessage}
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                  </div>
+                )}
+              </div>
+              <Button type="button" variant="outline" onClick={() => navigate('/questions')}>
+                Annuler
               </Button>
-              <Button type="button" variant="outline" onClick={() => navigate('/questions')}>Cancel</Button>
             </div>
           </form>
         </CardContent>
