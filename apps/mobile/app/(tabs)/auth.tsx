@@ -36,7 +36,7 @@ export default function AuthScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <UserProfile />
+          <UserProfile onLogoutSuccess={refreshUser} />
         </ScrollView>
       </ThemedView>
     );

@@ -6,7 +6,11 @@ import { useAuth } from '@/hooks/use-auth';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 
-export function UserProfile() {
+interface UserProfileProps {
+  onLogoutSuccess?: () => void;
+}
+
+export function UserProfile({ onLogoutSuccess }: UserProfileProps) {
   const { user, isLoading, logout } = useAuth();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -22,6 +26,10 @@ export function UserProfile() {
           style: 'destructive',
           onPress: async () => {
             await logout();
+            // Refresh the parent component to show login form
+            if (onLogoutSuccess) {
+              onLogoutSuccess();
+            }
           },
         },
       ]
