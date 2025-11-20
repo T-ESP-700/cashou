@@ -275,6 +275,8 @@ model EventAsset {
   assetId   Int?      @map("asset_id")
   eventId   Int?      @map("event_id")
   date      DateTime?
+  value     Int?
+  volume    Int?
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
