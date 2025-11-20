@@ -35,7 +35,7 @@ model User {
   username      String?
   discriminator String?
   lastActivity  DateTime? @map("last_activity")
-  levelId       Int       @default(0) @map("level_id")
+  levelId       Int       @default(1) @map("level_id")
   badges        String?
 
   // Cashou game progression
