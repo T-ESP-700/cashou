@@ -1,5 +1,11 @@
 import { create } from 'zustand'
-import type { BackofficeData, BackofficeModule, EntityIdentifier, HeatmapMetric } from '@/lib/domain'
+import type {
+  BackofficeData,
+  BackofficeModule,
+  EntityIdentifier,
+  HeatmapMetric,
+  QuizType,
+} from '@/lib/domain'
 import { mockBackofficeData } from '@/lib/mock-data'
 import { fetchBackofficeDataset } from '@/services/backoffice-api'
 
@@ -48,6 +54,7 @@ export interface BackofficeStore extends BackofficeData {
   insightsMetric: HeatmapMetric
   dateRange: { from: string; to: string }
   hasInitialized: boolean
+  quizTypeFilter: QuizType | 'ALL'
   initialize: () => Promise<void>
   refresh: () => Promise<void>
   setModule: (module: BackofficeModule) => void
@@ -57,6 +64,7 @@ export interface BackofficeStore extends BackofficeData {
   setSelectedMarketId: (marketId: number | null) => void
   setInsightsMetric: (metric: HeatmapMetric) => void
   setDateRange: (range: { from: string; to: string }) => void
+  setQuizTypeFilter: (filter: QuizType | 'ALL') => void
 }
 
 export const useBackofficeStore = create<BackofficeStore>((set, get) => ({
@@ -73,6 +81,7 @@ export const useBackofficeStore = create<BackofficeStore>((set, get) => ({
   insightsMetric: 'performance',
   dateRange: defaultRange(),
   hasInitialized: false,
+  quizTypeFilter: 'ALL',
   initialize: async () => {
     const state = get()
     if (state.hasInitialized || state.loadingState === 'loading') {
@@ -126,4 +135,5 @@ export const useBackofficeStore = create<BackofficeStore>((set, get) => ({
   setSelectedMarketId: (selectedMarketId) => set({ selectedMarketId }),
   setInsightsMetric: (insightsMetric) => set({ insightsMetric }),
   setDateRange: (dateRange) => set({ dateRange }),
+  setQuizTypeFilter: (quizTypeFilter) => set({ quizTypeFilter }),
 }))

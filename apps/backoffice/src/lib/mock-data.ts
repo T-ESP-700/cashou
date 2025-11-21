@@ -250,5 +250,4 @@ export const mockBackofficeData: BackofficeData = {
   ],
   gameInstances: sampleGameInstances,
 }
-
 export const mockUpdatedAt = () => new Date().toISOString()

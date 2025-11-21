@@ -13,7 +13,7 @@ const SIDEBAR_SECTIONS: Array<{ title: string; modules: BackofficeModule[] }> = 
     modules: ['levels', 'goals', 'levelGoals', 'levelEvents', 'quizzes', 'questions', 'answers', 'quizQuestions'],
   },
   {
-    title: 'Trading Universe',
+    title: 'Trading',
     modules: ['markets', 'submarkets', 'fields', 'assets', 'events', 'assetHistory', 'eventAsset', 'impacts'],
   },
   {

@@ -49,6 +49,7 @@ export function EntityWorkspace({ moduleKey }: { moduleKey?: BackofficeModule } 
   const assetHistory = useBackofficeStore((state) => state.assetHistory)
   const eventAsset = useBackofficeStore((state) => state.eventAsset)
   const impacts = useBackofficeStore((state) => state.impacts)
+  const quizTypeFilter = useBackofficeStore((state) => state.quizTypeFilter)
 
   const config = MODULE_CONFIGS[module]
   if (!config || module === 'players') return null
@@ -94,15 +95,22 @@ export function EntityWorkspace({ moduleKey }: { moduleKey?: BackofficeModule } 
     ],
   )
 
+  const moduleFilteredRecords = useMemo(() => {
+    if (module === 'quizzes' && quizTypeFilter !== 'ALL') {
+      return records.filter((record) => record.type === quizTypeFilter)
+    }
+    return records
+  }, [records, module, quizTypeFilter])
+
   const filteredRecords = useMemo(() => {
-    if (!searchTerm) return records
+    if (!searchTerm) return moduleFilteredRecords
     const term = searchTerm.toLowerCase()
-    return records.filter((record) =>
+    return moduleFilteredRecords.filter((record) =>
       Object.values(record)
         .filter((value) => ['string', 'number'].includes(typeof value))
         .some((value) => value?.toString().toLowerCase().includes(term)),
     )
-  }, [records, searchTerm])
+  }, [moduleFilteredRecords, searchTerm])
 
   const selectedRecord =
     selectedRecordId && selectedRecordId !== '__new__'
@@ -133,6 +141,13 @@ export function EntityWorkspace({ moduleKey }: { moduleKey?: BackofficeModule } 
     const isEditing = Boolean(selectedRecord && selectedRecordId !== '__new__')
     try {
       if (selectedRecord && selectedRecordId !== '__new__') {
+        if (typeof handler.update !== 'function') {
+          setStatus({
+            type: 'error',
+            message: 'Ce module ne permet pas encore la modification. Supprimez puis recréez la liaison.',
+          })
+          return
+        }
         await handler.update({ id: selectedRecord.id, data: payload })
       } else {
         await handler.create(payload)
@@ -202,9 +217,7 @@ export function EntityWorkspace({ moduleKey }: { moduleKey?: BackofficeModule } 
             <Plus className="size-4" />
             Ajouter
           </Button>
-          <Button variant="outline" onClick={() => refresh()}>
-            Rafraîchir
-          </Button>
+
         </div>
       </header>
 
@@ -546,15 +559,4 @@ function buildDynamicOptions({
       label: question.text?.slice(0, 42) ?? `Question ${question.id}`,
     })),
   }
-}
-
-function resolveDisplayValue(
-  key: string,
-  value: unknown,
-  options: Record<string, Array<{ value: number; label: string }>>,
-) {
-  if (value === null || value === undefined) return '—'
-  const option = options[key]?.find((candidate) => candidate.value === value)
-  if (option) return option.label
-  return formatValue(value)
 }

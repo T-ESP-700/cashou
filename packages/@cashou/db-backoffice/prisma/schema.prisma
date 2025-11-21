@@ -1,6 +1,8 @@
 // backoffice/prisma/app/schema.prisma
 generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/client"
+  binaryTargets = ["native", "linux-arm64-openssl-1.1.x"]
 }
 
 datasource db {

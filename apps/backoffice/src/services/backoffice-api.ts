@@ -313,7 +313,6 @@ export const backofficeApi = {
     delete: async (id: number) => callApi(() => getClient().quizQuestion.delete.mutate({ id })),
   },
 }
-
 export interface MarketInsightsPayload {
   marketId: number
   from: string

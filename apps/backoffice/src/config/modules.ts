@@ -34,7 +34,7 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
     ],
     fields: [
       { key: 'title', label: 'Titre', type: 'text', placeholder: 'Découverte', required: true },
-      { key: 'number', label: 'Ordre', type: 'number', placeholder: '1', required: true },
+      { key: 'number', label: 'Nombre', type: 'number', placeholder: '1', required: true },
       { key: 'duration', label: 'Durée (jours)', type: 'number', placeholder: '14' },
       { key: 'speed', label: 'Vitesse', type: 'number', placeholder: '1' },
       {
@@ -62,13 +62,10 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
     columns: [
       { key: 'title', label: 'Nom' },
       { key: 'description', label: 'Description' },
-      { key: 'type', label: 'Type', width: '120px' },
     ],
     fields: [
       { key: 'title', label: 'Nom', type: 'text', required: true },
       { key: 'description', label: 'Description', type: 'textarea' },
-      { key: 'type', label: 'Type', type: 'text', placeholder: 'progression, KPI…' },
-      { key: 'kpi', label: 'KPI associé', type: 'text' },
     ],
   },
   markets: {
@@ -217,7 +214,12 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
           { label: 'MCQ', value: 'MCQ' },
         ],
       },
-      { key: 'levelId', label: 'Associer à un niveau', type: 'number' },
+      {
+        key: 'levelId',
+        label: 'Associer à un niveau',
+        type: 'select',
+        helperText: 'Choisissez un niveau existant',
+      },
       { key: 'date', label: 'Date', type: 'date' },
     ],
   },
@@ -229,12 +231,9 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
     entityName: 'Question',
     columns: [
       { key: 'text', label: 'Intitulé' },
-      { key: 'difficulty', label: 'Difficulté', width: '120px' },
     ],
     fields: [
       { key: 'text', label: 'Question', type: 'textarea', required: true },
-      { key: 'difficulty', label: 'Difficulté', type: 'text', placeholder: 'easy / medium / hard' },
-      { key: 'category', label: 'Catégorie', type: 'text' },
     ],
   },
   answers: {
@@ -298,12 +297,12 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
     columns: [
       { key: 'quizId', label: 'Quiz', width: '120px' },
       { key: 'questionId', label: 'Question', width: '160px' },
-      { key: 'order', label: 'Ordre', width: '80px' },
+      { key: 'position', label: 'Ordre', width: '80px' },
     ],
     fields: [
       { key: 'quizId', label: 'Quiz', type: 'select', required: true },
       { key: 'questionId', label: 'Question', type: 'select', required: true },
-      { key: 'order', label: 'Ordre', type: 'number' },
+      { key: 'position', label: 'Ordre', type: 'number' },
     ],
   },
   assetHistory: {

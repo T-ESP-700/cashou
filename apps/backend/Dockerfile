@@ -11,6 +11,7 @@ COPY tsconfig.json ./
 # Copy workspace packages
 COPY apps/backend/package.json ./apps/backend/
 COPY packages/@cashou/db-app/package.json ./packages/@cashou/db-app/
+COPY packages/@cashou/db-backoffice/package.json ./packages/@cashou/db-backoffice/
 COPY packages/@cashou/auth/package.json ./packages/@cashou/auth/
 COPY packages/@cashou/utils/package.json ./packages/@cashou/utils/
 
@@ -23,6 +24,9 @@ COPY packages ./packages
 
 # Generate Prisma client
 WORKDIR /app/packages/@cashou/db-app
+RUN bunx prisma generate
+
+WORKDIR /app/packages/@cashou/db-backoffice
 RUN bunx prisma generate
 
 # Go back to app root

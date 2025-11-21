@@ -66,8 +66,6 @@ services:
     environment:
       - NODE_ENV=development
       - BACKOFFICE_DB_URL=${BACKOFFICE_DB_URL}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
     depends_on:
       db_backoffice:
         condition: service_healthy

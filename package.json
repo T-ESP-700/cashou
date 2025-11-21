@@ -101,7 +101,8 @@
   "author": "Cashou Team",
   "license": "MIT",
   "dependencies": {
-    "@trpc/server": "^11.4.3"
+    "@trpc/server": "^11.4.3",
+    "@trpc/react-query": "^11.7.1"
   },
   "resolutions": {
     "react": "19.1.0",

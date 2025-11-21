@@ -1,4 +1,0 @@
--- AlterTable
-ALTER TABLE "event_assets"
-ADD COLUMN IF NOT EXISTS "value" INTEGER,
-ADD COLUMN IF NOT EXISTS "volume" INTEGER;

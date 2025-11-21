@@ -1,8 +1,8 @@
 import { createTRPCReact } from '@trpc/react-query';
 import { httpBatchLink } from '@trpc/client';
-import type { AppRouter } from '@cashou/api';
+import type { AppRouter } from '../../../../apps/backend/src/trpc/router';
 import { QueryClient } from '@tanstack/react-query';
-import { supabase } from './supabase';
+import { LocalAuthService } from './local-auth';
 
 export const trpc = createTRPCReact<AppRouter>();
 
@@ -26,15 +26,16 @@ export const trpcClient = trpc.createClient({
     httpBatchLink({
       url: `${BACKEND_URL}/api/trpc`,
       async headers() {
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (session?.access_token) {
-          return {
-            Authorization: `Bearer ${session.access_token}`,
-          };
+        if (typeof window === 'undefined') {
+          return {};
         }
 
-        return {};
+        const token = LocalAuthService.getToken();
+        return token
+          ? {
+              Authorization: `Bearer ${token}`,
+            }
+          : {};
       },
     }),
   ],

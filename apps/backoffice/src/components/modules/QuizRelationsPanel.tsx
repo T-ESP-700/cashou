@@ -11,8 +11,10 @@ export function QuizRelationsPanel() {
   const questions = useBackofficeStore((state) => state.questions)
   const quizQuestions = useBackofficeStore((state) => state.quizQuestions)
   const refresh = useBackofficeStore((state) => state.refresh)
+  const setModule = useBackofficeStore((state) => state.setModule)
+  const selectRecord = useBackofficeStore((state) => state.selectRecord)
   const [questionChoice, setQuestionChoice] = useState<number | ''>('')
-  const [orderValue, setOrderValue] = useState<number | ''>('')
+  const [positionValue, setPositionValue] = useState<number | ''>('')
   const [loading, setLoading] = useState<boolean>(false)
 
   if (module !== 'quizzes') return null
@@ -36,18 +38,25 @@ export function QuizRelationsPanel() {
     (question) => !attached.some((link) => link.questionId === question.id),
   )
 
+  const goToQuestionCreation = () => {
+    setModule('questions')
+    selectRecord('__new__')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const attachQuestion = async () => {
     if (!questionChoice || !activeQuizId) return
     setLoading(true)
     try {
+      const positionPayload = positionValue === '' ? undefined : positionValue
       await backofficeApi.quizQuestion.create({
         quizId: activeQuizId,
         questionId: questionChoice,
-        order: orderValue || undefined,
+        position: positionPayload,
       })
       await refresh()
       setQuestionChoice('')
-      setOrderValue('')
+      setPositionValue('')
     } catch (error) {
       alert((error as Error).message ?? 'Impossible de lier la question')
     } finally {
@@ -81,9 +90,11 @@ export function QuizRelationsPanel() {
 
       <div className="mt-4 space-y-3">
         {attached
-          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+          .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
           .map((link) => {
             const question = questions.find((item) => item.id === link.questionId)
+            const prefix =
+              typeof link.position === 'number' ? `${link.position}. ` : ''
             return (
               <div
                 key={link.id}
@@ -91,7 +102,8 @@ export function QuizRelationsPanel() {
               >
                 <div>
                   <p className="text-sm font-medium text-slate-900">
-                    {link.order ? `${link.order}. ` : ''}{question?.text ?? `Question #${link.questionId}`}
+                    {prefix}
+                    {question?.text ?? `Question #${link.questionId}`}
                   </p>
                   <p className="text-xs text-slate-500">{question?.difficulty ?? '—'}</p>
                 </div>
@@ -114,9 +126,14 @@ export function QuizRelationsPanel() {
         )}
       </div>
 
-      {available.length > 0 && (
-        <div className="mt-6 space-y-3 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+      <div className="mt-6 space-y-3 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <p className="text-sm font-semibold text-slate-900">Ajouter une question</p>
+          <Button variant="ghost" size="sm" onClick={goToQuestionCreation}>
+            Créer une nouvelle question
+          </Button>
+        </div>
+        {available.length > 0 ? (
           <div className="flex flex-col gap-2 md:flex-row">
             <select
               className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm"
@@ -136,9 +153,9 @@ export function QuizRelationsPanel() {
               type="number"
               placeholder="Ordre"
               className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-              value={orderValue}
+              value={positionValue}
               onChange={(event) =>
-                setOrderValue(event.target.value === '' ? '' : Number(event.target.value))
+                setPositionValue(event.target.value === '' ? '' : Number(event.target.value))
               }
             />
             <Button onClick={attachQuestion} disabled={!questionChoice || loading}>
@@ -146,8 +163,12 @@ export function QuizRelationsPanel() {
               Ajouter
             </Button>
           </div>
-        </div>
-      )}
+        ) : (
+          <p className="rounded-xl border border-dashed border-slate-200 px-3 py-4 text-sm text-slate-500">
+            Aucune question disponible. Créez-en une nouvelle pour alimenter ce quiz.
+          </p>
+        )}
+      </div>
     </section>
   )
 }

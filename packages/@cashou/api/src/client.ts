@@ -1,8 +1,12 @@
 import { createTRPCClient, httpBatchLink } from '@trpc/client';
-import type { AppRouter } from './types';
+
+// Import AppRouter type directly from backend
+export type { AppRouter } from '../../../apps/backend/src/trpc/router';
 
 export const createApiClient = (url: string, getHeaders?: () => Promise<HeadersInit>) => {
-  return createTRPCClient<AppRouter>({
+  // We use any here because the AppRouter type will be inferred at build time
+  // The actual typing will be enforced by the backend's router definition
+  return createTRPCClient<any>({
     links: [
       httpBatchLink({
         url,

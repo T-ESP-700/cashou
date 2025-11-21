@@ -19,24 +19,12 @@ export function LevelRelationsPanel() {
   const [eventToAttach, setEventToAttach] = useState<number | ''>('')
   const [loading, setLoading] = useState<'goal' | 'event' | null>(null)
 
-  if (module !== 'levels') return null
-
   const parsedSelection =
     typeof selectedRecordId === 'number' ? selectedRecordId : Number(selectedRecordId)
   const activeLevelId =
     Number.isFinite(parsedSelection) && parsedSelection > 0
       ? parsedSelection
       : levels[0]?.id ?? null
-
-  if (!activeLevelId) {
-    return (
-      <section className="rounded-3xl border border-dashed border-slate-300 bg-white/70 p-6">
-        <p className="text-sm text-slate-500">
-          Créez un niveau pour gérer ses objectifs et événements associés.
-        </p>
-      </section>
-    )
-  }
 
   const activeLevel = levels.find((level) => level.id === activeLevelId)
   const attachedGoals = levelGoals.filter((link) => link.levelId === activeLevelId)
@@ -51,6 +39,20 @@ export function LevelRelationsPanel() {
     () => events.filter((event) => !attachedEvents.some((link) => link.eventId === event.id)),
     [events, attachedEvents],
   )
+
+  if (module !== 'levels') {
+    return null
+  }
+
+  if (!activeLevelId) {
+    return (
+      <section className="rounded-3xl border border-dashed border-slate-300 bg-white/70 p-6">
+        <p className="text-sm text-slate-500">
+          Créez un niveau pour gérer ses objectifs et événements associés.
+        </p>
+      </section>
+    )
+  }
 
   const attachGoal = async () => {
     if (!goalToAttach || !activeLevelId) return

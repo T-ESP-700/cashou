@@ -259,8 +259,6 @@ model AssetHistory {
   id        Int       @id @default(autoincrement())
   assetId   Int?      @map("asset_id")
   timestamp DateTime?
-  value     Int?
-  volume    Int?
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
