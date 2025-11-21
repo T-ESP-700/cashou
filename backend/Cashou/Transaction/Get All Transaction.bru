@@ -1,0 +1,16 @@
+meta {
+  name: Get All Transaction
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/trpc/transaction.getAll
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -1,0 +1,21 @@
+meta {
+  name: Get All Notifications
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/trpc/notification.getAll
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+  
+  }
+}
+
+settings {
+  encodeUrl: true
+}

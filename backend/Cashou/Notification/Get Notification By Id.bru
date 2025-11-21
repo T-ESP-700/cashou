@@ -1,0 +1,19 @@
+meta {
+  name: Get Notification By Id
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/trpc/notification.getById?input={"id":3}
+  body: json
+  auth: inherit
+}
+
+params:query {
+  input: {"id":3}
+}
+
+settings {
+  encodeUrl: true
+}

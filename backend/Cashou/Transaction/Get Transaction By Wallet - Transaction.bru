@@ -1,0 +1,20 @@
+meta {
+  name: Get Transaction By Wallet - Transaction
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}/trpc/transaction.getByWallet?input={"walletId":15}
+  body: json
+  auth: inherit
+}
+
+params:query {
+  input: {"walletId":15}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -1,0 +1,22 @@
+meta {
+  name: Pause - Game Instance
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/trpc/gameInstance.pause
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 4
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

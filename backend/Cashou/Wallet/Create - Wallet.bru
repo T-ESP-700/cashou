@@ -1,0 +1,24 @@
+meta {
+  name: Create - Wallet
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/trpc/wallet.create
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "userId": 3,
+    "amount": 60.55,
+    "gameInstanceId": 3
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

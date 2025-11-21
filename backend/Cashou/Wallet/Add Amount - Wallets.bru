@@ -1,0 +1,23 @@
+meta {
+  name: Add Amount - Wallets
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url}}/trpc/wallet.updateAmount
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 4,
+    "amount": 2000
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

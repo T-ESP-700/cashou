@@ -1,17 +1,17 @@
 meta {
-  name: Get an asset
+  name: Get Transaction By Id
   type: http
-  seq: 2
+  seq: 3
 }
 
 get {
-  url: {{base_url}}/api/trpc/asset.getById?input={"id":1}
+  url: {{base_url}}/trpc/transaction.getById?input={"id":11}
   body: none
   auth: inherit
 }
 
 params:query {
-  input: {"id":1}
+  input: {"id":11}
 }
 
 settings {

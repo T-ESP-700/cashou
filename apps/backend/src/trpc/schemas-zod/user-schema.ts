@@ -1,9 +1,5 @@
-// Schémas de validation Zod pour les utilisateurs
-// Zod permet de valider et typer les données d'entrée de manière sécurisée
 import { z } from "zod";
 
-// Schéma de base contenant toutes les propriétés d'un utilisateur (sans l'ID auto-généré et passwordHash)
-// Utilisation de .nullish() au lieu de .optional() pour accepter null et undefined
 export const userDataSchema = z.object({
     username: z.string().min(1, "Le nom d'utilisateur est requis").max(50, "Le nom d'utilisateur ne peut pas dépasser 50 caractères").nullish(),
     discriminator: z.string().max(10, "Le discriminateur ne peut pas dépasser 10 caractères").nullish(),
