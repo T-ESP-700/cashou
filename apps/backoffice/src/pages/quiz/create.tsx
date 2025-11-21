@@ -192,9 +192,10 @@ export default function CreateQuizPage() {
   const isDateFilled = actualDateValue && actualDateValue.trim() !== '';
   const isDescriptionFilled = descriptionValue && descriptionValue.trim() !== '';
   
-  // For DAILY quiz, date and description are required, and exactly 3 questions
+  // For DAILY quiz, date and description are required
   const isDailyValid = selectedType !== 'DAILY' || (isDateFilled && isDescriptionFilled);
-  const hasExactly3Questions = selectedType !== 'DAILY' || selectedQuestionIds.length === 3;
+  const requiredQuestionCount = selectedType === 'DAILY' ? 3 : 1;
+  const hasRequiredQuestions = selectedQuestionIds.length >= requiredQuestionCount;
   // Check if Daily Quiz already exists for this date
   const dateAlreadyUsed = selectedType === 'DAILY' && dailyQuizExists === true;
   
@@ -203,7 +204,7 @@ export default function CreateQuizPage() {
     !isTypeFilled || 
     !isTitleFilled || 
     !isDailyValid ||
-    !hasExactly3Questions ||
+    !hasRequiredQuestions ||
     dateAlreadyUsed;
 
   // Determine error message to display
@@ -220,8 +221,11 @@ export default function CreateQuizPage() {
     if (selectedType === 'DAILY' && !isDescriptionFilled) {
       return 'Veuillez remplir la description pour un Daily Quiz';
     }
-    if (selectedType === 'DAILY' && selectedQuestionIds.length !== 3) {
-      return 'Un Daily Quiz doit contenir exactement 3 questions';
+    if (selectedType === 'DAILY' && selectedQuestionIds.length < 3) {
+      return 'Un Daily Quiz doit contenir au moins 3 questions';
+    }
+    if (selectedType === 'MCQ' && selectedQuestionIds.length < 1) {
+      return 'Un MCQ doit contenir au moins 1 question';
     }
     if (dateAlreadyUsed) {
       return 'Un Daily Quiz existe déjà pour cette date';

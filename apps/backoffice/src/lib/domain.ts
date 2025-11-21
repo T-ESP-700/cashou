@@ -323,7 +323,6 @@ export interface EntityField {
 export interface ModuleConfig {
   key: BackofficeModule
   title: string
-  description: string
   badge?: string
   accent?: string
   icon: LucideIcon

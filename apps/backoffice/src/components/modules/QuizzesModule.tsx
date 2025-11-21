@@ -1,9 +1,7 @@
-import { useNavigate } from 'react-router-dom'
-import { EntityWorkspace } from './EntityWorkspace'
-import { QuizRelationsPanel } from './QuizRelationsPanel'
 import { Button } from '@/components/ui/button'
 import { useBackofficeStore } from '@/store/useBackofficeStore'
 import type { QuizType } from '@/lib/domain'
+import { QuizManager } from './QuizManager'
 
 const QUIZ_TYPE_FILTERS: Array<{ label: string; value: QuizType | 'ALL' }> = [
   { label: 'Tous', value: 'ALL' },
@@ -14,7 +12,6 @@ const QUIZ_TYPE_FILTERS: Array<{ label: string; value: QuizType | 'ALL' }> = [
 export function QuizzesModule() {
   const quizTypeFilter = useBackofficeStore((state) => state.quizTypeFilter)
   const setQuizTypeFilter = useBackofficeStore((state) => state.setQuizTypeFilter)
-  const navigate = useNavigate()
 
   return (
     <div className="space-y-6">
@@ -25,27 +22,21 @@ export function QuizzesModule() {
             <h3 className="text-sm font-semibold text-slate-900">Type de questionnaire</h3>
           </div>
           <div className="flex flex-wrap gap-2">
-            <div className="flex gap-2">
-              {QUIZ_TYPE_FILTERS.map((filter) => (
-                <Button
-                  key={filter.value}
-                  size="sm"
-                  variant={quizTypeFilter === filter.value ? 'default' : 'outline'}
-                  onClick={() => setQuizTypeFilter(filter.value)}
-                  aria-pressed={quizTypeFilter === filter.value}
-                >
-                  {filter.label}
-                </Button>
-              ))}
-            </div>
-            <Button size="sm" onClick={() => navigate('/quiz/create')}>
-              Nouveau quiz guidé
-            </Button>
+            {QUIZ_TYPE_FILTERS.map((filter) => (
+              <Button
+                key={filter.value}
+                size="sm"
+                variant={quizTypeFilter === filter.value ? 'default' : 'outline'}
+                onClick={() => setQuizTypeFilter(filter.value)}
+                aria-pressed={quizTypeFilter === filter.value}
+              >
+                {filter.label}
+              </Button>
+            ))}
           </div>
         </div>
       </section>
-      <EntityWorkspace moduleKey="quizzes" />
-      <QuizRelationsPanel />
+      <QuizManager />
     </div>
   )
 }

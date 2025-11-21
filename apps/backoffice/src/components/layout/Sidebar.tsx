@@ -10,7 +10,7 @@ import logo from '@/frame-39.png'
 const SIDEBAR_SECTIONS: Array<{ title: string; modules: BackofficeModule[] }> = [
   {
     title: 'Game Design',
-    modules: ['levels', 'goals', 'levelGoals', 'levelEvents', 'quizzes', 'questions', 'answers', 'quizQuestions'],
+    modules: ['levels', 'goals', 'levelGoals', 'levelEvents', 'quizzes'],
   },
   {
     title: 'Trading',

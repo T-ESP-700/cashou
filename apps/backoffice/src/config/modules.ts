@@ -21,7 +21,6 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
   levels: {
     key: 'levels',
     title: 'Niveaux',
-    description: 'Structure de progression et objectifs',
     icon: Layers,
     entityName: 'Niveau',
     columns: [
@@ -34,7 +33,7 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
     ],
     fields: [
       { key: 'title', label: 'Titre', type: 'text', placeholder: 'Découverte', required: true },
-      { key: 'number', label: 'Nombre', type: 'number', placeholder: '1', required: true },
+      { key: 'number', label: 'Niveau', type: 'number', placeholder: '1', required: true },
       { key: 'duration', label: 'Durée (jours)', type: 'number', placeholder: '14' },
       { key: 'speed', label: 'Vitesse', type: 'number', placeholder: '1' },
       {
@@ -56,7 +55,6 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
   goals: {
     key: 'goals',
     title: 'Objectifs',
-    description: 'Définition des missions par niveau',
     icon: Target,
     entityName: 'Objectif',
     columns: [
@@ -71,7 +69,6 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
   markets: {
     key: 'markets',
     title: 'Marchés',
-    description: 'Stratégie Macro & tendances',
     icon: Target,
     entityName: 'Marché',
     columns: [
@@ -108,7 +105,6 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
   submarkets: {
     key: 'submarkets',
     title: 'Sous-marchés',
-    description: 'Segments tactiques',
     icon: Workflow,
     entityName: 'Sous-marché',
     columns: [
@@ -131,7 +127,6 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
   fields: {
     key: 'fields',
     title: 'Champs',
-    description: 'Domaines disciplinaires',
     icon: Atom,
     entityName: 'Champ',
     columns: [
@@ -147,7 +142,6 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
   assets: {
     key: 'assets',
     title: 'Actifs',
-    description: 'Produits, entreprises ou tokens suivis',
     icon: Boxes,
     entityName: 'Actif',
     columns: [
@@ -174,7 +168,6 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
   events: {
     key: 'events',
     title: 'Événements',
-    description: 'Scénarios macro & signaux terrain',
     icon: BarChart3,
     entityName: 'Événement',
     columns: [
@@ -196,7 +189,6 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
   quizzes: {
     key: 'quizzes',
     title: 'Quizz',
-    description: 'Gestion des quizz Daily et MCQ',
     icon: BookOpenCheck,
     entityName: 'Quiz',
     columns: [
@@ -231,7 +223,6 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
   questions: {
     key: 'questions',
     title: 'Questions',
-    description: 'Banque de questions',
     icon: HelpCircle,
     entityName: 'Question',
     columns: [
@@ -244,7 +235,6 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
   answers: {
     key: 'answers',
     title: 'Réponses',
-    description: 'Réponses possibles et validation',
     icon: CheckSquare,
     entityName: 'Réponse',
     columns: [
@@ -266,7 +256,6 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
   levelGoals: {
     key: 'levelGoals',
     title: 'Liens Niveau ↔ Objectif',
-    description: 'Associez plusieurs objectifs à un niveau',
     icon: Link2,
     entityName: 'Lien objectif',
     columns: [
@@ -281,7 +270,6 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
   levelEvents: {
     key: 'levelEvents',
     title: 'Liens Niveau ↔ Événement',
-    description: 'Définissez les événements déclenchés à chaque niveau',
     icon: Sparkles,
     entityName: 'Lien événement',
     columns: [
@@ -296,7 +284,6 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
   quizQuestions: {
     key: 'quizQuestions',
     title: 'Quizz ↔ Questions',
-    description: 'Ordonnancer les questions d’un quiz',
     icon: Layers,
     entityName: 'Lien quiz',
     columns: [
@@ -313,7 +300,6 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
   assetHistory: {
     key: 'assetHistory',
     title: 'Historique actifs',
-    description: 'Valeurs & volumes',
     icon: History,
     entityName: 'Historique',
     columns: [
@@ -332,7 +318,6 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
   eventAsset: {
     key: 'eventAsset',
     title: 'Event x Asset',
-    description: 'Propagation des événements',
     icon: Network,
     entityName: 'Couplage',
     columns: [
@@ -353,7 +338,6 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
   impacts: {
     key: 'impacts',
     title: 'Impacts',
-    description: 'Modélisation des causalités',
     icon: Flame,
     entityName: 'Impact',
     columns: [
@@ -372,7 +356,6 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
   players: {
     key: 'players',
     title: 'Joueurs & Parties',
-    description: 'Suivi temps réel des sessions utilisateurs',
     icon: Users,
     entityName: 'Joueur',
   },
