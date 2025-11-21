@@ -129,7 +129,7 @@ export class QuizService {
         const quiz = await this.prisma.quiz.findFirst({
             where: {
                 type: 'DAILY',
-                createdAt: {
+                date: {
                     gte: targetDate,
                     lt: nextDay
                 }

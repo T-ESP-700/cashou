@@ -40,6 +40,8 @@ model User {
 
   // Cashou game progression
   points        Int?           @default(0)
+  currentStreak Int            @default(0) @map("current_streak")
+  maxStreak     Int            @default(0) @map("max_streak")
   level         Level          @relation(fields: [levelId], references: [id])
   gameInstances GameInstance[]
   gameUsers     GameUser[]

@@ -58,6 +58,7 @@
     "docker:logs": "docker compose logs -f",
     "docker:clean": "docker compose down -v && docker system prune -f",
     "setup": "bun install && bun run docker:up && bun run generate && bun run migrate",
+    "setup:clean": "bun --bun pm cache rm",
     "setup:cac40": "bun run setup && bun run db:seed:cac40",
     "reset": "bun run docker:down && bun run docker:clean && bun run docker:up && bun run migrate:reset",
     "logs:backend": "cd apps/backend && bun run dev",
