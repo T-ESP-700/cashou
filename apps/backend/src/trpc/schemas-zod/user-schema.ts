@@ -18,6 +18,8 @@ export const userDataSchema = z.object({
     ).transform((str) => new Date(str)).nullish(),
     levelId: z.number().int().positive("L'ID du niveau doit être un nombre positif"),
     points: z.number().int().min(0, "Les points ne peuvent pas être négatifs").nullish(),
+    currentStreak: z.number().int().min(0, "Le streak actuel ne peut pas être négatif").nullish(),
+    maxStreak: z.number().int().min(0, "Le streak maximum ne peut pas être négatif").nullish(),
     badges: z.string().nullish(),
 });
 export type UserDataSchema = z.infer<typeof userDataSchema>;
