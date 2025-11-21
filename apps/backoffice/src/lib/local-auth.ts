@@ -41,10 +41,10 @@ export class LocalAuthService {
   static async signIn(email: string, password: string) {
     try {
       const result = await trpc.backofficeAuth.signIn.mutate({ email, password })
-      
+
       this.setToken(result.token)
       this.setUser(result.user)
-      
+
       return result
     } catch (error) {
       throw error
@@ -71,5 +71,3 @@ export class LocalAuthService {
     this.clearToken()
   }
 }
-
-

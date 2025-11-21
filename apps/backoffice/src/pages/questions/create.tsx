@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/forms/FormField';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
+import { useBackofficeStore } from '@/store/useBackofficeStore';
 
 interface QuestionFormData {
   text: string;
@@ -18,6 +19,7 @@ interface Answer {
 
 export default function CreateQuestionPage() {
   const navigate = useNavigate();
+  const setModule = useBackofficeStore((state) => state.setModule);
   const utils = trpc.useUtils();
   const [questionText, setQuestionText] = useState('');
   const [answers, setAnswers] = useState<Answer[]>([
@@ -31,6 +33,10 @@ export default function CreateQuestionPage() {
 
   const createQuestionMutation = trpc.question.create.useMutation();
   const createAnswerMutation = trpc.answer.create.useMutation();
+
+  useEffect(() => {
+    setModule('questions');
+  }, [setModule]);
 
   // Fonction pour ajouter " ?" si ce n'est pas déjà présent
   const ensureQuestionMark = (text: string): string => {

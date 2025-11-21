@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { formatSelectOptions } from '@/hooks/use-crud';
 import { CreateLevelDialog } from '@/components/modals/CreateLevelDialog';
 import { CreateQuestionDialog } from '@/components/modals/CreateQuestionDialog';
+import { useBackofficeStore } from '@/store/useBackofficeStore';
 
 interface QuizFormData {
   type: string;
@@ -23,6 +24,7 @@ interface QuizFormData {
 
 export default function CreateQuizPage() {
   const navigate = useNavigate();
+  const setModule = useBackofficeStore((state) => state.setModule);
   const utils = trpc.useUtils();
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<(string | number)[]>([]);
   const [selectedLevelId, setSelectedLevelId] = useState<number | null>(null);
@@ -47,6 +49,10 @@ export default function CreateQuizPage() {
   const descriptionValue = useWatch({ control, name: 'description' });
 
   // Reset date and level when type changes, or set default date for DAILY
+  useEffect(() => {
+    setModule('quizzes');
+  }, [setModule]);
+
   useEffect(() => {
     if (selectedType === 'DAILY') {
       // Set today's date as default if date is empty
