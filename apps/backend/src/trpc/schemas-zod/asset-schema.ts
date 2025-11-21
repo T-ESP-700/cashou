@@ -7,7 +7,7 @@ import { z } from "zod";
 export const assetDataSchema = z.object({
     title: z.string().min(1, "Le titre est requis").nullish(),
     symbol: z.string().nullish(),
-    field: z.string().nullish(),
+    fieldId: z.number().int().positive("L'ID du champ doit être un nombre positif").nullish(),
     description: z.string().nullish(),
     marketId: z.number().int().positive("L'ID du marché doit être un nombre positif").nullish(),
     submarketId: z.number().int().positive("L'ID du sous-marché doit être un nombre positif").nullish(),

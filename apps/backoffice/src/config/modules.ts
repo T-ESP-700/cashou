@@ -153,14 +153,19 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
     columns: [
       { key: 'symbol', label: 'Ticker', width: '90px' },
       { key: 'title', label: 'Nom' },
-      { key: 'field', label: 'Champ', width: '140px' },
+      {
+        key: 'fieldId',
+        label: 'Champ',
+        width: '140px',
+        render: (record) => ((record.field as { name?: string } | null)?.name ?? '—'),
+      },
       { key: 'marketId', label: 'Marché', width: '160px' },
       { key: 'submarketId', label: 'Sous-marché', width: '160px' },
     ],
     fields: [
       { key: 'symbol', label: 'Ticker', type: 'text', required: true },
       { key: 'title', label: 'Nom', type: 'text', required: true },
-      { key: 'field', label: 'Champ disciplinaire', type: 'text' },
+      { key: 'fieldId', label: 'Champ disciplinaire', type: 'select' },
       { key: 'description', label: 'Description', type: 'textarea' },
       { key: 'marketId', label: 'Marché', type: 'select' },
       { key: 'submarketId', label: 'Sous-marché', type: 'select' },

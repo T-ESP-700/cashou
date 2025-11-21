@@ -17,6 +17,7 @@ type MarketSeed = {
     title: string
     symbol: string
     field?: string
+    fieldKey?: string
     description?: string
     submarketKey?: string
     histories?: Array<{ daysAgo: number; value: number; volume: number }>
@@ -78,6 +79,7 @@ const marketSeeds: MarketSeed[] = [
         title: 'ComputeForge',
         symbol: 'CFOR',
         field: 'Generative AI',
+        fieldKey: 'gen-ai',
         description: 'Opérateur souverain de GPU européens',
         submarketKey: 'ai-infra',
         histories: [
@@ -90,6 +92,7 @@ const marketSeeds: MarketSeed[] = [
         title: 'ClinicOS',
         symbol: 'CLIN',
         field: 'HealthTech SaaS',
+        fieldKey: 'health-saas',
         description: 'Suite SaaS médicale augmentée par IA',
         submarketKey: 'vertical-saas',
         histories: [
@@ -128,6 +131,7 @@ const marketSeeds: MarketSeed[] = [
         title: 'VoltStack',
         symbol: 'VOLT',
         field: 'Smart Grid',
+        fieldKey: 'grid',
         description: 'Plateforme d’optimisation des réseaux électriques',
         submarketKey: 'storage',
         histories: [
@@ -139,6 +143,7 @@ const marketSeeds: MarketSeed[] = [
         title: 'H2Pulse',
         symbol: 'H2P',
         field: 'HydrogenTech',
+        fieldKey: 'hydrogen',
         description: 'Electrolyseurs modulaires',
         submarketKey: 'hydrogen',
         histories: [
@@ -183,6 +188,7 @@ async function seedMarkets() {
   const marketMap = new Map<string, number>()
   const submarketMap = new Map<string, number>()
   const fieldMap = new Map<string, number>()
+  const fieldNameMap = new Map<string, number>()
   const assetMap = new Map<string, number>()
 
   for (const marketSeed of marketSeeds) {
@@ -213,15 +219,26 @@ async function seedMarkets() {
         },
       })
       fieldMap.set(`${marketSeed.key}:${field.key}`, createdField.id)
+      fieldNameMap.set(`${marketSeed.key}:${field.name.trim().toLowerCase()}`, createdField.id)
     }
 
     for (const asset of marketSeed.assets) {
+      const fieldId = (() => {
+        if (asset.fieldKey) {
+          return fieldMap.get(`${marketSeed.key}:${asset.fieldKey}`) ?? null
+        }
+        if (asset.field) {
+          return fieldNameMap.get(`${marketSeed.key}:${asset.field.trim().toLowerCase()}`) ?? null
+        }
+        return null
+      })()
+
       const createdAsset = await prisma.asset.create({
         data: {
           title: asset.title,
           symbol: asset.symbol,
           description: asset.description,
-          field: asset.field,
+          fieldId,
           marketId: market.id,
           submarketId: asset.submarketKey
             ? submarketMap.get(`${marketSeed.key}:${asset.submarketKey}`) ?? null

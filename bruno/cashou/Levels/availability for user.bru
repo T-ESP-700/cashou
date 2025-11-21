@@ -5,13 +5,13 @@ meta {
 }
 
 get {
-  url: {{base_url}}/api/trpc/level.getAvailability?input={"userId":1,"levelId":2}
+  url: {{base_url}}/api/trpc/level.getAvailability?input={"userId": "usr_demo_1","levelId":2}
   body: none
   auth: inherit
 }
 
 params:query {
-  input: {"userId":1,"levelId":2}
+  input: {"userId": "usr_demo_1","levelId":2}
 }
 
 settings {

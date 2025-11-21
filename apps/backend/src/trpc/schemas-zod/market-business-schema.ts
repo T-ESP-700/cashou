@@ -27,10 +27,8 @@ export type MarketIdSchema = z.infer<typeof marketIdSchema>;
 export const marketListResponseSchema = z.object({
     items: z.array(z.object({
         id: z.number(),
-        name: z.string().nullable(),
+        title: z.string().nullable(),
         description: z.string().nullable(),
-        currentTrends: z.string().nullable(),
-        dataSource: z.string().nullable(),
         createdAt: z.date(),
         updatedAt: z.date(),
         assets_count: z.number(),
@@ -47,10 +45,8 @@ export type MarketListResponseSchema = z.infer<typeof marketListResponseSchema>;
 // Schéma pour la réponse de recherche
 export const marketSearchResponseSchema = z.array(z.object({
     id: z.number(),
-    name: z.string().nullable(),
+    title: z.string().nullable(),
     description: z.string().nullable(),
-    currentTrends: z.string().nullable(),
-    dataSource: z.string().nullable(),
     createdAt: z.date(),
     updatedAt: z.date(),
     relevance: z.number()
@@ -60,18 +56,15 @@ export type MarketSearchResponseSchema = z.infer<typeof marketSearchResponseSche
 // Schéma pour la réponse d'arbre de marché
 export const marketTreeResponseSchema = z.object({
     id: z.number(),
-    name: z.string().nullable(),
+    title: z.string().nullable(),
     description: z.string().nullable(),
-    currentTrends: z.string().nullable(),
-    dataSource: z.string().nullable(),
     createdAt: z.date(),
     updatedAt: z.date(),
     submarkets: z.array(z.object({
         id: z.number(),
-        name: z.string().nullable(),
+        title: z.string().nullable(),
         description: z.string().nullable(),
-        currentTrends: z.string().nullable(),
-        dataSource: z.string().nullable(),
+        gameInstanceId: z.number().nullable(),
         marketId: z.number().nullable(),
         createdAt: z.date(),
         updatedAt: z.date(),
@@ -83,10 +76,8 @@ export type MarketTreeResponseSchema = z.infer<typeof marketTreeResponseSchema>;
 // Schéma pour la réponse d'overview de marché
 export const marketOverviewResponseSchema = z.object({
     id: z.number(),
-    name: z.string().nullable(),
+    title: z.string().nullable(),
     description: z.string().nullable(),
-    currentTrends: z.string().nullable(),
-    dataSource: z.string().nullable(),
     createdAt: z.date(),
     updatedAt: z.date(),
     kpis: z.object({
@@ -100,15 +91,18 @@ export const marketOverviewResponseSchema = z.object({
         id: z.number(),
         symbol: z.string().nullable(),
         title: z.string().nullable(),
-        last_value: z.number(),
-        perf_m1_pct: z.number()
+        market_cap: z.number(),
+        current_value: z.number(),
+        current_volume: z.number(),
+        performance_score: z.number(),
+        category: z.string(),
+        risk_level: z.string()
     })),
     submarkets: z.array(z.object({
         id: z.number(),
-        name: z.string().nullable(),
+        title: z.string().nullable(),
         description: z.string().nullable(),
-        currentTrends: z.string().nullable(),
-        dataSource: z.string().nullable(),
+        gameInstanceId: z.number().nullable(),
         marketId: z.number().nullable(),
         createdAt: z.date(),
         updatedAt: z.date()

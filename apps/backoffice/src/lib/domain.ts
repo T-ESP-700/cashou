@@ -78,7 +78,8 @@ export interface Asset {
   id: number
   title?: string | null
   symbol?: string | null
-  field?: string | null
+  fieldId?: number | null
+  field?: Field | null
   description?: string | null
   marketId?: number | null
   submarketId?: number | null

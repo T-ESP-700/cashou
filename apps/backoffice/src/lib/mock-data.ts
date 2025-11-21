@@ -96,7 +96,8 @@ const sampleAssets: Asset[] = [
     submarketId: 11,
     title: 'ComputeForge',
     symbol: 'CFOR',
-    field: 'AI',
+    fieldId: 22,
+    field: sampleFields[1],
     description: 'Plates-formes GPU européennes souveraines',
   },
   {
@@ -105,7 +106,8 @@ const sampleAssets: Asset[] = [
     submarketId: 12,
     title: 'ClinicOS',
     symbol: 'CLIN',
-    field: 'Health',
+    fieldId: 21,
+    field: sampleFields[0],
     description: 'SaaS vertical santé augmenté par IA',
   },
 ]
