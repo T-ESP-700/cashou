@@ -1,6 +1,6 @@
 import { View, Text, useColorScheme as useRNColorScheme, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'expo-router';
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { CashouHeader } from '@/components/cashou-header';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
@@ -51,8 +51,8 @@ export default function HistoryScreen() {
   // Ajuster pour que Lundi = 0
   const adjustedStartingDay = startingDayOfWeek === 0 ? 6 : startingDayOfWeek - 1;
 
-  useEffect(() => {
-    const fetchDaysStatus = async () => {
+  // Fonction pour récupérer le statut des jours
+  const fetchDaysStatus = useCallback(async () => {
       if (!user) return;
 
       setIsLoading(true);
@@ -174,10 +174,19 @@ export default function HistoryScreen() {
       } finally {
         setIsLoading(false);
       }
-    };
+    }, [user, currentYear, currentMonth, daysInMonth]);
 
+  // Rafraîchir les données quand on revient sur la page
+  useFocusEffect(
+    useCallback(() => {
+      fetchDaysStatus();
+    }, [fetchDaysStatus])
+  );
+
+  // Rafraîchir aussi quand le mois change
+  useEffect(() => {
     fetchDaysStatus();
-  }, [user, currentYear, currentMonth, daysInMonth]);
+  }, [fetchDaysStatus]);
 
   const goToPreviousMonth = () => {
     if (!isAtMinDate) {
