@@ -1,0 +1,777 @@
+import { View, Text, useColorScheme as useRNColorScheme, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'expo-router';
+import { CashouHeader } from '@/components/cashou-header';
+import { CashouTheme } from '@/constants/cashou-theme';
+import { trpcClient } from '@/lib/trpc';
+import { useAuth } from '@/hooks/use-auth';
+
+interface Quiz {
+  id: number;
+  title: string | null;
+  description: string | null;
+  type: string | null;
+}
+
+interface Answer {
+  id: number;
+  text: string | null;
+  isCorrect: boolean | null;
+}
+
+interface Question {
+  id: number;
+  text: string | null;
+  answers: Answer[];
+}
+
+type QuizState = 'intro' | 'question' | 'completed' | 'correction';
+
+export default function DailyQuizScreen() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const colorScheme = useRNColorScheme();
+  const isDark = colorScheme === 'dark';
+  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [quizState, setQuizState] = useState<QuizState>('intro');
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [selectedAnswerId, setSelectedAnswerId] = useState<number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [userQuizId, setUserQuizId] = useState<number | null>(null);
+  const [hasStartedQuiz, setHasStartedQuiz] = useState(false);
+  const [userAnswers, setUserAnswers] = useState<Map<number, { answerId: number; isCorrect: boolean }>>(new Map());
+  const [correctionQuestionIndex, setCorrectionQuestionIndex] = useState(0);
+
+  useEffect(() => {
+    const fetchTodaysQuiz = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const todaysQuiz = await trpcClient.quiz.getTodaysDailyQuiz.query();
+        if (todaysQuiz) {
+          setQuiz(todaysQuiz as Quiz);
+          
+          // Vérifier si l'utilisateur a déjà commencé le quiz
+          if (user) {
+            try {
+              const questionsData = await trpcClient.quizQuestion.getQuestionsWithAnswers.query({
+                quizId: (todaysQuiz as Quiz).id,
+              });
+              
+              if (questionsData.length > 0) {
+                // Vérifier si au moins une question a été répondue
+                const firstQuestionId = questionsData[0]?.question?.id;
+                if (firstQuestionId) {
+                  try {
+                    const userAnswer = await trpcClient.userAnswer.getByUserAndQuestion.query({
+                      userId: user.id,
+                      questionId: firstQuestionId,
+                    });
+                    setHasStartedQuiz(userAnswer !== null);
+                  } catch {
+                    setHasStartedQuiz(false);
+                  }
+                }
+              }
+            } catch {
+              // Si erreur, on considère que le quiz n'a pas été commencé
+              setHasStartedQuiz(false);
+            }
+          }
+        } else {
+          setError('Aucun quiz disponible pour aujourd\'hui');
+        }
+      } catch (err) {
+        console.error('Error fetching today\'s quiz:', err);
+        setError('Impossible de charger le quiz du jour');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTodaysQuiz();
+  }, [user]);
+
+  const handleStartQuiz = async () => {
+    if (!quiz || !user) return;
+
+    try {
+      setIsLoading(true);
+      
+      // Récupérer les questions avec réponses
+      const questionsData = await trpcClient.quizQuestion.getQuestionsWithAnswers.query({
+        quizId: quiz.id,
+      });
+
+      // Transformer les données
+      const formattedQuestions: Question[] = questionsData.map((qq: any) => ({
+        id: qq.question.id,
+        text: qq.question.text,
+        answers: qq.question.answers.map((a: any) => ({
+          id: a.id,
+          text: a.text,
+          isCorrect: a.isCorrect,
+        })),
+      }));
+
+      if (formattedQuestions.length === 0) {
+        Alert.alert('Erreur', 'Ce quiz n\'a pas de questions');
+        return;
+      }
+
+      // Vérifier quelles questions ont déjà été répondues
+      const answeredQuestions = await Promise.all(
+        formattedQuestions.map(async (q) => {
+          try {
+            const userAnswer = await trpcClient.userAnswer.getByUserAndQuestion.query({
+              userId: user.id,
+              questionId: q.id,
+            });
+            return userAnswer ? q.id : null;
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      // Trouver la première question non répondue
+      const firstUnansweredIndex = answeredQuestions.findIndex((answeredId) => answeredId === null);
+      
+      // Si toutes les questions sont répondues, vérifier si le quiz est complété
+      if (firstUnansweredIndex === -1) {
+        // Vérifier si le quiz est complété
+        const existingParticipations = await trpcClient.userQuiz.getByQuiz.query({
+          quizId: quiz.id,
+        });
+        
+        const userParticipation = (existingParticipations as any[]).find(
+          (p: any) => p.userId === user.id && p.completedAt !== null
+        );
+        
+        if (userParticipation) {
+          // Le quiz est déjà complété, afficher la page de félicitations
+          setQuestions(formattedQuestions);
+          setCurrentQuestionIndex(0);
+          setQuizState('completed');
+        } else {
+          // Toutes les questions sont répondues mais le quiz n'est pas complété, aller à la fin
+          setQuestions(formattedQuestions);
+          setCurrentQuestionIndex(formattedQuestions.length - 1);
+          setQuizState('question');
+        }
+      } else {
+        // Reprendre à la première question non répondue
+        setQuestions(formattedQuestions);
+        setCurrentQuestionIndex(firstUnansweredIndex);
+        setSelectedAnswerId(null);
+        setQuizState('question');
+      }
+    } catch (err) {
+      console.error('Error starting quiz:', err);
+      Alert.alert('Erreur', 'Impossible de démarrer le quiz');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSelectAnswer = (answerId: number) => {
+    setSelectedAnswerId(answerId);
+  };
+
+  const handleValidate = async () => {
+    if (!selectedAnswerId || !user || !questions[currentQuestionIndex]) {
+      Alert.alert('Attention', 'Veuillez sélectionner une réponse');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const currentQuestion = questions[currentQuestionIndex];
+
+      // Vérifier si l'utilisateur a déjà répondu à cette question
+      let alreadyAnswered = false;
+      try {
+        const existingAnswer = await trpcClient.userAnswer.getByUserAndQuestion.query({
+          userId: user.id,
+          questionId: currentQuestion.id,
+        });
+        alreadyAnswered = existingAnswer !== null;
+      } catch {
+        // Si erreur, on considère que ce n'est pas encore répondu
+      }
+
+      // Si déjà répondu, mettre à jour la réponse
+      if (alreadyAnswered) {
+        // Pour l'instant, on ne peut pas mettre à jour une réponse existante
+        // On passe simplement à la question suivante
+        console.log('Question déjà répondue, passage à la suivante');
+      } else {
+        // Soumettre la nouvelle réponse
+        await trpcClient.userAnswer.submitAnswer.mutate({
+          userId: user.id,
+          questionId: currentQuestion.id,
+          answerId: selectedAnswerId,
+        });
+      }
+
+      // Passer à la question suivante ou terminer le quiz
+      if (currentQuestionIndex < questions.length - 1) {
+        setCurrentQuestionIndex(currentQuestionIndex + 1);
+        setSelectedAnswerId(null);
+      } else {
+        // Calculer le score (toutes les réponses correctes)
+        const allAnswers = await Promise.all(
+          questions.map(async (q) => {
+            try {
+              const userAnswer = await trpcClient.userAnswer.getByUserAndQuestion.query({
+                userId: user.id,
+                questionId: q.id,
+              });
+              return (userAnswer as any)?.accurate || false;
+            } catch {
+              return false;
+            }
+          })
+        );
+        
+        const allCorrect = allAnswers.every((correct) => correct);
+        
+        // Récupérer toutes les réponses de l'utilisateur pour la correction
+        const answersMap = new Map<number, { answerId: number; isCorrect: boolean }>();
+        for (const q of questions) {
+          try {
+            const userAnswer = await trpcClient.userAnswer.getByUserAndQuestion.query({
+              userId: user.id,
+              questionId: q.id,
+            });
+            if (userAnswer) {
+              answersMap.set(q.id, {
+                answerId: (userAnswer as any).answerId,
+                isCorrect: (userAnswer as any).accurate || false,
+              });
+            }
+          } catch {
+            // Ignorer les erreurs
+          }
+        }
+        setUserAnswers(answersMap);
+        
+        // Créer ou mettre à jour la participation au quiz
+        try {
+          await trpcClient.userQuiz.createOrUpdateParticipation.mutate({
+            quizId: quiz.id,
+            isCorrect: allCorrect,
+          });
+        } catch (err) {
+          console.error('Error completing quiz:', err);
+          // Les réponses sont déjà enregistrées, on continue
+        }
+
+        setQuizState('completed');
+      }
+    } catch (err) {
+      console.error('Error submitting answer:', err);
+      Alert.alert('Erreur', 'Impossible de soumettre la réponse');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <CashouHeader
+        showBackButton={true}
+        onBackPress={() => router.back()}
+        onMenuPress={() => {}}
+      />
+
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        {isLoading ? (
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color={theme.accent} />
+            <Text
+              style={[
+                styles.loadingText,
+                { fontFamily: CashouTheme.fonts.body, color: theme.text },
+              ]}
+            >
+              {quizState === 'intro' ? 'Chargement du quiz...' : 'Chargement...'}
+            </Text>
+          </View>
+        ) : error ? (
+          <View style={styles.centerContainer}>
+            <Text
+              style={[
+                styles.errorText,
+                { fontFamily: CashouTheme.fonts.body, color: theme.text },
+              ]}
+            >
+              {error}
+            </Text>
+          </View>
+        ) : quizState === 'intro' && quiz ? (
+          <>
+            {/* Titre du Quiz */}
+            <View style={styles.titleContainer}>
+              <Text
+                style={[
+                  styles.title,
+                  { fontFamily: CashouTheme.fonts.heading, color: theme.text },
+                ]}
+              >
+                {quiz.title || 'Daily Quiz'}
+              </Text>
+            </View>
+
+            {/* Description */}
+            <View style={styles.descriptionContainer}>
+              <Text
+                style={[
+                  styles.description,
+                  { fontFamily: CashouTheme.fonts.body, color: theme.text },
+                ]}
+              >
+                {quiz.description || 'Testez vos connaissances avec le quiz du jour !'}
+              </Text>
+            </View>
+          </>
+        ) : quizState === 'question' && questions.length > 0 ? (
+          <>
+            {/* Indicateur de progression */}
+            <View style={styles.progressContainer}>
+              <Text
+                style={[
+                  styles.progressText,
+                  { fontFamily: CashouTheme.fonts.body, color: theme.text },
+                ]}
+              >
+                Question {currentQuestionIndex + 1} / {questions.length}
+              </Text>
+            </View>
+
+            {/* Question actuelle */}
+            <View style={styles.questionContainer}>
+              <Text
+                style={[
+                  styles.questionText,
+                  { fontFamily: CashouTheme.fonts.subheading, color: theme.text },
+                ]}
+              >
+                {questions[currentQuestionIndex]?.text || 'Question'}
+              </Text>
+            </View>
+
+            {/* Réponses */}
+            <View style={styles.answersContainer}>
+              {questions[currentQuestionIndex]?.answers.map((answer) => (
+                <TouchableOpacity
+                  key={answer.id}
+                  style={[
+                    styles.answerButton,
+                    {
+                      backgroundColor: selectedAnswerId === answer.id ? theme.accent : theme.card,
+                      borderColor: selectedAnswerId === answer.id ? theme.accent : theme.border,
+                    },
+                  ]}
+                  onPress={() => handleSelectAnswer(answer.id)}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.answerText,
+                      {
+                        fontFamily: CashouTheme.fonts.body,
+                        color: selectedAnswerId === answer.id ? '#1C1E33' : theme.text,
+                      },
+                    ]}
+                  >
+                    {answer.text}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        ) : quizState === 'completed' ? (
+          <View style={styles.completedContainer}>
+            <Text style={styles.celebrationEmoji}>🎉</Text>
+            <Text
+              style={[
+                styles.completedTitle,
+                { fontFamily: CashouTheme.fonts.heading, color: theme.text },
+              ]}
+            >
+              Félicitations !
+            </Text>
+            <Text
+              style={[
+                styles.completedText,
+                { fontFamily: CashouTheme.fonts.body, color: theme.text },
+              ]}
+            >
+              Vous avez terminé le quiz du jour !
+            </Text>
+          </View>
+        ) : quizState === 'correction' && questions.length > 0 ? (
+          <>
+            {/* Indicateur de progression */}
+            <View style={styles.progressContainer}>
+              <Text
+                style={[
+                  styles.progressText,
+                  { fontFamily: CashouTheme.fonts.body, color: theme.text },
+                ]}
+              >
+                Correction {correctionQuestionIndex + 1} / {questions.length}
+              </Text>
+            </View>
+
+            {/* Question actuelle */}
+            <View style={styles.questionContainer}>
+              <Text
+                style={[
+                  styles.questionText,
+                  { fontFamily: CashouTheme.fonts.subheading, color: theme.text },
+                ]}
+              >
+                {questions[correctionQuestionIndex]?.text || 'Question'}
+              </Text>
+            </View>
+
+            {/* Réponses avec correction */}
+            <View style={styles.answersContainer}>
+              {questions[correctionQuestionIndex]?.answers.map((answer) => {
+                const userAnswer = userAnswers.get(questions[correctionQuestionIndex].id);
+                const isUserAnswer = userAnswer?.answerId === answer.id;
+                const isCorrect = answer.isCorrect === true;
+                const isUserAnswerCorrect = isUserAnswer && isCorrect;
+                const isUserAnswerIncorrect = isUserAnswer && !isCorrect;
+                const showAsCorrect = isCorrect; // Toujours montrer la bonne réponse en vert
+                const showAsIncorrect = isUserAnswerIncorrect; // La réponse de l'utilisateur si elle est fausse
+                
+                return (
+                  <View
+                    key={answer.id}
+                    style={[
+                      styles.answerButton,
+                      {
+                        backgroundColor: showAsCorrect 
+                          ? '#4CAF50' 
+                          : showAsIncorrect 
+                          ? '#F44336' 
+                          : theme.card,
+                        borderColor: showAsCorrect 
+                          ? '#4CAF50' 
+                          : showAsIncorrect 
+                          ? '#F44336' 
+                          : theme.border,
+                        borderWidth: 2,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.answerText,
+                        {
+                          fontFamily: CashouTheme.fonts.body,
+                          color: showAsCorrect || showAsIncorrect ? '#FFFFFF' : theme.text,
+                        },
+                      ]}
+                    >
+                      {answer.text}
+                      {showAsCorrect && ' ✓'}
+                      {showAsIncorrect && ' ✗'}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          </>
+        ) : null}
+      </ScrollView>
+
+      {/* Boutons en bas selon l'état */}
+      {!isLoading && !error && (
+        <View style={[styles.buttonContainer, { backgroundColor: theme.background }]}>
+          {quizState === 'intro' && quiz && (
+            <TouchableOpacity
+              style={[styles.startButton, { backgroundColor: theme.accent }]}
+              onPress={handleStartQuiz}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.startButtonText,
+                  { fontFamily: CashouTheme.fonts.subheading, color: '#1C1E33' },
+                ]}
+              >
+                {hasStartedQuiz ? 'Reprendre' : 'Commencer'}
+              </Text>
+            </TouchableOpacity>
+          )}
+          
+          {quizState === 'question' && (
+            <TouchableOpacity
+              style={[
+                styles.validateButton,
+                {
+                  backgroundColor: selectedAnswerId ? theme.accent : theme.border,
+                  opacity: selectedAnswerId ? 1 : 0.5,
+                },
+              ]}
+              onPress={handleValidate}
+              activeOpacity={0.8}
+              disabled={!selectedAnswerId || isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator size="small" color="#1C1E33" />
+              ) : (
+                <Text
+                  style={[
+                    styles.validateButtonText,
+                    { fontFamily: CashouTheme.fonts.subheading, color: '#1C1E33' },
+                  ]}
+                >
+                  Valider
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {quizState === 'completed' && (
+            <>
+              {/* Bouton Correction centré */}
+              <TouchableOpacity
+                style={[styles.correctionButton, { backgroundColor: theme.accent }]}
+                onPress={() => {
+                  setCorrectionQuestionIndex(0);
+                  setQuizState('correction');
+                }}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.correctionButtonText,
+                    { fontFamily: CashouTheme.fonts.subheading, color: '#1C1E33' },
+                  ]}
+                >
+                  Correction
+                </Text>
+              </TouchableOpacity>
+              
+              {/* Boutons Accueil et Historique */}
+              <View style={styles.completedButtonsContainer}>
+                <TouchableOpacity
+                  style={[styles.completedButton, { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border }]}
+                  onPress={() => router.push('/(tabs)')}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      styles.completedButtonText,
+                      { fontFamily: CashouTheme.fonts.subheading, color: theme.text },
+                    ]}
+                  >
+                    Accueil
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.completedButton, { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border }]}
+                  onPress={() => {
+                    // Historique - ne fait rien pour l'instant
+                    Alert.alert('Historique', 'Fonctionnalité à venir');
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      styles.completedButtonText,
+                      { fontFamily: CashouTheme.fonts.subheading, color: theme.text },
+                    ]}
+                  >
+                    Historique
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+
+          {quizState === 'correction' && (
+            <TouchableOpacity
+              style={[styles.validateButton, { backgroundColor: theme.accent }]}
+              onPress={() => {
+                if (correctionQuestionIndex < questions.length - 1) {
+                  setCorrectionQuestionIndex(correctionQuestionIndex + 1);
+                } else {
+                  setQuizState('completed');
+                }
+              }}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.validateButtonText,
+                  { fontFamily: CashouTheme.fonts.subheading, color: '#1C1E33' },
+                ]}
+              >
+                {correctionQuestionIndex < questions.length - 1 ? 'Suivant' : 'Retour'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 120, // Espace pour le bouton en bas (augmenté)
+  },
+  centerContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+  },
+  errorText: {
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  titleContainer: {
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 32,
+    lineHeight: 40,
+  },
+  descriptionContainer: {
+    marginBottom: 24,
+  },
+  description: {
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  buttonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 32,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  startButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  startButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  progressContainer: {
+    marginBottom: 24,
+  },
+  progressText: {
+    fontSize: 14,
+    opacity: 0.7,
+  },
+  questionContainer: {
+    marginBottom: 32,
+  },
+  questionText: {
+    fontSize: 24,
+    lineHeight: 32,
+  },
+  answersContainer: {
+    gap: 12,
+  },
+  answerButton: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    marginBottom: 8,
+  },
+  answerText: {
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  validateButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  validateButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  completedContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+  },
+  celebrationEmoji: {
+    fontSize: 80,
+    marginBottom: 24,
+  },
+  completedTitle: {
+    fontSize: 32,
+    marginBottom: 16,
+  },
+  completedText: {
+    fontSize: 18,
+    textAlign: 'center',
+  },
+  correctionButton: {
+    width: '100%',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  correctionButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  completedButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  completedButton: {
+    flex: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  completedButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
+

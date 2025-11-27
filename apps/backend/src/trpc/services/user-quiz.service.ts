@@ -108,13 +108,14 @@ export class UserQuizService {
     /**
      * Démarre un quiz pour un utilisateur (crée une participation)
      * @param quizId - Identifiant du quiz
-     * @param userId - Identifiant de l'utilisateur
+     * @param userId - Identifiant de l'utilisateur (number ou string)
      * @returns Promise<UserQuiz> - La participation créée
      */
-    async startQuiz(quizId: number, userId: number): Promise<UserQuiz> {
+    async startQuiz(quizId: number, userId: number | string): Promise<UserQuiz> {
+        const userIdStr = userId.toString();
         // Vérifier si l'utilisateur a déjà participé à ce quiz
         const existingParticipation = await this.prisma.userQuiz.findFirst({
-            where: { quizId, userId }
+            where: { quizId, userId: userIdStr }
         });
 
         if (existingParticipation) {
@@ -122,8 +123,43 @@ export class UserQuizService {
         }
 
         return this.prisma.userQuiz.create({
-            data: { quizId, userId }
+            data: { quizId, userId: userIdStr }
         });
+    }
+
+    /**
+     * Crée ou met à jour une participation au quiz pour l'utilisateur connecté
+     * @param quizId - Identifiant du quiz
+     * @param userId - Identifiant de l'utilisateur (string)
+     * @param isCorrect - Résultat du quiz (optionnel)
+     * @returns Promise<UserQuiz> - La participation créée ou mise à jour
+     */
+    async createOrUpdateParticipation(quizId: number, userId: string, isCorrect?: boolean): Promise<UserQuiz> {
+        // Chercher une participation existante
+        const existingParticipation = await this.prisma.userQuiz.findFirst({
+            where: { quizId, userId }
+        });
+
+        if (existingParticipation) {
+            // Mettre à jour la participation existante
+            return this.prisma.userQuiz.update({
+                where: { id: existingParticipation.id },
+                data: {
+                    completedAt: new Date(),
+                    isCorrect: isCorrect !== undefined ? isCorrect : existingParticipation.isCorrect,
+                }
+            });
+        } else {
+            // Créer une nouvelle participation
+            return this.prisma.userQuiz.create({
+                data: {
+                    quizId,
+                    userId,
+                    completedAt: new Date(),
+                    isCorrect: isCorrect,
+                }
+            });
+        }
     }
 
     /**

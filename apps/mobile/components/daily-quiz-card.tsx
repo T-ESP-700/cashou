@@ -1,4 +1,5 @@
-import { View, Text, useColorScheme as useRNColorScheme, StyleSheet } from 'react-native';
+import { View, Text, useColorScheme as useRNColorScheme, StyleSheet, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 import { CashouTheme } from '@/constants/cashou-theme';
 import Svg, { Circle } from 'react-native-svg';
 
@@ -13,9 +14,14 @@ export function DailyQuizCard({
   timeRemaining,
   status = 'todo',
 }: DailyQuizCardProps) {
+  const router = useRouter();
   const colorScheme = useRNColorScheme();
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+
+  const handlePress = () => {
+    router.push('/(tabs)/daily-quiz');
+  };
 
   // Calculate progress for circular chart: le cercle se remplit au fur et à mesure que la journée avance
   // 0% au début de la journée (24h restantes), 100% à la fin (0h restantes)
@@ -33,17 +39,19 @@ export function DailyQuizCard({
   };
 
   const progress = calculateProgress();
-  const radius = 30; // Réduit de 35 à 25
-  const strokeWidth = 6; // Réduit de 8 à 6
+  const radius = 30; 
+  const strokeWidth = 6; 
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   return (
-    <View
+    <TouchableOpacity
       style={[
         styles.card,
         { backgroundColor: theme.card, borderColor: theme.border },
       ]}
+      onPress={handlePress}
+      activeOpacity={0.7}
     >
       {/* Header with Title and Status Badge */}
       <View style={styles.header}>
@@ -152,7 +160,7 @@ export function DailyQuizCard({
           )}
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 

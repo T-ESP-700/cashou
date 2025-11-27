@@ -319,19 +319,6 @@ const publicRouter = t.router({
 
 });
 
-// Router avec les procédures protégées utilisant le router principal
-const protectedRouter = router({
-    /**
-     * Vérifier si l'utilisateur connecté a fait son daily quiz aujourd'hui
-     * Endpoint: GET http://localhost:3000/trpc/userQuiz.hasDoneDailyTodayForCurrentUser
-     * Pas de paramètre d'entrée requis (utilise l'ID de la session)
-     */
-    hasDoneDailyTodayForCurrentUser: protectedProcedure
-        .query(async ({ ctx }) => {
-            return await userQuizService.hasDoneDailyToday(ctx.userId);
-        }),
-});
-
 // Fusionner les deux routers en créant un nouveau router qui combine les procédures
 export const userQuizRouter = router({
     // Toutes les procédures du router public
@@ -360,8 +347,35 @@ export const userQuizRouter = router({
     hasDoneDailyToday: publicRouter.hasDoneDailyToday,
     getDailyHistory: publicRouter.getDailyHistory,
     getDailyStreak: publicRouter.getDailyStreak,
-    // Procédure protégée
-    hasDoneDailyTodayForCurrentUser: protectedRouter.hasDoneDailyTodayForCurrentUser,
+    
+    // Procédures protégées - ajoutées directement
+    /**
+     * Vérifier si l'utilisateur connecté a fait son daily quiz aujourd'hui
+     * Endpoint: GET http://localhost:3000/trpc/userQuiz.hasDoneDailyTodayForCurrentUser
+     * Pas de paramètre d'entrée requis (utilise l'ID de la session)
+     */
+    hasDoneDailyTodayForCurrentUser: protectedProcedure
+        .query(async ({ ctx }) => {
+            return await userQuizService.hasDoneDailyToday(ctx.userId);
+        }),
+
+    /**
+     * Crée ou met à jour une participation au quiz pour l'utilisateur connecté
+     * Endpoint: POST http://localhost:3000/trpc/userQuiz.createOrUpdateParticipation
+     * @input {quizId: number, isCorrect?: boolean} - ID du quiz et résultat optionnel
+     */
+    createOrUpdateParticipation: protectedProcedure
+        .input(z.object({
+            quizId: z.number().min(1, "L'ID du quiz doit être un nombre > 0"),
+            isCorrect: z.boolean().optional(),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            return await userQuizService.createOrUpdateParticipation(
+                input.quizId,
+                ctx.userId,
+                input.isCorrect
+            );
+        }),
 });
 
 // Export du type pour utilisation côté frontend (IntelliSense et type-safety)
