@@ -3,7 +3,6 @@ import { createContext } from './trpc';
 import { trpcRouter } from './trpc/router';
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 import { cors } from './middleware/cors';
-import { getStreakScheduler } from './services/streak-scheduler';
 
 // Server instance variable to track if server is already running
 let serverInstance: ReturnType<typeof Bun.serve> | null = null;
@@ -104,11 +103,6 @@ function startServer() {
   console.log(`Backend listening on http://localhost:${serverInstance.port}`);
   console.log('Auth endpoints available at http://localhost:3000/api/auth/*');
   console.log('tRPC endpoints available at http://localhost:3000/api/trpc/*');
-
-  // Démarrer le scheduler pour vérifier les streaks à minuit
-  const streakScheduler = getStreakScheduler();
-  streakScheduler.start();
-  console.log('Streak scheduler démarré - vérification automatique à minuit chaque jour');
 
   return serverInstance;
 }

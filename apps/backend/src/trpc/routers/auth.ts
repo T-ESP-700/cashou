@@ -3,6 +3,7 @@ import { router, publicProcedure, protectedProcedure } from '../';
 import { auth } from '@cashou/auth/server';
 import { TRPCError } from '@trpc/server';
 import { prisma } from '@cashou/db-app';
+import { getUserActivityService } from '../../services/user-activity.service';
 
 export const authRouter = router({
   // Register a new user
@@ -57,6 +58,12 @@ export const authRouter = router({
           headers: ctx.req.headers,
         });
 
+        // Vérifier et mettre à jour l'activité de l'utilisateur après connexion
+        if (result.user?.id) {
+          const activityService = getUserActivityService();
+          await activityService.checkAndUpdateUserActivity(result.user.id);
+        }
+
         return {
           success: true,
           user: result.user,
@@ -89,6 +96,10 @@ export const authRouter = router({
 
   // Get current user
   me: protectedProcedure.query(async ({ ctx }) => {
+    // Vérifier et mettre à jour l'activité de l'utilisateur à chaque appel
+    const activityService = getUserActivityService();
+    await activityService.checkAndUpdateUserActivity(ctx.session.user.id);
+
     // Récupérer l'utilisateur complet depuis la base de données pour avoir tous les champs (currentStreak, maxStreak, etc.)
     const fullUser = await prisma.user.findUnique({
       where: { id: ctx.session.user.id },
