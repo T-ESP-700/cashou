@@ -117,49 +117,49 @@ export function DailyQuizCard({
             {status === 'done' ? 'Prochain quiz dans :' : 'Temps restant'}
           </Text>
           <View style={styles.circularProgress}>
-              {/* Circular Progress Chart */}
+            {/* Circular Progress Chart */}
               <Svg width={70} height={70} style={styles.svg}>
-                {/* Background Circle */}
-                <Circle
+              {/* Background Circle */}
+              <Circle
                   cx="35"
                   cy="35"
-                  r={radius}
-                  stroke={isDark ? "#3A3D55" : "#E0E0E0"}
-                  strokeWidth={strokeWidth}
-                  fill="none"
-                />
-                {/* Progress Circle */}
-                <Circle
+                r={radius}
+                stroke={isDark ? "#3A3D55" : "#E0E0E0"}
+                strokeWidth={strokeWidth}
+                fill="none"
+              />
+              {/* Progress Circle */}
+              <Circle
                   cx="35"
                   cy="35"
-                  r={radius}
-                  stroke={theme.accent}
-                  strokeWidth={strokeWidth}
-                  fill="none"
-                  strokeDasharray={circumference}
-                  strokeDashoffset={strokeDashoffset}
-                  strokeLinecap="round"
-                  rotation="-90"
+                r={radius}
+                stroke={theme.accent}
+                strokeWidth={strokeWidth}
+                fill="none"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                rotation="-90"
                   origin="35, 35"
-                />
-              </Svg>
+              />
+            </Svg>
               {/* Time Text - Centré dans le cercle */}
               <View style={styles.timeTextContainer}>
-                <Text
-                  style={[
-                    styles.timeText,
-                    {
-                      fontFamily: CashouTheme.fonts.subheading,
-                      color: theme.text,
-                    },
-                  ]}
-                >
-                  {timeRemaining}
-                </Text>
-              </View>
-            </View>
+            <Text
+              style={[
+                styles.timeText,
+                {
+                  fontFamily: CashouTheme.fonts.subheading,
+                  color: theme.text,
+                },
+              ]}
+            >
+              {timeRemaining}
+            </Text>
+          </View>
         </View>
       </View>
+    </View>
     </TouchableOpacity>
   );
 }

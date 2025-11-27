@@ -651,8 +651,7 @@ export default function DailyQuizScreen() {
                 <TouchableOpacity
                   style={[styles.completedButton, { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border }]}
                   onPress={() => {
-                    // Historique - ne fait rien pour l'instant
-                    Alert.alert('Historique', 'Fonctionnalité à venir');
+                    router.push('/(tabs)/history');
                   }}
                   activeOpacity={0.8}
                 >
