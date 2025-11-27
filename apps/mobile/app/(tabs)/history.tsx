@@ -201,6 +201,19 @@ export default function HistoryScreen() {
     ) || null;
   };
 
+  const handleDayPress = (dayStatus: DayStatus) => {
+    if (!dayStatus.hasQuiz || !dayStatus.quizId) return;
+
+    // Naviguer vers la page du quiz avec le quizId et le statut
+    router.push({
+      pathname: '/(tabs)/daily-quiz',
+      params: {
+        quizId: dayStatus.quizId.toString(),
+        showCompleted: dayStatus.isCompleted ? 'true' : 'false',
+      },
+    });
+  };
+
   const renderDay = (day: number) => {
     const dayStatus = getDayStatus(day);
     const hasQuiz = dayStatus?.hasQuiz || false;
@@ -217,7 +230,7 @@ export default function HistoryScreen() {
     }
 
     return (
-      <View
+      <TouchableOpacity
         key={day}
         style={[
           styles.dayCell,
@@ -227,6 +240,9 @@ export default function HistoryScreen() {
             opacity: hasQuiz ? 1 : 0.3,
           },
         ]}
+        onPress={() => dayStatus && handleDayPress(dayStatus)}
+        disabled={!hasQuiz}
+        activeOpacity={hasQuiz ? 0.7 : 1}
       >
         <Text
           style={[
@@ -239,7 +255,7 @@ export default function HistoryScreen() {
         >
           {day}
         </Text>
-      </View>
+      </TouchableOpacity>
     );
   };
 
