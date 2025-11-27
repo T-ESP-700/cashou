@@ -1,5 +1,6 @@
 import { ScrollView, View, Text, useColorScheme as useRNColorScheme, StyleSheet } from 'react-native';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { CashouHeader } from '@/components/cashou-header';
 import { LevelCard } from '@/components/level-card';
 import { DailyQuizCard } from '@/components/daily-quiz-card';
@@ -11,7 +12,7 @@ export default function HomeScreen() {
   const colorScheme = useRNColorScheme();
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, refreshUser } = useAuth();
   const [dailyQuizStatus, setDailyQuizStatus] = useState<'todo' | 'done'>('todo');
   const [isLoadingDailyQuiz, setIsLoadingDailyQuiz] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<string>('0h0m');
@@ -62,6 +63,30 @@ export default function HomeScreen() {
 
     fetchDailyQuizStatus();
   }, [isAuthenticated]);
+
+  // Rafraîchir les données utilisateur et le statut du quiz quand la page revient au focus
+  // Cela permet de mettre à jour le currentStreak et le statut du quiz après avoir complété un quiz
+  useFocusEffect(
+    React.useCallback(() => {
+      if (isAuthenticated) {
+        // Rafraîchir les données utilisateur
+        refreshUser();
+        
+        // Rafraîchir aussi le statut du quiz
+        const fetchDailyQuizStatus = async () => {
+          try {
+            const result = await trpcClient.userQuiz.hasDoneDailyTodayForCurrentUser.query();
+            setDailyQuizStatus(result.hasDone ? 'done' : 'todo');
+          } catch (error) {
+            console.error('Error fetching daily quiz status:', error);
+            setDailyQuizStatus('todo');
+          }
+        };
+        
+        fetchDailyQuizStatus();
+      }
+    }, [isAuthenticated, refreshUser])
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>

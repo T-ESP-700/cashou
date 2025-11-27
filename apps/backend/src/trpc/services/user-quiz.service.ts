@@ -140,9 +140,10 @@ export class UserQuizService {
             where: { quizId, userId }
         });
 
+        let participation: UserQuiz;
         if (existingParticipation) {
             // Mettre à jour la participation existante
-            return this.prisma.userQuiz.update({
+            participation = await this.prisma.userQuiz.update({
                 where: { id: existingParticipation.id },
                 data: {
                     completedAt: new Date(),
@@ -151,7 +152,7 @@ export class UserQuizService {
             });
         } else {
             // Créer une nouvelle participation
-            return this.prisma.userQuiz.create({
+            participation = await this.prisma.userQuiz.create({
                 data: {
                     quizId,
                     userId,
@@ -160,6 +161,114 @@ export class UserQuizService {
                 }
             });
         }
+
+        // Mettre à jour les streaks si c'est le quiz du jour
+        await this.updateStreaksIfTodaysQuiz(quizId, userId);
+
+        return participation;
+    }
+
+    /**
+     * Met à jour les streaks de l'utilisateur si le quiz est le quiz du jour
+     * @param quizId - Identifiant du quiz
+     * @param userId - Identifiant de l'utilisateur (string)
+     */
+    private async updateStreaksIfTodaysQuiz(quizId: number, userId: string): Promise<void> {
+        // Vérifier si c'est le quiz du jour
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const quiz = await this.prisma.quiz.findUnique({
+            where: { id: quizId }
+        });
+
+        if (!quiz || quiz.type !== 'DAILY') {
+            return; // Ce n'est pas un quiz daily, on ne fait rien
+        }
+
+        // Vérifier si c'est le quiz du jour (même logique que hasDoneDailyToday)
+        const quizDate = quiz.date ? new Date(quiz.date) : new Date(quiz.createdAt);
+        const quizDateStart = new Date(quizDate);
+        quizDateStart.setHours(0, 0, 0, 0);
+
+        // Vérifier si la date du quiz correspond à aujourd'hui
+        if (quizDateStart.getTime() < today.getTime() || quizDateStart.getTime() >= tomorrow.getTime()) {
+            return; // Ce n'est pas le quiz du jour, on ne fait rien
+        }
+
+        // Récupérer toutes les questions du quiz
+        const quizQuestions = await this.prisma.quizQuestion.findMany({
+            where: { quizId },
+            include: {
+                question: {
+                    include: {
+                        answers: true
+                    }
+                }
+            }
+        });
+
+        if (quizQuestions.length === 0) {
+            return; // Pas de questions, on ne fait rien
+        }
+
+        // Récupérer toutes les réponses de l'utilisateur pour ce quiz
+        const questionIds = quizQuestions.map(qq => qq.questionId);
+        const userAnswers = await this.prisma.userAnswer.findMany({
+            where: {
+                userId,
+                questionId: { in: questionIds }
+            }
+        });
+
+        // Calculer le nombre de bonnes réponses
+        let correctAnswers = 0;
+        for (const userAnswer of userAnswers) {
+            if (userAnswer.accurate) {
+                correctAnswers++;
+            }
+        }
+
+        const totalQuestions = quizQuestions.length;
+        const score = correctAnswers / totalQuestions;
+
+        // Récupérer l'utilisateur pour accéder aux streaks actuels
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { currentStreak: true, maxStreak: true }
+        });
+
+        if (!user) {
+            return; // Utilisateur introuvable
+        }
+
+        let newCurrentStreak = user.currentStreak;
+        let newMaxStreak = user.maxStreak;
+
+        // Appliquer les règles de streak
+        // Si 2/3 ou 3/3 (score >= 2/3) → currentStreak +1
+        // Si 0/3 ou 1/3 (score < 2/3) → currentStreak = 0
+        if (score >= 2/3) {
+            newCurrentStreak = user.currentStreak + 1;
+        } else {
+            newCurrentStreak = 0;
+        }
+
+        // Mettre à jour maxStreak si currentStreak > maxStreak
+        if (newCurrentStreak > user.maxStreak) {
+            newMaxStreak = newCurrentStreak;
+        }
+
+        // Mettre à jour l'utilisateur
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: {
+                currentStreak: newCurrentStreak,
+                maxStreak: newMaxStreak
+            }
+        });
     }
 
     /**

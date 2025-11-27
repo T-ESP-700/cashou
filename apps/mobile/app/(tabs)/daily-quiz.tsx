@@ -1,6 +1,6 @@
 import { View, Text, useColorScheme as useRNColorScheme, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
-import { useState, useEffect } from 'react';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import React, { useState, useEffect } from 'react';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { CashouHeader } from '@/components/cashou-header';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
@@ -30,7 +30,7 @@ type QuizState = 'intro' | 'question' | 'completed' | 'correction';
 export default function DailyQuizScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const colorScheme = useRNColorScheme();
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
@@ -223,6 +223,22 @@ export default function DailyQuizScreen() {
     fetchQuiz();
   }, [user, showCompleted, specificQuizId]);
 
+  // Rafraîchir les données utilisateur quand on quitte la page (si le quiz est complété)
+  // Cela permet de mettre à jour le currentStreak et le statut du quiz sur la page d'accueil
+  useFocusEffect(
+    React.useCallback(() => {
+      // Cleanup : rafraîchir quand on quitte la page si le quiz était complété
+      return () => {
+        if (quizState === 'completed' && !specificQuizId) {
+          // C'est le quiz du jour qui est complété, rafraîchir les données
+          refreshUser().catch(err => {
+            console.error('Error refreshing user on page exit:', err);
+          });
+        }
+      };
+    }, [quizState, specificQuizId, refreshUser])
+  );
+
   const handleStartQuiz = async () => {
     if (!quiz || !user) return;
 
@@ -393,6 +409,12 @@ export default function DailyQuizScreen() {
             quizId: quiz.id,
             isCorrect: allCorrect,
           });
+          
+          // Attendre un peu pour que le backend termine la mise à jour du streak
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Rafraîchir les données de l'utilisateur pour mettre à jour le currentStreak
+          await refreshUser();
         } catch (err) {
           console.error('Error completing quiz:', err);
           // Les réponses sont déjà enregistrées, on continue
@@ -696,20 +718,28 @@ export default function DailyQuizScreen() {
               
               {/* Boutons Accueil et Historique */}
               <View style={styles.completedButtonsContainer}>
-                <TouchableOpacity
-                  style={[styles.completedButton, { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border }]}
-                  onPress={() => router.push('/(tabs)')}
-                  activeOpacity={0.8}
-                >
-                  <Text
-                    style={[
-                      styles.completedButtonText,
-                      { fontFamily: CashouTheme.fonts.subheading, color: theme.text },
-                    ]}
-                  >
-                    Accueil
-                  </Text>
-                </TouchableOpacity>
+                     <TouchableOpacity
+                       style={[styles.completedButton, { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border }]}
+                       onPress={async () => {
+                         // Rafraîchir les données avant de naviguer
+                         try {
+                           await refreshUser();
+                         } catch (err) {
+                           console.error('Error refreshing user:', err);
+                         }
+                         router.push('/(tabs)');
+                       }}
+                       activeOpacity={0.8}
+                     >
+                       <Text
+                         style={[
+                           styles.completedButtonText,
+                           { fontFamily: CashouTheme.fonts.subheading, color: theme.text },
+                         ]}
+                       >
+                         Accueil
+                       </Text>
+                     </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.completedButton, { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border }]}
                   onPress={() => {
