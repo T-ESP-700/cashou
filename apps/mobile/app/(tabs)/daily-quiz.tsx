@@ -1,6 +1,6 @@
 import { View, Text, useColorScheme as useRNColorScheme, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { CashouHeader } from '@/components/cashou-header';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
@@ -29,6 +29,7 @@ type QuizState = 'intro' | 'question' | 'completed' | 'correction';
 
 export default function DailyQuizScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const { user } = useAuth();
   const colorScheme = useRNColorScheme();
   const isDark = colorScheme === 'dark';
@@ -36,7 +37,16 @@ export default function DailyQuizScreen() {
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [quizState, setQuizState] = useState<QuizState>('intro');
+  
+  // Récupérer le paramètre showCompleted depuis la navigation
+  // useLocalSearchParams peut retourner un tableau ou une chaîne
+  const showCompletedParam = params?.showCompleted;
+  const showCompleted = Array.isArray(showCompletedParam) 
+    ? showCompletedParam[0] === 'true' 
+    : showCompletedParam === 'true';
+  
+  // Initialiser directement à 'completed' si showCompleted est true
+  const [quizState, setQuizState] = useState<QuizState>(showCompleted ? 'completed' : 'intro');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswerId, setSelectedAnswerId] = useState<number | null>(null);
@@ -49,14 +59,74 @@ export default function DailyQuizScreen() {
   useEffect(() => {
     const fetchTodaysQuiz = async () => {
       try {
-        setIsLoading(true);
+        // Ne pas afficher le loader si on va directement à la page de fin
+        if (!showCompleted) {
+          setIsLoading(true);
+        }
         setError(null);
         const todaysQuiz = await trpcClient.quiz.getTodaysDailyQuiz.query();
         if (todaysQuiz) {
           setQuiz(todaysQuiz as Quiz);
           
-          // Vérifier si l'utilisateur a déjà commencé le quiz
-          if (user) {
+          // Si showCompleted est true, charger les questions et réponses pour la page de fin
+          if (showCompleted && user) {
+            try {
+              // Charger en parallèle les questions et les réponses
+              const [questionsData] = await Promise.all([
+                trpcClient.quizQuestion.getQuestionsWithAnswers.query({
+                  quizId: (todaysQuiz as Quiz).id,
+                }),
+              ]);
+
+              // Transformer les données
+              const formattedQuestions: Question[] = questionsData.map((qq: any) => ({
+                id: qq.question.id,
+                text: qq.question.text,
+                answers: qq.question.answers.map((a: any) => ({
+                  id: a.id,
+                  text: a.text,
+                  isCorrect: a.isCorrect,
+                })),
+              }));
+
+              setQuestions(formattedQuestions);
+
+              // Récupérer toutes les réponses de l'utilisateur pour la correction en parallèle
+              const answersPromises = formattedQuestions.map(async (q) => {
+                try {
+                  const userAnswer = await trpcClient.userAnswer.getByUserAndQuestion.query({
+                    userId: user.id,
+                    questionId: q.id,
+                  });
+                  if (userAnswer) {
+                    return {
+                      questionId: q.id,
+                      answerId: (userAnswer as any).answerId,
+                      isCorrect: (userAnswer as any).accurate || false,
+                    };
+                  }
+                } catch {
+                  // Ignorer les erreurs
+                }
+                return null;
+              });
+
+              const answersResults = await Promise.all(answersPromises);
+              const answersMap = new Map<number, { answerId: number; isCorrect: boolean }>();
+              answersResults.forEach((result) => {
+                if (result) {
+                  answersMap.set(result.questionId, {
+                    answerId: result.answerId,
+                    isCorrect: result.isCorrect,
+                  });
+                }
+              });
+              setUserAnswers(answersMap);
+            } catch (err) {
+              console.error('Error loading quiz data for completed view:', err);
+            }
+          } else if (user) {
+            // Vérifier si l'utilisateur a déjà commencé le quiz
             try {
               const questionsData = await trpcClient.quizQuestion.getQuestionsWithAnswers.query({
                 quizId: (todaysQuiz as Quiz).id,
@@ -94,7 +164,7 @@ export default function DailyQuizScreen() {
     };
 
     fetchTodaysQuiz();
-  }, [user]);
+  }, [user, showCompleted, params]);
 
   const handleStartQuiz = async () => {
     if (!quiz || !user) return;
@@ -290,7 +360,7 @@ export default function DailyQuizScreen() {
       />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {isLoading ? (
+        {isLoading && !showCompleted ? (
           <View style={styles.centerContainer}>
             <ActivityIndicator size="large" color={theme.accent} />
             <Text

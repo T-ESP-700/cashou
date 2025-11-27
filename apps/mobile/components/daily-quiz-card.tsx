@@ -20,7 +20,15 @@ export function DailyQuizCard({
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
 
   const handlePress = () => {
-    router.push('/(tabs)/daily-quiz');
+    if (status === 'done') {
+      // Si le quiz est terminé, ouvrir directement la page de fin
+      router.push({
+        pathname: '/(tabs)/daily-quiz',
+        params: { showCompleted: 'true' },
+      });
+    } else {
+      router.push('/(tabs)/daily-quiz');
+    }
   };
 
   // Calculate progress for circular chart: le cercle se remplit au fur et à mesure que la journée avance
