@@ -411,18 +411,23 @@ export default function DailyQuizScreen() {
         
         // Créer ou mettre à jour la participation au quiz
         try {
+          console.log('[DailyQuiz] Creating/updating participation...');
           await trpcClient.userQuiz.createOrUpdateParticipation.mutate({
             quizId: quiz.id,
             isCorrect: allCorrect,
           });
+          console.log('[DailyQuiz] Participation created/updated successfully');
           
-          // Attendre un peu pour que le backend termine la mise à jour du streak
-          await new Promise(resolve => setTimeout(resolve, 500));
+          // Attendre 1 seconde pour que le backend termine la mise à jour du streak
+          console.log('[DailyQuiz] Waiting 1 second before refreshing user data...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          console.log('[DailyQuiz] Wait completed, refreshing user...');
           
           // Rafraîchir les données de l'utilisateur pour mettre à jour le currentStreak
           await refreshUser();
+          console.log('[DailyQuiz] User refreshed, currentStreak should be updated');
         } catch (err) {
-          console.error('Error completing quiz:', err);
+          console.error('[DailyQuiz] Error completing quiz:', err);
           // Les réponses sont déjà enregistrées, on continue
         }
 

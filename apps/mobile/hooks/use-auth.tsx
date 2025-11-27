@@ -49,7 +49,10 @@ export function useAuth(): UseAuthReturn {
       // Extract user from response (backend returns { session, user })
       const userData = (response as any).user as User;
       console.log('[useAuth] Extracted user:', userData);
+      console.log('[useAuth] currentStreak value from backend:', userData?.currentStreak);
+      console.log('[useAuth] Setting user state with currentStreak:', userData?.currentStreak);
       setUser(userData);
+      console.log('[useAuth] User state updated');
     } catch (err) {
       console.error('[useAuth] Failed to fetch user:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch user');

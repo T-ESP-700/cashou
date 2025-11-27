@@ -126,11 +126,17 @@ export default function HomeScreen() {
         />
 
         {/* Daily Quiz Card */}
-        <DailyQuizCard
-          winStreak={user?.currentStreak ?? 0}
-          timeRemaining={timeRemaining}
-          status={dailyQuizStatus}
-        />
+        {(() => {
+          const streakValue = user?.currentStreak ?? 0;
+          console.log('[HomeScreen] Rendering DailyQuizCard with currentStreak:', streakValue, 'user object:', user);
+          return (
+            <DailyQuizCard
+              winStreak={streakValue}
+              timeRemaining={timeRemaining}
+              status={dailyQuizStatus}
+            />
+          );
+        })()}
         
         {/* Texte de vérification temporaire */}
         <View style={styles.verificationContainer}>
