@@ -17,19 +17,24 @@ export function DailyQuizCard({
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
 
-  // Calculate progress for circular chart (example: decreasing over 24h)
+  // Calculate progress for circular chart: le cercle se remplit au fur et à mesure que la journée avance
+  // 0% au début de la journée (24h restantes), 100% à la fin (0h restantes)
   const calculateProgress = () => {
     const parts = timeRemaining.match(/(\d+)h(\d+)m/);
     if (!parts) return 0;
     const hours = parseInt(parts[1]);
     const minutes = parseInt(parts[2]);
-    const totalMinutes = hours * 60 + minutes;
-    return (totalMinutes / (24 * 60)) * 100;
+    const totalMinutesRemaining = hours * 60 + minutes;
+    const totalMinutesInDay = 24 * 60;
+    // Plus il reste de temps, moins il y a de progression
+    // Plus le temps passe, plus la progression augmente
+    const progress = ((totalMinutesInDay - totalMinutesRemaining) / totalMinutesInDay) * 100;
+    return Math.max(0, Math.min(100, progress)); // S'assurer que c'est entre 0 et 100%
   };
 
   const progress = calculateProgress();
-  const radius = 35;
-  const strokeWidth = 8;
+  const radius = 30; // Réduit de 35 à 25
+  const strokeWidth = 6; // Réduit de 8 à 6
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
@@ -85,7 +90,7 @@ export function DailyQuizCard({
           </View>
         </View>
 
-        {/* Time Remaining with Circular Progress */}
+        {/* Time Remaining with Circular Progress or Validated Logo */}
         <View style={styles.timeContainer}>
           <Text
             style={[
@@ -93,48 +98,58 @@ export function DailyQuizCard({
               { fontFamily: CashouTheme.fonts.body, color: theme.text },
             ]}
           >
-            Temps restant
+            {status === 'done' ? 'Statut' : 'Temps restant'}
           </Text>
-          <View style={styles.circularProgress}>
-            {/* Circular Progress Chart */}
-            <Svg width={90} height={90} style={styles.svg}>
-              {/* Background Circle */}
-              <Circle
-                cx="45"
-                cy="45"
-                r={radius}
-                stroke={isDark ? "#3A3D55" : "#E0E0E0"}
-                strokeWidth={strokeWidth}
-                fill="none"
-              />
-              {/* Progress Circle */}
-              <Circle
-                cx="45"
-                cy="45"
-                r={radius}
-                stroke={theme.accent}
-                strokeWidth={strokeWidth}
-                fill="none"
-                strokeDasharray={circumference}
-                strokeDashoffset={strokeDashoffset}
-                strokeLinecap="round"
-                rotation="-90"
-                origin="45, 45"
-              />
-            </Svg>
-            {/* Time Text */}
-            <Text
-              style={[
-                styles.timeText,
-                {
-                  fontFamily: CashouTheme.fonts.subheading,
-                  color: theme.text,
-                },
-              ]}
-            >
-              {timeRemaining}
-            </Text>
-          </View>
+          {status === 'done' ? (
+            // Logo validé si le quiz est fait
+            <View style={styles.validatedContainer}>
+              <Text style={styles.validatedIcon}>✅</Text>
+            </View>
+          ) : (
+            // Temps restant avec cercle de progression si le quiz n'est pas fait
+            <View style={styles.circularProgress}>
+              {/* Circular Progress Chart */}
+              <Svg width={70} height={70} style={styles.svg}>
+                {/* Background Circle */}
+                <Circle
+                  cx="35"
+                  cy="35"
+                  r={radius}
+                  stroke={isDark ? "#3A3D55" : "#E0E0E0"}
+                  strokeWidth={strokeWidth}
+                  fill="none"
+                />
+                {/* Progress Circle */}
+                <Circle
+                  cx="35"
+                  cy="35"
+                  r={radius}
+                  stroke={theme.accent}
+                  strokeWidth={strokeWidth}
+                  fill="none"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeDashoffset}
+                  strokeLinecap="round"
+                  rotation="-90"
+                  origin="35, 35"
+                />
+              </Svg>
+              {/* Time Text - Centré dans le cercle */}
+              <View style={styles.timeTextContainer}>
+                <Text
+                  style={[
+                    styles.timeText,
+                    {
+                      fontFamily: CashouTheme.fonts.subheading,
+                      color: theme.text,
+                    },
+                  ]}
+                >
+                  {timeRemaining}
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
       </View>
     </View>
@@ -200,12 +215,30 @@ const styles = StyleSheet.create({
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
+    width: 70,
+    height: 70,
   },
   svg: {
     position: 'absolute',
   },
+  timeTextContainer: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 70,
+    height: 70,
+  },
   timeText: {
-    fontSize: 18,
-    marginTop: 35,
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  validatedContainer: {
+    width: 70,
+    height: 70,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  validatedIcon: {
+    fontSize: 50,
   },
 });

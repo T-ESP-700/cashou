@@ -14,6 +14,32 @@ export default function HomeScreen() {
   const { user, isAuthenticated } = useAuth();
   const [dailyQuizStatus, setDailyQuizStatus] = useState<'todo' | 'done'>('todo');
   const [isLoadingDailyQuiz, setIsLoadingDailyQuiz] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState<string>('0h0m');
+
+  // Calculer le temps restant avant minuit
+  const calculateTimeUntilMidnight = () => {
+    const now = new Date();
+    const midnight = new Date();
+    midnight.setHours(24, 0, 0, 0);
+    
+    const diff = midnight.getTime() - now.getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    return `${hours}h${minutes}m`;
+  };
+
+  // Mettre à jour le temps restant toutes les minutes
+  useEffect(() => {
+    const updateTime = () => {
+      setTimeRemaining(calculateTimeUntilMidnight());
+    };
+    
+    updateTime(); // Mise à jour immédiate
+    const interval = setInterval(updateTime, 60000); // Mise à jour toutes les minutes
+    
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const fetchDailyQuizStatus = async () => {
@@ -77,7 +103,7 @@ export default function HomeScreen() {
         {/* Daily Quiz Card */}
         <DailyQuizCard
           winStreak={user?.currentStreak ?? 0}
-          timeRemaining="6h34m"
+          timeRemaining={timeRemaining}
           status={dailyQuizStatus}
         />
         
