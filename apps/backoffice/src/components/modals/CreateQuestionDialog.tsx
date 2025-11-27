@@ -10,26 +10,32 @@ import {
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
+import type { Answer as BackendAnswer, Question as BackendQuestion } from '@/lib/domain';
 
 interface QuestionFormData {
   text: string;
 }
 
-interface Answer {
+interface FormAnswer {
   text: string;
   isCorrect: boolean;
+}
+
+export interface CreateQuestionResult {
+  question: BackendQuestion;
+  answers: BackendAnswer[];
 }
 
 interface CreateQuestionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: (questionId: number) => void;
+  onSuccess: (payload: CreateQuestionResult) => void;
 }
 
 export function CreateQuestionDialog({ open, onOpenChange, onSuccess }: CreateQuestionDialogProps) {
   const utils = trpc.useUtils();
   const [questionText, setQuestionText] = useState('');
-  const [answers, setAnswers] = useState<Answer[]>([
+  const [answers, setAnswers] = useState<FormAnswer[]>([
     { text: '', isCorrect: false },
     { text: '', isCorrect: false },
     { text: '', isCorrect: false },
@@ -66,8 +72,9 @@ export function CreateQuestionDialog({ open, onOpenChange, onSuccess }: CreateQu
 
       // Create all answers
       const validAnswers = answers.filter((a) => a.text.trim() !== '');
+      let createdAnswers: BackendAnswer[] = [];
       if (validAnswers.length > 0) {
-        await Promise.all(
+        createdAnswers = await Promise.all(
           validAnswers.map((answer) =>
             createAnswerMutation.mutateAsync({
               questionId: question.id,
@@ -81,7 +88,7 @@ export function CreateQuestionDialog({ open, onOpenChange, onSuccess }: CreateQu
       toast.success('Question créée avec ses réponses');
       utils.question.getAll.invalidate();
       utils.answer.getAll.invalidate();
-      onSuccess(question.id);
+      onSuccess({ question, answers: createdAnswers });
       reset();
       setQuestionText('');
       setAnswers([
@@ -96,7 +103,7 @@ export function CreateQuestionDialog({ open, onOpenChange, onSuccess }: CreateQu
     }
   };
 
-  const updateAnswer = (index: number, field: keyof Answer, value: string | boolean) => {
+  const updateAnswer = (index: number, field: keyof FormAnswer, value: string | boolean) => {
     const newAnswers = [...answers];
     if (field === 'isCorrect' && value === true) {
       // Only one answer can be correct - uncheck others

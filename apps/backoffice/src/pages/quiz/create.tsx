@@ -11,7 +11,7 @@ import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 import { formatSelectOptions } from '@/hooks/use-crud';
 import { CreateLevelDialog } from '@/components/modals/CreateLevelDialog';
-import { CreateQuestionDialog } from '@/components/modals/CreateQuestionDialog';
+import { CreateQuestionDialog, type CreateQuestionResult } from '@/components/modals/CreateQuestionDialog';
 import { useBackofficeStore } from '@/store/useBackofficeStore';
 
 interface QuizFormData {
@@ -175,8 +175,8 @@ export default function CreateQuizPage() {
     setValue('levelId', levelId);
   };
 
-  const handleQuestionCreated = (questionId: number) => {
-    setSelectedQuestionIds([...selectedQuestionIds, questionId]);
+  const handleQuestionCreated = ({ question }: CreateQuestionResult) => {
+    setSelectedQuestionIds([...selectedQuestionIds, question.id]);
   };
 
   const levelOptions = formatSelectOptions(levels, (l) => l.title || `Level ${l.number}`);

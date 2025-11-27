@@ -3,6 +3,9 @@ import { Button } from '@/components/ui/button'
 import { useBackofficeStore } from '@/store/useBackofficeStore'
 import type { Quiz } from '@/lib/domain'
 import { QuizEditorDialog } from '@/components/modals/QuizEditorDialog.tsx'
+import { backofficeApi } from '@/services/backoffice-api'
+import { toast } from 'sonner'
+import { Trash2 } from 'lucide-react'
 
 export function QuizManager() {
   const quizzes = useBackofficeStore((state) => state.quizzes)
@@ -28,6 +31,20 @@ export function QuizManager() {
   const openEditor = (quiz: Quiz | null) => {
     setActiveQuizId(quiz?.id ?? null)
     setEditorOpen(true)
+  }
+
+  const handleDeleteQuiz = async (quiz: Quiz) => {
+    if (!quiz.id) return
+    if (!window.confirm(`Supprimer définitivement "${quiz.title ?? `Quiz #${quiz.id}`}" ?`)) {
+      return
+    }
+    try {
+      await backofficeApi.quiz.delete(quiz.id)
+      toast.success('Quiz supprimé')
+      await useBackofficeStore.getState().refresh()
+    } catch (error) {
+      toast.error((error as Error).message ?? 'Impossible de supprimer ce quiz')
+    }
   }
 
   return (
@@ -60,20 +77,45 @@ export function QuizManager() {
                 <th className="px-4 py-3 font-medium" style={{ width: '110px' }}>
                   Questions
                 </th>
+                <th className="px-4 py-3 font-medium text-right" style={{ width: '64px' }}>
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
               {rows.map(({ quiz, questionCount }) => (
                 <tr
                   key={quiz.id}
-                  className="border-t border-slate-100 text-slate-700 transition hover:bg-slate-50/70"
-                  onDoubleClick={() => openEditor(quiz)}
+                  className="border-t border-slate-100 text-slate-700 transition hover:bg-slate-50/70 cursor-pointer"
+                  onClick={(event) => {
+                    if ((event.target as HTMLElement).closest('button')) return
+                    openEditor(quiz)
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      openEditor(quiz)
+                    }
+                  }}
                 >
                   <td className="px-4 py-3 font-medium">{quiz.title ?? `Quiz #${quiz.id}`}</td>
-                  <td className="px-4 py-3">{quiz.type}</td>
+                  <td className="px-4 py-3 font-medium text-slate-900">{quiz.type}</td>
                   <td className="px-4 py-3">{formatDate(quiz.date)}</td>
                   <td className="px-4 py-3">{quiz.levelId ?? '—'}</td>
                   <td className="px-4 py-3">{questionCount}</td>
+                  <td className="px-4 py-3 text-right">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="text-red-500 hover:text-red-600"
+                      onClick={() => handleDeleteQuiz(quiz)}
+                      aria-label={`Supprimer ${quiz.title ?? `Quiz #${quiz.id}`}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </td>
                 </tr>
               ))}
               {!rows.length && (

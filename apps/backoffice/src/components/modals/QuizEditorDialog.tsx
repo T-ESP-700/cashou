@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Save, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Save, Trash2, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { useBackofficeStore } from '@/store/useBackofficeStore'
 import { backofficeApi } from '@/services/backoffice-api'
 import type { Answer, Question, Quiz } from '@/lib/domain'
-import { CreateQuestionDialog } from './CreateQuestionDialog'
+import { CreateQuestionDialog, type CreateQuestionResult } from './CreateQuestionDialog'
 
 interface QuizEditorDialogProps {
   open: boolean
@@ -31,9 +31,14 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
     levelId: '',
   })
   const [isSaving, setIsSaving] = useState(false)
+  const [isSaved, setIsSaved] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showQuestionDialog, setShowQuestionDialog] = useState(false)
-  const [selectedLinkId, setSelectedLinkId] = useState<number | null>(null)
+  const [selectedLinkKey, setSelectedLinkKey] = useState<string | null>(null)
+  const [pendingLinks, setPendingLinks] = useState<Array<{ tempId: string; questionId: number }>>([])
+  const [pendingQuestionDetails, setPendingQuestionDetails] = useState<
+    Record<number, { question: Question; answers: Answer[] }>
+  >({})
 
   const currentQuiz: Quiz | null = useMemo(
     () => (internalQuizId ? quizzes.find((quiz) => quiz.id === internalQuizId) ?? null : null),
@@ -64,22 +69,50 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
     }
   }, [currentQuiz, open])
 
-  const relatedLinks = useMemo(() => {
+  const existingLinks = useMemo(() => {
     if (!internalQuizId) return []
     return quizQuestions
       .filter((link) => link.quizId === internalQuizId)
       .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
   }, [quizQuestions, internalQuizId])
 
+  const displayLinks = useMemo(() => {
+    if (internalQuizId) {
+      return existingLinks.map((link) => ({
+        key: `existing-${link.id}`,
+        questionId: link.questionId,
+        position: link.position ?? null,
+        source: 'existing' as const,
+        quizQuestionId: link.id,
+      }))
+    }
+    return pendingLinks.map((link, index) => ({
+      key: `pending-${link.tempId}`,
+      questionId: link.questionId,
+      position: index + 1,
+      source: 'pending' as const,
+      tempId: link.tempId,
+    }))
+  }, [existingLinks, internalQuizId, pendingLinks])
+
   useEffect(() => {
-    if (!relatedLinks.length) {
-      setSelectedLinkId(null)
+    if (!displayLinks.length) {
+      setSelectedLinkKey(null)
       return
     }
-    if (!selectedLinkId || !relatedLinks.some((link) => link.id === selectedLinkId)) {
-      setSelectedLinkId(relatedLinks[0].id)
+    if (!selectedLinkKey || !displayLinks.some((link) => link.key === selectedLinkKey)) {
+      setSelectedLinkKey(displayLinks[0].key)
     }
-  }, [relatedLinks, selectedLinkId])
+  }, [displayLinks, selectedLinkKey])
+
+  useEffect(() => {
+    if (!open) {
+      setPendingLinks([])
+      setSelectedLinkKey(null)
+      setPendingQuestionDetails({})
+      setIsSaved(false)
+    }
+  }, [open])
 
   const levelOptions = useMemo(
     () =>
@@ -94,11 +127,46 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
     setFormValues((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleSaveQuiz = async () => {
+  const questionLimit = formValues.type === 'DAILY' ? 3 : 1
+  const currentQuestionCount = displayLinks.length
+  const hasReachedQuestionLimit = currentQuestionCount >= questionLimit
+  const quizMustBeComplete = currentQuestionCount === questionLimit
+
+  const buildPendingId = () =>
+    typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+
+  const getValidationError = (): string | null => {
     if (!formValues.title.trim()) {
-      toast.error('Le titre est requis')
+      return 'Le titre est requis'
+    }
+    if (formValues.type === 'DAILY') {
+      if (!formValues.date || !formValues.date.trim()) {
+        return 'La date est obligatoire pour un Daily quiz'
+      }
+      if (!formValues.description || !formValues.description.trim()) {
+        return 'La description est obligatoire pour un Daily quiz'
+      }
+    }
+    if (!quizMustBeComplete) {
+      return formValues.type === 'DAILY'
+        ? 'Un Daily quiz doit contenir exactement 3 questions'
+        : 'Un MCQ doit contenir exactement 1 question'
+    }
+    return null
+  }
+
+  const validationMessage = getValidationError()
+  const isFormValid = validationMessage === null
+
+  const handleSaveQuiz = async () => {
+    const validationError = getValidationError()
+    if (validationError) {
+      toast.error(validationError)
       return
     }
+
     const payload = {
       title: formValues.title.trim(),
       type: formValues.type,
@@ -106,6 +174,7 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
       date: formValues.date || undefined,
       levelId: formValues.levelId ? Number(formValues.levelId) : undefined,
     }
+
     setIsSaving(true)
     try {
       if (currentQuiz) {
@@ -113,10 +182,29 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
         toast.success('Quiz mis à jour')
       } else {
         const created = await backofficeApi.quiz.create(payload)
-        setInternalQuizId(created.id)
-        toast.success('Quiz créé - vous pouvez ajouter des questions')
+        try {
+          await Promise.all(
+            pendingLinks.map((link, index) =>
+              backofficeApi.quizQuestion.create({
+                quizId: created.id,
+                questionId: link.questionId,
+                position: index + 1,
+              }),
+            ),
+          )
+          toast.success('Quiz créé et questions associées')
+        } catch {
+          toast.error('Quiz créé mais association des questions incomplète')
+        } finally {
+          setPendingLinks([])
+          setInternalQuizId(created.id)
+        }
       }
       await refresh()
+      setIsSaved(true)
+      setTimeout(() => {
+        setIsSaved(false)
+      }, 2000)
     } catch (error) {
       toast.error((error as Error).message ?? 'Impossible de sauvegarder le quiz')
     } finally {
@@ -124,12 +212,21 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
     }
   }
 
-  const handleDetachQuestion = async (linkId: number) => {
+  const handleDetachQuestion = async (link: DisplayLink) => {
+    if (link.source === 'pending') {
+      setPendingLinks((prev) => prev.filter((item) => item.tempId !== link.tempId))
+      if (selectedLinkKey === link.key) {
+        setSelectedLinkKey(null)
+      }
+      toast.success('Question retirée de la sélection')
+      return
+    }
+
     try {
-      await backofficeApi.quizQuestion.delete(linkId)
+      await backofficeApi.quizQuestion.delete(link.quizQuestionId)
       toast.success('Question retirée du quiz')
-      if (selectedLinkId === linkId) {
-        setSelectedLinkId(null)
+      if (selectedLinkKey === link.key) {
+        setSelectedLinkKey(null)
       }
       await refresh()
     } catch (error) {
@@ -137,30 +234,42 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
     }
   }
 
-  const handleQuestionCreated = async (questionId: number) => {
-    if (!internalQuizId) return
+  const handleQuestionCreated = async ({ question, answers }: CreateQuestionResult) => {
+    const questionId = question.id
+    setPendingQuestionDetails((prev) => ({
+      ...prev,
+      [questionId]: {
+        question,
+        answers,
+      },
+    }))
     if (hasReachedQuestionLimit) {
       toast.error('Limite de questions atteinte pour ce quiz')
       return
     }
+
+    if (!internalQuizId) {
+      const tempId = buildPendingId()
+      setPendingLinks((prev) => [...prev, { tempId, questionId }])
+      setSelectedLinkKey(`pending-${tempId}`)
+      toast.success('Question créée - elle sera associée lors de la sauvegarde')
+      await refresh()
+      return
+    }
+
     try {
       const createdLink = await backofficeApi.quizQuestion.create({
         quizId: internalQuizId,
         questionId,
-        position: relatedLinks.length + 1,
+        position: existingLinks.length + 1,
       })
       toast.success('Question créée et associée')
-      setSelectedLinkId(createdLink.id)
+      setSelectedLinkKey(`existing-${createdLink.id}`)
       await refresh()
     } catch (error) {
       toast.error((error as Error).message ?? 'Question créée mais association impossible')
     }
   }
-
-  const questionLimit = formValues.type === 'DAILY' ? 3 : 1
-  const currentQuestionCount = relatedLinks.length
-  const hasReachedQuestionLimit = currentQuestionCount >= questionLimit
-  const disableQuestionManagement = !internalQuizId
 
   const handleDeleteQuiz = async () => {
     if (!currentQuiz) return
@@ -185,39 +294,49 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
         open={open}
         onOpenChange={(next) => {
           if (!next) {
-            setSelectedLinkId(null)
+            setSelectedLinkKey(null)
           }
           onOpenChange(next)
         }}
       >
-        <DialogContent className="flex max-h-[92vh] max-w-6xl flex-col gap-3 overflow-hidden">
-          <DialogHeader className="flex items-center gap-3">
-            <div className="flex items-center gap-3">
-              <DialogTitle>
-                {currentQuiz
-                  ? `Éditer ${currentQuiz.title ?? `Quiz #${currentQuiz.id}`}`
-                  : 'Nouveau quiz'}
-              </DialogTitle>
-              <Button
-                onClick={handleSaveQuiz}
-                disabled={isSaving}
-                size="icon"
-                variant="outline"
-                aria-label="Enregistrer le quiz"
-              >
-                <Save className={isSaving ? 'animate-pulse' : ''} />
-              </Button>
-              {currentQuiz && (
-                <Button
-                  onClick={handleDeleteQuiz}
-                  disabled={isDeleting}
-                  size="icon"
-                  variant="ghost"
-                  aria-label="Supprimer le quiz"
-                >
-                  <Trash2 className={isDeleting ? 'animate-pulse text-red-600' : 'text-red-500'} />
-                </Button>
+        <DialogContent className="flex max-h-[92vh] max-w-6xl flex-col gap-3 overflow-y-auto">
+          <DialogHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <DialogTitle>
+              {currentQuiz
+                ? `Éditer ${currentQuiz.title ?? `Quiz #${currentQuiz.id}`}`
+                : 'Nouveau quiz'}
+            </DialogTitle>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+              {!isFormValid && validationMessage && (
+                <span className="text-xs font-medium text-red-600 sm:text-right">{validationMessage}</span>
               )}
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={handleSaveQuiz}
+                  disabled={isSaving || !isFormValid}
+                  size="icon"
+                  variant={isSaved ? 'default' : 'outline'}
+                  className={isSaved ? 'bg-green-600 hover:bg-green-700 text-white' : ''}
+                  aria-label="Enregistrer le quiz"
+                >
+                  {isSaved ? (
+                    <Check className="text-white" />
+                  ) : (
+                    <Save className={isSaving ? 'animate-pulse' : ''} />
+                  )}
+                </Button>
+                {currentQuiz && (
+                  <Button
+                    onClick={handleDeleteQuiz}
+                    disabled={isDeleting}
+                    size="icon"
+                    variant="ghost"
+                    aria-label="Supprimer le quiz"
+                  >
+                    <Trash2 className={isDeleting ? 'animate-pulse text-red-600' : 'text-red-500'} />
+                  </Button>
+                )}
+              </div>
             </div>
           </DialogHeader>
 
@@ -243,33 +362,35 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Date" helper="Obligatoire pour les Daily">
-                <input
-                  type="date"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-slate-400 focus:outline-none"
-                  value={formValues.date}
-                  onChange={(event) => handleFieldChange('date', event.target.value)}
-                  disabled={formValues.type !== 'DAILY'}
-                />
-              </Field>
-              <Field label="Niveau (MCQ)">
-                <select
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-slate-400 focus:outline-none"
-                  value={formValues.levelId}
-                  onChange={(event) => handleFieldChange('levelId', event.target.value)}
-                  disabled={formValues.type !== 'MCQ'}
-                >
-                  <option value="">—</option>
-                  {levelOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+              {formValues.type === 'DAILY' && (
+                <Field label="Date" helper="Obligatoire pour les Daily" required>
+                  <input
+                    type="date"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-slate-400 focus:outline-none"
+                    value={formValues.date}
+                    onChange={(event) => handleFieldChange('date', event.target.value)}
+                  />
+                </Field>
+              )}
+              {formValues.type === 'MCQ' && (
+                <Field label="Niveau (MCQ)">
+                  <select
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-slate-400 focus:outline-none"
+                    value={formValues.levelId}
+                    onChange={(event) => handleFieldChange('levelId', event.target.value)}
+                  >
+                    <option value="">—</option>
+                    {levelOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
             </div>
 
-            <Field label="Description">
+            <Field label="Description" required={formValues.type === 'DAILY'}>
               <textarea
                 rows={2}
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-slate-400 focus:outline-none"
@@ -295,40 +416,40 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button
-                  onClick={() => setShowQuestionDialog(true)}
-                  disabled={disableQuestionManagement || hasReachedQuestionLimit}
-                >
+                <Button onClick={() => setShowQuestionDialog(true)} disabled={hasReachedQuestionLimit}>
                   Ajouter une question
                 </Button>
               </div>
             </header>
 
-            {disableQuestionManagement ? (
-              <p className="rounded-xl border border-dashed border-slate-300 px-3 py-4 text-sm text-slate-600">
-                Sauvegardez d’abord le quiz pour y associer des questions.
+            {!internalQuizId && (
+              <p className="rounded-xl border border-dashed border-slate-200 px-3 py-3 text-xs text-slate-600">
+                Ce quiz n’est pas encore sauvegardé. Les questions ajoutées seront liées automatiquement
+                lors de l’enregistrement.
               </p>
-            ) : relatedLinks.length === 0 ? (
+            )}
+
+            {displayLinks.length === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-200 px-3 py-4 text-sm text-slate-600">
                 Aucune question associée pour l’instant.
               </p>
             ) : (
-              <div className="grid flex-1 gap-4 overflow-hidden lg:grid-cols-[1fr_1.25fr]">
-                <div className="space-y-2 overflow-y-auto rounded-2xl border border-slate-100 bg-slate-50/80 p-3">
-                  {relatedLinks.map((link) => {
+              <div className="grid flex-1 min-h-0 gap-4 lg:grid-cols-[1fr_1.25fr]">
+                <div className="space-y-2 overflow-y-auto rounded-2xl border border-slate-100 bg-slate-50/80 p-3 min-h-0">
+                  {displayLinks.map((link) => {
                     const question = questions.find((item) => item.id === link.questionId)
                     if (!question) return null
-                    const active = selectedLinkId === link.id
+                    const active = selectedLinkKey === link.key
                     return (
                       <button
-                        key={link.id}
+                        key={link.key}
                         type="button"
                         className={`w-full rounded-xl border px-3 py-2 text-left text-sm transition ${
                           active
                             ? 'border-slate-900 bg-white text-slate-900 shadow-sm'
                             : 'border-transparent bg-transparent text-slate-600 hover:bg-white/70'
                         }`}
-                        onClick={() => setSelectedLinkId(link.id)}
+                        onClick={() => setSelectedLinkKey(link.key)}
                       >
                         <p className="text-xs uppercase text-slate-500">
                           Question {typeof link.position === 'number' ? `#${link.position}` : ''}
@@ -340,12 +461,13 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
                     )
                   })}
                 </div>
-                <div className="overflow-y-auto rounded-2xl border border-slate-100 bg-white p-4">
+                <div className="overflow-y-auto rounded-2xl border border-slate-100 bg-white p-4 min-h-0">
                   <QuestionDetail
-                    linkId={selectedLinkId}
-                    relatedLinks={relatedLinks}
+                    linkKey={selectedLinkKey}
+                    links={displayLinks}
                     questions={questions}
                     answers={answers}
+                    pendingQuestionDetails={pendingQuestionDetails}
                     onDetach={handleDetachQuestion}
                     refresh={refresh}
                   />
@@ -356,41 +478,58 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
         </DialogContent>
       </Dialog>
 
-      {internalQuizId && (
-        <CreateQuestionDialog
-          open={showQuestionDialog}
-          onOpenChange={setShowQuestionDialog}
-          onSuccess={handleQuestionCreated}
-        />
-      )}
+      <CreateQuestionDialog
+        open={showQuestionDialog}
+        onOpenChange={setShowQuestionDialog}
+        onSuccess={handleQuestionCreated}
+      />
     </>
   )
 }
 
+type DisplayLink =
+  | {
+      key: string
+      source: 'existing'
+      questionId: number
+      position?: number | null
+      quizQuestionId: number
+    }
+  | {
+      key: string
+      source: 'pending'
+      questionId: number
+      position?: number | null
+      tempId: string
+    }
+
 function QuestionDetail({
-  linkId,
-  relatedLinks,
+  linkKey,
+  links,
   questions,
   answers,
+  pendingQuestionDetails,
   onDetach,
   refresh,
 }: {
-  linkId: number | null
-  relatedLinks: Array<{ id: number; questionId: number; position?: number | null }>
+  linkKey: string | null
+  links: DisplayLink[]
   questions: Question[]
   answers: Answer[]
-  onDetach: (linkId: number) => void
+  pendingQuestionDetails: Record<number, { question: Question; answers: Answer[] }>
+  onDetach: (link: DisplayLink) => void
   refresh: () => Promise<void>
 }) {
-  if (!linkId) {
+  if (!linkKey) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-slate-500">
         Sélectionnez une question pour l’éditer.
       </div>
     )
   }
-  const link = relatedLinks.find((item) => item.id === linkId)
-  const question = questions.find((item) => item.id === link?.questionId)
+  const link = links.find((item) => item.key === linkKey)
+  const override = link ? pendingQuestionDetails[link.questionId] : undefined
+  const question = override?.question ?? questions.find((item) => item.id === link?.questionId)
   if (!link || !question) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-slate-500">
@@ -398,19 +537,13 @@ function QuestionDetail({
       </div>
     )
   }
-  const relatedAnswers = answers.filter((answer) => answer.questionId === question.id)
+  const relatedAnswers = override?.answers ?? answers.filter((answer) => answer.questionId === question.id)
   return (
     <div className="space-y-4">
       <p className="text-xs uppercase text-slate-500">
         Question {typeof link.position === 'number' ? `#${link.position}` : ''}
       </p>
-      <QuestionEditor
-        question={question}
-        answers={relatedAnswers}
-        linkId={linkId}
-        onDetach={onDetach}
-        refresh={refresh}
-      />
+      <QuestionEditor question={question} answers={relatedAnswers} link={link} onDetach={onDetach} refresh={refresh} />
     </div>
   )
 }
@@ -418,53 +551,101 @@ function QuestionDetail({
 function QuestionEditor({
   question,
   answers,
-  linkId,
+  link,
   onDetach,
   refresh,
 }: {
   question: Question
   answers: Answer[]
-  linkId: number
-  onDetach: (linkId: number) => void
+  link: DisplayLink
+  onDetach: (link: DisplayLink) => void
   refresh: () => Promise<void>
 }) {
   const [text, setText] = useState(question.text ?? '')
-  const [isSavingQuestion, setIsSavingQuestion] = useState(false)
-  const [isAddingAnswer, setIsAddingAnswer] = useState(false)
+  const [questionSaveState, setQuestionSaveState] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle')
+  const questionSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastSavedQuestion = useRef(question.text ?? '')
+  const [correctAnswerId, setCorrectAnswerId] = useState<number | null>(
+    () => answers.find((answer) => answer.isCorrect)?.id ?? null,
+  )
+  const [correctSaveState, setCorrectSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+
+  const persistQuestion = useCallback(
+    async (nextText: string) => {
+      setQuestionSaveState('saving')
+      try {
+        const normalizedText = ensureQuestionMark(nextText)
+        await backofficeApi.question.update({ id: question.id, data: { text: normalizedText } })
+        lastSavedQuestion.current = normalizedText
+        setText(normalizedText)
+        setQuestionSaveState('saved')
+        await refresh()
+      } catch (error) {
+        setQuestionSaveState('error')
+        toast.error((error as Error).message ?? 'Impossible de mettre à jour la question')
+      }
+    },
+    [question.id, refresh],
+  )
 
   useEffect(() => {
     setText(question.text ?? '')
+    lastSavedQuestion.current = question.text ?? ''
+    setQuestionSaveState('idle')
   }, [question.id, question.text])
 
-  const saveQuestion = async () => {
-    setIsSavingQuestion(true)
-    try {
-      await backofficeApi.question.update({ id: question.id, data: { text } })
-      toast.success('Question enregistrée')
-      await refresh()
-    } catch (error) {
-      toast.error((error as Error).message ?? 'Impossible de mettre à jour la question')
-    } finally {
-      setIsSavingQuestion(false)
-    }
-  }
+  useEffect(() => {
+    setCorrectAnswerId(answers.find((answer) => answer.isCorrect)?.id ?? null)
+  }, [answers])
 
-  const addAnswer = async () => {
-    setIsAddingAnswer(true)
-    try {
-      await backofficeApi.answer.create({
-        questionId: question.id,
-        text: 'Nouvelle réponse',
-        isCorrect: false,
-      })
-      toast.success('Réponse ajoutée')
-      await refresh()
-    } catch (error) {
-      toast.error((error as Error).message ?? 'Impossible d’ajouter la réponse')
-    } finally {
-      setIsAddingAnswer(false)
+  useEffect(() => {
+    if (text === lastSavedQuestion.current) {
+      if (questionSaveTimeout.current) {
+        clearTimeout(questionSaveTimeout.current)
+        questionSaveTimeout.current = null
+      }
+      if (questionSaveState !== 'saved') {
+        setQuestionSaveState('idle')
+      }
+      return
     }
-  }
+    setQuestionSaveState('pending')
+    if (questionSaveTimeout.current) {
+      clearTimeout(questionSaveTimeout.current)
+    }
+    questionSaveTimeout.current = setTimeout(() => {
+      persistQuestion(text)
+    }, 600)
+    return () => {
+      if (questionSaveTimeout.current) {
+        clearTimeout(questionSaveTimeout.current)
+        questionSaveTimeout.current = null
+      }
+    }
+  }, [text, persistQuestion, questionSaveState])
+
+  const handleSelectCorrect = useCallback(
+    async (answerId: number) => {
+      if (correctAnswerId === answerId) return
+      const previousId = correctAnswerId ?? answers.find((answer) => answer.isCorrect)?.id ?? null
+      setCorrectAnswerId(answerId)
+      setCorrectSaveState('saving')
+      try {
+        const updates: Array<Promise<unknown>> = []
+        if (previousId && previousId !== answerId) {
+          updates.push(backofficeApi.answer.update({ id: previousId, data: { isCorrect: false } }))
+        }
+        updates.push(backofficeApi.answer.update({ id: answerId, data: { isCorrect: true } }))
+        await Promise.all(updates)
+        setCorrectSaveState('saved')
+        await refresh()
+      } catch (error) {
+        setCorrectSaveState('error')
+        toast.error((error as Error).message ?? 'Impossible de mettre à jour la réponse correcte')
+      }
+    },
+    [answers, correctAnswerId, refresh],
+  )
 
   return (
     <>
@@ -474,51 +655,44 @@ function QuestionEditor({
         value={text}
         onChange={(event) => setText(event.target.value)}
       />
-      <div className="flex flex-wrap gap-2">
-        <Button
-          size="icon"
-          variant="outline"
-          onClick={saveQuestion}
-          disabled={isSavingQuestion}
-          aria-label="Sauvegarder la question"
-        >
-          <Save className={isSavingQuestion ? 'animate-pulse' : ''} />
-        </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={() => onDetach(linkId)}
-          aria-label="Retirer la question du quiz"
-        >
+      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+        <span>
+          {questionSaveState === 'saving'
+            ? 'Enregistrement...'
+            : questionSaveState === 'pending'
+              ? 'Modifications en attente'
+              : questionSaveState === 'error'
+                ? 'Erreur lors de la sauvegarde'
+                : questionSaveState === 'saved'
+                  ? 'Enregistré'
+                  : ''}
+        </span>
+        <Button size="icon" variant="ghost" onClick={() => onDetach(link)} aria-label="Retirer la question du quiz">
           <Trash2 />
         </Button>
       </div>
       <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/60 p-3">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase text-slate-500">Réponses</p>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={addAnswer}
-            disabled={isAddingAnswer || answers.length >= 4}
-          >
-            {isAddingAnswer ? 'Ajout...' : 'Ajouter'}
-          </Button>
+        <div className="flex items-center justify-between text-xs text-slate-500">
+          <p className="font-semibold uppercase">Réponses</p>
+          <span>
+            {correctSaveState === 'saving'
+              ? 'Mise à jour de la réponse correcte...'
+              : correctSaveState === 'error'
+                ? 'Erreur lors de la mise à jour'
+                : correctSaveState === 'saved'
+                  ? 'Réponse correcte mise à jour'
+                  : ''}
+          </span>
         </div>
-        {answers.length >= 4 && (
-          <p className="text-xs text-slate-500">Maximum 4 réponses par question.</p>
-        )}
         <div className="space-y-2">
           {answers.map((answer) => {
-            const otherCorrectExists = answers.some(
-              (candidate) => candidate.id !== answer.id && candidate.isCorrect,
-            )
             return (
               <AnswerEditor
                 key={answer.id}
                 answer={answer}
+                isCorrect={answer.id === correctAnswerId}
+                onSelectCorrect={handleSelectCorrect}
                 refresh={refresh}
-                otherCorrectExists={otherCorrectExists}
               />
             )
           })}
@@ -530,39 +704,63 @@ function QuestionEditor({
 
 function AnswerEditor({
   answer,
+  isCorrect,
   refresh,
-  otherCorrectExists,
+  onSelectCorrect,
 }: {
   answer: Answer
+  isCorrect: boolean
   refresh: () => Promise<void>
-  otherCorrectExists: boolean
+  onSelectCorrect: (answerId: number) => void
 }) {
   const [text, setText] = useState(answer.text ?? '')
-  const [isCorrect, setIsCorrect] = useState(Boolean(answer.isCorrect))
-  const [isSaving, setIsSaving] = useState(false)
+  const [saveState, setSaveState] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle')
+  const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const persistAnswer = useCallback(
+    async (nextText: string) => {
+      setSaveState('saving')
+      try {
+        await backofficeApi.answer.update({ id: answer.id, data: { text: nextText } })
+        setSaveState('saved')
+        await refresh()
+      } catch (error) {
+        setSaveState('error')
+        toast.error((error as Error).message ?? 'Impossible de mettre à jour la réponse')
+      }
+    },
+    [answer.id, refresh],
+  )
 
   useEffect(() => {
     setText(answer.text ?? '')
-    setIsCorrect(Boolean(answer.isCorrect))
-  }, [answer.id, answer.text, answer.isCorrect])
+    setSaveState('idle')
+  }, [answer.id, answer.text])
 
-  const save = async () => {
-    setIsSaving(true)
-    try {
-      if (isCorrect && otherCorrectExists && !answer.isCorrect) {
-        toast.error('Retirez la bonne réponse actuelle avant de marquer celle-ci correcte.')
-        setIsSaving(false)
-        return
+  useEffect(() => {
+    const originalText = answer.text ?? ''
+    const dirty = text !== originalText
+    if (!dirty) {
+      if (saveTimeout.current) {
+        clearTimeout(saveTimeout.current)
+        saveTimeout.current = null
       }
-      await backofficeApi.answer.update({ id: answer.id, data: { text, isCorrect } })
-      toast.success('Réponse mise à jour')
-      await refresh()
-    } catch (error) {
-      toast.error((error as Error).message ?? 'Impossible de mettre à jour la réponse')
-    } finally {
-      setIsSaving(false)
+      return
     }
-  }
+    setSaveState('pending')
+    if (saveTimeout.current) {
+      clearTimeout(saveTimeout.current)
+    }
+    saveTimeout.current = setTimeout(() => {
+      persistAnswer(text)
+    }, 600)
+    return () => {
+      if (saveTimeout.current) {
+        clearTimeout(saveTimeout.current)
+        saveTimeout.current = null
+      }
+    }
+  }, [text, answer.text, persistAnswer, answer.id])
 
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-3 text-sm md:flex-row md:items-center">
@@ -573,28 +771,24 @@ function AnswerEditor({
       />
       <label className="flex items-center gap-2 text-xs text-slate-600">
         <input
-          type="checkbox"
+          type="radio"
+          name={`correct-${answer.questionId}`}
           checked={isCorrect}
-          onChange={(event) => {
-            if (event.target.checked && otherCorrectExists) {
-              toast.error('Une autre réponse est déjà marquée correcte.')
-              return
-            }
-            setIsCorrect(event.target.checked)
-          }}
-          disabled={otherCorrectExists && !isCorrect}
+          onChange={() => onSelectCorrect(answer.id)}
         />
         Correcte ?
       </label>
-      <Button
-        size="icon"
-        variant="outline"
-        onClick={save}
-        disabled={isSaving}
-        aria-label="Sauvegarder la réponse"
-      >
-        <Save className={isSaving ? 'animate-pulse' : ''} />
-      </Button>
+      <span className="text-xs text-slate-500">
+        {saveState === 'saving'
+          ? 'Enregistrement...'
+          : saveState === 'pending'
+            ? 'Modifications en attente'
+            : saveState === 'error'
+              ? 'Erreur lors de la sauvegarde'
+              : saveState === 'saved'
+                ? 'Enregistré'
+                : ''}
+      </span>
     </div>
   )
 }
@@ -626,4 +820,10 @@ function formatDate(value: string | Date | null | undefined) {
   if (!value) return ''
   const iso = typeof value === 'string' ? value : value.toISOString()
   return iso.slice(0, 10)
+}
+
+function ensureQuestionMark(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+  return trimmed.endsWith('?') ? trimmed : `${trimmed} ?`
 }
