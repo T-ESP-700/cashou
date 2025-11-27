@@ -1,13 +1,41 @@
 import { ScrollView, View, Text, useColorScheme as useRNColorScheme, StyleSheet } from 'react-native';
+import { useState, useEffect } from 'react';
 import { CashouHeader } from '@/components/cashou-header';
 import { LevelCard } from '@/components/level-card';
 import { DailyQuizCard } from '@/components/daily-quiz-card';
 import { CashouTheme } from '@/constants/cashou-theme';
+import { useAuth } from '@/hooks/use-auth';
+import { trpcClient } from '@/lib/trpc';
 
 export default function HomeScreen() {
   const colorScheme = useRNColorScheme();
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const { user, isAuthenticated } = useAuth();
+  const [dailyQuizStatus, setDailyQuizStatus] = useState<'todo' | 'done'>('todo');
+  const [isLoadingDailyQuiz, setIsLoadingDailyQuiz] = useState(false);
+
+  useEffect(() => {
+    const fetchDailyQuizStatus = async () => {
+      if (!isAuthenticated) {
+        setDailyQuizStatus('todo');
+        return;
+      }
+
+      try {
+        setIsLoadingDailyQuiz(true);
+        const result = await trpcClient.userQuiz.hasDoneDailyTodayForCurrentUser.query();
+        setDailyQuizStatus(result.hasDone ? 'done' : 'todo');
+      } catch (error) {
+        console.error('Error fetching daily quiz status:', error);
+        setDailyQuizStatus('todo');
+      } finally {
+        setIsLoadingDailyQuiz(false);
+      }
+    };
+
+    fetchDailyQuizStatus();
+  }, [isAuthenticated]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -48,10 +76,22 @@ export default function HomeScreen() {
 
         {/* Daily Quiz Card */}
         <DailyQuizCard
-          winStreak={2}
+          winStreak={user?.currentStreak ?? 0}
           timeRemaining="6h34m"
-          status="todo"
+          status={dailyQuizStatus}
         />
+        
+        {/* Texte de vérification temporaire */}
+        <View style={styles.verificationContainer}>
+          <Text
+            style={[
+              styles.verificationText,
+              { fontFamily: CashouTheme.fonts.body, color: theme.text },
+            ]}
+          >
+            Quiz fait aujourd'hui : {dailyQuizStatus === 'done' ? 'Oui' : 'Non'}
+          </Text>
+        </View>
       </ScrollView>
     </View>
   );
@@ -75,5 +115,13 @@ const styles = StyleSheet.create({
   message: {
     fontSize: 16,
     marginBottom: 8,
+  },
+  verificationContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  verificationText: {
+    fontSize: 14,
+    textAlign: 'center',
   },
 });

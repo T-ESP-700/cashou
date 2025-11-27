@@ -668,27 +668,59 @@ export class UserQuizService {
 
     /**
      * Vérifier si l'utilisateur a fait son daily quiz aujourd'hui
+     * Trouve d'abord le quiz Daily du jour (par date ou createdAt), puis vérifie si l'utilisateur l'a complété
      */
-    async hasDoneDailyToday(userId: number) {
+    async hasDoneDailyToday(userId: number | string) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
 
+        // Trouver le quiz Daily du jour (priorité au champ date, sinon createdAt)
+        const todaysDailyQuiz = await this.prisma.quiz.findFirst({
+            where: {
+                type: 'DAILY',
+                OR: [
+                    {
+                        date: {
+                            gte: today,
+                            lt: tomorrow
+                        }
+                    },
+                    {
+                        date: null,
+                        createdAt: {
+                            gte: today,
+                            lt: tomorrow
+                        }
+                    }
+                ]
+            }
+        });
+
+        if (!todaysDailyQuiz) {
+            return {
+                hasDone: false,
+                quiz: null,
+                isCorrect: null
+            };
+        }
+
+        // Vérifier si l'utilisateur a complété ce quiz (completedAt non null)
         const todayParticipation = await this.prisma.userQuiz.findFirst({
             where: {
-                userId,
-                quiz: { type: 'DAILY' },
+                userId: userId.toString(),
+                quizId: todaysDailyQuiz.id,
                 completedAt: {
-                    gte: today,
-                    lt: tomorrow
+                    not: null
                 }
             },
             include: {
                 quiz: {
                     select: {
                         id: true,
-                        title: true
+                        title: true,
+                        date: true
                     }
                 }
             }
@@ -696,7 +728,7 @@ export class UserQuizService {
 
         return {
             hasDone: todayParticipation !== null,
-            quiz: todayParticipation?.quiz || null,
+            quiz: todayParticipation?.quiz || todaysDailyQuiz,
             isCorrect: todayParticipation?.isCorrect || null
         };
     }

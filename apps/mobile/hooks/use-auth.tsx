@@ -10,6 +10,7 @@ interface User {
   levelId: string | null;
   image: string | null;
   createdAt: string;
+  currentStreak?: number;
 }
 
 interface UseAuthReturn {

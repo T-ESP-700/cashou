@@ -1,5 +1,6 @@
 // src/server/routers/user-quiz.router.ts
-import { initTRPC } from "@trpc/server";
+import { initTRPC, TRPCError } from "@trpc/server";
+import { router, protectedProcedure, createContext } from "../index.ts";
 import { UserQuizService } from "../../trpc/services/user-quiz.service.ts";
 import {
     userQuizCreateSchema, 
@@ -24,7 +25,8 @@ const t = initTRPC.create();
 // Instance unique du service métier pour ce router
 const userQuizService = new UserQuizService();
 
-export const userQuizRouter = t.router({
+// Router avec les procédures publiques (utilise t.router pour compatibilité)
+const publicRouter = t.router({
 
     /**
      * Récupère toutes les participations aux quiz
@@ -314,6 +316,52 @@ export const userQuizRouter = t.router({
         .query(async ({ input }) => {
             return await userQuizService.getDailyStreak(input.userId);
         }),
+
+});
+
+// Router avec les procédures protégées utilisant le router principal
+const protectedRouter = router({
+    /**
+     * Vérifier si l'utilisateur connecté a fait son daily quiz aujourd'hui
+     * Endpoint: GET http://localhost:3000/trpc/userQuiz.hasDoneDailyTodayForCurrentUser
+     * Pas de paramètre d'entrée requis (utilise l'ID de la session)
+     */
+    hasDoneDailyTodayForCurrentUser: protectedProcedure
+        .query(async ({ ctx }) => {
+            return await userQuizService.hasDoneDailyToday(ctx.userId);
+        }),
+});
+
+// Fusionner les deux routers en créant un nouveau router qui combine les procédures
+export const userQuizRouter = router({
+    // Toutes les procédures du router public
+    getAll: publicRouter.getAll,
+    getById: publicRouter.getById,
+    create: publicRouter.create,
+    update: publicRouter.update,
+    delete: publicRouter.delete,
+    getByUser: publicRouter.getByUser,
+    getByQuiz: publicRouter.getByQuiz,
+    getByResult: publicRouter.getByResult,
+    startQuiz: publicRouter.startQuiz,
+    completeQuiz: publicRouter.completeQuiz,
+    hasParticipated: publicRouter.hasParticipated,
+    getUserStats: publicRouter.getUserStats,
+    getQuizStats: publicRouter.getQuizStats,
+    getStatus: publicRouter.getStatus,
+    getInProgressByUser: publicRouter.getInProgressByUser,
+    abandonQuiz: publicRouter.abandonQuiz,
+    resumeQuiz: publicRouter.resumeQuiz,
+    getHistory: publicRouter.getHistory,
+    getDetailedStats: publicRouter.getDetailedStats,
+    getLeaderboard: publicRouter.getLeaderboard,
+    getStatsByType: publicRouter.getStatsByType,
+    getStreaks: publicRouter.getStreaks,
+    hasDoneDailyToday: publicRouter.hasDoneDailyToday,
+    getDailyHistory: publicRouter.getDailyHistory,
+    getDailyStreak: publicRouter.getDailyStreak,
+    // Procédure protégée
+    hasDoneDailyTodayForCurrentUser: protectedRouter.hasDoneDailyTodayForCurrentUser,
 });
 
 // Export du type pour utilisation côté frontend (IntelliSense et type-safety)
