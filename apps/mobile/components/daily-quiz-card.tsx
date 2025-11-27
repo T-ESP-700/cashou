@@ -106,16 +106,9 @@ export function DailyQuizCard({
               { fontFamily: CashouTheme.fonts.body, color: theme.text },
             ]}
           >
-            {status === 'done' ? 'Statut' : 'Temps restant'}
+            {status === 'done' ? 'Prochain quiz dans :' : 'Temps restant'}
           </Text>
-          {status === 'done' ? (
-            // Logo validé si le quiz est fait
-            <View style={styles.validatedContainer}>
-              <Text style={styles.validatedIcon}>✅</Text>
-            </View>
-          ) : (
-            // Temps restant avec cercle de progression si le quiz n'est pas fait
-            <View style={styles.circularProgress}>
+          <View style={styles.circularProgress}>
               {/* Circular Progress Chart */}
               <Svg width={70} height={70} style={styles.svg}>
                 {/* Background Circle */}
@@ -157,7 +150,6 @@ export function DailyQuizCard({
                 </Text>
               </View>
             </View>
-          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -199,7 +191,7 @@ const styles = StyleSheet.create({
   content: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   label: {
     fontSize: 14,
@@ -217,7 +209,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   timeContainer: {
-    alignItems: 'center',
+    alignItems: 'flex-end',
   },
   circularProgress: {
     position: 'relative',
@@ -239,14 +231,5 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: 12,
     textAlign: 'center',
-  },
-  validatedContainer: {
-    width: 70,
-    height: 70,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  validatedIcon: {
-    fontSize: 50,
   },
 });
