@@ -146,7 +146,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "/Users/fgs/cashou/packages/@cashou/db-backoffice/src/generated/client",
+      "value": "/Users/chloee/Documents/epitech/cashou/packages/@cashou/db-backoffice/src/generated/client",
       "fromEnvVar": null
     },
     "config": {
@@ -164,7 +164,7 @@ const config = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "/Users/fgs/cashou/packages/@cashou/db-backoffice/prisma/schema.prisma",
+    "sourceFilePath": "/Users/chloee/Documents/epitech/cashou/packages/@cashou/db-backoffice/prisma/schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
