@@ -130,7 +130,7 @@ export default function HistoryScreen() {
               })
             );
 
-            const allAnswered = allQuestionsAnswered.every((answered) => answered);
+            const allAnswered = allQuestionsAnswered.every((answered: boolean) => answered);
 
             // Si toutes les questions sont répondues, vérifier si le quiz est complété
             if (allAnswered) {
@@ -225,6 +225,44 @@ export default function HistoryScreen() {
 
   const renderDay = (day: number) => {
     const dayStatus = getDayStatus(day);
+    const dayDate = new Date(currentYear, currentMonth, day);
+    
+    // Vérifier si le jour est dans le futur
+    const todayStart = new Date(today);
+    todayStart.setHours(0, 0, 0, 0);
+    const dayDateStart = new Date(dayDate);
+    dayDateStart.setHours(0, 0, 0, 0);
+    const isFuture = dayDateStart.getTime() > todayStart.getTime();
+    
+    // Si c'est une date future, afficher comme les cases sans quiz
+    if (isFuture) {
+      return (
+        <View
+          key={day}
+          style={[
+            styles.dayCell,
+            {
+              backgroundColor: 'transparent',
+              borderColor: theme.border,
+              opacity: 0.3,
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.dayNumber,
+              {
+                fontFamily: CashouTheme.fonts.body,
+                color: theme.text,
+              },
+            ]}
+          >
+            {day}
+          </Text>
+        </View>
+      );
+    }
+    
     const hasQuiz = dayStatus?.hasQuiz || false;
     const isCompleted = dayStatus?.isCompleted || false;
 
@@ -245,13 +283,13 @@ export default function HistoryScreen() {
           styles.dayCell,
           {
             backgroundColor: backgroundColor,
-            borderColor: hasQuiz ? backgroundColor : theme.border,
+            borderColor: theme.border,
             opacity: hasQuiz ? 1 : 0.3,
           },
         ]}
         onPress={() => dayStatus && handleDayPress(dayStatus)}
-        disabled={!hasQuiz}
-        activeOpacity={hasQuiz ? 0.7 : 1}
+        disabled={!hasQuiz || isFuture}
+        activeOpacity={hasQuiz && !isFuture ? 0.7 : 1}
       >
         <Text
           style={[
