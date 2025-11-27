@@ -289,6 +289,8 @@ export const backofficeApi = {
     update: async (payload: Record<string, unknown>) =>
       callApi(() => getClient().quiz.update.mutate(payload)),
     delete: async (id: number) => callApi(() => getClient().quiz.delete.mutate({ id })),
+    dailyQuizExists: async (date: string) =>
+      callApi(() => getClient().quiz.dailyQuizExists.query({ date })),
   },
   question: {
     list: async () => callApi(() => getClient().question.getAll.query()),

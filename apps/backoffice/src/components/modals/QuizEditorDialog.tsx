@@ -34,6 +34,7 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
   const [isSaved, setIsSaved] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showQuestionDialog, setShowQuestionDialog] = useState(false)
+  const [dateAlreadyTaken, setDateAlreadyTaken] = useState(false)
   const [selectedLinkKey, setSelectedLinkKey] = useState<string | null>(null)
   const [pendingLinks, setPendingLinks] = useState<Array<{ tempId: string; questionId: number }>>([])
   const [pendingQuestionDetails, setPendingQuestionDetails] = useState<
@@ -111,8 +112,34 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
       setSelectedLinkKey(null)
       setPendingQuestionDetails({})
       setIsSaved(false)
+      setDateAlreadyTaken(false)
     }
   }, [open])
+
+  // Vérifier si la date est déjà prise pour un Daily Quiz
+  useEffect(() => {
+    if (formValues.type === 'DAILY' && formValues.date && formValues.date.trim()) {
+      const checkDate = async () => {
+        try {
+          const exists = await backofficeApi.quiz.dailyQuizExists(formValues.date)
+          if (exists && currentQuiz) {
+            // En mode édition, vérifier que ce n'est pas le quiz actuel qui a cette date
+            const existingDailyQuiz = quizzes.find(
+              (q) => q.type === 'DAILY' && q.date && formatDate(q.date) === formValues.date && q.id !== currentQuiz.id,
+            )
+            setDateAlreadyTaken(!!existingDailyQuiz)
+          } else {
+            setDateAlreadyTaken(exists)
+          }
+        } catch (error) {
+          setDateAlreadyTaken(false)
+        }
+      }
+      checkDate()
+    } else {
+      setDateAlreadyTaken(false)
+    }
+  }, [formValues.type, formValues.date, currentQuiz, quizzes])
 
   const levelOptions = useMemo(
     () =>
@@ -145,6 +172,9 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
       if (!formValues.date || !formValues.date.trim()) {
         return 'La date est obligatoire pour un Daily quiz'
       }
+      if (dateAlreadyTaken) {
+        return 'Un Daily Quiz existe déjà pour cette date'
+      }
       if (!formValues.description || !formValues.description.trim()) {
         return 'La description est obligatoire pour un Daily quiz'
       }
@@ -165,6 +195,31 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
     if (validationError) {
       toast.error(validationError)
       return
+    }
+
+    // Vérifier si un Daily Quiz existe déjà pour cette date
+    if (formValues.type === 'DAILY' && formValues.date) {
+      try {
+        const exists = await backofficeApi.quiz.dailyQuizExists(formValues.date)
+        if (exists) {
+          // Si on est en mode édition, vérifier que ce n'est pas le quiz actuel qui a cette date
+          if (currentQuiz) {
+            const existingDailyQuiz = quizzes.find(
+              (q) => q.type === 'DAILY' && q.date && formatDate(q.date) === formValues.date && q.id !== currentQuiz.id,
+            )
+            if (existingDailyQuiz) {
+              toast.error('Un Daily Quiz existe déjà pour cette date')
+              return
+            }
+          } else {
+            toast.error('Un Daily Quiz existe déjà pour cette date')
+            return
+          }
+        }
+      } catch (error) {
+        toast.error('Erreur lors de la vérification de la date')
+        return
+      }
     }
 
     const payload = {
