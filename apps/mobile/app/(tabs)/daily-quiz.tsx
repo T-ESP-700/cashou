@@ -64,6 +64,12 @@ export default function DailyQuizScreen() {
 
   useEffect(() => {
     const fetchQuiz = async () => {
+      // Ne pas recharger si on est déjà en mode correction
+      // Cela évite de réinitialiser l'état quand on navigue dans la correction
+      if (quizState === 'correction') {
+        return;
+      }
+      
       try {
         // Toujours mettre isLoading à true au début pour masquer le contenu
         // Sauf si on vient de l'historique ET que showCompleted est true (on sait déjà ce qu'on veut afficher)
@@ -221,7 +227,7 @@ export default function DailyQuizScreen() {
     };
 
     fetchQuiz();
-  }, [user, showCompleted, specificQuizId]);
+  }, [user, showCompleted, specificQuizId]); // Ne pas inclure quizState dans les dépendances pour éviter les rechargements
 
   // Rafraîchir les données utilisateur quand on quitte la page (si le quiz est complété)
   // Cela permet de mettre à jour le currentStreak et le statut du quiz sur la page d'accueil
