@@ -7,6 +7,7 @@ WORKDIR /app
 COPY package.json bun.lockb* ./
 COPY bunfig.toml ./
 COPY tsconfig.json ./
+COPY .env.docker ./.env
 
 # Copy workspace packages
 COPY apps/backoffice/package.json ./apps/backoffice/
