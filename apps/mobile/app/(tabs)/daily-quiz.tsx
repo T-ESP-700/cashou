@@ -216,11 +216,14 @@ export default function DailyQuizScreen() {
           setQuiz(quizData as Quiz);
           setQuizState('intro');
         } else {
+          // Aucun quiz trouvé
           setError(specificQuizId ? 'Quiz introuvable' : 'Aucun quiz disponible pour aujourd\'hui');
+          setQuizState(null);
         }
       } catch (err) {
         console.error('Error fetching quiz:', err);
         setError(specificQuizId ? 'Impossible de charger le quiz' : 'Impossible de charger le quiz du jour');
+        setQuizState(null);
       } finally {
         setIsLoading(false);
       }
@@ -441,6 +444,8 @@ export default function DailyQuizScreen() {
     }
   };
 
+  const shouldShowInitialLoader = (isLoading || quizState === null) && !error;
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <CashouHeader
@@ -450,7 +455,7 @@ export default function DailyQuizScreen() {
       />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {isLoading || quizState === null ? (
+        {shouldShowInitialLoader ? (
           // Ne rien afficher pendant le chargement pour éviter le clignotement
           <View style={styles.centerContainer}>
             {!specificQuizId && (

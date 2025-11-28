@@ -97,19 +97,26 @@ export class QuizService {
      * @returns Promise<Quiz | null> - Le Daily Quiz du jour ou null si inexistant
      */
     async getTodaysDailyQuiz(): Promise<Quiz | null> {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // Début de journée
+        const now = new Date();
+        const startOfTodayUTC = new Date(Date.UTC(
+            now.getUTCFullYear(),
+            now.getUTCMonth(),
+            now.getUTCDate()
+        ));
 
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1); // Fin de journée
+        const endOfTodayUTC = new Date(startOfTodayUTC);
+        endOfTodayUTC.setUTCDate(endOfTodayUTC.getUTCDate() + 1);
 
         return this.prisma.quiz.findFirst({
             where: {
                 type: 'DAILY',
-                createdAt: {
-                    gte: today,
-                    lt: tomorrow
+                date: {
+                    gte: startOfTodayUTC,
+                    lt: endOfTodayUTC
                 }
+            },
+            orderBy: {
+                date: 'desc'
             }
         });
     }
