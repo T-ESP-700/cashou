@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
+import type { ReactNode } from 'react';
 import { trpcClient } from '@/lib/trpc';
 import { tokenStorage } from '@/lib/token-storage';
 
@@ -22,7 +24,9 @@ interface UseAuthReturn {
   logout: () => Promise<void>;
 }
 
-export function useAuth(): UseAuthReturn {
+const AuthContext = createContext<UseAuthReturn | undefined>(undefined);
+
+function useProvideAuth(): UseAuthReturn {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,12 +89,47 @@ export function useAuth(): UseAuthReturn {
     fetchUser();
   }, [fetchUser]);
 
-  return {
-    user,
-    isLoading,
-    isAuthenticated: user !== null,
-    error,
-    refreshUser: fetchUser,
-    logout,
-  };
+  // Rafraîchir les données utilisateur quand l'app revient au premier plan
+  // Cela permet de mettre à jour le streak automatiquement
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active' && user) {
+        // L'app revient au premier plan et l'utilisateur est connecté
+        console.log('[useAuth] App became active, refreshing user data...');
+        fetchUser();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [fetchUser, user]);
+
+  const contextValue = useMemo(
+    () => ({
+      user,
+      isLoading,
+      isAuthenticated: user !== null,
+      error,
+      refreshUser: fetchUser,
+      logout,
+    }),
+    [user, isLoading, error, fetchUser, logout],
+  );
+
+  return contextValue;
 }
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const auth = useProvideAuth();
+  return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth(): UseAuthReturn {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth doit être utilisé à l\'intérieur d\'un AuthProvider');
+  }
+  return context;
+}
+
