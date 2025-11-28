@@ -1,0 +1,20 @@
+meta {
+  name: Get One - Wallet
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/trpc/wallet.getById?input={"id":15}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"id":15}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

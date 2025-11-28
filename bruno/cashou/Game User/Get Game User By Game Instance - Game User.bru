@@ -1,0 +1,20 @@
+meta {
+  name: Get Game User By Game Instance - Game User
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/trpc/gameUser.findByGameInstance?input={"gameInstanceId":2}
+  body: json
+  auth: inherit
+}
+
+params:query {
+  input: {"gameInstanceId":2}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

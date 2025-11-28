@@ -1,0 +1,20 @@
+meta {
+  name: Get Transaction By Id
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/trpc/transaction.getById?input={"id":11}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"id":11}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -1,0 +1,32 @@
+{
+  "name": "backoffice",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun --watch index.ts",
+    "dev:frontend": "vite",
+    "build": "bun build ./index.ts --outdir=./dist --target=bun && vite build",
+    "start": "bun ./dist/index.js",
+    "start:prod": "bun ./dist/index.js",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
+    "lucide-react": "^0.454.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "tsx": "^4.7.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}

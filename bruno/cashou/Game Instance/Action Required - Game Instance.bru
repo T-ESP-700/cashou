@@ -1,0 +1,22 @@
+meta {
+  name: Action Required - Game Instance
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{base_url}}/trpc/gameInstance.setActionRequired
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 3
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

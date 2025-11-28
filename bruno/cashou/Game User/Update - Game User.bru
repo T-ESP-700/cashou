@@ -1,0 +1,23 @@
+meta {
+  name: Update - Game User
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{base_url}}/trpc/gameUser.update
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 10,
+    "isCreator": false
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -161,11 +161,6 @@ declare interface BinaryTargetsEnvValue {
     native?: boolean;
 }
 
-/**
- * Equivalent to `Uint8Array` before TypeScript 5.7, and `Uint8Array<ArrayBuffer>` in TypeScript 5.7 and beyond.
- */
-export declare type Bytes = ReturnType<Uint8Array['slice']>;
-
 export declare type Call<F extends Fn, P> = (F & {
     params: P;
 })['returns'];
@@ -3067,7 +3062,6 @@ declare type QueryPlanNode = {
     args: {
         from: QueryPlanNode;
         to: QueryPlanNode;
-        fields: string[];
     };
 } | {
     type: 'initializeRecord';
