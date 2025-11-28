@@ -1,156 +1,171 @@
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { FormField } from '@/components/forms/FormField';
-import { trpc } from '@/lib/trpc';
-import { toast } from 'sonner';
-
-interface LevelFormData {
-  title: string;
-  number: number;
-  duration: number;
-  speed: number;
-  startBalance: number;
-  pointsRequired: number;
-  description: string;
-}
+import { useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { trpc } from '@/lib/trpc'
+import { toast } from 'sonner'
+import { FormField } from '@/components/forms/FormField'
 
 interface CreateLevelDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSuccess: (levelId: number) => void;
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSuccess: (levelId: number) => void
 }
 
+interface LevelFormData {
+  title: string
+  number: number
+  duration?: number | null
+  speed?: number | null
+  startBalance?: number | null
+  pointsRequired?: number | null
+  description?: string | null
+}
+
+const NUMBER_FIELDS: Array<keyof LevelFormData> = [
+  'number',
+  'duration',
+  'speed',
+  'startBalance',
+  'pointsRequired',
+]
+
 export function CreateLevelDialog({ open, onOpenChange, onSuccess }: CreateLevelDialogProps) {
-  const utils = trpc.useUtils();
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
     reset,
   } = useForm<LevelFormData>({
     defaultValues: {
-      number: 1,
-      duration: 60,
-      speed: 1,
-      startBalance: 10000,
-      pointsRequired: 100,
+      title: '',
+      number: undefined as unknown as number,
+      duration: undefined,
+      speed: undefined,
+      startBalance: undefined,
+      pointsRequired: undefined,
+      description: '',
     },
-  });
+  })
 
-  const createMutation = trpc.level.create.useMutation({
-    onSuccess: (data) => {
-      toast.success('Level created successfully');
-      utils.level.getAll.invalidate();
-      onSuccess(data.id);
-      reset();
-      onOpenChange(false);
-    },
-    onError: (error) => {
-      toast.error(`Failed to create level: ${error.message}`);
-    },
-  });
+  const utils = trpc.useUtils()
+  const createLevelMutation = trpc.level.create.useMutation()
 
-  const onSubmit = (data: LevelFormData) => {
-    createMutation.mutate(data);
-  };
+  useEffect(() => {
+    if (!open) {
+      reset()
+    }
+  }, [open, reset])
+
+  const onSubmit = async (data: LevelFormData) => {
+    const parsedPayload = NUMBER_FIELDS.reduce<Record<string, unknown>>(
+      (acc, key) => {
+        const value = data[key]
+        if (
+          value === '' ||
+          value === undefined ||
+          value === null ||
+          (typeof value === 'number' && Number.isNaN(value))
+        ) {
+          acc[key] = undefined
+        } else {
+          acc[key] = typeof value === 'number' ? value : Number(value)
+        }
+        return acc
+      },
+      { title: data.title, description: data.description },
+    )
+
+    try {
+      const result = await createLevelMutation.mutateAsync(parsedPayload)
+      toast.success('Niveau créé avec succès')
+      await utils.level.getAll.invalidate()
+      onSuccess(result.id)
+      onOpenChange(false)
+      reset()
+    } catch (error: any) {
+      toast.error(`Impossible de créer le niveau : ${error?.message ?? 'Erreur inconnue'}`)
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Create New Level</DialogTitle>
+          <DialogTitle>Créer un niveau</DialogTitle>
         </DialogHeader>
-
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <FormField
-            label="Title"
+            label="Titre"
             name="title"
             register={register}
             errors={errors}
             required
-            placeholder="Enter level title"
+            placeholder="Découverte"
           />
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              label="Level Number"
-              name="number"
-              type="number"
-              register={register}
-              errors={errors}
-              required
-            />
-
-            <FormField
-              label="Duration (seconds)"
-              name="duration"
-              type="number"
-              register={register}
-              errors={errors}
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              label="Speed"
-              name="speed"
-              type="number"
-              register={register}
-              errors={errors}
-              required
-            />
-
-            <FormField
-              label="Start Balance"
-              name="startBalance"
-              type="number"
-              register={register}
-              errors={errors}
-              required
-            />
-          </div>
-
           <FormField
-            label="Points Required"
-            name="pointsRequired"
+            label="Numéro"
+            name="number"
             type="number"
             register={register}
             errors={errors}
             required
+            placeholder="1"
           />
-
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormField
+              label="Durée (jours)"
+              name="duration"
+              type="number"
+              register={register}
+              errors={errors}
+              placeholder="14"
+            />
+            <FormField
+              label="Vitesse"
+              name="speed"
+              type="number"
+              register={register}
+              errors={errors}
+              placeholder="1"
+            />
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormField
+              label="Balance initiale"
+              name="startBalance"
+              type="number"
+              register={register}
+              errors={errors}
+              placeholder="10000"
+            />
+            <FormField
+              label="Points requis"
+              name="pointsRequired"
+              type="number"
+              register={register}
+              errors={errors}
+              placeholder="500"
+            />
+          </div>
           <FormField
             label="Description"
             name="description"
             type="textarea"
             register={register}
             errors={errors}
-            placeholder="Enter level description"
+            placeholder="Objectifs, pacing, etc."
           />
-
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Annuler
             </Button>
-            <Button type="submit" disabled={createMutation.isPending}>
-              {createMutation.isPending ? 'Creating...' : 'Create Level'}
+            <Button type="submit" disabled={isSubmitting || createLevelMutation.isPending}>
+              {createLevelMutation.isPending ? 'Création...' : 'Créer le niveau'}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

@@ -19,11 +19,13 @@ import { quizQuestionRouter } from './routers/quiz-question.router';
 import { answerRouter } from './routers/answer.router';
 import { userQuizRouter } from './routers/user-quiz.router';
 import { userAnswerRouter } from './routers/user-answer.router';
+import { backofficeAuthRouter } from '../routers/backoffice-auth';
 
 // Main tRPC router
 export const trpcRouter = router({
   // Authentication
   auth: authRouter,
+  backofficeAuth: backofficeAuthRouter,
 
   // User management
   user: userRouter,

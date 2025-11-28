@@ -164,6 +164,18 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="daily-quiz"
+        options={{
+          href: null, // Masquer de la tab bar
+        }}
+      />
+      <Tabs.Screen
+        name="history"
+        options={{
+          href: null, // Masquer de la tab bar
+        }}
+      />
     </Tabs>
   );
 }

@@ -39,6 +39,8 @@ model User {
 
   // Cashou game progression
   points        Int?           @default(0)
+  currentStreak Int            @default(0) @map("current_streak")
+  maxStreak     Int            @default(0) @map("max_streak")
   level         Level          @relation(fields: [levelId], references: [id])
   gameInstances GameInstance[]
   gameUsers     GameUser[]
@@ -258,8 +260,6 @@ model AssetHistory {
   id        Int       @id @default(autoincrement())
   assetId   Int?      @map("asset_id")
   timestamp DateTime?
-  value     Int?
-  volume    Int?
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
@@ -274,6 +274,8 @@ model EventAsset {
   assetId   Int?      @map("asset_id")
   eventId   Int?      @map("event_id")
   date      DateTime?
+  value     Int?
+  volume    Int?
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 

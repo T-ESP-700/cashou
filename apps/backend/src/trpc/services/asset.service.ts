@@ -23,6 +23,8 @@ export class AssetService {
                 market: true,
                 // Inclut le sous-marché parent
                 submarket: true,
+                // Inclut le champ disciplinaire
+                field: true,
                 // Inclut l'historique des actifs
                 assetHistories: true,
                 // Inclut les événements liés aux actifs
@@ -46,6 +48,7 @@ export class AssetService {
                 // Même structure que findAll pour la cohérence des données
                 market: true,
                 submarket: true,
+                field: true,
                 assetHistories: true,
                 eventAssets: true,
                 transactions: true
@@ -64,6 +67,7 @@ export class AssetService {
             include: {
                 // market: true,  // Supprimé car redondant - on connaît déjà le marketId
                 submarket: true,
+                field: true,
                 assetHistories: true,
                 eventAssets: true,
                 transactions: true
@@ -82,6 +86,7 @@ export class AssetService {
             where: { submarketId },
             include: {
                 market: true,
+                field: true,
                 // submarket: true,  // Supprimé car redondant - on connaît déjà le submarketId
                 assetHistories: true,
                 eventAssets: true,

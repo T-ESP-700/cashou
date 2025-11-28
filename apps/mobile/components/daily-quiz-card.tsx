@@ -1,4 +1,5 @@
-import { View, Text, useColorScheme as useRNColorScheme, StyleSheet } from 'react-native';
+import { View, Text, useColorScheme as useRNColorScheme, StyleSheet, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 import { CashouTheme } from '@/constants/cashou-theme';
 import Svg, { Circle } from 'react-native-svg';
 
@@ -13,32 +14,52 @@ export function DailyQuizCard({
   timeRemaining,
   status = 'todo',
 }: DailyQuizCardProps) {
+  const router = useRouter();
   const colorScheme = useRNColorScheme();
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
 
-  // Calculate progress for circular chart (example: decreasing over 24h)
+  const handlePress = () => {
+    if (status === 'done') {
+      // Si le quiz est terminé, ouvrir directement la page de fin
+      router.push({
+        pathname: '/(tabs)/daily-quiz',
+        params: { showCompleted: 'true' },
+      });
+    } else {
+      router.push('/(tabs)/daily-quiz');
+    }
+  };
+
+  // Calculate progress for circular chart: le cercle se remplit au fur et à mesure que la journée avance
+  // 0% au début de la journée (24h restantes), 100% à la fin (0h restantes)
   const calculateProgress = () => {
     const parts = timeRemaining.match(/(\d+)h(\d+)m/);
     if (!parts) return 0;
     const hours = parseInt(parts[1]);
     const minutes = parseInt(parts[2]);
-    const totalMinutes = hours * 60 + minutes;
-    return (totalMinutes / (24 * 60)) * 100;
+    const totalMinutesRemaining = hours * 60 + minutes;
+    const totalMinutesInDay = 24 * 60;
+    // Plus il reste de temps, moins il y a de progression
+    // Plus le temps passe, plus la progression augmente
+    const progress = ((totalMinutesInDay - totalMinutesRemaining) / totalMinutesInDay) * 100;
+    return Math.max(0, Math.min(100, progress)); // S'assurer que c'est entre 0 et 100%
   };
 
   const progress = calculateProgress();
-  const radius = 35;
-  const strokeWidth = 8;
+  const radius = 30; 
+  const strokeWidth = 6; 
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   return (
-    <View
+    <TouchableOpacity
       style={[
         styles.card,
         { backgroundColor: theme.card, borderColor: theme.border },
       ]}
+      onPress={handlePress}
+      activeOpacity={0.7}
     >
       {/* Header with Title and Status Badge */}
       <View style={styles.header}>
@@ -85,7 +106,7 @@ export function DailyQuizCard({
           </View>
         </View>
 
-        {/* Time Remaining with Circular Progress */}
+        {/* Time Remaining with Circular Progress or Validated Logo */}
         <View style={styles.timeContainer}>
           <Text
             style={[
@@ -93,15 +114,15 @@ export function DailyQuizCard({
               { fontFamily: CashouTheme.fonts.body, color: theme.text },
             ]}
           >
-            Temps restant
+            {status === 'done' ? 'Prochain quiz dans :' : 'Temps restant'}
           </Text>
           <View style={styles.circularProgress}>
             {/* Circular Progress Chart */}
-            <Svg width={90} height={90} style={styles.svg}>
+              <Svg width={70} height={70} style={styles.svg}>
               {/* Background Circle */}
               <Circle
-                cx="45"
-                cy="45"
+                  cx="35"
+                  cy="35"
                 r={radius}
                 stroke={isDark ? "#3A3D55" : "#E0E0E0"}
                 strokeWidth={strokeWidth}
@@ -109,8 +130,8 @@ export function DailyQuizCard({
               />
               {/* Progress Circle */}
               <Circle
-                cx="45"
-                cy="45"
+                  cx="35"
+                  cy="35"
                 r={radius}
                 stroke={theme.accent}
                 strokeWidth={strokeWidth}
@@ -119,10 +140,11 @@ export function DailyQuizCard({
                 strokeDashoffset={strokeDashoffset}
                 strokeLinecap="round"
                 rotation="-90"
-                origin="45, 45"
+                  origin="35, 35"
               />
             </Svg>
-            {/* Time Text */}
+              {/* Time Text - Centré dans le cercle */}
+              <View style={styles.timeTextContainer}>
             <Text
               style={[
                 styles.timeText,
@@ -138,6 +160,7 @@ export function DailyQuizCard({
         </View>
       </View>
     </View>
+    </TouchableOpacity>
   );
 }
 
@@ -176,7 +199,7 @@ const styles = StyleSheet.create({
   content: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   label: {
     fontSize: 14,
@@ -194,18 +217,27 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   timeContainer: {
-    alignItems: 'center',
+    alignItems: 'flex-end',
   },
   circularProgress: {
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
+    width: 70,
+    height: 70,
   },
   svg: {
     position: 'absolute',
   },
+  timeTextContainer: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 70,
+    height: 70,
+  },
   timeText: {
-    fontSize: 18,
-    marginTop: 35,
+    fontSize: 12,
+    textAlign: 'center',
   },
 });

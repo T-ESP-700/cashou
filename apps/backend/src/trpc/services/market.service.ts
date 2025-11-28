@@ -205,6 +205,7 @@ export class MarketService {
                 submarkets: true,
                 assets: {
                     include: {
+                        field: true,
                         assetHistories: {
                             orderBy: { timestamp: 'desc' },
                             take: 1
@@ -455,6 +456,7 @@ export class MarketService {
 
         // Formater la réponse
         return sortedAssets.map(({ asset, marketCap, score, currentValue, currentVolume }) => {
+            const fieldName = this.getAssetFieldName(asset);
             return {
                 id: asset.id,
                 symbol: asset.symbol,
@@ -463,7 +465,7 @@ export class MarketService {
                 current_value: currentValue,
                 current_volume: currentVolume,
                 performance_score: Math.round(score * 100) / 100,
-                category: asset.field || 'Non catégorisé',
+                category: fieldName || 'Non catégorisé',
                 risk_level: this.assessAssetRisk(asset, asset.assetHistories?.[0])
             };
         });
@@ -477,9 +479,10 @@ export class MarketService {
      */
     private calculateAssetScore(asset: any, lastHistory: any): number {
         let score = 0;
+        const fieldName = this.getAssetFieldName(asset);
 
         // Base score sur la catégorie (utilise 'field' du schéma Prisma)
-        if (asset.field) {
+        if (fieldName) {
             const categoryScores: { [key: string]: number } = {
                 'tech': 85,      // Technologie = tendance
                 'finance': 75,   // Finance = stable
@@ -492,7 +495,7 @@ export class MarketService {
                 'biotech': 85,   // Biotech = croissance
                 'renewable': 80  // Énergies renouvelables = tendance
             };
-            score += categoryScores[asset.field.toLowerCase()] || 50;
+            score += categoryScores[fieldName.toLowerCase()] || 50;
         } else {
             score += 50; // Score par défaut
         }
@@ -530,7 +533,7 @@ export class MarketService {
         let riskFactors = 0;
 
         // Plus de catégories = plus de risque
-        if (!asset.field) riskFactors++;
+        if (!this.hasAssetField(asset)) riskFactors++;
 
         // Moins d'historiques = plus de risque
         if (!asset.assetHistories || asset.assetHistories.length < 3) riskFactors++;
@@ -557,6 +560,7 @@ export class MarketService {
             include: {
                 assets: {
                     include: {
+                        field: true,
                         assetHistories: {
                             orderBy: { timestamp: 'desc' },
                             take: 1
@@ -567,6 +571,7 @@ export class MarketService {
                     include: {
                         assets: {
                             include: {
+                                field: true,
                                 assetHistories: {
                                     orderBy: { timestamp: 'desc' },
                                     take: 1
@@ -678,6 +683,7 @@ export class MarketService {
                     include: {
                         assets: {
                             include: {
+                                field: true,
                                 assetHistories: {
                                     orderBy: { timestamp: 'desc' },
                                     take: 1
@@ -833,8 +839,9 @@ export class MarketService {
         const sectorGroups: { [key: string]: any[] } = {};
 
         market.assets.forEach((asset: any) => {
-            if (asset.field && asset.assetHistories && asset.assetHistories.length > 0) {
-                const sector = asset.field.toLowerCase();
+            const fieldName = this.getAssetFieldName(asset);
+            if (fieldName && asset.assetHistories && asset.assetHistories.length > 0) {
+                const sector = fieldName.toLowerCase();
                 if (!sectorGroups[sector]) {
                     sectorGroups[sector] = [];
                 }
@@ -1368,7 +1375,7 @@ export class MarketService {
         let riskScore = 0;
 
         // Pas de catégorie = plus de risque
-        if (!asset.field) riskScore += 30;
+        if (!this.hasAssetField(asset)) riskScore += 30;
 
         // Peu d'historiques = plus de risque
         if (!asset.assetHistories || asset.assetHistories.length < 3) riskScore += 25;
@@ -1381,6 +1388,31 @@ export class MarketService {
         }
 
         return Math.min(riskScore, 100);
+    }
+
+    /**
+     * Récupère le nom du champ associé à un actif (compatibilité string ou relation)
+     * @param asset - Actif à inspecter
+     * @returns string | null - Nom du champ ou null
+     */
+    private getAssetFieldName(asset: any): string | null {
+        if (!asset) return null;
+        if (typeof asset.field === 'string') {
+            return asset.field;
+        }
+        if (asset.field && typeof asset.field === 'object' && 'name' in asset.field) {
+            return asset.field.name ?? null;
+        }
+        return null;
+    }
+
+    /**
+     * Indique si un actif est rattaché à un champ
+     * @param asset - Actif à inspecter
+     * @returns boolean
+     */
+    private hasAssetField(asset: any): boolean {
+        return Boolean(this.getAssetFieldName(asset) ?? asset.fieldId);
     }
 
     /**

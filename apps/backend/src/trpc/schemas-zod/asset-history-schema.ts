@@ -7,8 +7,6 @@ import { z } from "zod";
 export const assetHistoryDataSchema = z.object({
     assetId: z.number().int().positive("L'ID de l'actif doit être un nombre positif").nullish(),
     timestamp: z.string().transform((val) => val ? new Date(val) : null).nullish(),
-    value: z.number().int().nullish(),
-    volume: z.number().int().nullish(),
 });
 export type AssetHistoryDataSchema = z.infer<typeof assetHistoryDataSchema>;
 

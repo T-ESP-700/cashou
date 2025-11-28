@@ -1,6 +1,6 @@
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/forms/FormField';
@@ -11,7 +11,8 @@ import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 import { formatSelectOptions } from '@/hooks/use-crud';
 import { CreateLevelDialog } from '@/components/modals/CreateLevelDialog';
-import { CreateQuestionDialog } from '@/components/modals/CreateQuestionDialog';
+import { CreateQuestionDialog, type CreateQuestionResult } from '@/components/modals/CreateQuestionDialog';
+import { useBackofficeStore } from '@/store/useBackofficeStore';
 
 interface QuizFormData {
   type: string;
@@ -23,6 +24,7 @@ interface QuizFormData {
 
 export default function CreateQuizPage() {
   const navigate = useNavigate();
+  const setModule = useBackofficeStore((state) => state.setModule);
   const utils = trpc.useUtils();
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<(string | number)[]>([]);
   const [selectedLevelId, setSelectedLevelId] = useState<number | null>(null);
@@ -36,11 +38,88 @@ export default function CreateQuizPage() {
     handleSubmit,
     formState: { errors },
     setValue,
+    control,
+    getValues,
   } = useForm<QuizFormData>();
+
+  // Watch the type, title, date, and description fields for validation
+  const selectedType = useWatch({ control, name: 'type' });
+  const titleValue = useWatch({ control, name: 'title' });
+  const dateValue = useWatch({ control, name: 'date' });
+  const descriptionValue = useWatch({ control, name: 'description' });
+
+  // Reset date and level when type changes, or set default date for DAILY
+  useEffect(() => {
+    setModule('quizzes');
+  }, [setModule]);
+
+  useEffect(() => {
+    if (selectedType === 'DAILY') {
+      // Set today's date as default if date is empty
+      if (!dateValue) {
+        const today = new Date().toISOString().split('T')[0];
+        setValue('date', today);
+      }
+    } else if (selectedType !== 'DAILY') {
+      setValue('date', '');
+    }
+    if (selectedType !== 'MCQ') {
+      setSelectedLevelId(null);
+      setValue('levelId', null);
+    }
+  }, [selectedType, setValue, dateValue]);
 
   // Fetch levels and questions for selection
   const { data: levels } = trpc.level.getAll.useQuery();
   const { data: questions } = trpc.question.getAll.useQuery();
+
+  // Fetch all Daily Quiz to get questions already used
+  const { data: allDailyQuizzes } = trpc.quiz.getByType.useQuery(
+    { type: 'DAILY' },
+    { enabled: selectedType === 'DAILY' }
+  );
+
+  // Fetch questions for all Daily Quiz
+  const [usedQuestionIds, setUsedQuestionIds] = useState<Set<number>>(new Set());
+  
+  useEffect(() => {
+    if (selectedType === 'DAILY' && allDailyQuizzes && allDailyQuizzes.length > 0) {
+      const fetchAllQuestions = async () => {
+        const questionIds = new Set<number>();
+        const promises = allDailyQuizzes
+          .filter((quiz) => quiz.id)
+          .map((quiz) => utils.client.quizQuestion.getByQuiz.query({ quizId: quiz.id! }));
+        
+        const results = await Promise.all(promises);
+        results.forEach((quizQuestions) => {
+          quizQuestions?.forEach((qq) => {
+            if (qq.questionId) {
+              questionIds.add(qq.questionId);
+            }
+          });
+        });
+        setUsedQuestionIds(questionIds);
+      };
+      fetchAllQuestions();
+    } else {
+      setUsedQuestionIds(new Set());
+    }
+  }, [selectedType, allDailyQuizzes, utils]);
+
+  // Filter questions to exclude those already used in Daily Quiz
+  const availableQuestions = useMemo(() => {
+    if (selectedType === 'DAILY' && usedQuestionIds.size > 0) {
+      return questions?.filter((q) => !usedQuestionIds.has(q.id)) || [];
+    }
+    return questions || [];
+  }, [selectedType, questions, usedQuestionIds]);
+
+  // Check if a Daily Quiz already exists for the selected date
+  const actualDateValue = getValues('date') || dateValue;
+  const { data: dailyQuizExists } = trpc.quiz.dailyQuizExists.useQuery(
+    { date: actualDateValue || '' },
+    { enabled: selectedType === 'DAILY' && !!actualDateValue }
+  );
 
   const createMutation = trpc.quiz.create.useMutation({
     onSuccess: async (data) => {
@@ -72,7 +151,16 @@ export default function CreateQuizPage() {
     },
   });
 
-  const onSubmit = (data: QuizFormData) => {
+  const onSubmit = async (data: QuizFormData) => {
+    // Vérifier si un Daily Quiz existe déjà pour cette date
+    if (data.type === 'DAILY' && data.date) {
+      const exists = await utils.client.quiz.dailyQuizExists.query({ date: data.date });
+      if (exists) {
+        toast.error('Un Daily Quiz existe déjà pour cette date');
+        return;
+      }
+    }
+
     createMutation.mutate({
       type: data.type as 'DAILY' | 'MCQ',
       title: data.title,
@@ -87,15 +175,65 @@ export default function CreateQuizPage() {
     setValue('levelId', levelId);
   };
 
-  const handleQuestionCreated = (questionId: number) => {
-    setSelectedQuestionIds([...selectedQuestionIds, questionId]);
+  const handleQuestionCreated = ({ question }: CreateQuestionResult) => {
+    setSelectedQuestionIds([...selectedQuestionIds, question.id]);
   };
 
   const levelOptions = formatSelectOptions(levels, (l) => l.title || `Level ${l.number}`);
-  const questionOptions = formatSelectOptions(questions, (q) => {
+  const questionOptions = formatSelectOptions(availableQuestions, (q) => {
     const text = q.text || 'Unnamed Question';
     return text.length > 60 ? text.substring(0, 60) + '...' : text;
   });
+
+  // Validation: type and title must be filled, date and description required for DAILY
+  const isTypeFilled = selectedType && selectedType.trim() !== '';
+  const isTitleFilled = titleValue && titleValue.trim() !== '';
+  // actualDateValue is already defined above for the query
+  const isDateFilled = actualDateValue && actualDateValue.trim() !== '';
+  const isDescriptionFilled = descriptionValue && descriptionValue.trim() !== '';
+  
+  // For DAILY quiz, date and description are required
+  const isDailyValid = selectedType !== 'DAILY' || (isDateFilled && isDescriptionFilled);
+  const requiredQuestionCount = selectedType === 'DAILY' ? 3 : 1;
+  const hasRequiredQuestions = selectedQuestionIds.length >= requiredQuestionCount;
+  // Check if Daily Quiz already exists for this date
+  const dateAlreadyUsed = selectedType === 'DAILY' && dailyQuizExists === true;
+  
+  const isSubmitDisabled = 
+    createMutation.isPending || 
+    !isTypeFilled || 
+    !isTitleFilled || 
+    !isDailyValid ||
+    !hasRequiredQuestions ||
+    dateAlreadyUsed;
+
+  // Determine error message to display
+  const getErrorMessage = () => {
+    if (!isTypeFilled) {
+      return 'Veuillez sélectionner un type de quiz';
+    }
+    if (!isTitleFilled) {
+      return 'Veuillez remplir le titre du quiz';
+    }
+    if (selectedType === 'DAILY' && !isDateFilled) {
+      return 'Veuillez remplir la date pour un Daily Quiz';
+    }
+    if (selectedType === 'DAILY' && !isDescriptionFilled) {
+      return 'Veuillez remplir la description pour un Daily Quiz';
+    }
+    if (selectedType === 'DAILY' && selectedQuestionIds.length < 3) {
+      return 'Un Daily Quiz doit contenir au moins 3 questions';
+    }
+    if (selectedType === 'MCQ' && selectedQuestionIds.length < 1) {
+      return 'Un MCQ doit contenir au moins 1 question';
+    }
+    if (dateAlreadyUsed) {
+      return 'Un Daily Quiz existe déjà pour cette date';
+    }
+    return null;
+  };
+
+  const errorMessage = getErrorMessage();
 
   return (
     <>
@@ -137,24 +275,29 @@ export default function CreateQuizPage() {
                 placeholder="Enter quiz title"
               />
 
-              <FormField
-                label="Date"
-                name="date"
-                type="date"
-                register={register}
-                errors={errors}
-                placeholder="Select date for daily quiz"
-              />
+              {selectedType === 'DAILY' && (
+                <FormField
+                  label="Date"
+                  name="date"
+                  type="date"
+                  register={register}
+                  errors={errors}
+                  required
+                  placeholder="Select date for daily quiz"
+                />
+              )}
 
-              <RelationSelect
-                label="Level"
-                options={levelOptions}
-                value={selectedLevelId}
-                onChange={(value) => setSelectedLevelId(value ? Number(value) : null)}
-                placeholder="Select a level..."
-                onCreate={() => setShowLevelDialog(true)}
-                createLabel="Create Level"
-              />
+              {selectedType === 'MCQ' && (
+                <RelationSelect
+                  label="Level"
+                  options={levelOptions}
+                  value={selectedLevelId}
+                  onChange={(value) => setSelectedLevelId(value ? Number(value) : null)}
+                  placeholder="Select a level..."
+                  onCreate={() => setShowLevelDialog(true)}
+                  createLabel="Create Level"
+                />
+              )}
 
               <FormField
                 label="Description"
@@ -162,12 +305,15 @@ export default function CreateQuizPage() {
                 type="textarea"
                 register={register}
                 errors={errors}
+                required={selectedType === 'DAILY'}
                 placeholder="Enter quiz description"
               />
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-gray-700">Questions</label>
+                  <label className="text-sm font-medium text-gray-700">
+                    Questions <span className="text-red-500">*</span>
+                  </label>
                   <Button
                     type="button"
                     variant="outline"
@@ -187,9 +333,21 @@ export default function CreateQuizPage() {
               </div>
 
               <div className="flex gap-2 pt-4">
-                <Button type="submit" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? 'Creating...' : 'Create Quiz'}
-                </Button>
+                <div className="relative inline-block group">
+                  <Button
+                    type="submit"
+                    disabled={isSubmitDisabled}
+                    className="relative"
+                  >
+                    {createMutation.isPending ? 'Creating...' : 'Create Quiz'}
+                  </Button>
+                  {errorMessage && (
+                    <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-md max-w-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg">
+                      {errorMessage}
+                      <div className="absolute top-full left-4 border-4 border-transparent border-t-gray-900"></div>
+                    </div>
+                  )}
+                </div>
                 <Button
                   type="button"
                   variant="outline"

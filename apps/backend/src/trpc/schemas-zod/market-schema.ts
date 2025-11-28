@@ -5,10 +5,8 @@ import { z } from "zod";
 // Schéma de base contenant toutes les propriétés d'un marché (sans l'ID auto-généré)
 // Utilisation de .nullish() au lieu de .optional() pour accepter null et undefined
 export const marketDataSchema = z.object({
-    name: z.string().min(1, "Le nom est requis").nullish(),
+    title: z.string().min(1, "Le titre est requis").nullish(),
     description: z.string().nullish(),
-    currentTrends: z.string().nullish(),
-    dataSource: z.string().nullish(),
 });
 export type MarketDataSchema = z.infer<typeof marketDataSchema>;
 

@@ -43,6 +43,10 @@ bun-debug.log*
 node_modules/.prisma
 packages/*/node_modules/.prisma
 apps/*/node_modules/.prisma
+# Prisma generated binaries (should not be committed)
+**/generated/client/*.node
+**/generated/client/*.so.node
+**/generated/client/*.dylib.node
 
 # Caches
 .eslintcache

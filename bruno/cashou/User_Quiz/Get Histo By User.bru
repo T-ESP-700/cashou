@@ -5,13 +5,13 @@ meta {
 }
 
 get {
-  url: {{base_url}}/api/trpc/userQuiz.getHistoryByUser?input={"userId":9,"limit":20,"offset":0}
+  url: {{base_url}}/api/trpc/userQuiz.getHistoryByUser?input={"userId": "usr_demo_1","limit":20,"offset":0}
   body: none
   auth: inherit
 }
 
 params:query {
-  input: {"userId":9,"limit":20,"offset":0}
+  input: {"userId": "usr_demo_1","limit":20,"offset":0}
 }
 
 settings {

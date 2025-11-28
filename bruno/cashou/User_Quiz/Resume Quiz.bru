@@ -5,13 +5,13 @@ meta {
 }
 
 get {
-  url: {{base_url}}/api/trpc/userQuiz.resumeQuiz?input={"userId":1,"quizId":1}
+  url: {{base_url}}/api/trpc/userQuiz.resumeQuiz?input={"userId": "usr_demo_1","quizId":1}
   body: none
   auth: inherit
 }
 
 params:query {
-  input: {"userId":1,"quizId":1}
+  input: {"userId": "usr_demo_1","quizId":1}
 }
 
 settings {

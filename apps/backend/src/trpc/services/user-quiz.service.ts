@@ -108,13 +108,14 @@ export class UserQuizService {
     /**
      * Démarre un quiz pour un utilisateur (crée une participation)
      * @param quizId - Identifiant du quiz
-     * @param userId - Identifiant de l'utilisateur
+     * @param userId - Identifiant de l'utilisateur (number ou string)
      * @returns Promise<UserQuiz> - La participation créée
      */
-    async startQuiz(quizId: number, userId: number): Promise<UserQuiz> {
+    async startQuiz(quizId: number, userId: number | string): Promise<UserQuiz> {
+        const userIdStr = userId.toString();
         // Vérifier si l'utilisateur a déjà participé à ce quiz
         const existingParticipation = await this.prisma.userQuiz.findFirst({
-            where: { quizId, userId }
+            where: { quizId, userId: userIdStr }
         });
 
         if (existingParticipation) {
@@ -122,7 +123,151 @@ export class UserQuizService {
         }
 
         return this.prisma.userQuiz.create({
-            data: { quizId, userId }
+            data: { quizId, userId: userIdStr }
+        });
+    }
+
+    /**
+     * Crée ou met à jour une participation au quiz pour l'utilisateur connecté
+     * @param quizId - Identifiant du quiz
+     * @param userId - Identifiant de l'utilisateur (string)
+     * @param isCorrect - Résultat du quiz (optionnel)
+     * @returns Promise<UserQuiz> - La participation créée ou mise à jour
+     */
+    async createOrUpdateParticipation(quizId: number, userId: string, isCorrect?: boolean): Promise<UserQuiz> {
+        // Chercher une participation existante
+        const existingParticipation = await this.prisma.userQuiz.findFirst({
+            where: { quizId, userId }
+        });
+
+        let participation: UserQuiz;
+        if (existingParticipation) {
+            // Mettre à jour la participation existante
+            participation = await this.prisma.userQuiz.update({
+                where: { id: existingParticipation.id },
+                data: {
+                    completedAt: new Date(),
+                    isCorrect: isCorrect !== undefined ? isCorrect : existingParticipation.isCorrect,
+                }
+            });
+        } else {
+            // Créer une nouvelle participation
+            participation = await this.prisma.userQuiz.create({
+                data: {
+                    quizId,
+                    userId,
+                    completedAt: new Date(),
+                    isCorrect: isCorrect,
+                }
+            });
+        }
+
+        // Mettre à jour les streaks si c'est le quiz du jour
+        await this.updateStreaksIfTodaysQuiz(quizId, userId);
+
+        return participation;
+    }
+
+    /**
+     * Met à jour les streaks de l'utilisateur si le quiz est le quiz du jour
+     * @param quizId - Identifiant du quiz
+     * @param userId - Identifiant de l'utilisateur (string)
+     */
+    private async updateStreaksIfTodaysQuiz(quizId: number, userId: string): Promise<void> {
+        // Vérifier si c'est le quiz du jour
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const quiz = await this.prisma.quiz.findUnique({
+            where: { id: quizId }
+        });
+
+        if (!quiz || quiz.type !== 'DAILY') {
+            return; // Ce n'est pas un quiz daily, on ne fait rien
+        }
+
+        // Vérifier si c'est le quiz du jour (même logique que hasDoneDailyToday)
+        const quizDate = quiz.date ? new Date(quiz.date) : new Date(quiz.createdAt);
+        const quizDateStart = new Date(quizDate);
+        quizDateStart.setHours(0, 0, 0, 0);
+
+        // Vérifier si la date du quiz correspond à aujourd'hui
+        if (quizDateStart.getTime() < today.getTime() || quizDateStart.getTime() >= tomorrow.getTime()) {
+            return; // Ce n'est pas le quiz du jour, on ne fait rien
+        }
+
+        // Récupérer toutes les questions du quiz
+        const quizQuestions = await this.prisma.quizQuestion.findMany({
+            where: { quizId },
+            include: {
+                question: {
+                    include: {
+                        answers: true
+                    }
+                }
+            }
+        });
+
+        if (quizQuestions.length === 0) {
+            return; // Pas de questions, on ne fait rien
+        }
+
+        // Récupérer toutes les réponses de l'utilisateur pour ce quiz
+        const questionIds = quizQuestions.map(qq => qq.questionId);
+        const userAnswers = await this.prisma.userAnswer.findMany({
+            where: {
+                userId,
+                questionId: { in: questionIds }
+            }
+        });
+
+        // Calculer le nombre de bonnes réponses
+        let correctAnswers = 0;
+        for (const userAnswer of userAnswers) {
+            if (userAnswer.accurate) {
+                correctAnswers++;
+            }
+        }
+
+        const totalQuestions = quizQuestions.length;
+        const score = correctAnswers / totalQuestions;
+
+        // Récupérer l'utilisateur pour accéder aux streaks actuels
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { currentStreak: true, maxStreak: true }
+        });
+
+        if (!user) {
+            return; // Utilisateur introuvable
+        }
+
+        let newCurrentStreak = user.currentStreak;
+        let newMaxStreak = user.maxStreak;
+
+        // Appliquer les règles de streak
+        // Si 2/3 ou 3/3 (score >= 2/3) → currentStreak +1
+        // Si 0/3 ou 1/3 (score < 2/3) → currentStreak = 0
+        if (score >= 2/3) {
+            newCurrentStreak = user.currentStreak + 1;
+        } else {
+            newCurrentStreak = 0;
+        }
+
+        // Mettre à jour maxStreak si currentStreak > maxStreak
+        if (newCurrentStreak > user.maxStreak) {
+            newMaxStreak = newCurrentStreak;
+        }
+
+        // Mettre à jour l'utilisateur
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: {
+                currentStreak: newCurrentStreak,
+                maxStreak: newMaxStreak
+            }
         });
     }
 
@@ -668,27 +813,59 @@ export class UserQuizService {
 
     /**
      * Vérifier si l'utilisateur a fait son daily quiz aujourd'hui
+     * Trouve d'abord le quiz Daily du jour (par date ou createdAt), puis vérifie si l'utilisateur l'a complété
      */
-    async hasDoneDailyToday(userId: number) {
+    async hasDoneDailyToday(userId: number | string) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
 
+        // Trouver le quiz Daily du jour (priorité au champ date, sinon createdAt)
+        const todaysDailyQuiz = await this.prisma.quiz.findFirst({
+            where: {
+                type: 'DAILY',
+                OR: [
+                    {
+                        date: {
+                            gte: today,
+                            lt: tomorrow
+                        }
+                    },
+                    {
+                        date: null,
+                        createdAt: {
+                            gte: today,
+                            lt: tomorrow
+                        }
+                    }
+                ]
+            }
+        });
+
+        if (!todaysDailyQuiz) {
+            return {
+                hasDone: false,
+                quiz: null,
+                isCorrect: null
+            };
+        }
+
+        // Vérifier si l'utilisateur a complété ce quiz (completedAt non null)
         const todayParticipation = await this.prisma.userQuiz.findFirst({
             where: {
-                userId,
-                quiz: { type: 'DAILY' },
+                userId: userId.toString(),
+                quizId: todaysDailyQuiz.id,
                 completedAt: {
-                    gte: today,
-                    lt: tomorrow
+                    not: null
                 }
             },
             include: {
                 quiz: {
                     select: {
                         id: true,
-                        title: true
+                        title: true,
+                        date: true
                     }
                 }
             }
@@ -696,7 +873,7 @@ export class UserQuizService {
 
         return {
             hasDone: todayParticipation !== null,
-            quiz: todayParticipation?.quiz || null,
+            quiz: todayParticipation?.quiz || todaysDailyQuiz,
             isCorrect: todayParticipation?.isCorrect || null
         };
     }

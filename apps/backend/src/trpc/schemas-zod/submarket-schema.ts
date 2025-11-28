@@ -5,10 +5,9 @@ import { z } from "zod";
 // Schéma de base contenant toutes les propriétés d'un sous-marché (sans l'ID auto-généré)
 // Utilisation de .nullish() au lieu de .optional() pour accepter null et undefined
 export const submarketDataSchema = z.object({
-    name: z.string().min(1, "Le nom est requis").nullish(),
+    title: z.string().min(1, "Le titre est requis").nullish(),
     description: z.string().nullish(),
-    currentTrends: z.string().nullish(),
-    dataSource: z.string().nullish(),
+    gameInstanceId: z.number().int().positive("L'ID de la game instance doit être un nombre positif").nullish(),
     marketId: z.number().int().positive("L'ID du marché doit être un nombre positif").nullish(),
 });
 export type SubmarketDataSchema = z.infer<typeof submarketDataSchema>;

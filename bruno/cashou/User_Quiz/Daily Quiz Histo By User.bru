@@ -5,13 +5,13 @@ meta {
 }
 
 get {
-  url: {{base_url}}/api/trpc/userQuiz.getDailyHistory?input={"userId":9,"days":30}
+  url: {{base_url}}/api/trpc/userQuiz.getDailyHistory?input={"userId": "usr_demo_1","days":30}
   body: none
   auth: inherit
 }
 
 params:query {
-  input: {"userId":9,"days":30}
+  input: {"userId": "usr_demo_1","days":30}
 }
 
 settings {
