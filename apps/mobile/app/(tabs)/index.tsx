@@ -120,7 +120,7 @@ export default function HomeScreen() {
         {/* Level Card */}
         <LevelCard
           level={12}
-          progression={48}
+          progression={86}
           currentReturn={28}
           status="in_progress"
         />
