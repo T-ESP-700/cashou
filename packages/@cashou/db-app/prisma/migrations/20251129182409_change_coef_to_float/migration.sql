@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "impacts" ALTER COLUMN "coef" SET DATA TYPE DOUBLE PRECISION;

@@ -9,7 +9,7 @@ export const impactDataSchema = z.object({
     fieldId: z.number().int().positive("L'ID du champ doit être un nombre positif").nullish(),
     submarketId: z.number().int().positive("L'ID du sous-marché doit être un nombre positif").nullish(),
     assetId: z.number().int().positive("L'ID de l'actif doit être un nombre positif").nullish(),
-    coef: z.number().int().nullish(),
+    coef: z.number().nullish(),
 });
 export type ImpactDataSchema = z.infer<typeof impactDataSchema>;
 
