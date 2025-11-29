@@ -72,6 +72,19 @@ export const impactRouter = t.router({
         }),
 
     /**
+     * Récupère tous les impacts d'un actif spécifique
+     * Endpoint: GET http://localhost:3000/trpc/impact.getByAssetId?input={"assetId":1}
+     * @input {assetId: number} - ID de l'actif parent
+     */
+    getByAssetId: t.procedure
+        .input(z.object({
+            assetId: z.number().min(1, "L'ID de l'actif doit être un nombre > 0")
+        }))
+        .query(async ({ input }) => {
+            return await impactService.findByAssetId(input.assetId);
+        }),
+
+    /**
      * Récupère les impacts avec un coefficient supérieur à une valeur donnée
      * Endpoint: GET http://localhost:3000/trpc/impact.getByMinCoefficient?input={"minCoef":5}
      * @input {minCoef: number} - Coefficient minimum

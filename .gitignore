@@ -47,6 +47,10 @@ apps/*/node_modules/.prisma
 **/generated/client/*.node
 **/generated/client/*.so.node
 **/generated/client/*.dylib.node
+# Prisma generated JavaScript files (should not be committed)
+**/generated/client/edge.js
+**/generated/client/index.js
+**/generated/client/wasm.js
 
 # Caches
 .eslintcache

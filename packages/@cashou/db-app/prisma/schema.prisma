@@ -242,6 +242,7 @@ model Asset {
   description String?
   marketId    Int?     @map("market_id")
   submarketId Int?     @map("submarket_id")
+  taux        Float?
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -293,7 +294,7 @@ model Impact {
   fieldId     Int?     @map("field_id")
   submarketId Int?     @map("submarket_id")
   assetId     Int?     @map("asset_id")
-  coef        Int?
+  coef        Float?
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
