@@ -4,8 +4,8 @@ import {
     notificationCreateSchema,
     notificationUpdateSchema,
     notificationIdSchema,
+    notificationUserIdSchema,
 } from "../schemas-zod/notification-schema.ts";
-import { userIdSchema } from "../schemas-zod/user-schema.ts";
 
 const t = initTRPC.create();
 
@@ -34,6 +34,17 @@ export const notificationRouter = t.router({
         }),
 
     /**
+     * Récupère toutes les notifications d'un utilisateur
+     * Endpoint: GET http://localhost:3000/trpc/notification.findByUser?input={"userId":"user123"}
+     * @input {userId: string} - ID de l'utilisateur, validé par notificationUserIdSchema
+     */
+    findByUser: t.procedure
+        .input(notificationUserIdSchema)
+        .query(async ({ input }) => {
+            return await notificationService.findByUser(input.userId);
+        }),
+
+    /**
      * Crée une nouvelle notification
      * Endpoint: POST http://localhost:3000/trpc/notification.create
      * @input NotificationCreateSchema - Données de la notification à créer
@@ -56,9 +67,9 @@ export const notificationRouter = t.router({
         }),
 
     /**
-      * Marque toutes les notifications non lues d'un utilisateur comme lues.
-      * Endpoint: POST http://localhost:3000/trpc/notification.markAsRead
-      * @input {userId: number} - ID de l'utilisateur, validé par userIdSchema
+      * Marque une notification spécifique comme lue.
+      * Endpoint: POST http://localhost:3000/trpc/notification.markedAsRead
+      * @input {id: number} - ID de la notification, validé par notificationIdSchema
       */
     markedAsRead: t.procedure
         .input(notificationIdSchema)
@@ -69,12 +80,12 @@ export const notificationRouter = t.router({
     /**
       * Marque toutes les notifications non lues d'un utilisateur comme lues.
       * Endpoint: POST http://localhost:3000/trpc/notification.markAllAsRead
-      * @input {userId: number} - ID de l'utilisateur, validé par userIdSchema
+      * @input {userId: string} - ID de l'utilisateur, validé par notificationUserIdSchema
       */
     markAllAsRead: t.procedure
-        .input(userIdSchema)
+        .input(notificationUserIdSchema)
         .mutation(async ({ input }) => {
-            return await notificationService.markAllAsReadByUser(input.id);
+            return await notificationService.markAllAsReadByUser(input.userId);
         }),
 
     /**

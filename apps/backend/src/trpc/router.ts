@@ -23,6 +23,8 @@ import { backofficeAuthRouter } from '../routers/backoffice-auth';
 import { gameInstanceRouter } from './routers/game-instance.router';
 import { gameUserRouter } from './routers/game_user.router';
 import { walletRouter } from './routers/wallet.router';
+import { transactionRouter } from './routers/transaction.router';
+import { notificationRouter } from './routers/notification.router';
 
 // Main tRPC router
 export const trpcRouter = router({
@@ -61,6 +63,10 @@ export const trpcRouter = router({
 
   // Wallet system
   wallet: walletRouter,
+  transaction: transactionRouter,
+
+  // Notification system
+  notification: notificationRouter,
 
   // Health check
   health: publicProcedure.query(() => ({

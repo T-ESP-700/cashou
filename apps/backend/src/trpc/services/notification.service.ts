@@ -1,4 +1,4 @@
-import type { Notification, PrismaClient } from "@prisma/client";
+import type { Notification, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {
   NotificationCreateSchema,
@@ -37,7 +37,7 @@ export class NotificationService {
    * 🔹 Récupère toutes les notifications d’un utilisateur donné
    * @param userId - Identifiant de l'utilisateur
    */
-  async findByUser(userId: number): Promise<Notification[]> {
+  async findByUser(userId: string): Promise<Notification[]> {
     return this.prisma.notification.findMany({
       where: { userId: userId },
       orderBy: { createdAt: "desc" },
@@ -54,7 +54,8 @@ export class NotificationService {
         title: data.title,
         message: data.message,
         type: data.type,
-        typeId: data.type_id,
+        ...(data.game_instance_id !== undefined && { gameInstanceId: data.game_instance_id }),
+        ...(data.quiz_id !== undefined && { quizId: data.quiz_id }),
         userId: data.user_id,
         isOpened: data.is_open,
         sentAt: data.sent_at,
@@ -100,7 +101,7 @@ export class NotificationService {
    * @param userId - Identifiant de l'utilisateur
    * @returns Nombre de notifications mises à jour
    */
-  async markAllAsReadByUser(userId: number): Promise<number> {
+  async markAllAsReadByUser(userId: string): Promise<number> {
     const result = await this.prisma.notification.updateMany({
       where: { userId: userId, isOpened: false },
       data: { isOpened: true },
@@ -113,7 +114,7 @@ export class NotificationService {
    * @param userId - Identifiant de l'utilisateur
    * @returns Nombre de notifications supprimées
    */
-  async deleteAllByUser(userId: number): Promise<number> {
+  async deleteAllByUser(userId: string): Promise<number> {
     const result = await this.prisma.notification.deleteMany({
       where: { userId: userId },
     });

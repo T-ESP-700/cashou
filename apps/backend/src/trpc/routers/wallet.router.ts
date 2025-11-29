@@ -11,7 +11,7 @@ const t = initTRPC.create();
 const walletService = new WalletService();
 
 const userIdSchema = z.object({
-  userId: z.number().int().positive("L'ID de l'utilisateur est requis"),
+  userId: z.string().min(1, "L'ID de l'utilisateur est requis"),
 });
 
 const gameInstanceIdSchema = z.object({

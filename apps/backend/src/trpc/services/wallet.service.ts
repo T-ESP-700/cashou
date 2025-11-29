@@ -1,5 +1,5 @@
-import type { Wallet, PrismaClient } from "@prisma/client";
-import { Prisma } from "@prisma/client";
+import type { Wallet, PrismaClient } from "@cashou/db-app";
+import { Prisma } from "@cashou/db-app";
 
 import defaultPrisma from "../../database.ts";
 import type {
@@ -92,10 +92,10 @@ export class WalletService {
   }
 
   /**
-   * Récupère tous les portefeuilles d’un utilisateur
+   * Récupère tous les portefeuilles d'un utilisateur
    * @param userId - Identifiant de l'utilisateur
    */
-  async findByUser(userId: number): Promise<Wallet[]> {
+  async findByUser(userId: string): Promise<Wallet[]> {
     return this.prisma.wallet.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
