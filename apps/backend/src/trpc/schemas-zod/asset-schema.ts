@@ -11,6 +11,7 @@ export const assetDataSchema = z.object({
     description: z.string().nullish(),
     marketId: z.number().int().positive("L'ID du marché doit être un nombre positif").nullish(),
     submarketId: z.number().int().positive("L'ID du sous-marché doit être un nombre positif").nullish(),
+    taux: z.number().nullish(),
 });
 export type AssetDataSchema = z.infer<typeof assetDataSchema>;
 

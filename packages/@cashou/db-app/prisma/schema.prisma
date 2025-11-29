@@ -242,6 +242,7 @@ model Asset {
   description String?
   marketId    Int?     @map("market_id")
   submarketId Int?     @map("submarket_id")
+  taux        Float?
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
