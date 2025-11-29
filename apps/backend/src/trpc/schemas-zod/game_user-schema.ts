@@ -1,11 +1,10 @@
 import { z } from "zod";
 
 export const GameUserCreateSchema = z.object({
-  userId: z.number({
-    message: "L'ID utilisateur doit être un nombre"
+  userId: z.string({
+    message: "L'ID utilisateur doit être une chaîne"
   })
-    .int("L'ID utilisateur doit être un entier")
-    .positive("L'ID utilisateur doit être positif"),
+    .min(1, "L'ID utilisateur est requis"),
 
   gameInstanceId: z.number({
     message: "L'ID de l'instance de jeu doit être un nombre"
@@ -15,13 +14,19 @@ export const GameUserCreateSchema = z.object({
 
   isCreator: z.boolean({
     message: "Le statut de créateur doit être un booléen"
-  }),
+  })
+    .nullable()
+    .optional(),
 
-  joinAt: z.coerce.date(),
+  joinAt: z.coerce.date()
+    .nullable()
+    .optional(),
 
   status: z.enum(["active", "inactive"], {
     message: "Le statut doit être 'active' ou 'inactive'"
   })
+    .nullable()
+    .optional()
 });
 
 export const GameUserUpdateSchema = GameUserCreateSchema.partial();
@@ -33,7 +38,7 @@ export const GameUserDataSchema = GameUserCreateSchema.extend({
 });
 
 export const GameUserSearchByUserSchema = z.object({
-  userId: z.number().int().positive()
+  userId: z.string().min(1, "L'ID utilisateur est requis")
 });
 
 export const GameUserSearchByGameInstanceSchema = z.object({

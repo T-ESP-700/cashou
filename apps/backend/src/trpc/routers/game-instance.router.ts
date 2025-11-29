@@ -13,7 +13,7 @@ const gameInstanceService = new GameInstanceService();
 
 // Additional schemas
 const userIdSchema = z.object({
-  userId: z.number().int().positive("L'ID de l'utilisateur est requis"),
+  userId: z.string().min(1, "L'ID de l'utilisateur est requis"),
 });
 
 const levelIdSchema = z.object({

@@ -20,6 +20,9 @@ import { answerRouter } from './routers/answer.router';
 import { userQuizRouter } from './routers/user-quiz.router';
 import { userAnswerRouter } from './routers/user-answer.router';
 import { backofficeAuthRouter } from '../routers/backoffice-auth';
+import { gameInstanceRouter } from './routers/game-instance.router';
+import { gameUserRouter } from './routers/game_user.router';
+import { walletRouter } from './routers/wallet.router';
 
 // Main tRPC router
 export const trpcRouter = router({
@@ -38,6 +41,8 @@ export const trpcRouter = router({
   goal: goalRouter,
   levelGoal: levelGoalRouter,
   levelEvent: levelEventRouter,
+  gameInstance: gameInstanceRouter,
+  gameUser: gameUserRouter,
 
   // Trading system
   market: marketRouter,
@@ -53,6 +58,9 @@ export const trpcRouter = router({
   question: questionRouter,
   quizQuestion: quizQuestionRouter,
   answer: answerRouter,
+
+  // Wallet system
+  wallet: walletRouter,
 
   // Health check
   health: publicProcedure.query(() => ({

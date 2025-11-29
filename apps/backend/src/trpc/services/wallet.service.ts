@@ -1,7 +1,7 @@
 import type { Wallet, PrismaClient } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 
-import defaultPrisma from "../database.ts";
+import defaultPrisma from "../../database.ts";
 import type {
   WalletCreateSchema,
   WalletUpdateSchema,
@@ -46,7 +46,7 @@ export class WalletService {
    * Crée un portefeuille
    * @param data - Données validées par Zod
    */
-   
+
    async create(data: WalletCreateSchema): Promise<Wallet> {
      // 🧹 Normalize amount for Prisma.Decimal
      const normalizedData = {
@@ -60,10 +60,10 @@ export class WalletService {
                  : data.amount
              ),
      };
-   
+
      // 💾 Create the wallet record
      const wallet = await this.prisma.wallet.create({ data: normalizedData });
-   
+
      // 🔢 Convert Decimal to number for API output
      return {
        ...wallet,

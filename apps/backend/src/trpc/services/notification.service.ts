@@ -1,5 +1,5 @@
 import type { Notification, PrismaClient } from "@prisma/client";
-import defaultPrisma from "../database.ts";
+import defaultPrisma from "../../database.ts";
 import type {
   NotificationCreateSchema,
   NotificationUpdateSchema,

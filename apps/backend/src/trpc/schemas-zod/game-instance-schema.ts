@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const gameInstanceBaseSchema = z.object({
   type: z.string().nullable().optional(),
-  userId: z.number().int().nullable().optional(),
+  userId: z.string().nullable().optional(),
   levelId: z.number().int().nullable().optional(),
   startBalance: z.number().int().nullable().optional(),
   isPaused: z.boolean().nullable().optional(),

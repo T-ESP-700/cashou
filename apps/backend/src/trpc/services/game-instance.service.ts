@@ -1,5 +1,5 @@
-import type { GameInstance, PrismaClient } from "@prisma/client";
-import defaultPrisma from "../database.ts";
+import type { GameInstance, PrismaClient } from "@cashou/db-app";
+import defaultPrisma from "../../database.ts";
 import type {
   GameInstanceCreateSchema,
   GameInstanceUpdateSchema,
@@ -47,13 +47,32 @@ export class GameInstanceService {
    * Crée une nouvelle instance de jeu
    */
   async create(data: GameInstanceCreateSchema): Promise<GameInstance> {
+    // Validate foreign keys if provided
+    if (data.userId) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: data.userId },
+      });
+      if (!user) {
+        throw new Error(`L'utilisateur avec l'ID "${data.userId}" n'existe pas`);
+      }
+    }
+
+    if (data.levelId) {
+      const level = await this.prisma.level.findUnique({
+        where: { id: data.levelId },
+      });
+      if (!level) {
+        throw new Error(`Le niveau avec l'ID "${data.levelId}" n'existe pas`);
+      }
+    }
+
     const sanitizedData = {
       ...data,
-      userId: data.userId ?? 0,
-      levelId: data.levelId ?? 0,
-      startBalance: data.startBalance ?? 0,
+      userId: data.userId ?? null,
+      levelId: data.levelId ?? null,
+      startBalance: data.startBalance ?? null,
     };
-    
+
     return this.prisma.gameInstance.create({ data: sanitizedData });
   }
 
@@ -63,22 +82,22 @@ export class GameInstanceService {
    // Service - CORRIGÉ
    async update(data: GameInstanceUpdateWithIdSchema): Promise<GameInstance> {
      const { id, ...updateData } = data;
-     
+
      // Vérification que l'ID existe
      if (!id) {
        throw new Error("L'ID est requis pour la mise à jour");
      }
-     
+
      const sanitizedData: Partial<GameInstanceUpdateSchema> = {};
-     
-     if (updateData.type !== undefined) sanitizedData.type = updateData.type;
-     if (updateData.userId !== undefined) sanitizedData.userId = updateData.userId ?? 0;
-     if (updateData.levelId !== undefined) sanitizedData.levelId = updateData.levelId ?? 0;
+
+    if (updateData.type !== undefined) sanitizedData.type = updateData.type;
+    if (updateData.userId !== undefined) sanitizedData.userId = updateData.userId ?? null;
+    if (updateData.levelId !== undefined) sanitizedData.levelId = updateData.levelId ?? null;
      if (updateData.startBalance !== undefined) sanitizedData.startBalance = updateData.startBalance ?? 0;
      if (updateData.isPaused !== undefined) sanitizedData.isPaused = updateData.isPaused;
      if (updateData.actionRequired !== undefined) sanitizedData.actionRequired = updateData.actionRequired;
      if (updateData.pausedAt !== undefined) sanitizedData.pausedAt = updateData.pausedAt;
-   
+
      return this.prisma.gameInstance.update({
        where: { id },
        data: sanitizedData,
@@ -95,9 +114,9 @@ export class GameInstanceService {
   }
 
   /**
-   * Récupère toutes les instances d’un utilisateur
+   * Récupère toutes les instances d'un utilisateur
    */
-  async findByUser(userId: number): Promise<GameInstance[]> {
+  async findByUser(userId: string): Promise<GameInstance[]> {
     return this.prisma.gameInstance.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },

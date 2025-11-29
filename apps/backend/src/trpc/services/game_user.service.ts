@@ -1,5 +1,5 @@
-import { PrismaClient } from '@prisma/client';
-import defaultPrisma from "../database.ts";
+import type { PrismaClient } from '@cashou/db-app';
+import defaultPrisma from "../../database.ts";
 import {
   GameUserCreateSchema,
   GameUserUpdateSchema,
@@ -20,6 +20,26 @@ export class GameUserService {
 
   async create(data: GameUserCreateSchema) {
     const parsed = GameUserCreateSchema.parse(data);
+
+    // Validate foreign keys if provided
+    if (parsed.userId) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: parsed.userId },
+      });
+      if (!user) {
+        throw new Error(`L'utilisateur avec l'ID "${parsed.userId}" n'existe pas`);
+      }
+    }
+
+    if (parsed.gameInstanceId) {
+      const gameInstance = await this.prisma.gameInstance.findUnique({
+        where: { id: parsed.gameInstanceId },
+      });
+      if (!gameInstance) {
+        throw new Error(`L'instance de jeu avec l'ID "${parsed.gameInstanceId}" n'existe pas`);
+      }
+    }
+
     return this.prisma.gameUser.create({ data: parsed });
   }
 
@@ -34,7 +54,7 @@ export class GameUserService {
 
   async findById(id: number) {
     const result = await this.prisma.gameUser.findUnique({ where: { id } });
-    return { 
+    return {
       message: `Recherche par id de game user`,
       result
     };
@@ -43,7 +63,7 @@ export class GameUserService {
   async findByUser(data: GameUserSearchByUserSchema) {
     const parsed = GameUserSearchByUserSchema.parse(data);
     const result = await this.prisma.gameUser.findMany({ where: { userId: parsed.userId } });
-    return { 
+    return {
       message: `Recherche par id utilisateur`,
       result
     };
@@ -52,7 +72,7 @@ export class GameUserService {
   async findByGameInstance(data: GameUserSearchByGameInstanceSchema) {
     const parsed = GameUserSearchByGameInstanceSchema.parse(data);
     const result = await this.prisma.gameUser.findMany({ where: { gameInstanceId: parsed.gameInstanceId } });
-    return { 
+    return {
       message: `Recherche par instance de jeu`,
       result
     };
@@ -61,7 +81,7 @@ export class GameUserService {
   async findByStatus(data: GameUserSearchByStatusSchema) {
     const parsed = GameUserSearchByStatusSchema.parse(data);
     const result = await this.prisma.gameUser.findMany({ where: { status: parsed.status } });
-    return { 
+    return {
       message: `Recherche par status`,
       result
     };
@@ -70,7 +90,7 @@ export class GameUserService {
   async findByCreator(data: GameUserSearchByCreatorSchema) {
     const parsed = GameUserSearchByCreatorSchema.parse(data);
     const result = await this.prisma.gameUser.findMany({ where: { isCreator: parsed.isCreator } });
-    return { 
+    return {
       message: `Recherche par créateur`,
       result
     };
@@ -79,7 +99,7 @@ export class GameUserService {
   async updateStatus(id: number, data: GameUserStatusUpdateSchema) {
     const parsed = GameUserStatusUpdateSchema.parse(data);
     await this.prisma.gameUser.update({ where: { id }, data: { status: parsed.status } });
-    return { 
+    return {
       message: `L'état de l'utilisateur avec l'id ${id} a été mis à jour avec succès.` };
   }
 
