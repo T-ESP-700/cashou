@@ -24,7 +24,9 @@ export class ImpactService {
                 // Inclut le champ parent
                 field: true,
                 // Inclut le sous-marché parent
-                submarket: true
+                submarket: true,
+                // Inclut l'actif parent
+                asset: true
             },
             orderBy: { createdAt: 'desc' }, // Tri par date de création décroissante
         });
@@ -42,7 +44,8 @@ export class ImpactService {
                 // Même structure que findAll pour la cohérence des données
                 event: true,
                 field: true,
-                submarket: true
+                submarket: true,
+                asset: true
             }
         });
     }
@@ -58,7 +61,8 @@ export class ImpactService {
             include: {
                 // event: true,  // Supprimé car redondant - on connaît déjà l'eventId
                 field: true,
-                submarket: true
+                submarket: true,
+                asset: true
             },
             orderBy: { createdAt: 'desc' }
         });
@@ -75,7 +79,8 @@ export class ImpactService {
             include: {
                 event: true,
                 // field: true,  // Supprimé car redondant - on connaît déjà le fieldId
-                submarket: true
+                submarket: true,
+                asset: true
             },
             orderBy: { createdAt: 'desc' }
         });
@@ -93,6 +98,7 @@ export class ImpactService {
                 event: true,
                 field: true,
                 // submarket: true,  // Supprimé car redondant - on connaît déjà le submarketId
+                asset: true
             },
             orderBy: { createdAt: 'desc' }
         });
@@ -113,9 +119,28 @@ export class ImpactService {
             include: {
                 event: true,
                 field: true,
-                submarket: true
+                submarket: true,
+                asset: true
             },
             orderBy: { coef: 'desc' }
+        });
+    }
+
+    /**
+     * Récupère tous les impacts d'un actif spécifique
+     * @param assetId - Identifiant de l'actif parent
+     * @returns Promise<Impact[]> - Liste des impacts de l'actif
+     */
+    async findByAssetId(assetId: number): Promise<Impact[]> {
+        return this.prisma.impact.findMany({
+            where: { assetId },
+            include: {
+                event: true,
+                field: true,
+                submarket: true,
+                // asset: true,  // Supprimé car redondant - on connaît déjà l'assetId
+            },
+            orderBy: { createdAt: 'desc' }
         });
     }
 
