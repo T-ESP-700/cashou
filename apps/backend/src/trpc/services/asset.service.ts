@@ -1,6 +1,6 @@
 // Service métier pour la gestion des actifs du jeu
 // Couche d'abstraction entre les routers et la base de données
-import type { Asset, PrismaClient } from "@prisma/client";
+import type { Asset, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {AssetCreateSchema, AssetDataSchema} from "../schemas-zod/asset-schema.ts";
 

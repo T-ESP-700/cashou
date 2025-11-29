@@ -1,0 +1,21 @@
+meta {
+  name: Mark As Read - Notification
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/api/trpc/notification.markedAsRead
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 3
+  }
+}
+
+settings {
+  encodeUrl: true
+}

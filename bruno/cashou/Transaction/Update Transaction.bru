@@ -1,0 +1,29 @@
+meta {
+  name: Update Transaction
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/api/trpc/transaction.update
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 11,
+    "data": {
+      "walletId": 15,
+      "unitPrice": "1.25",
+      "totalValue": "1875.00",
+      "transactionDate": "2024-11-14T10:30:00.000Z",
+      "source": "Manual Entry"
+    }
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
