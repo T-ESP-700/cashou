@@ -5,11 +5,9 @@ import { ThemedText } from '@/components/themed-text';
 import { tokenStorage } from '@/lib/token-storage';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
-import Constants from 'expo-constants';
+import { AUTH_URL } from '@/lib/api-config';
 
-const AUTH_BASE_URL = Constants.expoConfig?.extra?.authUrl ||
-  process.env.EXPO_PUBLIC_AUTH_URL ||
-  'http://localhost:3000/api/auth';
+const AUTH_BASE_URL = AUTH_URL;
 
 interface LoginFormProps {
   onSuccess?: () => void;

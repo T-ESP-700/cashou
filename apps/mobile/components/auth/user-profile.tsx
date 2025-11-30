@@ -6,11 +6,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 
-interface UserProfileProps {
-  onLogoutSuccess?: () => void;
-}
-
-export function UserProfile({ onLogoutSuccess }: UserProfileProps) {
+export function UserProfile() {
   const { user, isLoading, logout } = useAuth();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -26,10 +22,7 @@ export function UserProfile({ onLogoutSuccess }: UserProfileProps) {
           style: 'destructive',
           onPress: async () => {
             await logout();
-            // Refresh the parent component to show login form
-            if (onLogoutSuccess) {
-              onLogoutSuccess();
-            }
+            // The root navigator will automatically redirect to auth screen
           },
         },
       ]
@@ -52,7 +45,10 @@ export function UserProfile({ onLogoutSuccess }: UserProfileProps) {
     <ThemedView style={styles.container}>
       <ThemedView style={styles.header}>
         <ThemedText type="title" style={styles.welcomeText}>
-          Welcome back!
+          {user.name || user.username || 'Welcome back!'}
+        </ThemedText>
+        <ThemedText style={styles.subtitle}>
+          Your Profile
         </ThemedText>
       </ThemedView>
 
@@ -65,14 +61,27 @@ export function UserProfile({ onLogoutSuccess }: UserProfileProps) {
           }
         ]}
       >
-        <View style={styles.infoRow}>
-          <ThemedText type="subtitle" style={styles.label}>
-            Name
-          </ThemedText>
-          <ThemedText style={styles.value}>
-            {user.name || 'Not set'}
-          </ThemedText>
-        </View>
+        {user.name && (
+          <View style={styles.infoRow}>
+            <ThemedText type="subtitle" style={styles.label}>
+              Name
+            </ThemedText>
+            <ThemedText style={styles.value}>
+              {user.name}
+            </ThemedText>
+          </View>
+        )}
+
+        {user.username && (
+          <View style={styles.infoRow}>
+            <ThemedText type="subtitle" style={styles.label}>
+              Username
+            </ThemedText>
+            <ThemedText style={styles.value}>
+              {user.username}
+            </ThemedText>
+          </View>
+        )}
 
         <View style={styles.infoRow}>
           <ThemedText type="subtitle" style={styles.label}>
@@ -92,6 +101,28 @@ export function UserProfile({ onLogoutSuccess }: UserProfileProps) {
           </ThemedText>
         </View>
 
+        {(user.currentStreak !== undefined && user.currentStreak > 0) && (
+          <View style={styles.infoRow}>
+            <ThemedText type="subtitle" style={styles.label}>
+              Current Streak
+            </ThemedText>
+            <ThemedText style={[styles.value, { color: '#E87F00', fontWeight: '700' }]}>
+              🔥 {user.currentStreak} days
+            </ThemedText>
+          </View>
+        )}
+
+        {(user.maxStreak !== undefined && user.maxStreak > 0) && (
+          <View style={styles.infoRow}>
+            <ThemedText type="subtitle" style={styles.label}>
+              Best Streak
+            </ThemedText>
+            <ThemedText style={[styles.value, { fontWeight: '600' }]}>
+              ⭐ {user.maxStreak} days
+            </ThemedText>
+          </View>
+        )}
+
         {user.levelId && (
           <View style={styles.infoRow}>
             <ThemedText type="subtitle" style={styles.label}>
@@ -107,10 +138,15 @@ export function UserProfile({ onLogoutSuccess }: UserProfileProps) {
       <TouchableOpacity
         style={[styles.logoutButton, { backgroundColor: '#ff4444' }]}
         onPress={handleLogout}
+        disabled={isLoading}
       >
-        <ThemedText style={styles.logoutButtonText}>
-          Logout
-        </ThemedText>
+        {isLoading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <ThemedText style={styles.logoutButtonText}>
+            Logout
+          </ThemedText>
+        )}
       </TouchableOpacity>
     </ThemedView>
   );
@@ -125,8 +161,14 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     paddingVertical: 20,
+    gap: 8,
   },
   welcomeText: {
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 16,
+    opacity: 0.6,
     textAlign: 'center',
   },
   card: {
@@ -147,6 +189,8 @@ const styles = StyleSheet.create({
   },
   value: {
     fontSize: 16,
+    textAlign: 'right',
+    maxWidth: '60%',
   },
   logoutButton: {
     height: 50,

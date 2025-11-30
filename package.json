@@ -16,7 +16,7 @@
     "dev:backoffice": "cd apps/backoffice && bun run dev",
     "dev:mobile": "cd apps/mobile && npx expo start",
     "dev:mobile:android": "cd apps/mobile && npx expo start --android",
-    "dev:mobile:ios": "cd apps/mobile && npx expo start --ios",
+    "dev:mobile:ios": "xcrun simctl boot \"iPhone 17 Pro\" 2>/dev/null || true && cd apps/mobile && npx expo start --ios",
     "dev:mobile:web": "cd apps/mobile && npx expo start --web",
     "dev:stop": "docker stop cashou-db_cashou-1 cashou-db_backoffice-1",
     "prod:setup": "bun install && bun run docker:build && bun run docker:up && bun run db:generate && bun run migrate:deploy",

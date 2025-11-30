@@ -193,4 +193,110 @@ export const authRouter = router({
         });
       }
     }),
+
+  // Get home screen data (user + game info)
+  getHomeData: protectedProcedure.query(async ({ ctx }) => {
+    // Récupérer l'utilisateur avec son niveau et sa partie en cours
+    const user = await prisma.user.findUnique({
+      where: { id: ctx.session.user.id },
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        email: true,
+        points: true,
+        currentStreak: true,
+        maxStreak: true,
+        levelId: true,
+        level: {
+          select: {
+            id: true,
+            number: true,
+            title: true,
+            description: true,
+            startBalance: true,
+          },
+        },
+        gameInstances: {
+          where: {
+            // Récupérer les parties actives (non terminées)
+            OR: [
+              { isPaused: true },
+              { isPaused: false },
+              { isPaused: null },
+            ],
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: {
+            id: true,
+            isPaused: true,
+            actionRequired: true,
+            startBalance: true,
+            createdAt: true,
+            levelId: true,
+            level: {
+              select: {
+                number: true,
+                title: true,
+              },
+            },
+            wallets: {
+              select: {
+                amount: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'User not found',
+      });
+    }
+
+    // Calculer la progression du niveau actuel si une partie est en cours
+    const activeGame = user.gameInstances[0] || null;
+    let levelProgression = 0;
+    let currentReturn = 0;
+
+    if (activeGame && activeGame.wallets.length > 0) {
+      const currentBalance = Number(activeGame.wallets[0]?.amount || 0);
+      const startBalance = Number(activeGame.startBalance || 10000);
+
+      // Calcul du rendement (pourcentage de gain/perte par rapport au capital initial)
+      currentReturn = startBalance > 0
+        ? Math.round(((currentBalance - startBalance) / startBalance) * 100)
+        : 0;
+
+      // Progression basée sur le temps écoulé ou autres critères
+      // Pour l'instant, on utilise une logique simple basée sur le rendement
+      levelProgression = Math.min(100, Math.max(0, 50 + currentReturn));
+    }
+
+    return {
+      user: {
+        id: user.id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        points: user.points,
+        currentStreak: user.currentStreak,
+        maxStreak: user.maxStreak,
+      },
+      level: user.level,
+      activeGame: activeGame ? {
+        id: activeGame.id,
+        isPaused: activeGame.isPaused,
+        actionRequired: activeGame.actionRequired,
+        levelNumber: activeGame.level?.number || user.level?.number || 1,
+        levelTitle: activeGame.level?.title || user.level?.title,
+        progression: levelProgression,
+        currentReturn,
+      } : null,
+    };
+  }),
 });
