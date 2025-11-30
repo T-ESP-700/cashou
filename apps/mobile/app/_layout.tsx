@@ -1,5 +1,5 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, Redirect, useSegments, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import '../global.css';
@@ -24,42 +24,40 @@ import { CashouTheme } from '@/constants/cashou-theme';
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
-
 function RootNavigator() {
   const { isAuthenticated, isLoading } = useAuth();
   const segments = useSegments();
-  const router = useRouter();
+  const navigationState = useRootNavigationState();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
 
-  useEffect(() => {
-    if (isLoading) {
-      // Still checking authentication, don't navigate yet
-      return;
-    }
-
-    const inAuthGroup = segments[0] === 'auth';
-
-    if (!isAuthenticated && !inAuthGroup) {
-      // User is not authenticated and not on auth screen, redirect to auth
-      router.replace('/auth');
-    } else if (isAuthenticated && inAuthGroup) {
-      // User is authenticated but on auth screen, redirect to main app
-      router.replace('/(tabs)');
-    }
-  }, [isAuthenticated, isLoading, segments]);
-
-  // Show loading screen while checking authentication
-  if (isLoading) {
+  // Show loading screen while checking authentication or navigation not ready
+  if (isLoading || !navigationState?.key) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
         <ActivityIndicator size="large" color={theme.accent} />
       </View>
     );
+  }
+
+  const inAuthGroup = segments[0] === 'auth';
+  const inTabs = segments[0] === '(tabs)';
+  const isInitialRoute = segments.length === 0;
+
+  console.log('[RootNavigator] segments:', segments, 'isAuthenticated:', isAuthenticated);
+
+  // Handle redirects BEFORE rendering Stack
+  // Case 1: Not authenticated and trying to access tabs (or initial load)
+  if (!isAuthenticated && (inTabs || isInitialRoute)) {
+    console.log('[RootNavigator] Not authenticated, redirecting to /auth');
+    return <Redirect href="/auth" />;
+  }
+
+  // Case 2: Authenticated but on auth screen
+  if (isAuthenticated && inAuthGroup) {
+    console.log('[RootNavigator] Authenticated, redirecting to /(tabs)');
+    return <Redirect href="/(tabs)" />;
   }
 
   return (

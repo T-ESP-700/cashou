@@ -29,8 +29,8 @@ export default function ProfileScreen() {
     );
   }
 
-  // If not authenticated, the root navigator will redirect to auth screen
-  // But we show a fallback just in case
+  // If not authenticated, show empty screen while RootNavigator handles redirect
+  // This prevents double redirects and loops
   if (!isAuthenticated) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -38,9 +38,6 @@ export default function ProfileScreen() {
           showBackButton={false}
           onMenuPress={() => console.log('Menu pressed')}
         />
-        <ThemedView style={styles.loadingContainer}>
-          <ThemedText style={styles.loadingText}>Redirecting...</ThemedText>
-        </ThemedView>
       </View>
     );
   }

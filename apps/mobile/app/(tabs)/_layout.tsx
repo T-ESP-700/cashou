@@ -138,7 +138,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="auth"
+        name="profile"
         options={{
           title: 'Account',
           tabBarIcon: ({ size, focused }) => (

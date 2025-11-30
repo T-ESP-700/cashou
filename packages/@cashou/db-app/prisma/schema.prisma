@@ -239,6 +239,7 @@ model Asset {
   title       String?
   symbol      String?  @unique
   fieldId     Int?     @map("field_id")
+  rate        Float?
   description String?
   marketId    Int?     @map("market_id")
   submarketId Int?     @map("submarket_id")

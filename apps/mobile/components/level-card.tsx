@@ -1,11 +1,12 @@
-import { View, Text, useColorScheme as useRNColorScheme, StyleSheet } from 'react-native';
+import { View, Text, useColorScheme as useRNColorScheme, StyleSheet, TouchableOpacity } from 'react-native';
 import { CashouTheme } from '@/constants/cashou-theme';
 
 interface LevelCardProps {
   level: number;
   progression: number; // 0-100
   currentReturn: number; // percentage
-  status?: 'in_progress' | 'completed';
+  status?: 'not_started' | 'in_progress' | 'completed';
+  onStartLevel?: () => void;
 }
 
 export function LevelCard({
@@ -13,10 +14,68 @@ export function LevelCard({
   progression,
   currentReturn,
   status = 'in_progress',
+  onStartLevel,
 }: LevelCardProps) {
   const colorScheme = useRNColorScheme();
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+
+  // Texte et couleur du badge selon le statut
+  const getBadgeConfig = () => {
+    switch (status) {
+      case 'not_started':
+        return { text: 'Prêt', color: '#4CAF50' }; // Vert
+      case 'in_progress':
+        return { text: 'En cours', color: theme.accent };
+      case 'completed':
+        return { text: 'Terminé', color: '#9E9E9E' }; // Gris
+      default:
+        return { text: 'En cours', color: theme.accent };
+    }
+  };
+
+  const badgeConfig = getBadgeConfig();
+
+  // Affichage spécial pour un niveau non commencé
+  if (status === 'not_started') {
+    return (
+      <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        {/* Header with Level and Status Badge */}
+        <View style={styles.header}>
+          <Text style={[styles.level, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
+            Niveau {level}
+          </Text>
+          <View style={[styles.badge, { backgroundColor: badgeConfig.color }]}>
+            <View style={styles.badgeDot} />
+            <Text style={[styles.badgeText, { fontFamily: CashouTheme.fonts.body }]}>
+              {badgeConfig.text}
+            </Text>
+          </View>
+        </View>
+
+        {/* Welcome Message */}
+        <View style={styles.welcomeSection}>
+          <Text style={[styles.welcomeTitle, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
+            🎯 Bienvenue dans Cashou !
+          </Text>
+          <Text style={[styles.welcomeText, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
+            Prêt à apprendre à investir ? Lancez le niveau 1 pour commencer votre aventure financière.
+          </Text>
+        </View>
+
+        {/* Start Button */}
+        <TouchableOpacity
+          style={[styles.startButton, { backgroundColor: theme.accent }]}
+          onPress={onStartLevel}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.startButtonText, { fontFamily: CashouTheme.fonts.subheading }]}>
+            🚀 Commencer le niveau {level}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -25,10 +84,10 @@ export function LevelCard({
         <Text style={[styles.level, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
           Niveau {level}
         </Text>
-        <View style={[styles.badge, { backgroundColor: theme.accent }]}>
+        <View style={[styles.badge, { backgroundColor: badgeConfig.color }]}>
           <View style={styles.badgeDot} />
           <Text style={[styles.badgeText, { fontFamily: CashouTheme.fonts.body }]}>
-            {status === 'in_progress' ? 'En cours' : 'Terminé'}
+            {badgeConfig.text}
           </Text>
         </View>
       </View>
@@ -149,5 +208,29 @@ const styles = StyleSheet.create({
   progressBarFill: {
     height: '100%',
     borderRadius: 6,
+  },
+  // Styles pour le niveau non commencé
+  welcomeSection: {
+    marginBottom: 16,
+  },
+  welcomeTitle: {
+    fontSize: 18,
+    marginBottom: 8,
+  },
+  welcomeText: {
+    fontSize: 14,
+    opacity: 0.8,
+    lineHeight: 20,
+  },
+  startButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  startButtonText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });

@@ -255,15 +255,23 @@ export default function HomeScreen() {
         hasGame: true,
       };
     }
-    // Pas de partie en cours, afficher le niveau actuel de l'utilisateur
+    // Pas de partie en cours, afficher le niveau comme "prêt à commencer"
     return {
       level: homeData?.level?.number || 1,
       progression: 0,
       currentReturn: 0,
-      status: 'in_progress' as const,
+      status: 'not_started' as const,
       hasGame: false,
     };
   }, [homeData]);
+
+  // Handler pour démarrer un niveau
+  const handleStartLevel = () => {
+    // TODO: Implémenter la logique pour démarrer un niveau
+    // Cela pourrait naviguer vers un écran de démarrage de niveau
+    // ou appeler une API pour créer une nouvelle GameInstance
+    console.log('Starting level:', levelCardData.level);
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -306,6 +314,7 @@ export default function HomeScreen() {
                 progression={levelCardData.progression}
                 currentReturn={levelCardData.currentReturn}
                 status={levelCardData.status}
+                onStartLevel={handleStartLevel}
               />
             ) : null}
 
