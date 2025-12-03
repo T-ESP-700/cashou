@@ -188,6 +188,12 @@ export default function TabLayout() {
           href: null, // Masquer de la tab bar
         }}
       />
+      <Tabs.Screen
+        name="asset-detail"
+        options={{
+          href: null, // Masquer de la tab bar
+        }}
+      />
     </Tabs>
   );
 }
