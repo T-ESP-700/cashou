@@ -137,6 +137,18 @@ export default function TabLayout() {
           href: null, // Hide for now as route doesn't exist yet
         }}
       />
+        <Tabs.Screen
+            name="assets"
+            options={{
+                title: 'Assets',
+                tabBarIcon: ({ size, focused }) => (
+                    <View style={focused ? { backgroundColor: '#E87F00', borderRadius: 12, padding: 8 } : { padding: 8 }}>
+                        <Ionicons name={(focused ? "book" : "book-outline") as any} size={size || 28} color="#1C1E33" />
+                    </View>
+                ),
+                // Show this tab (route exists at /(tabs)/assets)
+            }}
+        />
       <Tabs.Screen
         name="profile"
         options={{
