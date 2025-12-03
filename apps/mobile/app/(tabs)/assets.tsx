@@ -8,6 +8,7 @@ import {
   useColorScheme as useRNColorScheme,
   TouchableOpacity,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouHeader } from '@/components/cashou-header';
 import { CashouTheme } from '@/constants/cashou-theme';
@@ -26,6 +27,7 @@ export default function AssetsScreen() {
   const colorScheme = useRNColorScheme();
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const router = useRouter();
   const [query, setQuery] = useState('');
   const [assets, setAssets] = useState<AssetItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -125,7 +127,7 @@ export default function AssetsScreen() {
 
           <View style={styles.grid}>
             {filtered.map((asset) => (
-              <AssetCard key={asset.id} asset={asset} isDark={isDark} />
+              <AssetCard key={asset.id} asset={asset} isDark={isDark} router={router} />
             ))}
             {!loading && !error && filtered.length === 0 && (
               <Text style={{ color: theme.text, fontFamily: CashouTheme.fonts.body }}>
@@ -139,11 +141,16 @@ export default function AssetsScreen() {
   );
 }
 
-function AssetCard({ asset, isDark }: { asset: AssetItem; isDark: boolean }) {
+function AssetCard({ asset, isDark, router }: { asset: AssetItem; isDark: boolean; router: any }) {
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const positive = asset.changePct >= 0;
+  
+  const handlePress = () => {
+    router.push(`/(tabs)/asset-detail?id=${asset.id}`);
+  };
+  
   return (
-    <TouchableOpacity activeOpacity={0.8} style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+    <TouchableOpacity activeOpacity={0.8} style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={handlePress}>
       <Text style={[styles.cardTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>{asset.name}</Text>
       <View style={styles.tagsRow}>
         {asset.tags.map((t) => (
