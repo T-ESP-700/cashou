@@ -6,6 +6,7 @@ import type {
   Event,
   EventAsset,
   Field,
+  GameInstance,
   HeatmapMetric,
   Impact,
   Level,
@@ -132,6 +133,8 @@ export async function fetchBackofficeDataset(): Promise<BackofficeData> {
     assetHistory,
     eventAsset,
     impacts,
+    users,
+    gameInstances,
   ] = await Promise.all([
     callApi(() => client.level.getAll.query()) as Promise<any>,
     callApi(() => client.goal.getAll.query()) as Promise<any>,
@@ -149,7 +152,19 @@ export async function fetchBackofficeDataset(): Promise<BackofficeData> {
     callApi(() => client.assetHistory.getAll.query()) as Promise<any>,
     callApi(() => client.eventAsset.getAll.query()) as Promise<any>,
     callApi(() => client.impact.getAll.query()) as Promise<any>,
+    callApi(() => client.user.getAll.query()).catch(() => []) as Promise<any>,
+    callApi(() => client.gameInstance.getAll.query()).catch(() => []) as Promise<any>,
   ])
+
+  // Map users to PlayerSnapshot format
+  const players = (users as any[]).map((user: any) => ({
+    id: user.id,
+    username: user.username || user.email,
+    levelId: user.level ?? user.levelId,
+    points: user.points,
+    role: user.role ?? 'USER',
+    lastActivity: user.updatedAt || user.createdAt,
+  }))
 
   return {
     levels: levels as Level[],
@@ -168,8 +183,8 @@ export async function fetchBackofficeDataset(): Promise<BackofficeData> {
     assetHistory: assetHistory as AssetHistory[],
     eventAsset: eventAsset as EventAsset[],
     impacts: impacts as Impact[],
-    players: [],
-    gameInstances: [],
+    players,
+    gameInstances: gameInstances as GameInstance[],
   }
 }
 

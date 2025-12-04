@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { router, protectedProcedure, adminProcedure } from '..';
+import { router, protectedProcedure, adminProcedure, publicProcedure } from '..';
 import { prisma } from '@cashou/db-app';
 import { TRPCError } from '@trpc/server';
 import { hash } from '@cashou/auth/server';
@@ -7,7 +7,7 @@ import { UserService } from '../services/user.service';
 
 export const userRouter = router({
   // Get all users without pagination
-  getAll: adminProcedure
+  getAll: publicProcedure
     .query(async () => {
       const userService = new UserService();
       const users = await userService.findAll();
@@ -26,11 +26,11 @@ export const userRouter = router({
     .query(async ({ input }) => {
       const where = input.search
         ? {
-            OR: [
-              { email: { contains: input.search, mode: 'insensitive' as const } },
-              { username: { contains: input.search, mode: 'insensitive' as const } },
-            ],
-          }
+          OR: [
+            { email: { contains: input.search, mode: 'insensitive' as const } },
+            { username: { contains: input.search, mode: 'insensitive' as const } },
+          ],
+        }
         : {};
 
       const [users, total] = await Promise.all([
