@@ -56,6 +56,8 @@ services:
       - /app/packages/@cashou/db-backoffice/node_modules
       - /app/packages/@cashou/utils/node_modules
       - /app/apps/backend/node_modules
+      # Protect Prisma generated files
+      - /app/packages/@cashou/db-backoffice/src/generated
 
   backoffice:
     build:
@@ -81,6 +83,8 @@ services:
       - /app/packages/@cashou/db-backoffice/node_modules
       - /app/packages/@cashou/utils/node_modules
       - /app/apps/backoffice/node_modules
+      # Protect Prisma generated files
+      - /app/packages/@cashou/db-backoffice/src/generated
 
 volumes:
   cashou-db-data:
