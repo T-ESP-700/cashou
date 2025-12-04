@@ -3,7 +3,7 @@ import { Users, Gamepad2, Search, RefreshCw, ChevronDown, Play, Pause, Circle } 
 import { useBackofficeStore } from '@/store/useBackofficeStore'
 
 type StatusFilter = 'all' | 'USER' | 'ADMIN'
-type GameStatusFilter = 'all' | 'IN_PROGRESS' | 'PAUSED' | 'COMPLETED' | 'ABANDONED'
+type GameStatusFilter = 'all' | 'IN_PROGRESS' | 'PAUSED'
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   USER: { bg: 'bg-blue-50', text: 'text-blue-700' },
@@ -59,11 +59,16 @@ export function PlayersMonitor() {
         const level = levels.find((l) => l.id === game.levelId)
         const market = markets.find((m) => m.id === game.marketId)
         const player = players.find((p) => p.id === game.userId)
+        const isPaused = Boolean(game.isPaused)
+        const displayStatusKey: GameStatusFilter = isPaused ? 'PAUSED' : 'IN_PROGRESS'
+        const displayStatusLabel = isPaused ? 'En pause' : 'En cours'
         return {
           ...game,
           levelTitle: level?.title ?? `Niveau ${game.levelId}`,
           marketTitle: market?.title ?? `Marché ${game.marketId}`,
           playerUsername: player?.username ?? game.userId ?? '—',
+          displayStatusKey,
+          displayStatusLabel,
         }
       })
       .filter((game) => {
@@ -72,7 +77,7 @@ export function PlayersMonitor() {
           game.levelTitle?.toLowerCase().includes(gameSearch.toLowerCase()) ||
           game.marketTitle?.toLowerCase().includes(gameSearch.toLowerCase()) ||
           game.playerUsername?.toLowerCase().includes(gameSearch.toLowerCase())
-        const matchesStatus = gameStatusFilter === 'all' || game.status === gameStatusFilter
+        const matchesStatus = gameStatusFilter === 'all' || game.displayStatusKey === gameStatusFilter
         return matchesSearch && matchesStatus
       })
   }, [gameInstances, levels, markets, players, gameSearch, gameStatusFilter])
@@ -84,12 +89,24 @@ export function PlayersMonitor() {
     users: players.filter((p) => p.status === 'USER').length,
   }), [players])
 
-  const gameStats = useMemo(() => ({
-    total: gameInstances.length,
-    inProgress: gameInstances.filter((g) => g.status === 'IN_PROGRESS').length,
-    paused: gameInstances.filter((g) => g.status === 'PAUSED').length,
-    completed: gameInstances.filter((g) => g.status === 'COMPLETED').length,
-  }), [gameInstances])
+  const gameStats = useMemo(() => {
+    return gameInstances.reduce(
+      (acc, game) => {
+        acc.total += 1
+        if (game.status === 'COMPLETED') {
+          acc.completed += 1
+          return acc
+        }
+        if (game.isPaused) {
+          acc.paused += 1
+        } else {
+          acc.inProgress += 1
+        }
+        return acc
+      },
+      { total: 0, inProgress: 0, paused: 0, completed: 0 },
+    )
+  }, [gameInstances])
 
   return (
     <div className="space-y-6">
@@ -133,16 +150,6 @@ export function PlayersMonitor() {
             />
           </div>
           <div className="relative">
-            <select
-              value={playerStatusFilter}
-              onChange={(e) => setPlayerStatusFilter(e.target.value as StatusFilter)}
-              className="appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2 pl-4 pr-10 text-sm focus:border-blue-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
-            >
-              <option value="all">Tous les rôles</option>
-              <option value="ADMIN">Admin</option>
-              <option value="USER">User</option>
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           </div>
           <button
             onClick={refresh}
@@ -162,7 +169,6 @@ export function PlayersMonitor() {
                 <th className="px-4 py-3 font-medium">Utilisateur</th>
                 <th className="px-4 py-3 font-medium">Niveau</th>
                 <th className="px-4 py-3 font-medium">Points</th>
-                <th className="px-4 py-3 font-medium">Rôle</th>
                 <th className="px-4 py-3 font-medium">Dernière activité</th>
               </tr>
             </thead>
@@ -187,11 +193,6 @@ export function PlayersMonitor() {
                     <td className="px-4 py-3">
                       <span className="font-semibold text-slate-900">{player.points?.toLocaleString() ?? '—'}</span>
                       <span className="ml-1 text-xs text-slate-400">pts</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}>
-                        {player.status ?? '—'}
-                      </span>
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-500">
                       {player.lastActivity ? new Date(player.lastActivity).toLocaleString('fr-FR', {
@@ -272,11 +273,17 @@ export function PlayersMonitor() {
               <option value="all">Tous les statuts</option>
               <option value="IN_PROGRESS">En cours</option>
               <option value="PAUSED">En pause</option>
-              <option value="COMPLETED">Terminée</option>
-              <option value="ABANDONED">Abandonnée</option>
             </select>
             <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           </div>
+          <button
+            onClick={refresh}
+            disabled={isLoading}
+            className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:opacity-50"
+          >
+            <RefreshCw className={`size-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Actualiser
+          </button>
         </div>
 
         {/* Table */}
@@ -285,7 +292,6 @@ export function PlayersMonitor() {
             <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
               <tr>
                 <th className="px-4 py-3 font-medium">Session</th>
-                <th className="px-4 py-3 font-medium">Marché</th>
                 <th className="px-4 py-3 font-medium">Niveau</th>
                 <th className="px-4 py-3 font-medium">Joueur</th>
                 <th className="px-4 py-3 font-medium">Statut</th>
@@ -294,16 +300,11 @@ export function PlayersMonitor() {
             </thead>
             <tbody>
               {filteredGames.map((game) => {
-                const statusStyle = STATUS_COLORS[game.status ?? 'COMPLETED'] ?? STATUS_COLORS.COMPLETED
+                const statusStyle = STATUS_COLORS[game.displayStatusKey] ?? STATUS_COLORS.IN_PROGRESS
                 return (
                   <tr key={game.id} className="border-t border-slate-100 transition hover:bg-slate-50">
                     <td className="px-4 py-3">
                       <span className="font-medium text-slate-900">{game.title ?? `Game #${game.id}`}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
-                        {game.marketTitle}
-                      </span>
                     </td>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
@@ -320,8 +321,8 @@ export function PlayersMonitor() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}>
-                        {getStatusIcon(game.status)}
-                        {game.status ?? '—'}
+                        {getStatusIcon(game.displayStatusKey)}
+                        {game.displayStatusLabel}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-500">
@@ -336,7 +337,7 @@ export function PlayersMonitor() {
               })}
               {!filteredGames.length && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center">
+                  <td colSpan={5} className="px-4 py-8 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <Gamepad2 className="size-8 text-slate-300" />
                       <p className="text-sm text-slate-500">
