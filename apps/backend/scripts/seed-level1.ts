@@ -409,90 +409,154 @@ async function main() {
   // 14. Créer les Daily Quiz (hier et aujourd'hui)
   console.log('📅 Création des Daily Quiz...');
 
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  yesterday.setHours(0, 0, 0, 0);
+  const now = new Date();
+  const yesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1, 0, 0, 0, 0));
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
 
-  // Question pour le Daily Quiz d'hier
-  let dailyQuestion1 = await prisma.question.findFirst({
-    where: {
-      text: 'Combien de temps faut-il généralement garder son épargne de précaution ?'
-    }
-  });
-
-  if (!dailyQuestion1) {
-    dailyQuestion1 = await prisma.question.create({
-      data: {
-        text: 'Combien de temps faut-il généralement garder son épargne de précaution ?'
-      }
-    });
-
-    await prisma.answer.createMany({
-      data: [
-        { questionId: dailyQuestion1.id, text: '3 à 6 mois de dépenses courantes', isCorrect: true },
-        { questionId: dailyQuestion1.id, text: '1 semaine de dépenses', isCorrect: false },
-        { questionId: dailyQuestion1.id, text: '10 ans minimum', isCorrect: false },
-        { questionId: dailyQuestion1.id, text: 'Pas besoin d\'épargne de précaution', isCorrect: false }
+  // Questions pour le Daily Quiz d'hier (3 questions)
+  const dailyQuiz1Questions = [
+    {
+      text: 'Combien de temps faut-il généralement garder son épargne de précaution ?',
+      answers: [
+        { text: '3 à 6 mois de dépenses courantes', isCorrect: true },
+        { text: '1 semaine de dépenses', isCorrect: false },
+        { text: '10 ans minimum', isCorrect: false },
+        { text: 'Pas besoin d\'épargne de précaution', isCorrect: false }
       ]
-    });
-  } else {
-    // Vérifier que les réponses existent
-    const existingAnswers1 = await prisma.answer.findMany({
-      where: { questionId: dailyQuestion1.id }
+    },
+    {
+      text: 'Quel est le plafond maximum autorisé sur un Livret A en France ?',
+      answers: [
+        { text: '22 950 €', isCorrect: true },
+        { text: '10 000 €', isCorrect: false },
+        { text: '50 000 €', isCorrect: false },
+        { text: 'Aucun plafond', isCorrect: false }
+      ]
+    },
+    {
+      text: 'Quelle est la principale différence entre épargner et investir ?',
+      answers: [
+        { text: 'L\'épargne préserve le capital, l\'investissement cherche la croissance avec risque', isCorrect: true },
+        { text: 'Aucune différence, ce sont des synonymes', isCorrect: false },
+        { text: 'L\'épargne est risquée, l\'investissement est sécurisé', isCorrect: false },
+        { text: 'L\'épargne rapporte plus que l\'investissement', isCorrect: false }
+      ]
+    }
+  ];
+
+  const createdDailyQuestions1 = [];
+  for (const q of dailyQuiz1Questions) {
+    let question = await prisma.question.findFirst({
+      where: { text: q.text }
     });
 
-    if (existingAnswers1.length === 0) {
-      await prisma.answer.createMany({
-        data: [
-          { questionId: dailyQuestion1.id, text: '3 à 6 mois de dépenses courantes', isCorrect: true },
-          { questionId: dailyQuestion1.id, text: '1 semaine de dépenses', isCorrect: false },
-          { questionId: dailyQuestion1.id, text: '10 ans minimum', isCorrect: false },
-          { questionId: dailyQuestion1.id, text: 'Pas besoin d\'épargne de précaution', isCorrect: false }
-        ]
+    if (!question) {
+      question = await prisma.question.create({
+        data: { text: q.text }
       });
+
+      if (question) {
+        await prisma.answer.createMany({
+          data: q.answers.map(a => ({
+            questionId: question!.id,
+            text: a.text,
+            isCorrect: a.isCorrect
+          }))
+        });
+      }
+    } else if (question) {
+      const questionId = question.id;
+      const existingAnswers = await prisma.answer.findMany({
+        where: { questionId }
+      });
+
+      if (existingAnswers.length === 0) {
+        await prisma.answer.createMany({
+          data: q.answers.map(a => ({
+            questionId,
+            text: a.text,
+            isCorrect: a.isCorrect
+          }))
+        });
+      }
+    }
+
+    if (question) {
+      createdDailyQuestions1.push(question);
     }
   }
 
-  // Question pour le Daily Quiz d'aujourd'hui
-  let dailyQuestion2 = await prisma.question.findFirst({
-    where: {
-      text: 'Quel est le principal risque d\'un livret d\'épargne réglementé ?'
-    }
-  });
-
-  if (!dailyQuestion2) {
-    dailyQuestion2 = await prisma.question.create({
-      data: {
-        text: 'Quel est le principal risque d\'un livret d\'épargne réglementé ?'
-      }
-    });
-
-    await prisma.answer.createMany({
-      data: [
-        { questionId: dailyQuestion2.id, text: 'Le rendement peut être inférieur à l\'inflation', isCorrect: true },
-        { questionId: dailyQuestion2.id, text: 'Vous pouvez perdre tout votre capital', isCorrect: false },
-        { questionId: dailyQuestion2.id, text: 'Il y a des frais de gestion très élevés', isCorrect: false },
-        { questionId: dailyQuestion2.id, text: 'Votre argent est bloqué pendant 5 ans', isCorrect: false }
+  // Questions pour le Daily Quiz d'aujourd'hui (3 questions)
+  const dailyQuiz2Questions = [
+    {
+      text: 'Quel est le principal risque d\'un livret d\'épargne réglementé ?',
+      answers: [
+        { text: 'Le rendement peut être inférieur à l\'inflation', isCorrect: true },
+        { text: 'Vous pouvez perdre tout votre capital', isCorrect: false },
+        { text: 'Il y a des frais de gestion très élevés', isCorrect: false },
+        { text: 'Votre argent est bloqué pendant 5 ans', isCorrect: false }
       ]
-    });
-  } else {
-    // Vérifier que les réponses existent
-    const existingAnswers2 = await prisma.answer.findMany({
-      where: { questionId: dailyQuestion2.id }
+    },
+    {
+      text: 'Si vous placez 1000€ sur un livret à 1,7% par an, combien aurez-vous après 2 ans (intérêts simples) ?',
+      answers: [
+        { text: '1034€', isCorrect: true },
+        { text: '1034,29€', isCorrect: false },
+        { text: '1170€', isCorrect: false },
+        { text: '1000€', isCorrect: false }
+      ]
+    },
+    {
+      text: 'Peut-on retirer son argent d\'un livret d\'épargne réglementé à tout moment ?',
+      answers: [
+        { text: 'Oui, sans frais et sans préavis', isCorrect: true },
+        { text: 'Oui, mais avec des frais de retrait', isCorrect: false },
+        { text: 'Non, il faut attendre 1 an minimum', isCorrect: false },
+        { text: 'Non, l\'argent est bloqué jusqu\'à la retraite', isCorrect: false }
+      ]
+    }
+  ];
+
+  const createdDailyQuestions2 = [];
+  for (const q of dailyQuiz2Questions) {
+    let question = await prisma.question.findFirst({
+      where: { text: q.text }
     });
 
-    if (existingAnswers2.length === 0) {
-      await prisma.answer.createMany({
-        data: [
-          { questionId: dailyQuestion2.id, text: 'Le rendement peut être inférieur à l\'inflation', isCorrect: true },
-          { questionId: dailyQuestion2.id, text: 'Vous pouvez perdre tout votre capital', isCorrect: false },
-          { questionId: dailyQuestion2.id, text: 'Il y a des frais de gestion très élevés', isCorrect: false },
-          { questionId: dailyQuestion2.id, text: 'Votre argent est bloqué pendant 5 ans', isCorrect: false }
-        ]
+    if (!question) {
+      question = await prisma.question.create({
+        data: { text: q.text }
       });
+
+      if (question) {
+        await prisma.answer.createMany({
+          data: q.answers.map(a => ({
+            questionId: question!.id,
+            text: a.text,
+            isCorrect: a.isCorrect
+          }))
+        });
+      }
+    } else if (question) {
+      const questionId = question.id;
+      const existingAnswers = await prisma.answer.findMany({
+        where: { questionId }
+      });
+
+      if (existingAnswers.length === 0) {
+        await prisma.answer.createMany({
+          data: q.answers.map(a => ({
+            questionId,
+            text: a.text,
+            isCorrect: a.isCorrect
+          }))
+        });
+      }
+    }
+
+    if (question) {
+      createdDailyQuestions2.push(question);
     }
   }
 
@@ -510,28 +574,31 @@ async function main() {
       data: {
         type: 'DAILY',
         title: 'Daily Quiz - Épargne de précaution',
-        description: 'Question du jour sur l\'épargne',
+        description: 'Questions du jour sur l\'épargne',
         date: yesterday,
         levelId: null
       }
     });
   }
 
-  const dailyQuiz1Link = await prisma.quizQuestion.findFirst({
-    where: {
-      quizId: dailyQuiz1.id,
-      questionId: dailyQuestion1.id
-    }
-  });
-
-  if (!dailyQuiz1Link) {
-    await prisma.quizQuestion.create({
-      data: {
+  // Lier les 3 questions au Daily Quiz 1
+  for (let i = 0; i < createdDailyQuestions1.length; i++) {
+    const existingLink = await prisma.quizQuestion.findFirst({
+      where: {
         quizId: dailyQuiz1.id,
-        questionId: dailyQuestion1.id,
-        position: 1
+        questionId: createdDailyQuestions1[i].id
       }
     });
+
+    if (!existingLink) {
+      await prisma.quizQuestion.create({
+        data: {
+          quizId: dailyQuiz1.id,
+          questionId: createdDailyQuestions1[i].id,
+          position: i + 1
+        }
+      });
+    }
   }
 
   // Daily Quiz d'aujourd'hui
@@ -548,31 +615,34 @@ async function main() {
       data: {
         type: 'DAILY',
         title: 'Daily Quiz - Risques de l\'épargne',
-        description: 'Question du jour sur les risques',
+        description: 'Questions du jour sur les risques',
         date: today,
         levelId: null
       }
     });
   }
 
-  const dailyQuiz2Link = await prisma.quizQuestion.findFirst({
-    where: {
-      quizId: dailyQuiz2.id,
-      questionId: dailyQuestion2.id
-    }
-  });
-
-  if (!dailyQuiz2Link) {
-    await prisma.quizQuestion.create({
-      data: {
+  // Lier les 3 questions au Daily Quiz 2
+  for (let i = 0; i < createdDailyQuestions2.length; i++) {
+    const existingLink = await prisma.quizQuestion.findFirst({
+      where: {
         quizId: dailyQuiz2.id,
-        questionId: dailyQuestion2.id,
-        position: 1
+        questionId: createdDailyQuestions2[i].id
       }
     });
+
+    if (!existingLink) {
+      await prisma.quizQuestion.create({
+        data: {
+          quizId: dailyQuiz2.id,
+          questionId: createdDailyQuestions2[i].id,
+          position: i + 1
+        }
+      });
+    }
   }
 
-  console.log(`✅ 2 Daily Quiz vérifiés/créés (hier et aujourd'hui)`);
+  console.log(`✅ 2 Daily Quiz vérifiés/créés (hier et aujourd'hui) avec 3 questions chacun`);
 
   console.log('\n✨ ========================================');
   console.log('✅ Seeding du niveau 1 terminé avec succès !');
