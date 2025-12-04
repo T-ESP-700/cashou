@@ -208,6 +208,9 @@ export interface GameInstance {
   marketId?: number | null
   levelId?: number | null
   userId?: string | null
+  isPaused?: boolean | null
+  pausedAt?: string | Date | null
+  actionRequired?: boolean | null
   createdAt?: string | Date | null
   updatedAt?: string | Date | null
 }
