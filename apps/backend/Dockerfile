@@ -7,6 +7,7 @@ WORKDIR /app
 COPY package.json bun.lockb* ./
 COPY bunfig.toml ./
 COPY tsconfig.json ./
+COPY .env.docker ./.env
 
 # Copy workspace packages
 COPY apps/backend/package.json ./apps/backend/
@@ -25,7 +26,6 @@ COPY packages ./packages
 # Generate Prisma client
 WORKDIR /app/packages/@cashou/db-app
 RUN bunx prisma generate
-
 WORKDIR /app/packages/@cashou/db-backoffice
 RUN bunx prisma generate
 

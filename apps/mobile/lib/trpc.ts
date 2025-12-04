@@ -1,11 +1,14 @@
-import { createTRPCClient, httpBatchLink } from '@trpc/client';
+import { createTRPCClient, httpBatchLink, TRPCClientError } from '@trpc/client';
 import type { AppRouter } from '@cashou/api/types';
 import { tokenStorage } from './token-storage';
-import Constants from 'expo-constants';
+import { API_URL } from './api-config';
 
-const API_URL = Constants.expoConfig?.extra?.apiUrl ||
-  process.env.EXPO_PUBLIC_API_URL ||
-  'http://localhost:3000/api/trpc';
+// Global error handler for authentication errors
+let authErrorHandler: (() => void) | null = null;
+
+export function setAuthErrorHandler(handler: () => void) {
+  authErrorHandler = handler;
+}
 
 export const trpcClient = createTRPCClient<AppRouter>({
   links: [
@@ -14,6 +17,26 @@ export const trpcClient = createTRPCClient<AppRouter>({
       async headers() {
         const token = await tokenStorage.getToken();
         return token ? { authorization: `Bearer ${token}` } : {};
+      },
+      fetch(url, options) {
+        return fetch(url, options).then(async (response) => {
+          // Check for 401 Unauthorized
+          if (response.status === 401) {
+            console.log('[tRPC] 401 Unauthorized detected, clearing token...');
+            await tokenStorage.removeToken();
+
+            // Trigger auth error handler to redirect to login
+            if (authErrorHandler) {
+              authErrorHandler();
+            }
+          }
+
+          return response;
+        }).catch((error) => {
+          // Handle network errors
+          console.error('[tRPC] Network error:', error);
+          throw error;
+        });
       },
     }),
   ],

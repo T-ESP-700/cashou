@@ -1,4 +1,5 @@
 import { View, TouchableOpacity, useColorScheme as useRNColorScheme, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import CashouLogoLight from '@/assets/images/cashou_logo_light.svg';
@@ -9,17 +10,20 @@ interface CashouHeaderProps {
   showBackButton?: boolean;
   onMenuPress?: () => void;
   onBackPress?: () => void;
+  additionalTopPadding?: number;
 }
 
 export function CashouHeader({
   showBackButton = true,
   onMenuPress,
-  onBackPress
+  onBackPress,
+  additionalTopPadding = 0,
 }: CashouHeaderProps) {
   const router = useRouter();
   const colorScheme = useRNColorScheme();
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const insets = useSafeAreaInsets();
 
   const handleBackPress = () => {
     if (onBackPress) {
@@ -30,7 +34,13 @@ export function CashouHeader({
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.primary }]}>
+    <View style={[
+      styles.container,
+      {
+        backgroundColor: theme.primary,
+        paddingTop: insets.top + additionalTopPadding,
+      }
+    ]}>
       {/* Back Button */}
       <TouchableOpacity
         onPress={handleBackPress}
@@ -76,7 +86,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 48,
     paddingBottom: 16,
   },
   button: {
