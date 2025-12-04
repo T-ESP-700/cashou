@@ -1,0 +1,22 @@
+meta {
+  name: Delete - Wallets
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/api/trpc/wallet.delete
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 10
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

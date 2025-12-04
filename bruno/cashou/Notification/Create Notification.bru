@@ -1,0 +1,28 @@
+meta {
+  name: Create Notification
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/api/trpc/notification.create
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "user_id": "YO8fIUgLeagQtgG3DXZUD2CIJYxn3q6x",
+    "title": "Welcome to the Quiz Platform!",
+    "message": "You’ve successfully created your account. Start your first quiz now!",
+    "type": "REMINDER",
+    "game_instance_id": 1,
+    "is_open": false,
+    "sent_at": "2025-10-31T14:00:00.000Z"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

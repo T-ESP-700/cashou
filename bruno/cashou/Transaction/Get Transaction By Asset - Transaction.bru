@@ -1,0 +1,20 @@
+meta {
+  name: Get Transaction By Asset - Transaction
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{base_url}}/api/trpc/transaction.getByAsset?input={"assetId":19}
+  body: json
+  auth: inherit
+}
+
+params:query {
+  input: {"assetId":19}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

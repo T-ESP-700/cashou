@@ -1,0 +1,16 @@
+meta {
+  name: Get All Game User - Game User
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/api/trpc/gameUser.findAll
+  body: json
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

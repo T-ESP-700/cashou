@@ -1,0 +1,23 @@
+meta {
+  name: Update Status - Game User
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{base_url}}/api/trpc/gameUser.updateStatus
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 10,
+    "status": "inactive"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

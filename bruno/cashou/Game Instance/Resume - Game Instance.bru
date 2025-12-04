@@ -1,0 +1,22 @@
+meta {
+  name: Resume - Game Instance
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}/api/trpc/gameInstance.resume
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 4
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

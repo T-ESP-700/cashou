@@ -121,12 +121,14 @@ export interface Impact {
   eventId?: number | null
   fieldId?: number | null
   submarketId?: number | null
+  assetId?: number | null
   coef?: number | null
   createdAt?: string | Date | null
   updatedAt?: string | Date | null
   event?: Event | null
   field?: Field | null
   submarket?: Submarket | null
+  asset?: Asset | null
 }
 
 export interface LevelGoal {

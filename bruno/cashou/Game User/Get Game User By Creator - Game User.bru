@@ -1,0 +1,20 @@
+meta {
+  name: Get Game User By Creator - Game User
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{base_url}}/api/trpc/gameUser.findByCreator?input={"isCreator": true}
+  body: json
+  auth: inherit
+}
+
+params:query {
+  input: {"isCreator": true}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

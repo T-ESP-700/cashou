@@ -1,0 +1,30 @@
+meta {
+  name: Create Transaction
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/api/trpc/transaction.create
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "walletId": 15,
+      "assetId": 101,
+      "gameInstanceId": 2,
+      "type": "SELL",
+      "quantity": 5,
+      "unitPrice": "15.50",
+      "totalValue": "77.50",
+      "transactionDate": "2025-11-06T16:27:00.000Z",
+      "source": "Marketplace-A"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
