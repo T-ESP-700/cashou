@@ -141,13 +141,31 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
     }
   }, [formValues.type, formValues.date, currentQuiz, quizzes])
 
+  // Filtrer les niveaux qui ont déjà un MCQ (sauf le niveau actuel en mode édition)
+  const availableLevels = useMemo(() => {
+    // Récupérer les IDs des niveaux qui ont déjà un MCQ
+    const levelsWithMcq = new Set(
+      quizzes
+        .filter(quiz => quiz.type === 'MCQ' && quiz.levelId)
+        .map(quiz => quiz.levelId)
+    )
+    
+    // Si on est en mode édition et que le quiz actuel a un niveau, le permettre
+    if (currentQuiz?.levelId) {
+      levelsWithMcq.delete(currentQuiz.levelId)
+    }
+    
+    // Retourner seulement les niveaux qui n'ont pas de MCQ
+    return levels.filter(level => !levelsWithMcq.has(level.id))
+  }, [levels, quizzes, currentQuiz])
+
   const levelOptions = useMemo(
     () =>
-      levels.map((level) => ({
+      availableLevels.map((level) => ({
         value: String(level.id),
         label: level.title ?? `Niveau ${level.number ?? level.id}`,
       })),
-    [levels],
+    [availableLevels],
   )
 
   const handleFieldChange = (field: keyof typeof formValues, value: string) => {
@@ -156,8 +174,11 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
 
   const questionLimit = formValues.type === 'DAILY' ? 3 : 1
   const currentQuestionCount = displayLinks.length
-  const hasReachedQuestionLimit = currentQuestionCount >= questionLimit
-  const quizMustBeComplete = currentQuestionCount === questionLimit
+  // Pour DAILY: exactement 3 questions. Pour MCQ: minimum 1 question, pas de maximum
+  const hasReachedQuestionLimit = formValues.type === 'DAILY' && currentQuestionCount >= questionLimit
+  const quizMustBeComplete = formValues.type === 'DAILY' 
+    ? currentQuestionCount === questionLimit 
+    : currentQuestionCount >= 1
 
   const buildPendingId = () =>
     typeof crypto !== 'undefined' && crypto.randomUUID
@@ -179,10 +200,13 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
         return 'La description est obligatoire pour un Daily quiz'
       }
     }
+    if (formValues.type === 'MCQ' && (!formValues.levelId || !formValues.levelId.trim())) {
+      return 'Le niveau est obligatoire pour un MCQ'
+    }
     if (!quizMustBeComplete) {
       return formValues.type === 'DAILY'
         ? 'Un Daily quiz doit contenir exactement 3 questions'
-        : 'Un MCQ doit contenir exactement 1 question'
+        : 'Un MCQ doit contenir au moins 1 question'
     }
     return null
   }
@@ -428,7 +452,7 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
                 </Field>
               )}
               {formValues.type === 'MCQ' && (
-                <Field label="Niveau (MCQ)">
+                <Field label="Niveau (MCQ)" required>
                   <select
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-slate-400 focus:outline-none"
                     value={formValues.levelId}

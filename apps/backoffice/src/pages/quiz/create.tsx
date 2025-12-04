@@ -72,6 +72,7 @@ export default function CreateQuizPage() {
   // Fetch levels and questions for selection
   const { data: levels } = trpc.level.getAll.useQuery();
   const { data: questions } = trpc.question.getAll.useQuery();
+  const { data: allQuizzes } = trpc.quiz.getAll.useQuery();
 
   // Fetch all Daily Quiz to get questions already used
   const { data: allDailyQuizzes } = trpc.quiz.getByType.useQuery(
@@ -179,7 +180,22 @@ export default function CreateQuizPage() {
     setSelectedQuestionIds([...selectedQuestionIds, question.id]);
   };
 
-  const levelOptions = formatSelectOptions(levels, (l) => l.title || `Level ${l.number}`);
+  // Filtrer les niveaux qui ont déjà un MCQ assigné
+  const availableLevels = useMemo(() => {
+    if (!levels || !allQuizzes) return [];
+    
+    // Récupérer les IDs des niveaux qui ont déjà un MCQ
+    const levelsWithMcq = new Set(
+      allQuizzes
+        .filter(quiz => quiz.type === 'MCQ' && quiz.levelId)
+        .map(quiz => quiz.levelId)
+    );
+    
+    // Retourner seulement les niveaux qui n'ont pas de MCQ
+    return levels.filter(level => !levelsWithMcq.has(level.id));
+  }, [levels, allQuizzes]);
+
+  const levelOptions = formatSelectOptions(availableLevels, (l) => l.title || `Level ${l.number}`);
   const questionOptions = formatSelectOptions(availableQuestions, (q) => {
     const text = q.text || 'Unnamed Question';
     return text.length > 60 ? text.substring(0, 60) + '...' : text;
@@ -194,6 +210,8 @@ export default function CreateQuizPage() {
   
   // For DAILY quiz, date and description are required
   const isDailyValid = selectedType !== 'DAILY' || (isDateFilled && isDescriptionFilled);
+  // For MCQ quiz, level is required
+  const isMcqValid = selectedType !== 'MCQ' || selectedLevelId !== null;
   const requiredQuestionCount = selectedType === 'DAILY' ? 3 : 1;
   const hasRequiredQuestions = selectedQuestionIds.length >= requiredQuestionCount;
   // Check if Daily Quiz already exists for this date
@@ -204,6 +222,7 @@ export default function CreateQuizPage() {
     !isTypeFilled || 
     !isTitleFilled || 
     !isDailyValid ||
+    !isMcqValid ||
     !hasRequiredQuestions ||
     dateAlreadyUsed;
 
@@ -220,6 +239,9 @@ export default function CreateQuizPage() {
     }
     if (selectedType === 'DAILY' && !isDescriptionFilled) {
       return 'Veuillez remplir la description pour un Daily Quiz';
+    }
+    if (selectedType === 'MCQ' && !selectedLevelId) {
+      return 'Veuillez sélectionner un niveau pour un MCQ';
     }
     if (selectedType === 'DAILY' && selectedQuestionIds.length < 3) {
       return 'Un Daily Quiz doit contenir au moins 3 questions';
@@ -288,15 +310,20 @@ export default function CreateQuizPage() {
               )}
 
               {selectedType === 'MCQ' && (
-                <RelationSelect
-                  label="Level"
-                  options={levelOptions}
-                  value={selectedLevelId}
-                  onChange={(value) => setSelectedLevelId(value ? Number(value) : null)}
-                  placeholder="Select a level..."
-                  onCreate={() => setShowLevelDialog(true)}
-                  createLabel="Create Level"
-                />
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Level <span className="text-red-500">*</span>
+                  </label>
+                  <RelationSelect
+                    label=""
+                    options={levelOptions}
+                    value={selectedLevelId}
+                    onChange={(value) => setSelectedLevelId(value ? Number(value) : null)}
+                    placeholder="Select a level..."
+                    onCreate={() => setShowLevelDialog(true)}
+                    createLabel="Create Level"
+                  />
+                </div>
               )}
 
               <FormField
@@ -332,29 +359,36 @@ export default function CreateQuizPage() {
                 />
               </div>
 
-              <div className="flex gap-2 pt-4">
-                <div className="relative inline-block group">
+              <div className="space-y-2">
+                <div className="flex gap-2 pt-4">
+                  <div className="relative inline-block group">
+                    <Button
+                      type="submit"
+                      disabled={isSubmitDisabled}
+                      className="relative"
+                    >
+                      {createMutation.isPending ? 'Creating...' : 'Create Quiz'}
+                    </Button>
+                    {errorMessage && (
+                      <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-md max-w-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg">
+                        {errorMessage}
+                        <div className="absolute top-full left-4 border-4 border-transparent border-t-gray-900"></div>
+                      </div>
+                    )}
+                  </div>
                   <Button
-                    type="submit"
-                    disabled={isSubmitDisabled}
-                    className="relative"
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate('/quiz')}
                   >
-                    {createMutation.isPending ? 'Creating...' : 'Create Quiz'}
+                    Cancel
                   </Button>
-                  {errorMessage && (
-                    <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-md max-w-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg">
-                      {errorMessage}
-                      <div className="absolute top-full left-4 border-4 border-transparent border-t-gray-900"></div>
-                    </div>
-                  )}
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate('/quiz')}
-                >
-                  Cancel
-                </Button>
+                {errorMessage && isSubmitDisabled && (
+                  <p className="text-sm text-red-500 font-medium">
+                    {errorMessage}
+                  </p>
+                )}
               </div>
             </form>
           </CardContent>
