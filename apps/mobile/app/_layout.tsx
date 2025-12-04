@@ -43,13 +43,14 @@ function RootNavigator() {
 
   const inAuthGroup = segments[0] === 'auth';
   const inTabs = segments[0] === '(tabs)';
+  const inGame = segments[0] === 'game';
   const isInitialRoute = segments.length === 0;
 
   console.log('[RootNavigator] segments:', segments, 'isAuthenticated:', isAuthenticated);
 
   // Handle redirects BEFORE rendering Stack
-  // Case 1: Not authenticated and trying to access tabs (or initial load)
-  if (!isAuthenticated && (inTabs || isInitialRoute)) {
+  // Case 1: Not authenticated and trying to access protected routes (tabs, game, or initial load)
+  if (!isAuthenticated && (inTabs || inGame || isInitialRoute)) {
     console.log('[RootNavigator] Not authenticated, redirecting to /auth');
     return <Redirect href="/auth" />;
   }
@@ -64,6 +65,7 @@ function RootNavigator() {
     <Stack>
       <Stack.Screen name="auth" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="game" options={{ headerShown: false }} />
       <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
     </Stack>
   );

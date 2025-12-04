@@ -1,6 +1,6 @@
 import { ScrollView, View, Text, useColorScheme as useRNColorScheme, StyleSheet, ActivityIndicator } from 'react-native';
 import React, { useState, useEffect, useMemo } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { CashouHeader } from '@/components/cashou-header';
 import { LevelCard } from '@/components/level-card';
 import { DailyQuizCard } from '@/components/daily-quiz-card';
@@ -119,6 +119,7 @@ export default function HomeScreen() {
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const { user, isAuthenticated, refreshUser } = useAuth();
+  const router = useRouter();
   const [dailyQuizStatus, setDailyQuizStatus] = useState<'todo' | 'done'>('todo');
   const [isLoadingDailyQuiz, setIsLoadingDailyQuiz] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<string>('0h0m');
@@ -249,28 +250,48 @@ export default function HomeScreen() {
     if (homeData?.activeGame) {
       return {
         level: homeData.activeGame.levelNumber,
+        levelId: homeData.level?.id,
+        title: homeData.activeGame.levelTitle,
         progression: homeData.activeGame.progression,
         currentReturn: homeData.activeGame.currentReturn,
         status: homeData.activeGame.isPaused ? 'completed' as const : 'in_progress' as const,
         hasGame: true,
+        gameId: homeData.activeGame.id,
       };
     }
     // Pas de partie en cours, afficher le niveau comme "prêt à commencer"
     return {
       level: homeData?.level?.number || 1,
+      levelId: homeData?.level?.id,
+      title: homeData?.level?.title,
       progression: 0,
       currentReturn: 0,
       status: 'not_started' as const,
       hasGame: false,
+      gameId: null,
     };
   }, [homeData]);
 
-  // Handler pour démarrer un niveau
-  const handleStartLevel = () => {
-    // TODO: Implémenter la logique pour démarrer un niveau
-    // Cela pourrait naviguer vers un écran de démarrage de niveau
-    // ou appeler une API pour créer une nouvelle GameInstance
-    console.log('Starting level:', levelCardData.level);
+  // Handler pour naviguer vers la description du niveau
+  const handleLevelPress = () => {
+    if (levelCardData.levelId) {
+      // Si une partie est en cours, aller directement à l'écran de jeu
+      if (levelCardData.hasGame && levelCardData.gameId) {
+        router.push({
+          pathname: '/game/current',
+          params: {
+            levelId: levelCardData.levelId.toString(),
+            gameId: levelCardData.gameId.toString()
+          }
+        });
+      } else {
+        // Sinon, aller à la description du niveau
+        router.push({
+          pathname: '/game/description',
+          params: { levelId: levelCardData.levelId.toString() }
+        });
+      }
+    }
   };
 
   return (
@@ -311,10 +332,12 @@ export default function HomeScreen() {
             {levelCardData.hasGame || homeData?.level ? (
               <LevelCard
                 level={levelCardData.level}
+                levelId={levelCardData.levelId}
+                title={levelCardData.title}
                 progression={levelCardData.progression}
                 currentReturn={levelCardData.currentReturn}
                 status={levelCardData.status}
-                onStartLevel={handleStartLevel}
+                onPress={handleLevelPress}
               />
             ) : null}
 
