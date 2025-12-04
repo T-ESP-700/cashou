@@ -5,11 +5,7 @@ import { ThemedText } from '@/components/themed-text';
 import { tokenStorage } from '@/lib/token-storage';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
-import Constants from 'expo-constants';
-
-const AUTH_BASE_URL = Constants.expoConfig?.extra?.authUrl ||
-  process.env.EXPO_PUBLIC_AUTH_URL ||
-  'http://localhost:3000/api/auth';
+import { AUTH_URL } from '@/lib/api-config';
 
 interface SignupFormProps {
   onSuccess?: () => void;
@@ -42,7 +38,7 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${AUTH_BASE_URL}/sign-up/email`, {
+      const response = await fetch(`${AUTH_URL}/sign-up/email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, name }),

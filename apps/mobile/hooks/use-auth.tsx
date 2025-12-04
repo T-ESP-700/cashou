@@ -1,18 +1,20 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import type { ReactNode } from 'react';
-import { trpcClient } from '@/lib/trpc';
+import { trpcClient, setAuthErrorHandler } from '@/lib/trpc';
 import { tokenStorage } from '@/lib/token-storage';
 
 interface User {
   id: string;
   email: string;
   name: string | null;
+  username: string | null;
   points: number;
   levelId: string | null;
   image: string | null;
   createdAt: string;
   currentStreak?: number;
+  maxStreak?: number;
 }
 
 interface UseAuthReturn {
@@ -26,15 +28,53 @@ interface UseAuthReturn {
 
 const AuthContext = createContext<UseAuthReturn | undefined>(undefined);
 
+// Configuration for retry logic
+const RETRY_CONFIG = {
+  maxRetries: 3,
+  retryDelay: 1000, // 1 second
+  backoffMultiplier: 2, // Exponential backoff
+};
+
 function useProvideAuth(): UseAuthReturn {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const retryCountRef = useRef(0);
+  const isInitialLoadRef = useRef(true);
 
-  const fetchUser = useCallback(async () => {
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+  const isNetworkError = (err: any): boolean => {
+    // Check for common network error patterns
+    return (
+      err instanceof TypeError &&
+      (err.message === 'Network request failed' || err.message.includes('fetch'))
+    ) || (
+      err?.message?.includes('network') ||
+      err?.message?.includes('timeout') ||
+      err?.message?.includes('ECONNREFUSED')
+    );
+  };
+
+  const isAuthError = (err: any): boolean => {
+    // Check for 401 Unauthorized or token invalid errors
+    return (
+      err?.message?.includes('401') ||
+      err?.message?.includes('Unauthorized') ||
+      err?.message?.includes('token') ||
+      err?.data?.code === 'UNAUTHORIZED'
+    );
+  };
+
+  const fetchUser = useCallback(async (forceRetry = false) => {
     try {
       console.log('[useAuth] Starting fetchUser...');
-      setIsLoading(true);
+
+      // Only set loading on initial load or forced refresh
+      if (isInitialLoadRef.current || forceRetry) {
+        setIsLoading(true);
+      }
+
       setError(null);
 
       // Check if token exists
@@ -43,28 +83,73 @@ function useProvideAuth(): UseAuthReturn {
       if (!token) {
         setUser(null);
         setIsLoading(false);
+        isInitialLoadRef.current = false;
+        retryCountRef.current = 0;
         return;
       }
 
-      // Fetch user data from backend
-      console.log('[useAuth] Fetching user data from backend...');
-      const response = await trpcClient.auth.me.query();
-      console.log('[useAuth] User data received:', response);
-      // Extract user from response (backend returns { session, user })
-      const userData = (response as any).user as User;
-      console.log('[useAuth] Extracted user:', userData);
-      console.log('[useAuth] currentStreak value from backend:', userData?.currentStreak);
-      console.log('[useAuth] Setting user state with currentStreak:', userData?.currentStreak);
-      setUser(userData);
-      console.log('[useAuth] User state updated');
+      // Fetch user data from backend with retry logic
+      let lastError: any = null;
+      let attempt = 0;
+
+      while (attempt <= RETRY_CONFIG.maxRetries) {
+        try {
+          console.log(`[useAuth] Fetching user data (attempt ${attempt + 1}/${RETRY_CONFIG.maxRetries + 1})...`);
+          const response = await trpcClient.auth.me.query();
+          console.log('[useAuth] User data received:', response);
+
+          // Extract user from response (backend returns { session, user })
+          const userData = (response as any).user as User;
+          console.log('[useAuth] Extracted user:', userData);
+          setUser(userData);
+          console.log('[useAuth] User state updated');
+
+          // Reset retry count on success
+          retryCountRef.current = 0;
+          isInitialLoadRef.current = false;
+          return;
+        } catch (err) {
+          lastError = err;
+
+          // Check if it's an auth error (token invalid/expired)
+          if (isAuthError(err)) {
+            console.error('[useAuth] Authentication error, token invalid:', err);
+            setUser(null);
+            await tokenStorage.removeToken();
+            setError('Session expired. Please login again.');
+            break; // Don't retry on auth errors
+          }
+
+          // Check if it's a network error and we should retry
+          if (isNetworkError(err) && attempt < RETRY_CONFIG.maxRetries) {
+            const delay = RETRY_CONFIG.retryDelay * Math.pow(RETRY_CONFIG.backoffMultiplier, attempt);
+            console.warn(`[useAuth] Network error, retrying in ${delay}ms...`, err);
+            await sleep(delay);
+            attempt++;
+            continue;
+          }
+
+          // Other errors or max retries reached
+          throw err;
+        }
+      }
+
+      // If we get here, we've exhausted retries
+      throw lastError;
     } catch (err) {
-      console.error('[useAuth] Failed to fetch user:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch user');
-      setUser(null);
-      // Clear invalid token
-      await tokenStorage.removeToken();
+      console.error('[useAuth] Failed to fetch user after retries:', err);
+
+      if (isNetworkError(err)) {
+        setError('Network error. Please check your connection.');
+      } else if (!isAuthError(err)) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch user');
+        setUser(null);
+        // Clear token on other errors (but not on network issues)
+        await tokenStorage.removeToken();
+      }
     } finally {
       setIsLoading(false);
+      isInitialLoadRef.current = false;
       console.log('[useAuth] fetchUser completed');
     }
   }, []);
@@ -72,17 +157,41 @@ function useProvideAuth(): UseAuthReturn {
   const logout = useCallback(async () => {
     try {
       setIsLoading(true);
-      // Call logout endpoint
-      await trpcClient.auth.logout.mutate();
+      console.log('[useAuth] Logging out...');
+
+      // Call logout endpoint (with timeout)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Logout timeout')), 5000)
+      );
+
+      await Promise.race([
+        trpcClient.auth.logout.mutate(),
+        timeoutPromise
+      ]);
+
+      console.log('[useAuth] Logout successful');
     } catch (err) {
-      console.error('Logout error:', err);
+      console.error('[useAuth] Logout error:', err);
+      // Don't throw, always proceed with local cleanup
     } finally {
       // Always clear local state and token
       await tokenStorage.removeToken();
       setUser(null);
+      setError(null);
       setIsLoading(false);
+      isInitialLoadRef.current = true; // Reset for next login
+      retryCountRef.current = 0;
+      console.log('[useAuth] Logout completed, local state cleared');
     }
   }, []);
+
+  // Set up auth error handler for tRPC
+  useEffect(() => {
+    setAuthErrorHandler(() => {
+      console.log('[useAuth] Auth error handler triggered, logging out...');
+      logout();
+    });
+  }, [logout]);
 
   // Fetch user on mount
   useEffect(() => {
@@ -132,4 +241,3 @@ export function useAuth(): UseAuthReturn {
   }
   return context;
 }
-

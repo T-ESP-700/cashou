@@ -19,9 +19,9 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: theme.primary,
           borderTopWidth: 0,
-          paddingTop: 8,
-          paddingBottom: 8,
-          height: 70,
+          paddingTop: 12,
+          paddingBottom: 12,
+          height: 80,
         },
         headerShown: false,
         tabBarButton: HapticTab,
@@ -32,8 +32,24 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ size, focused }) => (
-            <View style={focused ? { backgroundColor: '#E87F00', borderRadius: 12, padding: 8 } : { padding: 8 }}>
-              <Ionicons name={(focused ? "home" : "home-outline") as any} size={size || 28} color="#1C1E33" />
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              {focused && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    backgroundColor: '#E87F00',
+                    borderRadius: 14,
+                    width: size + 20,
+                    height: size + 20,
+                  }}
+                />
+              )}
+              <Ionicons
+                name={(focused ? "home" : "home-outline") as any}
+                size={size}
+                color="#FFFFFF"
+                style={{ opacity: focused ? 1 : 0.6 }}
+              />
             </View>
           ),
         }}
@@ -43,8 +59,24 @@ export default function TabLayout() {
         options={{
           title: 'Test',
           tabBarIcon: ({ size, focused }) => (
-            <View style={focused ? { backgroundColor: '#E87F00', borderRadius: 12, padding: 8 } : { padding: 8 }}>
-              <Ionicons name={(focused ? "flask" : "flask-outline") as any} size={size || 28} color="#1C1E33" />
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              {focused && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    backgroundColor: '#E87F00',
+                    borderRadius: 14,
+                    width: size + 20,
+                    height: size + 20,
+                  }}
+                />
+              )}
+              <Ionicons
+                name={(focused ? "flask" : "flask-outline") as any}
+                size={size}
+                color="#FFFFFF"
+                style={{ opacity: focused ? 1 : 0.6 }}
+              />
             </View>
           ),
         }}
@@ -54,8 +86,24 @@ export default function TabLayout() {
         options={{
           title: 'Wallet',
           tabBarIcon: ({ size, focused }) => (
-            <View style={focused ? { backgroundColor: '#E87F00', borderRadius: 12, padding: 8 } : { padding: 8 }}>
-              <Ionicons name="logo-usd" size={size || 28} color="#1C1E33" />
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              {focused && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    backgroundColor: '#E87F00',
+                    borderRadius: 14,
+                    width: size + 20,
+                    height: size + 20,
+                  }}
+                />
+              )}
+              <Ionicons
+                name="logo-usd"
+                size={size}
+                color="#FFFFFF"
+                style={{ opacity: focused ? 1 : 0.6 }}
+              />
             </View>
           ),
           href: null, // Hide for now as route doesn't exist yet
@@ -66,20 +114,52 @@ export default function TabLayout() {
         options={{
           title: 'Learn',
           tabBarIcon: ({ size, focused }) => (
-            <View style={focused ? { backgroundColor: '#E87F00', borderRadius: 12, padding: 8 } : { padding: 8 }}>
-              <Ionicons name={(focused ? "book" : "book-outline") as any} size={size || 28} color="#1C1E33" />
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              {focused && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    backgroundColor: '#E87F00',
+                    borderRadius: 14,
+                    width: size + 20,
+                    height: size + 20,
+                  }}
+                />
+              )}
+              <Ionicons
+                name={(focused ? "book" : "book-outline") as any}
+                size={size}
+                color="#FFFFFF"
+                style={{ opacity: focused ? 1 : 0.6 }}
+              />
             </View>
           ),
           href: null, // Hide for now as route doesn't exist yet
         }}
       />
       <Tabs.Screen
-        name="auth"
+        name="profile"
         options={{
           title: 'Account',
           tabBarIcon: ({ size, focused }) => (
-            <View style={focused ? { backgroundColor: '#E87F00', borderRadius: 12, padding: 8 } : { padding: 8 }}>
-              <Ionicons name={(focused ? "person" : "person-outline") as any} size={size || 28} color="#1C1E33" />
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              {focused && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    backgroundColor: '#E87F00',
+                    borderRadius: 14,
+                    width: size + 20,
+                    height: size + 20,
+                  }}
+                />
+              )}
+              <Ionicons
+                name={(focused ? "person" : "person-outline") as any}
+                size={size}
+                color="#FFFFFF"
+                style={{ opacity: focused ? 1 : 0.6 }}
+              />
             </View>
           ),
         }}

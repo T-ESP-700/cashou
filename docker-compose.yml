@@ -50,10 +50,14 @@ services:
       - ./apps/backend:/app/apps/backend
       - ./packages:/app/packages
       # Protect node_modules from being overwritten by local mounts
+      - /app/node_modules/.prisma
       - /app/packages/@cashou/auth/node_modules
       - /app/packages/@cashou/db-app/node_modules
+      - /app/packages/@cashou/db-backoffice/node_modules
       - /app/packages/@cashou/utils/node_modules
       - /app/apps/backend/node_modules
+      # Protect Prisma generated files
+      - /app/packages/@cashou/db-backoffice/src/generated
 
   backoffice:
     build:
@@ -73,10 +77,14 @@ services:
       - ./apps/backoffice:/app/apps/backoffice
       - ./packages:/app/packages
       # Protect node_modules from being overwritten by local mounts
+      - /app/node_modules/.prisma
       - /app/packages/@cashou/auth/node_modules
       - /app/packages/@cashou/db-app/node_modules
+      - /app/packages/@cashou/db-backoffice/node_modules
       - /app/packages/@cashou/utils/node_modules
       - /app/apps/backoffice/node_modules
+      # Protect Prisma generated files
+      - /app/packages/@cashou/db-backoffice/src/generated
 
 volumes:
   cashou-db-data:
