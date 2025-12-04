@@ -168,15 +168,6 @@ export default function AssetDetailScreen() {
               <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
                 Informations complémentaires
               </Text>
-              
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: theme.text, opacity: 0.7, fontFamily: CashouTheme.fonts.body }]}>
-                  ID:
-                </Text>
-                <Text style={[styles.infoValue, { color: theme.text, fontFamily: CashouTheme.fonts.body }]}>
-                  {asset.id}
-                </Text>
-              </View>
 
               {asset.createdAt && (
                 <View style={styles.infoRow}>
