@@ -32,6 +32,7 @@ export default function AssetsScreen() {
   const [assets, setAssets] = useState<AssetItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const isSearching = useMemo(() => query.trim().length > 0, [query]);
 
   const fetchAssets = useCallback(async () => {
     let localError: unknown = null;
@@ -78,11 +79,13 @@ export default function AssetsScreen() {
       <CashouHeader showBackButton={true} />
 
       <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
-        {/* Section title */}
-        <View style={[styles.sectionHeader, { backgroundColor: theme.secondary }]}>
-          <Text style={[styles.title, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>Assets</Text>
-          <View style={[styles.separator, { backgroundColor: isDark ? '#2F324A' : '#D3D7E0' }]} />
-        </View>
+          {/* Section title */}
+        {!isSearching && (
+          <View style={[styles.sectionHeader, { backgroundColor: theme.secondary }]}> 
+            <Text style={[styles.title, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>Assets</Text>
+            <View style={[styles.separator, { backgroundColor: isDark ? '#2F324A' : '#D3D7E0' }]} />
+          </View>
+        )}
 
         {/* Search bar */}
         <View style={[styles.searchWrapper, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -123,7 +126,9 @@ export default function AssetsScreen() {
 
         {/* Trending */}
         <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
-          <Text style={[styles.trendingTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>Trendings</Text>
+          <Text style={[styles.trendingTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
+            {isSearching ? 'Results' : 'Trendings'}
+          </Text>
 
           <View style={styles.grid}>
             {filtered.map((asset) => (
@@ -131,7 +136,7 @@ export default function AssetsScreen() {
             ))}
             {!loading && !error && filtered.length === 0 && (
               <Text style={{ color: theme.text, fontFamily: CashouTheme.fonts.body }}>
-                Aucun asset trouvé
+                {isSearching ? 'Aucun asset trouvé' : 'Aucun asset disponible'}
               </Text>
             )}
           </View>
