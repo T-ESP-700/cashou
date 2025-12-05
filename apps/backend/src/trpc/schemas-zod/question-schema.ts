@@ -6,6 +6,7 @@ import { z } from "zod";
 // Utilisation de .nullish() au lieu de .optional() pour accepter null et undefined
 export const questionDataSchema = z.object({
     text: z.string().min(1, "Le texte de la question est requis").nullish(),
+    explanation: z.string().min(1, "L'explication de la question est requise").nullish(),
 });
 export type QuestionDataSchema = z.infer<typeof questionDataSchema>;
 

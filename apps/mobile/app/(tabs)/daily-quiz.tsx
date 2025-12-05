@@ -1,6 +1,7 @@
 import { View, Text, useColorScheme as useRNColorScheme, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { CashouHeader } from '@/components/cashou-header';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
@@ -22,6 +23,7 @@ interface Answer {
 interface Question {
   id: number;
   text: string | null;
+  explanation: string | null;
   answers: Answer[];
 }
 
@@ -61,6 +63,38 @@ export default function DailyQuizScreen() {
   const [hasStartedQuiz, setHasStartedQuiz] = useState(false);
   const [userAnswers, setUserAnswers] = useState<Map<number, { answerId: number; isCorrect: boolean }>>(new Map());
   const [correctionQuestionIndex, setCorrectionQuestionIndex] = useState(0);
+  const bottomSheetRef = useRef<BottomSheet>(null);
+  const snapPoints = useMemo(() => ['40%'], []);
+
+  // Réinitialiser le bottom sheet quand on change de question
+  useEffect(() => {
+    if (quizState === 'correction') {
+      bottomSheetRef.current?.close();
+    }
+  }, [correctionQuestionIndex, quizState]);
+
+  // Callback pour ouvrir le bottom sheet
+  const handleOpenExplanation = useCallback(() => {
+    bottomSheetRef.current?.expand();
+  }, []);
+
+  // Callback pour fermer le bottom sheet
+  const handleCloseExplanation = useCallback(() => {
+    bottomSheetRef.current?.close();
+  }, []);
+
+  // Backdrop personnalisé
+  const renderBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.5}
+      />
+    ),
+    []
+  );
 
   useEffect(() => {
     const fetchQuiz = async () => {
@@ -105,6 +139,7 @@ export default function DailyQuizScreen() {
           const formattedQuestions: Question[] = questionsData.map((qq: any) => ({
             id: qq.question.id,
             text: qq.question.text,
+            explanation: qq.question.explanation,
             answers: qq.question.answers.map((a: any) => ({
               id: a.id,
               text: a.text,
@@ -263,6 +298,7 @@ export default function DailyQuizScreen() {
       const formattedQuestions: Question[] = questionsData.map((qq: any) => ({
         id: qq.question.id,
         text: qq.question.text,
+        explanation: qq.question.explanation,
         answers: qq.question.answers.map((a: any) => ({
           id: a.id,
           text: a.text,
@@ -649,7 +685,7 @@ export default function DailyQuizScreen() {
 
             {/* Réponses avec correction */}
             <View style={styles.answersContainer}>
-              {questions[correctionQuestionIndex]?.answers.map((answer) => {
+              {questions[correctionQuestionIndex]?.answers.map((answer, index) => {
                 const userAnswer = userAnswers.get(questions[correctionQuestionIndex].id);
                 const isUserAnswer = userAnswer?.answerId === answer.id;
                 const isCorrect = answer.isCorrect === true;
@@ -657,41 +693,58 @@ export default function DailyQuizScreen() {
                 const isUserAnswerIncorrect = isUserAnswer && !isCorrect;
                 const showAsCorrect = isCorrect; // Toujours montrer la bonne réponse en vert
                 const showAsIncorrect = isUserAnswerIncorrect; // La réponse de l'utilisateur si elle est fausse
+                const currentQuestion = questions[correctionQuestionIndex];
+                const hasExplanation = currentQuestion?.explanation && currentQuestion.explanation.trim().length > 0;
+                const isCorrectAnswer = showAsCorrect;
                 
                 return (
-                  <View
-                    key={answer.id}
-                    style={[
-                      styles.answerButton,
-                      {
-                        backgroundColor: showAsCorrect 
-                          ? '#4CAF50' 
-                          : showAsIncorrect 
-                          ? '#F44336' 
-                          : theme.card,
-                        borderColor: showAsCorrect 
-                          ? '#4CAF50' 
-                          : showAsIncorrect 
-                          ? '#F44336' 
-                          : theme.border,
-                        borderWidth: 2,
-                      },
-                    ]}
-                  >
-                    <Text
+                  <React.Fragment key={answer.id}>
+                    <View
                       style={[
-                        styles.answerText,
+                        styles.answerButton,
                         {
-                          fontFamily: CashouTheme.fonts.body,
-                          color: showAsCorrect || showAsIncorrect ? '#FFFFFF' : theme.text,
+                          backgroundColor: showAsCorrect 
+                            ? '#4CAF50' 
+                            : showAsIncorrect 
+                            ? '#F44336' 
+                            : theme.card,
+                          borderColor: showAsCorrect 
+                            ? '#4CAF50' 
+                            : showAsIncorrect 
+                            ? '#F44336' 
+                            : theme.border,
+                          borderWidth: 2,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
                         },
                       ]}
                     >
-                      {answer.text}
-                      {showAsCorrect && ' ✓'}
-                      {showAsIncorrect && ' ✗'}
-                    </Text>
-                  </View>
+                      <Text
+                        style={[
+                          styles.answerText,
+                          {
+                            fontFamily: CashouTheme.fonts.body,
+                            color: showAsCorrect || showAsIncorrect ? '#FFFFFF' : theme.text,
+                            flex: 1,
+                          },
+                        ]}
+                      >
+                        {answer.text}
+                        {showAsCorrect && ' ✓'}
+                        {showAsIncorrect && ' ✗'}
+                      </Text>
+                      {showAsCorrect && hasExplanation && (
+                        <TouchableOpacity
+                          onPress={handleOpenExplanation}
+                          style={styles.infoButton}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.infoIcon}>ℹ️</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </React.Fragment>
                 );
               })}
             </View>
@@ -818,8 +871,10 @@ export default function DailyQuizScreen() {
               onPress={() => {
                 if (correctionQuestionIndex < questions.length - 1) {
                   setCorrectionQuestionIndex(correctionQuestionIndex + 1);
+                  bottomSheetRef.current?.close();
                 } else {
                   setQuizState('completed');
+                  bottomSheetRef.current?.close();
                 }
               }}
               activeOpacity={0.8}
@@ -836,6 +891,53 @@ export default function DailyQuizScreen() {
           )}
         </View>
       )}
+
+      {/* Bottom Sheet pour l'explication */}
+      <BottomSheet
+        ref={bottomSheetRef}
+        index={-1}
+        snapPoints={snapPoints}
+        enablePanDownToClose={true}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: theme.primary }}
+        handleIndicatorStyle={{ backgroundColor: theme.border }}
+      >
+        <BottomSheetView style={styles.bottomSheetContent}>
+          {/* Header */}
+          <View style={styles.bottomSheetHeader}>
+            <Text
+              style={[
+                styles.bottomSheetTitle,
+                { fontFamily: CashouTheme.fonts.subheading, color: theme.text },
+              ]}
+            >
+              Explication
+            </Text>
+            <TouchableOpacity
+              onPress={handleCloseExplanation}
+              style={styles.bottomSheetCloseButton}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.bottomSheetCloseText, { color: theme.text }]}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Contenu */}
+          <ScrollView
+            style={styles.bottomSheetScrollView}
+            contentContainerStyle={styles.bottomSheetScrollContent}
+          >
+            <Text
+              style={[
+                styles.bottomSheetText,
+                { fontFamily: CashouTheme.fonts.body, color: theme.text },
+              ]}
+            >
+              {questions[correctionQuestionIndex]?.explanation}
+            </Text>
+          </ScrollView>
+        </BottomSheetView>
+      </BottomSheet>
     </View>
   );
 }
@@ -991,6 +1093,96 @@ const styles = StyleSheet.create({
   completedButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  infoButton: {
+    marginLeft: 12,
+    padding: 6,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    minWidth: 32,
+    minHeight: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoIcon: {
+    fontSize: 18,
+  },
+  explanationContainer: {
+    borderRadius: 12,
+    borderWidth: 2,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  explanationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  explanationTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  closeButton: {
+    padding: 4,
+    borderRadius: 16,
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeButtonText: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  explanationText: {
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  bottomSheetContent: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  bottomSheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 16,
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  bottomSheetTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+  },
+  bottomSheetCloseButton: {
+    padding: 8,
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bottomSheetCloseText: {
+    fontSize: 24,
+    fontWeight: '600',
+  },
+  bottomSheetScrollView: {
+    flex: 1,
+  },
+  bottomSheetScrollContent: {
+    paddingBottom: 40,
+  },
+  bottomSheetText: {
+    fontSize: 16,
+    lineHeight: 24,
   },
 });
 

@@ -270,6 +270,7 @@ async function main() {
   const quizQuestions = [
     {
       text: 'Qu\'est-ce qu\'un livret d\'épargne réglementé ?',
+      explanation: 'Un livret d\'épargne réglementé est un produit d\'épargne sécurisé dont le taux d\'intérêt est fixé et garanti par l\'État. Contrairement aux comptes bancaires classiques, il génère des intérêts, et contrairement aux placements boursiers, il ne présente aucun risque de perte en capital. Les livrets réglementés comme le Livret A ou le Livret d\'Épargne Durable sont des produits idéaux pour débuter dans l\'épargne.',
       answers: [
         { text: 'Un produit d\'épargne sécurisé avec un taux d\'intérêt garanti par l\'État', isCorrect: true },
         { text: 'Un compte bancaire classique sans intérêts', isCorrect: false },
@@ -279,6 +280,7 @@ async function main() {
     },
     {
       text: 'Pourquoi est-il important de constituer une épargne de précaution ?',
+      explanation: 'L\'épargne de précaution, aussi appelée épargne d\'urgence, permet de faire face aux imprévus de la vie (panne de voiture, perte d\'emploi, frais médicaux) sans avoir à s\'endetter ou à puiser dans d\'autres placements. Elle constitue une sécurité financière essentielle et doit être facilement accessible, d\'où l\'intérêt des livrets d\'épargne pour la stocker.',
       answers: [
         { text: 'Pour faire face aux imprévus sans s\'endetter', isCorrect: true },
         { text: 'Pour spéculer sur les marchés financiers', isCorrect: false },
@@ -288,6 +290,7 @@ async function main() {
     },
     {
       text: 'Quel est l\'avantage principal du Livret A ?',
+      explanation: 'Le principal avantage du Livret A est la combinaison de la disponibilité immédiate des fonds (vous pouvez retirer à tout moment) et de la sécurité totale (aucun risque de perte en capital). Bien que son rendement soit modéré, il reste un produit idéal pour constituer une réserve d\'urgence accessible. Le rendement n\'est pas très élevé, mais c\'est le prix de la sécurité et de la liquidité.',
       answers: [
         { text: 'Disponibilité immédiate des fonds et sécurité totale', isCorrect: true },
         { text: 'Rendement très élevé', isCorrect: false },
@@ -297,6 +300,7 @@ async function main() {
     },
     {
       text: 'Que signifie un taux d\'intérêt de 1,7% sur un livret d\'épargne ?',
+      explanation: 'Un taux d\'intérêt de 1,7% signifie que votre capital augmente de 1,7% chaque année. Par exemple, si vous placez 1000€ sur un livret à 1,7%, vous aurez 1017€ après un an (1000€ × 1,017). Les intérêts sont calculés et versés annuellement, et ils sont cumulatifs : les intérêts de l\'année précédente génèrent eux-mêmes des intérêts l\'année suivante (intérêts composés).',
       answers: [
         { text: 'Votre capital augmente de 1,7% par an', isCorrect: true },
         { text: 'Vous payez 1,7% de frais de gestion', isCorrect: false },
@@ -306,6 +310,7 @@ async function main() {
     },
     {
       text: 'Qu\'est-ce que l\'épargne durable ?',
+      explanation: 'L\'épargne durable est une épargne dont les fonds sont investis dans des projets responsables, écologiques et à impact social positif. Contrairement à une épargne classique, elle permet de concilier rendement financier et impact environnemental ou social. Le Livret d\'Épargne Durable (LED) en est un exemple : il finance des projets durables tout en conservant les avantages de sécurité et de disponibilité des livrets réglementés.',
       answers: [
         { text: 'Une épargne investie dans des projets responsables et écologiques', isCorrect: true },
         { text: 'Une épargne qui dure longtemps', isCorrect: false },
@@ -324,7 +329,8 @@ async function main() {
     if (!question) {
       question = await prisma.question.create({
         data: {
-          text: q.text
+          text: q.text,
+          explanation: q.explanation
         }
       });
 
@@ -338,6 +344,14 @@ async function main() {
         });
       }
     } else {
+      // Mettre à jour l'explication si elle n'existe pas ou est différente
+      if (!question.explanation && q.explanation) {
+        question = await prisma.question.update({
+          where: { id: question.id },
+          data: { explanation: q.explanation }
+        });
+      }
+
       // Vérifier que les réponses existent
       const existingAnswers = await prisma.answer.findMany({
         where: { questionId: question.id }
@@ -418,6 +432,7 @@ async function main() {
   const dailyQuiz1Questions = [
     {
       text: 'Combien de temps faut-il généralement garder son épargne de précaution ?',
+      explanation: 'L\'épargne de précaution doit représenter l\'équivalent de 3 à 6 mois de dépenses courantes. Cette durée permet de couvrir la plupart des imprévus (perte d\'emploi temporaire, frais médicaux, réparations importantes) sans avoir à s\'endetter. Elle doit être conservée en permanence et reconstituée si elle est utilisée. Moins de 3 mois peut être insuffisant, et plus de 6 mois peut être excessif car cet argent pourrait être mieux investi ailleurs pour un meilleur rendement.',
       answers: [
         { text: '3 à 6 mois de dépenses courantes', isCorrect: true },
         { text: '1 semaine de dépenses', isCorrect: false },
@@ -427,6 +442,7 @@ async function main() {
     },
     {
       text: 'Quel est le plafond maximum autorisé sur un Livret A en France ?',
+      explanation: 'Le plafond du Livret A est fixé à 22 950 € (hors intérêts capitalisés). Au-delà de ce montant, les intérêts ne sont plus versés sur la partie excédentaire. Ce plafond peut être modifié par décret, mais il est resté stable à 22 950 € depuis plusieurs années. Les intérêts générés peuvent dépasser ce plafond car ils sont capitalisés.',
       answers: [
         { text: '22 950 €', isCorrect: true },
         { text: '10 000 €', isCorrect: false },
@@ -436,6 +452,7 @@ async function main() {
     },
     {
       text: 'Quelle est la principale différence entre épargner et investir ?',
+      explanation: 'L\'épargne vise à préserver le capital avec un risque minimal et une disponibilité immédiate (livrets, comptes rémunérés). L\'investissement cherche la croissance du capital à long terme mais comporte un risque de perte (actions, obligations, immobilier). L\'épargne est idéale pour les objectifs à court terme et la réserve d\'urgence, tandis que l\'investissement est adapté aux objectifs à long terme avec une tolérance au risque.',
       answers: [
         { text: 'L\'épargne préserve le capital, l\'investissement cherche la croissance avec risque', isCorrect: true },
         { text: 'Aucune différence, ce sont des synonymes', isCorrect: false },
@@ -453,7 +470,10 @@ async function main() {
 
     if (!question) {
       question = await prisma.question.create({
-        data: { text: q.text }
+        data: {
+          text: q.text,
+          explanation: q.explanation
+        }
       });
 
       if (question) {
@@ -466,6 +486,14 @@ async function main() {
         });
       }
     } else if (question) {
+      // Mettre à jour l'explication si elle n'existe pas
+      if (!question.explanation && q.explanation) {
+        question = await prisma.question.update({
+          where: { id: question.id },
+          data: { explanation: q.explanation }
+        });
+      }
+
       const questionId = question.id;
       const existingAnswers = await prisma.answer.findMany({
         where: { questionId }
@@ -491,6 +519,7 @@ async function main() {
   const dailyQuiz2Questions = [
     {
       text: 'Quel est le principal risque d\'un livret d\'épargne réglementé ?',
+      explanation: 'Le principal risque d\'un livret d\'épargne réglementé est que son rendement peut être inférieur au taux d\'inflation. Cela signifie que même si votre capital augmente en valeur nominale, son pouvoir d\'achat réel peut diminuer. Par exemple, si l\'inflation est à 2% et votre livret à 1,7%, vous perdez du pouvoir d\'achat. Cependant, contrairement aux autres options, il n\'y a aucun risque de perte en capital, pas de frais élevés, et votre argent n\'est pas bloqué.',
       answers: [
         { text: 'Le rendement peut être inférieur à l\'inflation', isCorrect: true },
         { text: 'Vous pouvez perdre tout votre capital', isCorrect: false },
@@ -500,6 +529,7 @@ async function main() {
     },
     {
       text: 'Si vous placez 1000€ sur un livret à 1,7% par an, combien aurez-vous après 2 ans (intérêts simples) ?',
+      explanation: 'Avec des intérêts simples, les intérêts sont calculés uniquement sur le capital initial chaque année. Pour 1000€ à 1,7% par an : première année = 1000€ × 1,7% = 17€, deuxième année = 1000€ × 1,7% = 17€. Total après 2 ans = 1000€ + 17€ + 17€ = 1034€. Les intérêts simples ne capitalisent pas les intérêts précédents, contrairement aux intérêts composés.',
       answers: [
         { text: '1034€', isCorrect: true },
         { text: '1034,29€', isCorrect: false },
@@ -509,6 +539,7 @@ async function main() {
     },
     {
       text: 'Peut-on retirer son argent d\'un livret d\'épargne réglementé à tout moment ?',
+      explanation: 'Oui, l\'un des principaux avantages des livrets d\'épargne réglementés (Livret A, LED, etc.) est la disponibilité totale des fonds. Vous pouvez retirer votre argent à tout moment, sans frais, sans préavis et sans limite de montant. C\'est ce qui en fait des produits idéaux pour constituer une épargne de précaution. Contrairement aux placements bloqués ou aux investissements, votre liquidité est garantie.',
       answers: [
         { text: 'Oui, sans frais et sans préavis', isCorrect: true },
         { text: 'Oui, mais avec des frais de retrait', isCorrect: false },
@@ -526,7 +557,10 @@ async function main() {
 
     if (!question) {
       question = await prisma.question.create({
-        data: { text: q.text }
+        data: {
+          text: q.text,
+          explanation: q.explanation
+        }
       });
 
       if (question) {
@@ -539,6 +573,14 @@ async function main() {
         });
       }
     } else if (question) {
+      // Mettre à jour l'explication si elle n'existe pas
+      if (!question.explanation && q.explanation) {
+        question = await prisma.question.update({
+          where: { id: question.id },
+          data: { explanation: q.explanation }
+        });
+      }
+
       const questionId = question.id;
       const existingAnswers = await prisma.answer.findMany({
         where: { questionId }
