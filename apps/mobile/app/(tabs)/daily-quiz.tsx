@@ -1,6 +1,8 @@
 import { View, Text, useColorScheme as useRNColorScheme, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import { CashouHeader } from '@/components/cashou-header';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useAuth } from '@/hooks/use-auth';
@@ -22,6 +24,7 @@ interface Answer {
 interface Question {
   id: number;
   text: string | null;
+  explanation: string | null;
   answers: Answer[];
 }
 
@@ -40,20 +43,20 @@ export default function DailyQuizScreen() {
 
   // Configure header for this screen
   useHeaderOptions({ showBackButton: true, onBackPress: () => router.back() });
-  
+
   // Récupérer les paramètres depuis la navigation
   // useLocalSearchParams peut retourner un tableau ou une chaîne
   const showCompletedParam = params?.showCompleted;
-  const showCompleted = Array.isArray(showCompletedParam) 
-    ? showCompletedParam[0] === 'true' 
+  const showCompleted = Array.isArray(showCompletedParam)
+    ? showCompletedParam[0] === 'true'
     : showCompletedParam === 'true';
-  
+
   // Récupérer le quizId si fourni (pour les quiz depuis l'historique)
   const quizIdParam = params?.quizId;
-  const specificQuizId = Array.isArray(quizIdParam) 
-    ? quizIdParam[0] 
+  const specificQuizId = Array.isArray(quizIdParam)
+    ? quizIdParam[0]
     : quizIdParam;
-  
+
   // Initialiser à null pour ne rien afficher tant que les données ne sont pas chargées
   const [quizState, setQuizState] = useState<QuizState | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -64,6 +67,38 @@ export default function DailyQuizScreen() {
   const [hasStartedQuiz, setHasStartedQuiz] = useState(false);
   const [userAnswers, setUserAnswers] = useState<Map<number, { answerId: number; isCorrect: boolean }>>(new Map());
   const [correctionQuestionIndex, setCorrectionQuestionIndex] = useState(0);
+  const bottomSheetRef = useRef<BottomSheet>(null);
+  const snapPoints = useMemo(() => ['40%'], []);
+
+  // Réinitialiser le bottom sheet quand on change de question
+  useEffect(() => {
+    if (quizState === 'correction') {
+      bottomSheetRef.current?.close();
+    }
+  }, [correctionQuestionIndex, quizState]);
+
+  // Callback pour ouvrir le bottom sheet
+  const handleOpenExplanation = useCallback(() => {
+    bottomSheetRef.current?.expand();
+  }, []);
+
+  // Callback pour fermer le bottom sheet
+  const handleCloseExplanation = useCallback(() => {
+    bottomSheetRef.current?.close();
+  }, []);
+
+  // Backdrop personnalisé
+  const renderBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.5}
+      />
+    ),
+    []
+  );
 
   useEffect(() => {
     const fetchQuiz = async () => {
@@ -72,7 +107,7 @@ export default function DailyQuizScreen() {
       if (quizState === 'correction') {
         return;
       }
-      
+
       try {
         // Toujours mettre isLoading à true au début pour masquer le contenu
         // Sauf si on vient de l'historique ET que showCompleted est true (on sait déjà ce qu'on veut afficher)
@@ -82,9 +117,9 @@ export default function DailyQuizScreen() {
         setError(null);
         // Réinitialiser l'état pour éviter d'afficher l'ancien état
         setQuizState(null);
-        
+
         let quizData = null;
-        
+
         // Si un quizId spécifique est fourni, charger ce quiz
         if (specificQuizId) {
           const quizId = parseInt(specificQuizId);
@@ -95,10 +130,10 @@ export default function DailyQuizScreen() {
           // Sinon, charger le quiz du jour
           quizData = await trpcClient.quiz.getTodaysDailyQuiz.query();
         }
-        
+
         if (quizData && user) {
           setQuiz(quizData as Quiz);
-          
+
           // Charger les questions pour tous les cas
           const questionsData = await trpcClient.quizQuestion.getQuestionsWithAnswers.query({
             quizId: (quizData as Quiz).id,
@@ -108,6 +143,7 @@ export default function DailyQuizScreen() {
           const formattedQuestions: Question[] = questionsData.map((qq: any) => ({
             id: qq.question.id,
             text: qq.question.text,
+            explanation: qq.question.explanation,
             answers: qq.question.answers.map((a: any) => ({
               id: a.id,
               text: a.text,
@@ -121,7 +157,7 @@ export default function DailyQuizScreen() {
           // Pour un quiz depuis l'historique, on utilise showCompleted
           // Sinon, on vérifie dans la base de données
           let isQuizCompleted = false;
-          
+
           if (specificQuizId && showCompleted) {
             // Si on vient de l'historique avec showCompleted=true, le quiz est complété
             isQuizCompleted = true;
@@ -256,7 +292,7 @@ export default function DailyQuizScreen() {
 
     try {
       setIsLoading(true);
-      
+
       // Récupérer les questions avec réponses
       const questionsData = await trpcClient.quizQuestion.getQuestionsWithAnswers.query({
         quizId: quiz.id,
@@ -266,6 +302,7 @@ export default function DailyQuizScreen() {
       const formattedQuestions: Question[] = questionsData.map((qq: any) => ({
         id: qq.question.id,
         text: qq.question.text,
+        explanation: qq.question.explanation,
         answers: qq.question.answers.map((a: any) => ({
           id: a.id,
           text: a.text,
@@ -295,18 +332,18 @@ export default function DailyQuizScreen() {
 
       // Trouver la première question non répondue
       const firstUnansweredIndex = answeredQuestions.findIndex((answeredId) => answeredId === null);
-      
+
       // Si toutes les questions sont répondues, vérifier si le quiz est complété
       if (firstUnansweredIndex === -1) {
         // Vérifier si le quiz est complété
         const existingParticipations = await trpcClient.userQuiz.getByQuiz.query({
           quizId: quiz.id,
         });
-        
+
         const userParticipation = (existingParticipations as any[]).find(
           (p: any) => p.userId === user.id && p.completedAt !== null
         );
-        
+
         if (userParticipation) {
           // Le quiz est déjà complété, afficher la page de félicitations
           setQuestions(formattedQuestions);
@@ -338,7 +375,7 @@ export default function DailyQuizScreen() {
   };
 
   const handleValidate = async () => {
-    if (!selectedAnswerId || !user || !questions[currentQuestionIndex]) {
+    if (!selectedAnswerId || !user || !questions[currentQuestionIndex] || !quiz) {
       Alert.alert('Attention', 'Veuillez sélectionner une réponse');
       return;
     }
@@ -392,9 +429,9 @@ export default function DailyQuizScreen() {
             }
           })
         );
-        
+
         const allCorrect = allAnswers.every((correct) => correct);
-        
+
         // Récupérer toutes les réponses de l'utilisateur pour la correction
         const answersMap = new Map<number, { answerId: number; isCorrect: boolean }>();
         for (const q of questions) {
@@ -414,7 +451,7 @@ export default function DailyQuizScreen() {
           }
         }
         setUserAnswers(answersMap);
-        
+
         // Créer ou mettre à jour la participation au quiz
         try {
           console.log('[DailyQuiz] Creating/updating participation...');
@@ -423,12 +460,12 @@ export default function DailyQuizScreen() {
             isCorrect: allCorrect,
           });
           console.log('[DailyQuiz] Participation created/updated successfully');
-          
+
           // Attendre 1 seconde pour que le backend termine la mise à jour du streak
           console.log('[DailyQuiz] Waiting 1 second before refreshing user data...');
           await new Promise(resolve => setTimeout(resolve, 1000));
           console.log('[DailyQuiz] Wait completed, refreshing user...');
-          
+
           // Rafraîchir les données de l'utilisateur pour mettre à jour le currentStreak
           await refreshUser();
           console.log('[DailyQuiz] User refreshed, currentStreak should be updated');
@@ -448,6 +485,34 @@ export default function DailyQuizScreen() {
   };
 
   const shouldShowInitialLoader = (isLoading || quizState === null) && !error;
+
+  // Calculer le score pour l'affichage de fin de quiz
+  const totalQuestions = questions.length;
+  const correctAnswers = Array.from(userAnswers.values()).filter(
+    (answer) => answer.isCorrect
+  ).length;
+  const score = totalQuestions > 0 ? correctAnswers / totalQuestions : 0;
+  const hasPassed = score >= 2 / 3;
+
+  // Messages selon le score
+  const encouragementMessages = [
+    'Ne vous découragez pas, continuez à apprendre !',
+    'Chaque erreur est une opportunité d\'apprendre.',
+    'Vous progressez à chaque quiz, continuez ainsi !',
+  ];
+  const congratulationMessages = [
+    'Excellent travail ! Vous maîtrisez bien le sujet.',
+    'Bravo !',
+    'Félicitations ! Vous avez bien réussi ce quiz.',
+    'Parfait ! Continuez sur cette lancée !',
+  ];
+
+  // Sélectionner un message aléatoire dans la liste appropriée
+  const messageArray = hasPassed ? congratulationMessages : encouragementMessages;
+  const messageIndex = Math.floor(Math.random() * messageArray.length);
+  const completedTitle = hasPassed ? 'Félicitations !' : 'Dommage';
+  const completedEmoji = hasPassed ? '🎉' : '💪';
+  const completedMessage = messageArray[messageIndex];
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -564,14 +629,22 @@ export default function DailyQuizScreen() {
           </>
         ) : quizState === 'completed' ? (
           <View style={styles.completedContainer}>
-            <Text style={styles.celebrationEmoji}>🎉</Text>
+            <Text style={styles.celebrationEmoji}>{completedEmoji}</Text>
             <Text
               style={[
                 styles.completedTitle,
                 { fontFamily: CashouTheme.fonts.heading, color: theme.text },
               ]}
             >
-              Félicitations !
+              {completedTitle}
+            </Text>
+            <Text
+              style={[
+                styles.completedScore,
+                { fontFamily: CashouTheme.fonts.subheading, color: theme.text },
+              ]}
+            >
+              Score : {correctAnswers} / {totalQuestions}
             </Text>
             <Text
               style={[
@@ -579,7 +652,7 @@ export default function DailyQuizScreen() {
                 { fontFamily: CashouTheme.fonts.body, color: theme.text },
               ]}
             >
-              Vous avez terminé le quiz du jour !
+              {completedMessage}
             </Text>
           </View>
         ) : quizState === 'correction' && questions.length > 0 && !isLoading ? (
@@ -610,7 +683,7 @@ export default function DailyQuizScreen() {
 
             {/* Réponses avec correction */}
             <View style={styles.answersContainer}>
-              {questions[correctionQuestionIndex]?.answers.map((answer) => {
+              {questions[correctionQuestionIndex]?.answers.map((answer, index) => {
                 const userAnswer = userAnswers.get(questions[correctionQuestionIndex].id);
                 const isUserAnswer = userAnswer?.answerId === answer.id;
                 const isCorrect = answer.isCorrect === true;
@@ -618,41 +691,58 @@ export default function DailyQuizScreen() {
                 const isUserAnswerIncorrect = isUserAnswer && !isCorrect;
                 const showAsCorrect = isCorrect; // Toujours montrer la bonne réponse en vert
                 const showAsIncorrect = isUserAnswerIncorrect; // La réponse de l'utilisateur si elle est fausse
-                
+                const currentQuestion = questions[correctionQuestionIndex];
+                const hasExplanation = currentQuestion?.explanation && currentQuestion.explanation.trim().length > 0;
+                const isCorrectAnswer = showAsCorrect;
+
                 return (
-                  <View
-                    key={answer.id}
-                    style={[
-                      styles.answerButton,
-                      {
-                        backgroundColor: showAsCorrect 
-                          ? '#4CAF50' 
-                          : showAsIncorrect 
-                          ? '#F44336' 
-                          : theme.card,
-                        borderColor: showAsCorrect 
-                          ? '#4CAF50' 
-                          : showAsIncorrect 
-                          ? '#F44336' 
-                          : theme.border,
-                        borderWidth: 2,
-                      },
-                    ]}
-                  >
-                    <Text
+                  <React.Fragment key={answer.id}>
+                    <View
                       style={[
-                        styles.answerText,
+                        styles.answerButton,
                         {
-                          fontFamily: CashouTheme.fonts.body,
-                          color: showAsCorrect || showAsIncorrect ? '#FFFFFF' : theme.text,
+                          backgroundColor: showAsCorrect
+                            ? '#4CAF50'
+                            : showAsIncorrect
+                            ? '#F44336'
+                            : theme.card,
+                          borderColor: showAsCorrect
+                            ? '#4CAF50'
+                            : showAsIncorrect
+                            ? '#F44336'
+                            : theme.border,
+                          borderWidth: 2,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
                         },
                       ]}
                     >
-                      {answer.text}
-                      {showAsCorrect && ' ✓'}
-                      {showAsIncorrect && ' ✗'}
-                    </Text>
-                  </View>
+                      <Text
+                        style={[
+                          styles.answerText,
+                          {
+                            fontFamily: CashouTheme.fonts.body,
+                            color: showAsCorrect || showAsIncorrect ? '#FFFFFF' : theme.text,
+                            flex: 1,
+                          },
+                        ]}
+                      >
+                        {answer.text}
+                        {showAsCorrect && ' ✓'}
+                        {showAsIncorrect && ' ✗'}
+                      </Text>
+                      {showAsCorrect && hasExplanation && (
+                        <TouchableOpacity
+                          onPress={handleOpenExplanation}
+                          style={styles.infoButton}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.infoIcon}>ℹ️</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </React.Fragment>
                 );
               })}
             </View>
@@ -679,7 +769,7 @@ export default function DailyQuizScreen() {
               </Text>
             </TouchableOpacity>
           )}
-          
+
           {quizState === 'question' && (
             <TouchableOpacity
               style={[
@@ -728,7 +818,7 @@ export default function DailyQuizScreen() {
                   Correction
                 </Text>
               </TouchableOpacity>
-              
+
               {/* Boutons Accueil et Historique */}
               <View style={styles.completedButtonsContainer}>
                      <TouchableOpacity
@@ -779,8 +869,10 @@ export default function DailyQuizScreen() {
               onPress={() => {
                 if (correctionQuestionIndex < questions.length - 1) {
                   setCorrectionQuestionIndex(correctionQuestionIndex + 1);
+                  bottomSheetRef.current?.close();
                 } else {
                   setQuizState('completed');
+                  bottomSheetRef.current?.close();
                 }
               }}
               activeOpacity={0.8}
@@ -797,6 +889,53 @@ export default function DailyQuizScreen() {
           )}
         </View>
       )}
+
+      {/* Bottom Sheet pour l'explication */}
+      <BottomSheet
+        ref={bottomSheetRef}
+        index={-1}
+        snapPoints={snapPoints}
+        enablePanDownToClose={true}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: theme.primary }}
+        handleIndicatorStyle={{ backgroundColor: theme.border }}
+      >
+        <BottomSheetView style={styles.bottomSheetContent}>
+          {/* Header */}
+          <View style={styles.bottomSheetHeader}>
+            <Text
+              style={[
+                styles.bottomSheetTitle,
+                { fontFamily: CashouTheme.fonts.subheading, color: theme.text },
+              ]}
+            >
+              Explication
+            </Text>
+            <TouchableOpacity
+              onPress={handleCloseExplanation}
+              style={styles.bottomSheetCloseButton}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.bottomSheetCloseText, { color: theme.text }]}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Contenu */}
+          <ScrollView
+            style={styles.bottomSheetScrollView}
+            contentContainerStyle={styles.bottomSheetScrollContent}
+          >
+            <Text
+              style={[
+                styles.bottomSheetText,
+                { fontFamily: CashouTheme.fonts.body, color: theme.text },
+              ]}
+            >
+              {questions[correctionQuestionIndex]?.explanation}
+            </Text>
+          </ScrollView>
+        </BottomSheetView>
+      </BottomSheet>
     </View>
   );
 }
@@ -914,9 +1053,15 @@ const styles = StyleSheet.create({
     fontSize: 32,
     marginBottom: 16,
   },
+  completedScore: {
+    fontSize: 24,
+    marginBottom: 16,
+    fontWeight: '600',
+  },
   completedText: {
     fontSize: 18,
     textAlign: 'center',
+    paddingHorizontal: 16,
   },
   correctionButton: {
     width: '100%',
@@ -947,5 +1092,94 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  infoButton: {
+    marginLeft: 12,
+    padding: 6,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    minWidth: 32,
+    minHeight: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoIcon: {
+    fontSize: 18,
+  },
+  explanationContainer: {
+    borderRadius: 12,
+    borderWidth: 2,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  explanationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  explanationTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  closeButton: {
+    padding: 4,
+    borderRadius: 16,
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeButtonText: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  explanationText: {
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  bottomSheetContent: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  bottomSheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 16,
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  bottomSheetTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+  },
+  bottomSheetCloseButton: {
+    padding: 8,
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bottomSheetCloseText: {
+    fontSize: 24,
+    fontWeight: '600',
+  },
+  bottomSheetScrollView: {
+    flex: 1,
+  },
+  bottomSheetScrollContent: {
+    paddingBottom: 40,
+  },
+  bottomSheetText: {
+    fontSize: 16,
+    lineHeight: 24,
+  },
 });
-

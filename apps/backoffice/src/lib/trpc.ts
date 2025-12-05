@@ -33,7 +33,7 @@ export const trpcClient = trpc.createClient({
         const token = LocalAuthService.getToken();
         return token
           ? {
-              Authorization: `Bearer ${token}`,
+              Backoffice: token,
             }
           : {};
       },

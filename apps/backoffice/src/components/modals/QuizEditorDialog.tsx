@@ -149,12 +149,12 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
         .filter(quiz => quiz.type === 'MCQ' && quiz.levelId)
         .map(quiz => quiz.levelId)
     )
-    
+
     // Si on est en mode édition et que le quiz actuel a un niveau, le permettre
     if (currentQuiz?.levelId) {
       levelsWithMcq.delete(currentQuiz.levelId)
     }
-    
+
     // Retourner seulement les niveaux qui n'ont pas de MCQ
     return levels.filter(level => !levelsWithMcq.has(level.id))
   }, [levels, quizzes, currentQuiz])
@@ -176,8 +176,8 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
   const currentQuestionCount = displayLinks.length
   // Pour DAILY: exactement 3 questions. Pour MCQ: minimum 1 question, pas de maximum
   const hasReachedQuestionLimit = formValues.type === 'DAILY' && currentQuestionCount >= questionLimit
-  const quizMustBeComplete = formValues.type === 'DAILY' 
-    ? currentQuestionCount === questionLimit 
+  const quizMustBeComplete = formValues.type === 'DAILY'
+    ? currentQuestionCount === questionLimit
     : currentQuestionCount >= 1
 
   const buildPendingId = () =>
@@ -523,11 +523,10 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
                       <button
                         key={link.key}
                         type="button"
-                        className={`w-full rounded-xl border px-3 py-2 text-left text-sm transition ${
-                          active
-                            ? 'border-slate-900 bg-white text-slate-900 shadow-sm'
-                            : 'border-transparent bg-transparent text-slate-600 hover:bg-white/70'
-                        }`}
+                        className={`w-full rounded-xl border px-3 py-2 text-left text-sm transition ${active
+                          ? 'border-slate-900 bg-white text-slate-900 shadow-sm'
+                          : 'border-transparent bg-transparent text-slate-600 hover:bg-white/70'
+                          }`}
                         onClick={() => setSelectedLinkKey(link.key)}
                       >
                         <p className="text-xs uppercase text-slate-500">
@@ -568,19 +567,19 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
 
 type DisplayLink =
   | {
-      key: string
-      source: 'existing'
-      questionId: number
-      position?: number | null
-      quizQuestionId: number
-    }
+    key: string
+    source: 'existing'
+    questionId: number
+    position?: number | null
+    quizQuestionId: number
+  }
   | {
-      key: string
-      source: 'pending'
-      questionId: number
-      position?: number | null
-      tempId: string
-    }
+    key: string
+    source: 'pending'
+    questionId: number
+    position?: number | null
+    tempId: string
+  }
 
 function QuestionDetail({
   linkKey,
@@ -641,9 +640,11 @@ function QuestionEditor({
   refresh: () => Promise<void>
 }) {
   const [text, setText] = useState(question.text ?? '')
+  const [explanation, setExplanation] = useState(question.explanation ?? '')
   const [questionSaveState, setQuestionSaveState] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle')
   const questionSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSavedQuestion = useRef(question.text ?? '')
+  const lastSavedExplanation = useRef(question.explanation ?? '')
   const [correctAnswerId, setCorrectAnswerId] = useState<number | null>(
     () => answers.find((answer) => answer.isCorrect)?.id ?? null,
   )
@@ -667,18 +668,37 @@ function QuestionEditor({
     [question.id, refresh],
   )
 
+  const persistExplanation = useCallback(
+    async (nextExplanation: string) => {
+      setQuestionSaveState('saving')
+      try {
+        await backofficeApi.question.update({ id: question.id, data: { explanation: nextExplanation } })
+        lastSavedExplanation.current = nextExplanation
+        setExplanation(nextExplanation)
+        setQuestionSaveState('saved')
+        await refresh()
+      } catch (error) {
+        setQuestionSaveState('error')
+        toast.error((error as Error).message ?? 'Impossible de mettre à jour l\'explication')
+      }
+    },
+    [question.id, refresh],
+  )
+
   useEffect(() => {
     setText(question.text ?? '')
+    setExplanation(question.explanation ?? '')
     lastSavedQuestion.current = question.text ?? ''
+    lastSavedExplanation.current = question.explanation ?? ''
     setQuestionSaveState('idle')
-  }, [question.id, question.text])
+  }, [question.id, question.text, question.explanation])
 
   useEffect(() => {
     setCorrectAnswerId(answers.find((answer) => answer.isCorrect)?.id ?? null)
   }, [answers])
 
   useEffect(() => {
-    if (text === lastSavedQuestion.current) {
+    if (text === lastSavedQuestion.current && explanation === lastSavedExplanation.current) {
       if (questionSaveTimeout.current) {
         clearTimeout(questionSaveTimeout.current)
         questionSaveTimeout.current = null
@@ -693,7 +713,12 @@ function QuestionEditor({
       clearTimeout(questionSaveTimeout.current)
     }
     questionSaveTimeout.current = setTimeout(() => {
-      persistQuestion(text)
+      if (text !== lastSavedQuestion.current) {
+        persistQuestion(text)
+      }
+      if (explanation !== lastSavedExplanation.current) {
+        persistExplanation(explanation)
+      }
     }, 600)
     return () => {
       if (questionSaveTimeout.current) {
@@ -701,7 +726,7 @@ function QuestionEditor({
         questionSaveTimeout.current = null
       }
     }
-  }, [text, persistQuestion, questionSaveState])
+  }, [text, explanation, persistQuestion, persistExplanation, questionSaveState])
 
   const handleSelectCorrect = useCallback(
     async (answerId: number) => {
@@ -776,6 +801,17 @@ function QuestionEditor({
             )
           })}
         </div>
+      </div>
+
+      <div className="mt-4">
+        <p className="mb-2 text-xs font-semibold uppercase text-slate-500">Explication</p>
+        <textarea
+          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-slate-400 focus:outline-none"
+          rows={2}
+          placeholder="Explication (optionnel)"
+          value={explanation}
+          onChange={(event) => setExplanation(event.target.value)}
+        />
       </div>
     </>
   )

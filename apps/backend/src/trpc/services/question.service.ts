@@ -2,7 +2,7 @@
 // Couche d'abstraction entre les routers et la base de données
 import type { Question, PrismaClient } from "@prisma/client";
 import defaultPrisma from "../../database.ts";
-import type {QuestionCreateSchema, QuestionDataSchema} from "../schemas-zod/question-schema.ts";
+import type { QuestionCreateSchema, QuestionDataSchema } from "../schemas-zod/question-schema.ts";
 
 export class QuestionService {
     private prisma: PrismaClient;
@@ -38,10 +38,16 @@ export class QuestionService {
     /**
      * Crée une nouvelle question
      * @param data - Données de la question validées par le schéma Zod
-     * @returns Promise<Question> - La question créée avec son ID généré
+     * @returns Promise<{ message: string, question: Question }> - La question créée avec un message de confirmation
      */
-    async create(data: QuestionCreateSchema): Promise<Question> {
-        return this.prisma.question.create({ data });
+    async create(data: QuestionCreateSchema): Promise<{ message: string, question: Question }> {
+        const question = await this.prisma.question.create({ data });
+        console.log(question);
+
+        return {
+            message: "La question a été créée avec succès",
+            question
+        };
     }
 
     /**
