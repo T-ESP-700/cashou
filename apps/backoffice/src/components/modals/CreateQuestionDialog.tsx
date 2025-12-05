@@ -49,7 +49,10 @@ export function CreateQuestionDialog({ open, onOpenChange, onSuccess }: CreateQu
     formState: { errors },
     reset,
     setValue,
+    watch,
   } = useForm<QuestionFormData>();
+
+  const explanation = watch('explanation');
 
   const createQuestionMutation = trpc.question.create.useMutation();
   const createAnswerMutation = trpc.answer.create.useMutation();
@@ -147,6 +150,7 @@ export function CreateQuestionDialog({ open, onOpenChange, onSuccess }: CreateQu
 
   // Vérifications dans l'ordre : question → 4 réponses → correct → dupliqués
   const isQuestionFilled = questionText.trim() !== '';
+  const isExplanationFilled = explanation?.trim().length > 0;
   const allAnswersFilled = answers.every((answer) => answer.text.trim() !== '');
   const hasCorrectAnswer = answers.some((answer) => answer.isCorrect);
 
@@ -154,6 +158,7 @@ export function CreateQuestionDialog({ open, onOpenChange, onSuccess }: CreateQu
     createQuestionMutation.isPending ||
     createAnswerMutation.isPending ||
     !isQuestionFilled ||
+    !isExplanationFilled ||
     !allAnswersFilled ||
     !hasCorrectAnswer ||
     hasDuplicateAnswers;
@@ -162,6 +167,9 @@ export function CreateQuestionDialog({ open, onOpenChange, onSuccess }: CreateQu
   const getErrorMessage = () => {
     if (!isQuestionFilled) {
       return 'Veuillez remplir le champ question';
+    }
+    if (!isExplanationFilled) {
+      return 'Veuillez remplir le champ explication';
     }
     if (!allAnswersFilled) {
       return 'Veuillez remplir tous les 4 champs de réponse';
