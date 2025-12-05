@@ -50,9 +50,6 @@ export default function GameCurrentScreen() {
 
   // Assets simulés pour la démo (à remplacer par de vraies données)
   const [assets, setAssets] = useState<Asset[]>([
-    { id: 1, title: 'Livret A', symbol: 'LA', rate: 2, description: 'Épargne sécurisée' },
-    { id: 2, title: 'Apple', symbol: 'AAPL', rate: 7, description: 'Action technologique' },
-    { id: 3, title: 'S&P 500', symbol: 'SPX', rate: 11, description: 'Indice boursier' },
   ]);
 
   useEffect(() => {
