@@ -152,7 +152,7 @@ function AssetCard({ asset, isDark, router }: { asset: AssetItem; isDark: boolea
   const positive = asset.changePct >= 0;
   
   const handlePress = () => {
-    router.push(`/(tabs)/asset-detail?id=${asset.id}`);
+    router.push(`/game/asset-detail?id=${asset.id}`);
   };
   
   return (
