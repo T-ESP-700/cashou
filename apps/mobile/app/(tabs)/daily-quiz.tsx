@@ -2,7 +2,7 @@ import { View, Text, useColorScheme as useRNColorScheme, StyleSheet, TouchableOp
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
-import { CashouHeader } from '@/components/cashou-header';
+// import { CashouHeader } from '@/components/cashou-header';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useAuth } from '@/hooks/use-auth';
@@ -63,7 +63,7 @@ export default function DailyQuizScreen() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswerId, setSelectedAnswerId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [userQuizId, setUserQuizId] = useState<number | null>(null);
+  // const [userQuizId, setUserQuizId] = useState<number | null>(null);
   const [hasStartedQuiz, setHasStartedQuiz] = useState(false);
   const [userAnswers, setUserAnswers] = useState<Map<number, { answerId: number; isCorrect: boolean }>>(new Map());
   const [correctionQuestionIndex, setCorrectionQuestionIndex] = useState(0);
@@ -269,6 +269,7 @@ export default function DailyQuizScreen() {
     };
 
     fetchQuiz();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, showCompleted, specificQuizId]); // Ne pas inclure quizState dans les dépendances pour éviter les rechargements
 
   // Rafraîchir les données utilisateur quand on quitte la page (si le quiz est complété)
@@ -687,13 +688,13 @@ export default function DailyQuizScreen() {
                 const userAnswer = userAnswers.get(questions[correctionQuestionIndex].id);
                 const isUserAnswer = userAnswer?.answerId === answer.id;
                 const isCorrect = answer.isCorrect === true;
-                const isUserAnswerCorrect = isUserAnswer && isCorrect;
+                // const isUserAnswerCorrect = isUserAnswer && isCorrect;
                 const isUserAnswerIncorrect = isUserAnswer && !isCorrect;
                 const showAsCorrect = isCorrect; // Toujours montrer la bonne réponse en vert
                 const showAsIncorrect = isUserAnswerIncorrect; // La réponse de l'utilisateur si elle est fausse
                 const currentQuestion = questions[correctionQuestionIndex];
                 const hasExplanation = currentQuestion?.explanation && currentQuestion.explanation.trim().length > 0;
-                const isCorrectAnswer = showAsCorrect;
+                // const isCorrectAnswer = showAsCorrect;
 
                 return (
                   <React.Fragment key={answer.id}>
