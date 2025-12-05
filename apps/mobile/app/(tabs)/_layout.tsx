@@ -55,33 +55,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="test"
-        options={{
-          title: 'Test',
-          tabBarIcon: ({ size, focused }) => (
-            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-              {focused && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    backgroundColor: '#E87F00',
-                    borderRadius: 14,
-                    width: size + 20,
-                    height: size + 20,
-                  }}
-                />
-              )}
-              <Ionicons
-                name={(focused ? "flask" : "flask-outline") as any}
-                size={size}
-                color="#FFFFFF"
-                style={{ opacity: focused ? 1 : 0.6 }}
-              />
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="wallet"
         options={{
           title: 'Wallet',
