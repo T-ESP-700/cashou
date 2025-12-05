@@ -395,6 +395,8 @@ Cela ouvrira une interface web sur `http://localhost:5555`.
 - **db_cashou** : PostgreSQL pour l'app (port 5432)
 - **db_backoffice** : PostgreSQL pour le backoffice (port 5433)
 
+
+
 ### Commandes utiles
 ```bash
 # Démarrer en arrière-plan
