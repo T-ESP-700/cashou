@@ -6,9 +6,9 @@ async function main() {
   console.log('🌱 Début du seeding du niveau 1: Premier pas dans l\'épargne...');
 
   // 1. Créer le Market "Épargne & Sécurité"
-  console.log('📊 Création du marché Épargne & Sécurité...');
+  console.log("📊 Création du marché Livret, plans et compte épargne...");
   let market = await prisma.market.findFirst({
-    where: { title: 'Épargne & Sécurité' }
+    where: { title: "Livrets, plans et comptes d'épargne" },
   });
 
   if (market) {
@@ -21,7 +21,7 @@ async function main() {
   } else {
     market = await prisma.market.create({
       data: {
-        title: 'Épargne & Sécurité',
+        title: 'Livrets, plans et comptes d\'épargne',
         description: 'Marché regroupant les produits financiers sécurisés destinés à protéger le capital. Inclut livrets, comptes rémunérés et placements à court terme. Les valeurs sont stables et faiblement volatiles.'
       }
     });
@@ -29,7 +29,7 @@ async function main() {
   console.log(`✅ Marché créé: ${market.title} (ID: ${market.id})`);
 
   // 2. Créer le Field "Épargne"
-  console.log('🏭 Création du secteur Épargne...');
+  /*console.log('🏭 Création du secteur Épargne...');
   const field = await prisma.field.upsert({
     where: { name: 'Épargne' },
     update: {
@@ -40,7 +40,7 @@ async function main() {
       marketId: market.id
     }
   });
-  console.log(`✅ Secteur créé: ${field.name} (ID: ${field.id})`);
+  console.log(`✅ Secteur créé: ${field.name} (ID: ${field.id})`); */
 
   // 3. Créer le Submarket "Livrets d'épargne"
   console.log('🌐 Création du sous-marché Livrets d\'épargne...');
@@ -74,10 +74,10 @@ async function main() {
   console.log('💰 Création des actifs...');
 
   const livretA = await prisma.asset.upsert({
-    where: { symbol: 'LVA' },
+    where: { symbol: 'LIVRET_A' },
     update: {
       title: 'Livret A',
-      fieldId: field.id,
+      fieldId: null,
       rate: 1.7,
       description: 'Produit d\'épargne sécurisé et toujours disponible. Le Livret A offre un rendement modéré mais garanti, idéal pour constituer une réserve d\'urgence et apprendre les bases de la gestion prudente. Aucun risque de perte et des retraits possibles à tout moment.',
       marketId: market.id,
@@ -85,8 +85,8 @@ async function main() {
     },
     create: {
       title: 'Livret A',
-      symbol: 'LVA',
-      fieldId: field.id,
+      symbol: 'LIVRET_A',
+      fieldId: null,
       rate: 1.7,
       description: 'Produit d\'épargne sécurisé et toujours disponible. Le Livret A offre un rendement modéré mais garanti, idéal pour constituer une réserve d\'urgence et apprendre les bases de la gestion prudente. Aucun risque de perte et des retraits possibles à tout moment.',
       marketId: market.id,
@@ -96,19 +96,19 @@ async function main() {
   console.log(`✅ Actif créé: ${livretA.title} (${livretA.symbol}) - Rate: ${livretA.rate}%`);
 
   const livretLED = await prisma.asset.upsert({
-    where: { symbol: 'LED' },
+    where: { symbol: 'LIVRET_DDS' },
     update: {
-      title: 'Livret d\'Épargne Durable',
-      fieldId: field.id,
+      title: 'Livret de Développement Durable et Solidaire',
+      fieldId: null,
       rate: 1.7,
       description: 'Livret d\'épargne sécurisé dédié au financement de projets responsables et durables. Rendement stable et légèrement supérieur au Livret A dans l\'univers Cashou. Idéal pour initier le joueur à la notion d\'impact positif tout en conservant une gestion prudente et sans risque.',
       marketId: market.id,
       submarketId: submarket.id
     },
     create: {
-      title: 'Livret d\'Épargne Durable',
-      symbol: 'LED',
-      fieldId: field.id,
+      title: 'Livret de Développement Durable et Solidaire',
+      symbol: 'LIVRET_DDS',
+      fieldId: null,
       rate: 1.7,
       description: 'Livret d\'épargne sécurisé dédié au financement de projets responsables et durables. Rendement stable et légèrement supérieur au Livret A dans l\'univers Cashou. Idéal pour initier le joueur à la notion d\'impact positif tout en conservant une gestion prudente et sans risque.',
       marketId: market.id,
@@ -175,7 +175,7 @@ async function main() {
   }
   console.log(`✅ Événement créé: ${event.title}`);
 
-  // 7. Créer l'Impact (coef 70 = 70%)
+  // 7. Créer l'Impact
   console.log('💥 Création de l\'impact...');
   let impact = await prisma.impact.findFirst({
     where: {
@@ -188,7 +188,7 @@ async function main() {
     impact = await prisma.impact.update({
       where: { id: impact.id },
       data: {
-        coef: 70
+        coef: 0.7
       }
     });
   } else {
@@ -196,7 +196,7 @@ async function main() {
       data: {
         eventId: event.id,
         assetId: livretA.id,
-        coef: 70
+        coef: 0.7
       }
     });
   }
@@ -212,15 +212,16 @@ async function main() {
     goal = await prisma.goal.update({
       where: { id: goal.id },
       data: {
-        description: 'Maintenir ton solde total au-dessus de 0 Cashou pendant toute la durée du scénario. Cet objectif enseigne la gestion prudente du portefeuille et l\'importance de ne jamais se retrouver à découvert.'
+        description: 'Ne pas perdre d\'argent par rapport à ton capital initial.'
       }
     });
   } else {
     goal = await prisma.goal.create({
       data: {
-        title: 'Reste en positif',
-        description: 'Maintenir ton solde total au-dessus de 0 Cashou pendant toute la durée du scénario. Cet objectif enseigne la gestion prudente du portefeuille et l\'importance de ne jamais se retrouver à découvert.'
-      }
+        title: "Reste en positif",
+        description:
+          "Ne pas perdre d'argent par rapport à ton capital initial.",
+      },
     });
   }
   console.log(`✅ Objectif créé: ${goal.title}`);
@@ -316,139 +317,338 @@ async function main() {
 
   const createdQuestions = [];
   for (const q of quizQuestions) {
-    const question = await prisma.question.create({
-      data: {
-        text: q.text
-      }
+    let question = await prisma.question.findFirst({
+      where: { text: q.text }
     });
 
-    for (const a of q.answers) {
-      await prisma.answer.create({
+    if (!question) {
+      question = await prisma.question.create({
         data: {
-          questionId: question.id,
-          text: a.text,
-          isCorrect: a.isCorrect
+          text: q.text
         }
       });
+
+      for (const a of q.answers) {
+        await prisma.answer.create({
+          data: {
+            questionId: question.id,
+            text: a.text,
+            isCorrect: a.isCorrect
+          }
+        });
+      }
+    } else {
+      // Vérifier que les réponses existent
+      const existingAnswers = await prisma.answer.findMany({
+        where: { questionId: question.id }
+      });
+
+      if (existingAnswers.length === 0) {
+        for (const a of q.answers) {
+          await prisma.answer.create({
+            data: {
+              questionId: question.id,
+              text: a.text,
+              isCorrect: a.isCorrect
+            }
+          });
+        }
+      }
     }
 
     createdQuestions.push(question);
   }
-  console.log(`✅ ${createdQuestions.length} questions créées avec leurs réponses`);
+  console.log(`✅ ${createdQuestions.length} questions vérifiées/créées avec leurs réponses`);
 
   // 12. Créer le Quiz MCQ
   console.log('🧠 Création du quiz MCQ...');
-  const mcqQuiz = await prisma.quiz.create({
-    data: {
+  let mcqQuiz = await prisma.quiz.findFirst({
+    where: {
       type: 'MCQ',
       title: 'Quiz d\'introduction à l\'épargne',
-      description: 'Teste tes connaissances sur les bases de l\'épargne et les produits sécurisés',
       levelId: level.id
     }
   });
-  console.log(`✅ Quiz MCQ créé: ${mcqQuiz.title}`);
+
+  if (!mcqQuiz) {
+    mcqQuiz = await prisma.quiz.create({
+      data: {
+        type: 'MCQ',
+        title: 'Quiz d\'introduction à l\'épargne',
+        description: 'Teste tes connaissances sur les bases de l\'épargne et les produits sécurisés',
+        levelId: level.id
+      }
+    });
+    console.log(`✅ Quiz MCQ créé: ${mcqQuiz.title}`);
+  } else {
+    console.log(`✅ Quiz MCQ existe déjà: ${mcqQuiz.title}`);
+  }
 
   // 13. Lier les questions au quiz MCQ
   console.log('🔗 Liaison questions-quiz MCQ...');
   for (let i = 0; i < createdQuestions.length; i++) {
-    await prisma.quizQuestion.create({
-      data: {
+    const existingLink = await prisma.quizQuestion.findFirst({
+      where: {
         quizId: mcqQuiz.id,
-        questionId: createdQuestions[i].id,
-        position: i + 1
+        questionId: createdQuestions[i].id
       }
     });
+
+    if (!existingLink) {
+      await prisma.quizQuestion.create({
+        data: {
+          quizId: mcqQuiz.id,
+          questionId: createdQuestions[i].id,
+          position: i + 1
+        }
+      });
+    }
   }
-  console.log(`✅ ${createdQuestions.length} questions liées au quiz MCQ`);
+  console.log(`✅ ${createdQuestions.length} questions vérifiées/liées au quiz MCQ`);
 
   // 14. Créer les Daily Quiz (hier et aujourd'hui)
   console.log('📅 Création des Daily Quiz...');
 
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  yesterday.setHours(0, 0, 0, 0);
+  const now = new Date();
+  const yesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1, 0, 0, 0, 0));
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
 
-  // Question pour le Daily Quiz d'hier
-  const dailyQuestion1 = await prisma.question.create({
-    data: {
-      text: 'Combien de temps faut-il généralement garder son épargne de précaution ?'
+  // Questions pour le Daily Quiz d'hier (3 questions)
+  const dailyQuiz1Questions = [
+    {
+      text: 'Combien de temps faut-il généralement garder son épargne de précaution ?',
+      answers: [
+        { text: '3 à 6 mois de dépenses courantes', isCorrect: true },
+        { text: '1 semaine de dépenses', isCorrect: false },
+        { text: '10 ans minimum', isCorrect: false },
+        { text: 'Pas besoin d\'épargne de précaution', isCorrect: false }
+      ]
+    },
+    {
+      text: 'Quel est le plafond maximum autorisé sur un Livret A en France ?',
+      answers: [
+        { text: '22 950 €', isCorrect: true },
+        { text: '10 000 €', isCorrect: false },
+        { text: '50 000 €', isCorrect: false },
+        { text: 'Aucun plafond', isCorrect: false }
+      ]
+    },
+    {
+      text: 'Quelle est la principale différence entre épargner et investir ?',
+      answers: [
+        { text: 'L\'épargne préserve le capital, l\'investissement cherche la croissance avec risque', isCorrect: true },
+        { text: 'Aucune différence, ce sont des synonymes', isCorrect: false },
+        { text: 'L\'épargne est risquée, l\'investissement est sécurisé', isCorrect: false },
+        { text: 'L\'épargne rapporte plus que l\'investissement', isCorrect: false }
+      ]
     }
-  });
+  ];
 
-  await prisma.answer.createMany({
-    data: [
-      { questionId: dailyQuestion1.id, text: '3 à 6 mois de dépenses courantes', isCorrect: true },
-      { questionId: dailyQuestion1.id, text: '1 semaine de dépenses', isCorrect: false },
-      { questionId: dailyQuestion1.id, text: '10 ans minimum', isCorrect: false },
-      { questionId: dailyQuestion1.id, text: 'Pas besoin d\'épargne de précaution', isCorrect: false }
-    ]
-  });
+  const createdDailyQuestions1 = [];
+  for (const q of dailyQuiz1Questions) {
+    let question = await prisma.question.findFirst({
+      where: { text: q.text }
+    });
 
-  // Question pour le Daily Quiz d'aujourd'hui
-  const dailyQuestion2 = await prisma.question.create({
-    data: {
-      text: 'Quel est le principal risque d\'un livret d\'épargne réglementé ?'
+    if (!question) {
+      question = await prisma.question.create({
+        data: { text: q.text }
+      });
+
+      if (question) {
+        await prisma.answer.createMany({
+          data: q.answers.map(a => ({
+            questionId: question!.id,
+            text: a.text,
+            isCorrect: a.isCorrect
+          }))
+        });
+      }
+    } else if (question) {
+      const questionId = question.id;
+      const existingAnswers = await prisma.answer.findMany({
+        where: { questionId }
+      });
+
+      if (existingAnswers.length === 0) {
+        await prisma.answer.createMany({
+          data: q.answers.map(a => ({
+            questionId,
+            text: a.text,
+            isCorrect: a.isCorrect
+          }))
+        });
+      }
     }
-  });
 
-  await prisma.answer.createMany({
-    data: [
-      { questionId: dailyQuestion2.id, text: 'Le rendement peut être inférieur à l\'inflation', isCorrect: true },
-      { questionId: dailyQuestion2.id, text: 'Vous pouvez perdre tout votre capital', isCorrect: false },
-      { questionId: dailyQuestion2.id, text: 'Il y a des frais de gestion très élevés', isCorrect: false },
-      { questionId: dailyQuestion2.id, text: 'Votre argent est bloqué pendant 5 ans', isCorrect: false }
-    ]
-  });
+    if (question) {
+      createdDailyQuestions1.push(question);
+    }
+  }
+
+  // Questions pour le Daily Quiz d'aujourd'hui (3 questions)
+  const dailyQuiz2Questions = [
+    {
+      text: 'Quel est le principal risque d\'un livret d\'épargne réglementé ?',
+      answers: [
+        { text: 'Le rendement peut être inférieur à l\'inflation', isCorrect: true },
+        { text: 'Vous pouvez perdre tout votre capital', isCorrect: false },
+        { text: 'Il y a des frais de gestion très élevés', isCorrect: false },
+        { text: 'Votre argent est bloqué pendant 5 ans', isCorrect: false }
+      ]
+    },
+    {
+      text: 'Si vous placez 1000€ sur un livret à 1,7% par an, combien aurez-vous après 2 ans (intérêts simples) ?',
+      answers: [
+        { text: '1034€', isCorrect: true },
+        { text: '1034,29€', isCorrect: false },
+        { text: '1170€', isCorrect: false },
+        { text: '1000€', isCorrect: false }
+      ]
+    },
+    {
+      text: 'Peut-on retirer son argent d\'un livret d\'épargne réglementé à tout moment ?',
+      answers: [
+        { text: 'Oui, sans frais et sans préavis', isCorrect: true },
+        { text: 'Oui, mais avec des frais de retrait', isCorrect: false },
+        { text: 'Non, il faut attendre 1 an minimum', isCorrect: false },
+        { text: 'Non, l\'argent est bloqué jusqu\'à la retraite', isCorrect: false }
+      ]
+    }
+  ];
+
+  const createdDailyQuestions2 = [];
+  for (const q of dailyQuiz2Questions) {
+    let question = await prisma.question.findFirst({
+      where: { text: q.text }
+    });
+
+    if (!question) {
+      question = await prisma.question.create({
+        data: { text: q.text }
+      });
+
+      if (question) {
+        await prisma.answer.createMany({
+          data: q.answers.map(a => ({
+            questionId: question!.id,
+            text: a.text,
+            isCorrect: a.isCorrect
+          }))
+        });
+      }
+    } else if (question) {
+      const questionId = question.id;
+      const existingAnswers = await prisma.answer.findMany({
+        where: { questionId }
+      });
+
+      if (existingAnswers.length === 0) {
+        await prisma.answer.createMany({
+          data: q.answers.map(a => ({
+            questionId,
+            text: a.text,
+            isCorrect: a.isCorrect
+          }))
+        });
+      }
+    }
+
+    if (question) {
+      createdDailyQuestions2.push(question);
+    }
+  }
 
   // Daily Quiz d'hier
-  const dailyQuiz1 = await prisma.quiz.create({
-    data: {
+  let dailyQuiz1 = await prisma.quiz.findFirst({
+    where: {
       type: 'DAILY',
-      title: 'Daily Quiz - Épargne de précaution',
-      description: 'Question du jour sur l\'épargne',
       date: yesterday,
-      levelId: null
+      title: 'Daily Quiz - Épargne de précaution'
     }
   });
 
-  await prisma.quizQuestion.create({
-    data: {
-      quizId: dailyQuiz1.id,
-      questionId: dailyQuestion1.id,
-      position: 1
+  if (!dailyQuiz1) {
+    dailyQuiz1 = await prisma.quiz.create({
+      data: {
+        type: 'DAILY',
+        title: 'Daily Quiz - Épargne de précaution',
+        description: 'Questions du jour sur l\'épargne',
+        date: yesterday,
+        levelId: null
+      }
+    });
+  }
+
+  // Lier les 3 questions au Daily Quiz 1
+  for (let i = 0; i < createdDailyQuestions1.length; i++) {
+    const existingLink = await prisma.quizQuestion.findFirst({
+      where: {
+        quizId: dailyQuiz1.id,
+        questionId: createdDailyQuestions1[i].id
+      }
+    });
+
+    if (!existingLink) {
+      await prisma.quizQuestion.create({
+        data: {
+          quizId: dailyQuiz1.id,
+          questionId: createdDailyQuestions1[i].id,
+          position: i + 1
+        }
+      });
     }
-  });
+  }
 
   // Daily Quiz d'aujourd'hui
-  const dailyQuiz2 = await prisma.quiz.create({
-    data: {
+  let dailyQuiz2 = await prisma.quiz.findFirst({
+    where: {
       type: 'DAILY',
-      title: 'Daily Quiz - Risques de l\'épargne',
-      description: 'Question du jour sur les risques',
       date: today,
-      levelId: null
+      title: 'Daily Quiz - Risques de l\'épargne'
     }
   });
 
-  await prisma.quizQuestion.create({
-    data: {
-      quizId: dailyQuiz2.id,
-      questionId: dailyQuestion2.id,
-      position: 1
-    }
-  });
+  if (!dailyQuiz2) {
+    dailyQuiz2 = await prisma.quiz.create({
+      data: {
+        type: 'DAILY',
+        title: 'Daily Quiz - Risques de l\'épargne',
+        description: 'Questions du jour sur les risques',
+        date: today,
+        levelId: null
+      }
+    });
+  }
 
-  console.log(`✅ 2 Daily Quiz créés (hier et aujourd'hui)`);
+  // Lier les 3 questions au Daily Quiz 2
+  for (let i = 0; i < createdDailyQuestions2.length; i++) {
+    const existingLink = await prisma.quizQuestion.findFirst({
+      where: {
+        quizId: dailyQuiz2.id,
+        questionId: createdDailyQuestions2[i].id
+      }
+    });
+
+    if (!existingLink) {
+      await prisma.quizQuestion.create({
+        data: {
+          quizId: dailyQuiz2.id,
+          questionId: createdDailyQuestions2[i].id,
+          position: i + 1
+        }
+      });
+    }
+  }
+
+  console.log(`✅ 2 Daily Quiz vérifiés/créés (hier et aujourd'hui) avec 3 questions chacun`);
 
   console.log('\n✨ ========================================');
   console.log('✅ Seeding du niveau 1 terminé avec succès !');
   console.log('========================================');
   console.log(`📊 Résumé des données créées :`);
   console.log(`   - 1 Market: ${market.title}`);
-  console.log(`   - 1 Field: ${field.name}`);
   console.log(`   - 1 Submarket: ${submarket.title}`);
   console.log(`   - 2 Assets: ${livretA.symbol}, ${livretLED.symbol}`);
   console.log(`   - 1 Level: ${level.title} (Niveau ${level.number})`);
