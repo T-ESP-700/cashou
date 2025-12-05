@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { router, protectedProcedure, adminProcedure, publicProcedure } from '..';
+import { router, protectedProcedure, adminProcedure, publicProcedure, protectedOrBackofficeProcedure } from '..';
 import { prisma } from '@cashou/db-app';
 import { TRPCError } from '@trpc/server';
 import { hash } from '@cashou/auth/server';

@@ -26,29 +26,6 @@ const getStatusIcon = (status: string | null | undefined) => {
   }
 }
 
-type StatusFilter = 'all' | 'USER' | 'ADMIN'
-type GameStatusFilter = 'all' | 'IN_PROGRESS' | 'PAUSED'
-
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  USER: { bg: 'bg-blue-50', text: 'text-blue-700' },
-  ADMIN: { bg: 'bg-purple-50', text: 'text-purple-700' },
-  IN_PROGRESS: { bg: 'bg-green-50', text: 'text-green-700' },
-  PAUSED: { bg: 'bg-amber-50', text: 'text-amber-700' },
-  COMPLETED: { bg: 'bg-slate-100', text: 'text-slate-600' },
-  ABANDONED: { bg: 'bg-red-50', text: 'text-red-600' },
-}
-
-const getStatusIcon = (status: string | null | undefined) => {
-  switch (status) {
-    case 'IN_PROGRESS':
-      return <Play className="size-3" />
-    case 'PAUSED':
-      return <Pause className="size-3" />
-    default:
-      return <Circle className="size-3" />
-  }
-}
-
 export function PlayersMonitor() {
   const players = useBackofficeStore((state) => state.players ?? [])
   const gameInstances = useBackofficeStore((state) => state.gameInstances ?? [])
@@ -61,10 +38,25 @@ export function PlayersMonitor() {
   const [playerStatusFilter, setPlayerStatusFilter] = useState<StatusFilter>('all')
   const [gameSearch, setGameSearch] = useState('')
   const [gameStatusFilter, setGameStatusFilter] = useState<GameStatusFilter>('all')
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
+  const [isPlayerDialogOpen, setIsPlayerDialogOpen] = useState(false)
 
   const isLoading = loadingState === 'loading'
 
   // Filtered players
+  const handlePlayerDoubleClick = (playerId?: string | number | null) => {
+    if (!playerId) return
+    setSelectedPlayerId(playerId.toString())
+    setIsPlayerDialogOpen(true)
+  }
+
+  const handlePlayerDialogOpenChange = (open: boolean) => {
+    setIsPlayerDialogOpen(open)
+    if (!open) {
+      setSelectedPlayerId(null)
+    }
+  }
+
   const filteredPlayers = useMemo(() => {
     return players.filter((player) => {
       const matchesSearch =
@@ -200,7 +192,11 @@ export function PlayersMonitor() {
               {filteredPlayers.map((player) => {
                 const statusStyle = STATUS_COLORS[player.status ?? 'USER'] ?? STATUS_COLORS.USER
                 return (
-                  <tr key={player.id} className="border-t border-slate-100 transition hover:bg-slate-50">
+                  <tr
+                    key={player.id}
+                    className="border-t border-slate-100 transition hover:bg-slate-50 cursor-pointer"
+                    onDoubleClick={() => handlePlayerDoubleClick(player.id)}
+                  >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="flex size-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-xs font-bold text-white">
@@ -378,7 +374,12 @@ export function PlayersMonitor() {
       <PlayerDetailsDialog
         userId={selectedPlayerId}
         open={isPlayerDialogOpen}
-        onOpenChange={handleDialogOpenChange}
+        onOpenChange={(open) => {
+          setIsPlayerDialogOpen(open)
+          if (!open) {
+            setSelectedPlayerId(null)
+          }
+        }}
       />
     </div>
   )
