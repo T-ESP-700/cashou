@@ -5,9 +5,10 @@
 
 import { router, publicProcedure } from '../trpc/index'
 import { z } from 'zod'
-import { PrismaClient } from '@cashou/db-backoffice'
 import bcrypt from 'bcryptjs'
 import { TRPCError } from '@trpc/server'
+import { PrismaClient } from '@cashou/db-backoffice'
+import { generateBackofficeToken, verifyBackofficeToken } from '../lib/backoffice-token'
 
 const backofficeDb = new PrismaClient()
 
@@ -51,8 +52,7 @@ export const backofficeAuthRouter = router({
         })
       }
 
-      // Générer un token simple (en production, utilisez JWT)
-      const token = Buffer.from(`${user.id}:${Date.now()}`).toString('base64')
+      const token = generateBackofficeToken(user.id)
 
       return {
         user: {
@@ -72,14 +72,17 @@ export const backofficeAuthRouter = router({
       })
     )
     .query(async ({ input }) => {
-      // Décoder le token simple
       try {
-        const decoded = Buffer.from(input.token, 'base64').toString()
-        const [userIdStr] = decoded.split(':')
-        const userId = parseInt(userIdStr)
+        const payload = verifyBackofficeToken(input.token)
+        if (!payload) {
+          throw new TRPCError({
+            code: 'UNAUTHORIZED',
+            message: 'Token invalide',
+          })
+        }
 
         const user = await backofficeDb.user.findUnique({
-          where: { id: userId },
+          where: { id: payload.userId },
           include: {
             roles: {
               include: {
