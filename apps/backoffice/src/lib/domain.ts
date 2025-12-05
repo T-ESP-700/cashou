@@ -165,6 +165,7 @@ export interface Quiz {
 export interface Question {
   id: number
   text?: string | null
+  explanation?: string | null
   difficulty?: string | null
   category?: string | null
   createdAt?: string | Date | null
