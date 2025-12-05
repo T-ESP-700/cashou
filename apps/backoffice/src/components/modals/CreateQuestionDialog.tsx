@@ -14,6 +14,7 @@ import type { Answer as BackendAnswer, Question as BackendQuestion } from '@/lib
 
 interface QuestionFormData {
   text: string;
+  explanation: string;
 }
 
 interface FormAnswer {
@@ -66,9 +67,13 @@ export function CreateQuestionDialog({ open, onOpenChange, onSuccess }: CreateQu
     try {
       // Ajouter " ?" si nécessaire
       const finalQuestionText = ensureQuestionMark(data.text);
-      
+
+
       // Create question first
-      const question = await createQuestionMutation.mutateAsync({ text: finalQuestionText });
+      const { question } = await createQuestionMutation.mutateAsync({
+        text: finalQuestionText,
+        explanation: data.explanation || null,
+      });
 
       // Create all answers
       const validAnswers = answers.filter((a) => a.text.trim() !== '');
@@ -144,15 +149,15 @@ export function CreateQuestionDialog({ open, onOpenChange, onSuccess }: CreateQu
   const isQuestionFilled = questionText.trim() !== '';
   const allAnswersFilled = answers.every((answer) => answer.text.trim() !== '');
   const hasCorrectAnswer = answers.some((answer) => answer.isCorrect);
-  
-  const isSubmitDisabled = 
-    createQuestionMutation.isPending || 
-    createAnswerMutation.isPending || 
-    !isQuestionFilled || 
-    !allAnswersFilled || 
+
+  const isSubmitDisabled =
+    createQuestionMutation.isPending ||
+    createAnswerMutation.isPending ||
+    !isQuestionFilled ||
+    !allAnswersFilled ||
     !hasCorrectAnswer ||
     hasDuplicateAnswers;
-  
+
   // Déterminer le message d'erreur à afficher dans l'ordre : question → réponses → correct → dupliqués
   const getErrorMessage = () => {
     if (!isQuestionFilled) {
@@ -169,7 +174,7 @@ export function CreateQuestionDialog({ open, onOpenChange, onSuccess }: CreateQu
     }
     return null;
   };
-  
+
   const errorMessage = getErrorMessage();
 
   // Gérer le changement du texte de la question
@@ -224,11 +229,10 @@ export function CreateQuestionDialog({ open, onOpenChange, onSuccess }: CreateQu
                   value={answer.text}
                   onChange={(e) => updateAnswer(index, 'text', e.target.value)}
                   placeholder={`Réponse ${index + 1}`}
-                  className={`flex-1 rounded-md border overflow-hidden px-3 py-2 text-sm placeholder:text-gray-400 ${
-                    duplicateIndices.has(index)
-                      ? 'border-red-500 bg-red-50 focus:border-red-500 focus:ring-red-500'
-                      : 'border-gray-300'
-                  }`}
+                  className={`flex-1 rounded-md border overflow-hidden px-3 py-2 text-sm placeholder:text-gray-400 ${duplicateIndices.has(index)
+                    ? 'border-red-500 bg-red-50 focus:border-red-500 focus:ring-red-500'
+                    : 'border-gray-300'
+                    }`}
                 />
                 <label className="flex items-center gap-2 whitespace-nowrap">
                   <input
@@ -242,6 +246,17 @@ export function CreateQuestionDialog({ open, onOpenChange, onSuccess }: CreateQu
                 </label>
               </div>
             ))}
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">
+              Explication <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              {...register('explanation')}
+              placeholder="Expliquez pourquoi la bonne réponse est la bonne..."
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm min-h-[80px] resize-y placeholder:text-gray-400"
+            />
           </div>
 
           <DialogFooter>
