@@ -4,10 +4,10 @@
   "main": "./src/client.ts",
   "types": "./src/client.ts",
   "scripts": {
-    "generate": "prisma generate",
-    "migrate": "prisma migrate dev",
-    "studio": "prisma studio",
-    "build": "prisma generate",
+    "generate": "bunx dotenv -e ../../../.env -- prisma generate",
+    "migrate": "bunx dotenv -e ../../../.env -- prisma migrate dev",
+    "studio": "bunx dotenv -e ../../../.env -- prisma studio",
+    "build": "bunx dotenv -e ../../../.env -- prisma generate",
     "test": "echo 'No tests for db-app package'"
   },
   "dependencies": {
