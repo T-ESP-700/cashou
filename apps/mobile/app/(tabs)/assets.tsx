@@ -12,7 +12,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouHeader } from '@/components/cashou-header';
 import { CashouTheme } from '@/constants/cashou-theme';
-import { trpcClient, API_URL } from '@/lib/trpc';
+import { trpcClient } from '@/lib/trpc';
+import { API_URL } from '@/lib/api-config';
 
 // UI representation of an asset for display purposes
 type AssetItem = {
