@@ -335,7 +335,7 @@ export default function DailyQuizScreen() {
   };
 
   const handleValidate = async () => {
-    if (!selectedAnswerId || !user || !questions[currentQuestionIndex]) {
+    if (!selectedAnswerId || !user || !questions[currentQuestionIndex] || !quiz) {
       Alert.alert('Attention', 'Veuillez sélectionner une réponse');
       return;
     }
@@ -445,6 +445,34 @@ export default function DailyQuizScreen() {
   };
 
   const shouldShowInitialLoader = (isLoading || quizState === null) && !error;
+
+  // Calculer le score pour l'affichage de fin de quiz
+  const totalQuestions = questions.length;
+  const correctAnswers = Array.from(userAnswers.values()).filter(
+    (answer) => answer.isCorrect
+  ).length;
+  const score = totalQuestions > 0 ? correctAnswers / totalQuestions : 0;
+  const hasPassed = score >= 2 / 3;
+  
+  // Messages selon le score
+  const encouragementMessages = [
+    'Ne vous découragez pas, continuez à apprendre !',
+    'Chaque erreur est une opportunité d\'apprendre.',
+    'Vous progressez à chaque quiz, continuez ainsi !',
+  ];
+  const congratulationMessages = [
+    'Excellent travail ! Vous maîtrisez bien le sujet.',
+    'Bravo !',
+    'Félicitations ! Vous avez bien réussi ce quiz.',
+    'Parfait ! Continuez sur cette lancée !',
+  ];
+  
+  // Sélectionner un message aléatoire dans la liste appropriée
+  const messageArray = hasPassed ? congratulationMessages : encouragementMessages;
+  const messageIndex = Math.floor(Math.random() * messageArray.length);
+  const completedTitle = hasPassed ? 'Félicitations !' : 'Dommage';
+  const completedEmoji = hasPassed ? '🎉' : '💪';
+  const completedMessage = messageArray[messageIndex];
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -567,14 +595,22 @@ export default function DailyQuizScreen() {
           </>
         ) : quizState === 'completed' ? (
           <View style={styles.completedContainer}>
-            <Text style={styles.celebrationEmoji}>🎉</Text>
+            <Text style={styles.celebrationEmoji}>{completedEmoji}</Text>
             <Text
               style={[
                 styles.completedTitle,
                 { fontFamily: CashouTheme.fonts.heading, color: theme.text },
               ]}
             >
-              Félicitations !
+              {completedTitle}
+            </Text>
+            <Text
+              style={[
+                styles.completedScore,
+                { fontFamily: CashouTheme.fonts.subheading, color: theme.text },
+              ]}
+            >
+              Score : {correctAnswers} / {totalQuestions}
             </Text>
             <Text
               style={[
@@ -582,7 +618,7 @@ export default function DailyQuizScreen() {
                 { fontFamily: CashouTheme.fonts.body, color: theme.text },
               ]}
             >
-              Vous avez terminé le quiz du jour !
+              {completedMessage}
             </Text>
           </View>
         ) : quizState === 'correction' && questions.length > 0 && !isLoading ? (
@@ -917,9 +953,15 @@ const styles = StyleSheet.create({
     fontSize: 32,
     marginBottom: 16,
   },
+  completedScore: {
+    fontSize: 24,
+    marginBottom: 16,
+    fontWeight: '600',
+  },
   completedText: {
     fontSize: 18,
     textAlign: 'center',
+    paddingHorizontal: 16,
   },
   correctionButton: {
     width: '100%',
