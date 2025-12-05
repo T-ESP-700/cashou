@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { router, protectedProcedure, adminProcedure } from '..';
+import { router, protectedProcedure, adminProcedure, publicProcedure, protectedOrBackofficeProcedure } from '..';
 import { prisma } from '@cashou/db-app';
 import { TRPCError } from '@trpc/server';
 import { hash } from '@cashou/auth/server';
@@ -7,7 +7,7 @@ import { UserService } from '../services/user.service';
 
 export const userRouter = router({
   // Get all users without pagination
-  getAll: adminProcedure
+  getAll: publicProcedure
     .query(async () => {
       const userService = new UserService();
       const users = await userService.findAll();
@@ -26,11 +26,11 @@ export const userRouter = router({
     .query(async ({ input }) => {
       const where = input.search
         ? {
-            OR: [
-              { email: { contains: input.search, mode: 'insensitive' as const } },
-              { username: { contains: input.search, mode: 'insensitive' as const } },
-            ],
-          }
+          OR: [
+            { email: { contains: input.search, mode: 'insensitive' as const } },
+            { username: { contains: input.search, mode: 'insensitive' as const } },
+          ],
+        }
         : {};
 
       const [users, total] = await Promise.all([
@@ -61,27 +61,46 @@ export const userRouter = router({
     }),
 
   // Get user by ID (admin or self)
-  getById: protectedProcedure
+  getById: protectedOrBackofficeProcedure
     .input(z.string())
     .query(async ({ input, ctx }) => {
       // Check if user is admin or requesting their own data
       const currentUserId = ctx.session?.user?.id;
-      if (!currentUserId) {
-        throw new TRPCError({
-          code: 'UNAUTHORIZED',
-          message: 'Authentication required',
-        });
-      }
+      const isSelf = currentUserId === input;
+      const isBackofficeAdmin = Boolean(ctx.backofficeAdmin);
 
-      if (currentUserId !== input) {
-        // TODO: Implement admin check when role system is available
-        // For now, users can only view their own profile
+      if (!isSelf && !isBackofficeAdmin) {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message: 'You can only view your own profile',
         });
       }
 
+      const user = await prisma.user.findUnique({
+        where: { id: input },
+        include: {
+          wallets: true,
+          gameInstances: {
+            take: 5,
+            orderBy: { createdAt: 'desc' },
+          },
+        },
+      });
+
+      if (!user) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'User not found',
+        });
+      }
+
+      return user;
+    }),
+
+  // Admin: get any user by ID
+  adminGetById: adminProcedure
+    .input(z.string())
+    .query(async ({ input }) => {
       const user = await prisma.user.findUnique({
         where: { id: input },
         include: {
