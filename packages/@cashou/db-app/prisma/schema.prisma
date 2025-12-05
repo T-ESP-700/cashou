@@ -148,6 +148,8 @@ model Goal {
   id          Int      @id @default(autoincrement())
   title       String?
   description String?
+  goalType    String?  @map("goal_type")
+  goalValue   Float?   @map("goal_value")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
