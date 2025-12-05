@@ -6,6 +6,7 @@ import type {
   Event,
   EventAsset,
   Field,
+  GameInstance,
   HeatmapMetric,
   Impact,
   Level,

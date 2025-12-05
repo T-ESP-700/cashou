@@ -1,7 +1,30 @@
-import { useState } from 'react'
-import { Users, Gamepad2 } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Users, Gamepad2, Search, RefreshCw, ChevronDown, Play, Pause, Circle } from 'lucide-react'
 import { useBackofficeStore } from '@/store/useBackofficeStore'
 import { PlayerDetailsDialog } from '@/components/modals/PlayerDetailsDialog'
+
+type StatusFilter = 'all' | 'USER' | 'ADMIN'
+type GameStatusFilter = 'all' | 'IN_PROGRESS' | 'PAUSED'
+
+const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  USER: { bg: 'bg-blue-50', text: 'text-blue-700' },
+  ADMIN: { bg: 'bg-purple-50', text: 'text-purple-700' },
+  IN_PROGRESS: { bg: 'bg-green-50', text: 'text-green-700' },
+  PAUSED: { bg: 'bg-amber-50', text: 'text-amber-700' },
+  COMPLETED: { bg: 'bg-slate-100', text: 'text-slate-600' },
+  ABANDONED: { bg: 'bg-red-50', text: 'text-red-600' },
+}
+
+const getStatusIcon = (status: string | null | undefined) => {
+  switch (status) {
+    case 'IN_PROGRESS':
+      return <Play className="size-3" />
+    case 'PAUSED':
+      return <Pause className="size-3" />
+    default:
+      return <Circle className="size-3" />
+  }
+}
 
 type StatusFilter = 'all' | 'USER' | 'ADMIN'
 type GameStatusFilter = 'all' | 'IN_PROGRESS' | 'PAUSED'
@@ -29,21 +52,85 @@ const getStatusIcon = (status: string | null | undefined) => {
 export function PlayersMonitor() {
   const players = useBackofficeStore((state) => state.players ?? [])
   const gameInstances = useBackofficeStore((state) => state.gameInstances ?? [])
-  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
-  const [isPlayerDialogOpen, setIsPlayerDialogOpen] = useState(false)
+  const levels = useBackofficeStore((state) => state.levels ?? [])
+  const markets = useBackofficeStore((state) => state.markets ?? [])
+  const loadingState = useBackofficeStore((state) => state.loadingState)
+  const refresh = useBackofficeStore((state) => state.refresh)
 
-  const handlePlayerDoubleClick = (playerId?: string | number | null) => {
-    if (!playerId) return
-    setSelectedPlayerId(playerId.toString())
-    setIsPlayerDialogOpen(true)
-  }
+  const [playerSearch, setPlayerSearch] = useState('')
+  const [playerStatusFilter, setPlayerStatusFilter] = useState<StatusFilter>('all')
+  const [gameSearch, setGameSearch] = useState('')
+  const [gameStatusFilter, setGameStatusFilter] = useState<GameStatusFilter>('all')
 
-  const handleDialogOpenChange = (open: boolean) => {
-    setIsPlayerDialogOpen(open)
-    if (!open) {
-      setSelectedPlayerId(null)
-    }
-  }
+  const isLoading = loadingState === 'loading'
+
+  // Filtered players
+  const filteredPlayers = useMemo(() => {
+    return players.filter((player) => {
+      const matchesSearch =
+        !playerSearch ||
+        player.username?.toLowerCase().includes(playerSearch.toLowerCase()) ||
+        player.id?.toString().includes(playerSearch)
+      const matchesStatus = playerStatusFilter === 'all' || player.status === playerStatusFilter
+      return matchesSearch && matchesStatus
+    })
+  }, [players, playerSearch, playerStatusFilter])
+
+  // Filtered games with enriched data
+  const filteredGames = useMemo(() => {
+    return gameInstances
+      .map((game) => {
+        const level = levels.find((l) => l.id === game.levelId)
+        const market = markets.find((m) => m.id === game.marketId)
+        const player = players.find((p) => p.id === game.userId)
+        const isPaused = Boolean(game.isPaused)
+        const displayStatusKey: GameStatusFilter = isPaused ? 'PAUSED' : 'IN_PROGRESS'
+        const displayStatusLabel = isPaused ? 'En pause' : 'En cours'
+        return {
+          ...game,
+          levelTitle: level?.title ?? `Niveau ${game.levelId}`,
+          marketTitle: market?.title ?? `Marché ${game.marketId}`,
+          playerUsername: player?.username ?? game.userId ?? '—',
+          displayStatusKey,
+          displayStatusLabel,
+        }
+      })
+      .filter((game) => {
+        const matchesSearch =
+          !gameSearch ||
+          game.levelTitle?.toLowerCase().includes(gameSearch.toLowerCase()) ||
+          game.marketTitle?.toLowerCase().includes(gameSearch.toLowerCase()) ||
+          game.playerUsername?.toLowerCase().includes(gameSearch.toLowerCase())
+        const matchesStatus = gameStatusFilter === 'all' || game.displayStatusKey === gameStatusFilter
+        return matchesSearch && matchesStatus
+      })
+  }, [gameInstances, levels, markets, players, gameSearch, gameStatusFilter])
+
+  // Stats
+  const playerStats = useMemo(() => ({
+    total: players.length,
+    admins: players.filter((p) => p.status === 'ADMIN').length,
+    users: players.filter((p) => p.status === 'USER').length,
+  }), [players])
+
+  const gameStats = useMemo(() => {
+    return gameInstances.reduce(
+      (acc, game) => {
+        acc.total += 1
+        if (game.status === 'COMPLETED') {
+          acc.completed += 1
+          return acc
+        }
+        if (game.isPaused) {
+          acc.paused += 1
+        } else {
+          acc.inProgress += 1
+        }
+        return acc
+      },
+      { total: 0, inProgress: 0, paused: 0, completed: 0 },
+    )
+  }, [gameInstances])
 
   return (
     <div className="space-y-6">
@@ -110,26 +197,39 @@ export function PlayersMonitor() {
               </tr>
             </thead>
             <tbody>
-              {players.map((player) => (
-                <tr
-                  key={player.id}
-                  className="border-t border-slate-100 hover:bg-slate-50 cursor-pointer"
-                  onDoubleClick={() => handlePlayerDoubleClick(player.id)}
-                >
-                  <td className="px-4 py-2 font-medium text-slate-900">{player.username}</td>
-                  <td className="px-4 py-2">{player.levelId ?? '—'}</td>
-                  <td className="px-4 py-2">{player.points ?? '—'}</td>
-                  <td className="px-4 py-2">
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                      {player.status ?? '—'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2 text-xs text-slate-500">
-                    {player.lastActivity ? new Date(player.lastActivity).toLocaleString() : '—'}
-                  </td>
-                </tr>
-              ))}
-              {!players.length && (
+              {filteredPlayers.map((player) => {
+                const statusStyle = STATUS_COLORS[player.status ?? 'USER'] ?? STATUS_COLORS.USER
+                return (
+                  <tr key={player.id} className="border-t border-slate-100 transition hover:bg-slate-50">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex size-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-xs font-bold text-white">
+                          {player.username?.charAt(0).toUpperCase() ?? '?'}
+                        </div>
+                        <span className="font-medium text-slate-900">{player.username ?? '—'}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
+                        Niv. {player.levelId ?? '—'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="font-semibold text-slate-900">{player.points?.toLocaleString() ?? '—'}</span>
+                      <span className="ml-1 text-xs text-slate-400">pts</span>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-500">
+                      {player.lastActivity ? new Date(player.lastActivity).toLocaleString('fr-FR', {
+                        day: '2-digit',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      }) : '—'}
+                    </td>
+                  </tr>
+                )
+              })}
+              {!filteredPlayers.length && (
                 <tr>
                   <td colSpan={5} className="px-4 py-8 text-center">
                     <div className="flex flex-col items-center gap-2">
