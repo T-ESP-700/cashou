@@ -10,10 +10,10 @@ import {
   useColorScheme as useRNColorScheme,
   StyleSheet,
 } from 'react-native';
-import { CashouHeader } from '@/components/cashou-header';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useAuth } from '@/hooks/use-auth';
+import { useHeaderOptions } from '@/hooks/use-header';
 
 interface Answer {
   id: number;
@@ -39,6 +39,9 @@ export default function TestScreen() {
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const { user } = useAuth();
+
+  // Configure header for this screen
+  useHeaderOptions({ showBackButton: false });
 
   // Form state
   const [quizId, setQuizId] = useState('');
@@ -182,8 +185,6 @@ export default function TestScreen() {
   if (quiz && questions.length > 0) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <CashouHeader showBackButton={false} />
-
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           {/* Quiz Header */}
           <View style={styles.quizHeader}>
@@ -286,8 +287,6 @@ export default function TestScreen() {
   // Show form to enter quiz ID
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <CashouHeader showBackButton={false} />
-
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.formContainer}>
           <Text style={[styles.formTitle, { fontFamily: CashouTheme.fonts.heading, color: theme.text }]}>

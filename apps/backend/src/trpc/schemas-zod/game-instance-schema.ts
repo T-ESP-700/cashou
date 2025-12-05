@@ -8,6 +8,11 @@ export const gameInstanceBaseSchema = z.object({
   isPaused: z.boolean().nullable().optional(),
   actionRequired: z.boolean().nullable().optional(),
   pausedAt: z.coerce.date().nullable().optional(),
+  // New fields for game time management
+  totalPausedDuration: z.number().int().nullable().optional(),
+  currentEventIndex: z.number().int().nullable().optional(),
+  isEnded: z.boolean().nullable().optional(),
+  endedAt: z.coerce.date().nullable().optional(),
 });
 
 export const gameInstanceIdSchema = z.object({

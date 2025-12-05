@@ -2,15 +2,21 @@ import type { GameInstance, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {
   GameInstanceCreateSchema,
-  GameInstanceUpdateSchema,
   GameInstanceUpdateWithIdSchema
 } from "../schemas-zod/game-instance-schema.ts";
+import { GameTimeService, type GameTimeInfo } from "./game-time.service.ts";
+import { GameEventTriggerService } from "./game-event-trigger.service.ts";
+import { cancelGameJobs } from "../../lib/job-queue.ts";
 
 export class GameInstanceService {
   private prisma: PrismaClient;
+  private gameTimeService: GameTimeService;
+  private gameEventTriggerService: GameEventTriggerService;
 
   constructor(prismaClient?: PrismaClient) {
     this.prisma = prismaClient || defaultPrisma;
+    this.gameTimeService = new GameTimeService();
+    this.gameEventTriggerService = new GameEventTriggerService(this.prisma);
   }
 
   /**
@@ -44,7 +50,7 @@ export class GameInstanceService {
   }
 
   /**
-   * Crée une nouvelle instance de jeu
+   * Crée une nouvelle instance de jeu et schedule le premier événement
    */
   async create(data: GameInstanceCreateSchema): Promise<GameInstance> {
     // Validate foreign keys if provided
@@ -64,6 +70,34 @@ export class GameInstanceService {
       if (!level) {
         throw new Error(`Le niveau avec l'ID "${data.levelId}" n'existe pas`);
       }
+
+      // Vérifier si l'utilisateur a déjà une partie terminée avec succès sur ce niveau
+      if (data.userId) {
+        const completedGame = await this.prisma.gameInstance.findFirst({
+          where: {
+            userId: data.userId,
+            levelId: data.levelId,
+            isEnded: true,
+          },
+        });
+
+        if (completedGame) {
+          throw new Error(`Vous avez déjà terminé le niveau ${level.number}. Passez au niveau suivant !`);
+        }
+
+        // Vérifier aussi s'il y a déjà une partie en cours sur ce niveau
+        const activeGame = await this.prisma.gameInstance.findFirst({
+          where: {
+            userId: data.userId,
+            levelId: data.levelId,
+            isEnded: false,
+          },
+        });
+
+        if (activeGame) {
+          throw new Error(`Vous avez déjà une partie en cours sur ce niveau. Reprenez votre partie !`);
+        }
+      }
     }
 
     const sanitizedData = {
@@ -71,9 +105,21 @@ export class GameInstanceService {
       userId: data.userId ?? null,
       levelId: data.levelId ?? null,
       startBalance: data.startBalance ?? null,
+      // Initialize new fields
+      totalPausedDuration: 0,
+      currentEventIndex: 0,
+      isEnded: false,
+      isPaused: false,
     };
 
-    return this.prisma.gameInstance.create({ data: sanitizedData });
+    const gameInstance = await this.prisma.gameInstance.create({ data: sanitizedData });
+
+    // Schedule the first event (or game end if no events)
+    if (gameInstance.levelId) {
+      await this.gameEventTriggerService.scheduleFirstEvent(gameInstance.id);
+    }
+
+    return gameInstance;
   }
 
   /**
@@ -88,19 +134,25 @@ export class GameInstanceService {
        throw new Error("L'ID est requis pour la mise à jour");
      }
 
-     const sanitizedData: Partial<GameInstanceUpdateSchema> = {};
+     // Build update data object
+     const updatePayload: Record<string, unknown> = {};
 
-    if (updateData.type !== undefined) sanitizedData.type = updateData.type;
-    if (updateData.userId !== undefined) sanitizedData.userId = updateData.userId ?? null;
-    if (updateData.levelId !== undefined) sanitizedData.levelId = updateData.levelId ?? null;
-     if (updateData.startBalance !== undefined) sanitizedData.startBalance = updateData.startBalance ?? 0;
-     if (updateData.isPaused !== undefined) sanitizedData.isPaused = updateData.isPaused;
-     if (updateData.actionRequired !== undefined) sanitizedData.actionRequired = updateData.actionRequired;
-     if (updateData.pausedAt !== undefined) sanitizedData.pausedAt = updateData.pausedAt;
+    if (updateData.type !== undefined) updatePayload.type = updateData.type;
+    if (updateData.userId !== undefined) updatePayload.userId = updateData.userId ?? null;
+    if (updateData.levelId !== undefined) updatePayload.levelId = updateData.levelId ?? null;
+     if (updateData.startBalance !== undefined) updatePayload.startBalance = updateData.startBalance ?? 0;
+     if (updateData.isPaused !== undefined) updatePayload.isPaused = updateData.isPaused;
+     if (updateData.actionRequired !== undefined) updatePayload.actionRequired = updateData.actionRequired;
+     if (updateData.pausedAt !== undefined) updatePayload.pausedAt = updateData.pausedAt;
+     // New fields for game time management
+     if (updateData.totalPausedDuration !== undefined) updatePayload.totalPausedDuration = updateData.totalPausedDuration;
+     if (updateData.currentEventIndex !== undefined) updatePayload.currentEventIndex = updateData.currentEventIndex;
+     if (updateData.isEnded !== undefined) updatePayload.isEnded = updateData.isEnded;
+     if (updateData.endedAt !== undefined) updatePayload.endedAt = updateData.endedAt;
 
      return this.prisma.gameInstance.update({
        where: { id },
-       data: sanitizedData,
+       data: updatePayload,
      });
    }
 
@@ -134,9 +186,12 @@ export class GameInstanceService {
   }
 
   /**
-   * Met en pause une instance de jeu
+   * Met en pause une instance de jeu et annule les jobs schedulés
    */
   async pause(id: number): Promise<GameInstance> {
+    // Cancel all scheduled jobs for this game
+    await cancelGameJobs(id);
+
     return this.prisma.gameInstance.update({
       where: { id },
       data: { isPaused: true, pausedAt: new Date() },
@@ -145,21 +200,92 @@ export class GameInstanceService {
 
   /**
    * Reprend une instance de jeu mise en pause
+   * Calcule la durée de pause et reschedule les jobs
    */
   async resume(id: number): Promise<GameInstance> {
-    return this.prisma.gameInstance.update({
+    const gameInstance = await this.prisma.gameInstance.findUnique({
       where: { id },
-      data: { isPaused: false, pausedAt: null },
+      include: { level: true },
     });
+
+    if (!gameInstance) {
+      throw new Error(`GameInstance ${id} not found`);
+    }
+
+    if (!gameInstance.isPaused || !gameInstance.pausedAt) {
+      return gameInstance; // Not paused, nothing to do
+    }
+
+    // Calculate how long it was paused
+    const pauseDuration = Math.floor(
+      (Date.now() - new Date(gameInstance.pausedAt).getTime()) / 1000
+    );
+
+    const newTotalPausedDuration =
+      (gameInstance.totalPausedDuration ?? 0) + pauseDuration;
+
+    const updated = await this.prisma.gameInstance.update({
+      where: { id },
+      data: {
+        isPaused: false,
+        pausedAt: null,
+        totalPausedDuration: newTotalPausedDuration,
+      },
+    });
+
+    // Reschedule events if not ended
+    if (!gameInstance.isEnded) {
+      await this.gameEventTriggerService.rescheduleAfterResume(id);
+    }
+
+    return updated;
   }
 
   /**
-   * Met à jour le statut d’action requise
+   * Met à jour le statut d'action requise
    */
   async setActionRequired(id: number, required: boolean): Promise<GameInstance> {
     return this.prisma.gameInstance.update({
       where: { id },
       data: { actionRequired: required },
     });
+  }
+
+  /**
+   * Récupère les informations de temps pour une instance de jeu
+   */
+  async getTimeInfo(id: number): Promise<GameTimeInfo | null> {
+    const gameInstance = await this.prisma.gameInstance.findUnique({
+      where: { id },
+      include: { level: true },
+    });
+
+    if (!gameInstance) return null;
+
+    return this.gameTimeService.calculateTimeInfo(gameInstance);
+  }
+
+  /**
+   * Complete l'événement actuel et schedule le suivant
+   * Appelé quand l'utilisateur a fini d'interagir avec un événement
+   */
+  async completeEvent(id: number): Promise<GameInstance> {
+    await this.gameEventTriggerService.completeEvent(id);
+
+    const updated = await this.prisma.gameInstance.findUnique({
+      where: { id },
+      include: {
+        user: true,
+        level: true,
+        wallets: true,
+        transactions: true,
+      },
+    });
+
+    if (!updated) {
+      throw new Error(`GameInstance ${id} not found after completing event`);
+    }
+
+    return updated;
   }
 }

@@ -1,10 +1,10 @@
 import { View, Text, useColorScheme as useRNColorScheme, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import { CashouHeader } from '@/components/cashou-header';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useAuth } from '@/hooks/use-auth';
+import { useHeaderOptions } from '@/hooks/use-header';
 
 interface Quiz {
   id: number;
@@ -37,6 +37,9 @@ export default function DailyQuizScreen() {
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Configure header for this screen
+  useHeaderOptions({ showBackButton: true, onBackPress: () => router.back() });
   
   // Récupérer les paramètres depuis la navigation
   // useLocalSearchParams peut retourner un tableau ou une chaîne
@@ -448,12 +451,6 @@ export default function DailyQuizScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <CashouHeader
-        showBackButton={true}
-        onBackPress={() => router.back()}
-        onMenuPress={() => {}}
-      />
-
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {shouldShowInitialLoader ? (
           // Ne rien afficher pendant le chargement pour éviter le clignotement

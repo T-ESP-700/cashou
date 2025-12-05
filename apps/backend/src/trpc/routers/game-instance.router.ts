@@ -132,6 +132,27 @@ export const gameInstanceRouter = t.router({
     .mutation(async ({ input }) => {
       return await endGameService.endGame(input.id);
     }),
+
+  /**
+   * Complete l'événement actuel et schedule le suivant
+   * Appelé quand l'utilisateur a fini d'interagir avec un événement
+   * Endpoint: POST http://localhost:3000/trpc/gameInstance.completeEvent
+   */
+  completeEvent: t.procedure
+    .input(gameInstanceIdSchema)
+    .mutation(async ({ input }) => {
+      return await gameInstanceService.completeEvent(input.id);
+    }),
+
+  /**
+   * Récupère les informations de temps pour une instance de jeu
+   * Endpoint: GET http://localhost:3000/trpc/gameInstance.getTimeInfo?input={"id":1}
+   */
+  getTimeInfo: t.procedure
+    .input(gameInstanceIdSchema)
+    .query(async ({ input }) => {
+      return await gameInstanceService.getTimeInfo(input.id);
+    }),
 });
 
 export type GameInstanceRouter = typeof gameInstanceRouter;

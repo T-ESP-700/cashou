@@ -4,7 +4,7 @@ import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { UserProfile } from '@/components/auth/user-profile';
 import { useAuth } from '@/hooks/use-auth';
-import { CashouHeader } from '@/components/cashou-header';
+import { useHeaderOptions } from '@/hooks/use-header';
 import { CashouTheme } from '@/constants/cashou-theme';
 
 export default function ProfileScreen() {
@@ -13,14 +13,13 @@ export default function ProfileScreen() {
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
 
+  // Configure header for this screen
+  useHeaderOptions({ showBackButton: false });
+
   // Show loading state while checking authentication
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <CashouHeader
-          showBackButton={false}
-          onMenuPress={() => console.log('Menu pressed')}
-        />
         <ThemedView style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.accent} />
           <ThemedText style={styles.loadingText}>Loading...</ThemedText>
@@ -33,22 +32,13 @@ export default function ProfileScreen() {
   // This prevents double redirects and loops
   if (!isAuthenticated) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <CashouHeader
-          showBackButton={false}
-          onMenuPress={() => console.log('Menu pressed')}
-        />
-      </View>
+      <View style={[styles.container, { backgroundColor: theme.background }]} />
     );
   }
 
   // Show user profile
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <CashouHeader
-        showBackButton={false}
-        onMenuPress={() => console.log('Menu pressed')}
-      />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}

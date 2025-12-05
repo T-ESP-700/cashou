@@ -1,9 +1,15 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, useColorScheme as useRNColorScheme } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState, useEffect } from 'react';
-import { CashouHeader } from '@/components/cashou-header';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, useColorScheme as useRNColorScheme, Alert } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
+import { useAuth } from '@/hooks/use-auth';
+import { useHeaderOptions } from '@/hooks/use-header';
+import FastForwardIcon from '@/assets/images/fast-forward.svg';
+import PauseIcon from '@/assets/images/pause.svg';
+import StopIcon from '@/assets/images/stop.svg';
 
 interface GameStats {
   level: number;
@@ -26,19 +32,52 @@ interface LevelData {
     title: string | null;
     number: number | null;
     startBalance: number | null;
+    duration: number | null;
+    speed: number | null;
   } | null;
 }
 
+interface GameTimeState {
+  createdAt: Date;
+  totalPausedDuration: number; // en secondes
+  duration: number; // jours de jeu
+  speed: number; // multiplicateur
+  isEnded: boolean; // partie terminée
+}
+
+// Constantes pour l'animation de la date
+const GAME_START_DATE = new Date('2024-01-01');
+const UPDATE_INTERVAL_MS = 1000;
+
+// Constantes pour l'animation visuelle de la date
+const DAY_ANIMATION_MS = 30; // Vitesse par jour (30ms = très rapide)
+const MONTH_PAUSE_MS = 150; // Pause supplémentaire au changement de mois
+
 export default function GameCurrentScreen() {
   const { levelId, gameId } = useLocalSearchParams<{ levelId: string; gameId?: string }>();
-  const router = useRouter();
   const colorScheme = useRNColorScheme();
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+
+  // Configure header for this screen
+  useHeaderOptions({ showBackButton: true });
 
   const [levelData, setLevelData] = useState<LevelData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [gameInstanceId, setGameInstanceId] = useState<number | null>(gameId ? parseInt(gameId, 10) : null);
+  const [isPaused, setIsPaused] = useState(true); // Game starts paused until user clicks "Démarrer"
+  const [isStarting, setIsStarting] = useState(false);
+  const [gameDate, setGameDate] = useState(GAME_START_DATE);
+  const [gameTimeState, setGameTimeState] = useState<GameTimeState | null>(null);
+  const [isAnimating, setIsAnimating] = useState(false); // Animation en cours
+  const [targetDate, setTargetDate] = useState<Date | null>(null); // Date cible pour l'animation
+  const [isGameEnded, setIsGameEnded] = useState(false); // Partie terminée
+
+  // Game has started if we have a game instance ID
+  const hasGameStarted = gameInstanceId !== null;
 
   // Stats simulées pour la démo (à remplacer par de vraies données)
   const [stats, setStats] = useState<GameStats>({
@@ -55,6 +94,43 @@ export default function GameCurrentScreen() {
     { id: 3, title: 'S&P 500', symbol: 'SPX', rate: 11, description: 'Indice boursier' },
   ]);
 
+  // Calcul de la date de fin de jeu (date de départ + durée)
+  const calculateEndDate = useCallback((duration: number): Date => {
+    const endDate = new Date(GAME_START_DATE);
+    endDate.setDate(endDate.getDate() + duration);
+    return endDate;
+  }, []);
+
+  // Calcul de la date de jeu (purement local, aucun appel backend)
+  const calculateGameDate = useCallback((timeState: GameTimeState): Date => {
+    // Si la partie est terminée, retourner la date de fin
+    if (timeState.isEnded) {
+      return calculateEndDate(timeState.duration);
+    }
+
+    const now = Date.now();
+    const startTime = timeState.createdAt.getTime();
+
+    // Temps réel écoulé (en secondes)
+    let elapsedSeconds = Math.floor((now - startTime) / 1000);
+    elapsedSeconds -= timeState.totalPausedDuration;
+    elapsedSeconds = Math.max(0, elapsedSeconds);
+
+    // Durée totale en secondes réelles
+    const totalDurationSeconds = (timeState.duration / timeState.speed) * 86400;
+
+    // Progression en %
+    const progressPercent = Math.min(100, (elapsedSeconds / totalDurationSeconds) * 100);
+
+    // Jours de jeu écoulés
+    const gameDaysElapsed = (timeState.duration * progressPercent) / 100;
+
+    // Date du jeu
+    const gameDate = new Date(GAME_START_DATE);
+    gameDate.setDate(gameDate.getDate() + Math.floor(gameDaysElapsed));
+    return gameDate;
+  }, [calculateEndDate]);
+
   useEffect(() => {
     const fetchData = async () => {
       if (!levelId) {
@@ -65,6 +141,8 @@ export default function GameCurrentScreen() {
 
       try {
         setIsLoading(true);
+
+        // Charger les données du niveau
         const data = await trpcClient.level.getSummary.query({ id: parseInt(levelId, 10) });
         setLevelData(data as LevelData);
 
@@ -76,6 +154,78 @@ export default function GameCurrentScreen() {
             cash: data.level?.startBalance || 1000,
           }));
         }
+
+        // Si on a un gameId, charger l'état de la partie existante
+        if (gameId) {
+          try {
+            const gameInstance = await trpcClient.gameInstance.getById.query({ id: parseInt(gameId, 10) });
+            if (gameInstance) {
+              setGameInstanceId(gameInstance.id);
+              setIsPaused(gameInstance.isPaused ?? true);
+              setIsGameEnded(gameInstance.isEnded ?? false);
+
+              // Initialiser l'état du temps pour l'animation locale
+              if (gameInstance.level) {
+                const duration = gameInstance.level.duration ?? 30;
+                const speed = gameInstance.level.speed ?? 1;
+                const isEnded = gameInstance.isEnded ?? false;
+
+                const newTimeState: GameTimeState = {
+                  createdAt: new Date(gameInstance.createdAt),
+                  totalPausedDuration: gameInstance.totalPausedDuration ?? 0,
+                  duration,
+                  speed,
+                  isEnded,
+                };
+                setGameTimeState(newTimeState);
+
+                // Calculer la date cible pour l'animation
+                const target = isEnded
+                  ? calculateEndDate(duration)
+                  : (() => {
+                      // Calculer la date actuelle du jeu
+                      const now = Date.now();
+                      const startTime = new Date(gameInstance.createdAt).getTime();
+                      let elapsedSeconds = Math.floor((now - startTime) / 1000);
+                      elapsedSeconds -= (gameInstance.totalPausedDuration ?? 0);
+
+                      // Si le jeu est actuellement en pause, soustraire aussi la durée de pause actuelle
+                      if (gameInstance.isPaused && gameInstance.pausedAt) {
+                        const currentPauseDuration = Math.floor((now - new Date(gameInstance.pausedAt).getTime()) / 1000);
+                        elapsedSeconds -= currentPauseDuration;
+                      }
+
+                      elapsedSeconds = Math.max(0, elapsedSeconds);
+                      const totalDurationSeconds = (duration / speed) * 86400;
+                      const progressPercent = Math.min(100, (elapsedSeconds / totalDurationSeconds) * 100);
+                      const gameDaysElapsed = (duration * progressPercent) / 100;
+                      const currentDate = new Date(GAME_START_DATE);
+                      currentDate.setDate(currentDate.getDate() + Math.floor(gameDaysElapsed));
+                      return currentDate;
+                    })();
+
+                // Si la partie est terminée, afficher directement la date finale sans animation
+                if (isEnded) {
+                  setGameDate(target);
+                } else if (target.getTime() > GAME_START_DATE.getTime()) {
+                  // Sinon, animer si la date cible est différente de la date de départ
+                  setTargetDate(target);
+                  setGameDate(new Date(GAME_START_DATE)); // Commencer depuis le début
+                  setIsAnimating(true);
+                } else {
+                  setGameDate(target);
+                }
+              }
+            }
+          } catch (err) {
+            console.error('Error fetching game instance:', err);
+            // La partie n'existe plus, on réinitialise
+            setGameInstanceId(null);
+            setIsPaused(true);
+            setGameTimeState(null);
+            setIsGameEnded(false);
+          }
+        }
       } catch (err) {
         console.error('Error fetching level data:', err);
         setError('Erreur lors du chargement du niveau');
@@ -85,7 +235,97 @@ export default function GameCurrentScreen() {
     };
 
     fetchData();
-  }, [levelId]);
+  }, [levelId, gameId, calculateEndDate]);
+
+  // Animation visuelle de la date (quand on revient sur une partie)
+  useEffect(() => {
+    if (!isAnimating || !targetDate) return;
+
+    let animationFrame: ReturnType<typeof setTimeout> | null = null;
+    let currentDate = new Date(GAME_START_DATE);
+    const target = new Date(targetDate);
+
+    const animate = () => {
+      if (currentDate >= target) {
+        setGameDate(target);
+        setIsAnimating(false);
+        setTargetDate(null);
+        return;
+      }
+
+      // Vérifier si on change de mois
+      const currentMonth = currentDate.getMonth();
+      const nextDate = new Date(currentDate);
+      nextDate.setDate(nextDate.getDate() + 1);
+      const nextMonth = nextDate.getMonth();
+      const isMonthChange = currentMonth !== nextMonth;
+
+      // Avancer d'un jour
+      currentDate = nextDate;
+      setGameDate(new Date(currentDate));
+
+      // Pause plus longue au changement de mois
+      const delay = isMonthChange ? MONTH_PAUSE_MS : DAY_ANIMATION_MS;
+      animationFrame = setTimeout(animate, delay);
+    };
+
+    animationFrame = setTimeout(animate, DAY_ANIMATION_MS);
+
+    return () => {
+      if (animationFrame) clearTimeout(animationFrame);
+    };
+  }, [isAnimating, targetDate]);
+
+  // Animation locale de la date en temps réel (aucun appel backend)
+  useEffect(() => {
+    // Ne pas exécuter si on est en train d'animer ou si la partie est terminée
+    if (!gameTimeState || isPaused || isAnimating || isGameEnded) return;
+
+    // Mise à jour immédiate
+    setGameDate(calculateGameDate(gameTimeState));
+
+    // Puis toutes les secondes
+    const interval = setInterval(() => {
+      setGameDate(calculateGameDate(gameTimeState));
+    }, UPDATE_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [gameTimeState, isPaused, isAnimating, isGameEnded, calculateGameDate]);
+
+  // Resynchronisation quand on revient sur la page (sans animation)
+  useFocusEffect(
+    useCallback(() => {
+      if (!gameInstanceId) return;
+
+      const resync = async () => {
+        try {
+          const instance = await trpcClient.gameInstance.getById.query({ id: gameInstanceId });
+          if (instance?.level) {
+            const isEnded = instance.isEnded ?? false;
+            setGameTimeState({
+              createdAt: new Date(instance.createdAt),
+              totalPausedDuration: instance.totalPausedDuration ?? 0,
+              duration: instance.level.duration ?? 30,
+              speed: instance.level.speed ?? 1,
+              isEnded,
+            });
+            setIsPaused(instance.isPaused ?? false);
+            setIsGameEnded(isEnded);
+
+            // Si la partie est terminée, afficher directement la date de fin
+            if (isEnded) {
+              const duration = instance.level.duration ?? 30;
+              setGameDate(calculateEndDate(duration));
+            }
+          }
+        } catch (err) {
+          console.error('Error resyncing game state:', err);
+        }
+      };
+
+      resync();
+    }, [gameInstanceId, calculateEndDate])
+  );
 
   const handleAddAsset = () => {
     // TODO: Ouvrir un modal pour ajouter un asset
@@ -97,10 +337,62 @@ export default function GameCurrentScreen() {
     console.log('Asset pressed:', asset.title);
   };
 
+  const handleStartGame = async () => {
+    if (!user) {
+      Alert.alert('Erreur', 'Vous devez être connecté pour jouer');
+      return;
+    }
+
+    if (!levelId || !levelData?.level) {
+      Alert.alert('Erreur', 'Niveau non trouvé');
+      return;
+    }
+
+    try {
+      setIsStarting(true);
+
+      // Créer une nouvelle GameInstance via l'API
+      const gameInstance = await trpcClient.gameInstance.create.mutate({
+        levelId: parseInt(levelId, 10),
+        userId: user.id,
+        startBalance: levelData.level.startBalance,
+        isPaused: false,
+        actionRequired: false,
+      });
+
+      setGameInstanceId(gameInstance.id);
+      setIsPaused(false); // Le jeu démarre
+      setIsGameEnded(false);
+      setIsAnimating(false); // Pas d'animation pour une nouvelle partie
+      setTargetDate(null);
+      setGameDate(new Date(GAME_START_DATE)); // Commencer au jour 1
+
+      // Initialiser l'état du temps pour l'animation locale
+      setGameTimeState({
+        createdAt: new Date(), // Le jeu vient de démarrer
+        totalPausedDuration: 0,
+        duration: levelData.level.duration ?? 30,
+        speed: levelData.level.speed ?? 1,
+        isEnded: false,
+      });
+    } catch (err) {
+      console.error('Error creating game instance:', err);
+      Alert.alert('Erreur', 'Impossible de démarrer la partie');
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
+  const formatDate = (date: Date) => {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <CashouHeader showBackButton={true} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.accent} />
         </View>
@@ -111,7 +403,6 @@ export default function GameCurrentScreen() {
   if (error) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <CashouHeader showBackButton={true} />
         <View style={styles.errorContainer}>
           <Text style={[styles.errorText, { color: theme.text }]}>
             {error}
@@ -123,10 +414,8 @@ export default function GameCurrentScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <CashouHeader showBackButton={true} />
-
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}>
+        <View style={styles.card}>
           {/* Header */}
           <Text style={[styles.title, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
             Niveau {stats.level}
@@ -231,6 +520,55 @@ export default function GameCurrentScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Bottom Game Controls */}
+      <View style={[styles.bottomControls, { paddingBottom: insets.bottom }]}>
+        {!hasGameStarted ? (
+          // Bouton "Démarrer" avant que le jeu ne commence
+          <TouchableOpacity
+            style={[
+              {
+                ...CashouTheme.button.primary,
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+                opacity: isStarting ? 0.6 : 1,
+                minWidth: 140,
+              }
+            ]}
+            onPress={handleStartGame}
+            activeOpacity={CashouTheme.button.primary.activeOpacity}
+            disabled={isStarting}
+          >
+            {isStarting ? (
+              <ActivityIndicator size="small" color={theme.text} />
+            ) : (
+              <Text style={[
+                {
+                  ...CashouTheme.button.primary.text,
+                  fontFamily: CashouTheme.fonts.subheading,
+                  color: theme.text,
+                }
+              ]}>
+                Démarrer
+              </Text>
+            )}
+          </TouchableOpacity>
+        ) : (
+
+            <View style={[styles.dateContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              {isGameEnded ? (
+                <StopIcon width={28} height={28} stroke={theme.text} />
+              ) : isPaused ? (
+                <PauseIcon width={28} height={28} stroke={theme.text} />
+              ) : (
+                <FastForwardIcon width={28} height={28} fill={theme.text} />
+              )}
+              <Text style={[styles.dateText, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
+                {formatDate(gameDate)}
+              </Text>
+            </View>
+        )}
+      </View>
     </View>
   );
 }
@@ -243,8 +581,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    flexGrow: 1,
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 16,
   },
   loadingContainer: {
     flex: 1,
@@ -262,9 +601,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   card: {
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
+    flex: 1,
+    marginBottom: 32,
   },
   title: {
     fontSize: 24,
@@ -342,5 +680,38 @@ const styles = StyleSheet.create({
   },
   assetRate: {
     fontSize: 24,
+  },
+  bottomControls: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    gap: 16,
+  },
+  controlButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dateContainer: {
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 28,
+    borderWidth: 2,
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  dateText: {
+    fontSize: 18,
   },
 });
