@@ -86,7 +86,7 @@ export default function GameCurrentScreen() {
 
   const handleAddAsset = () => {
     // TODO: Ouvrir un modal pour ajouter un asset
-      router.push('/(tabs)/assets');
+      router.push('/game/assets');
   };
 
   const handleAssetPress = (asset: Asset) => {

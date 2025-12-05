@@ -54,19 +54,6 @@ export default function TabLayout() {
           ),
         }}
       />
-
-        <Tabs.Screen
-            name="assets"
-            options={{
-                title: 'Assets',
-                tabBarIcon: ({ size, focused }) => (
-                    <View style={focused ? { backgroundColor: '#E87F00', borderRadius: 12, padding: 8 } : { padding: 8 }}>
-                        <Ionicons name={(focused ? "book" : "book-outline") as any} size={size || 28} color="#1C1E33" />
-                    </View>
-                ),
-                href: null, // Masquer de la tab bar
-            }}
-        />
       <Tabs.Screen
         name="test"
         options={{
@@ -185,12 +172,6 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="history"
-        options={{
-          href: null, // Masquer de la tab bar
-        }}
-      />
-      <Tabs.Screen
-        name="asset-detail"
         options={{
           href: null, // Masquer de la tab bar
         }}
