@@ -212,19 +212,22 @@ async function main() {
     goal = await prisma.goal.update({
       where: { id: goal.id },
       data: {
-        description: 'Ne pas perdre d\'argent par rapport à ton capital initial.'
+        description: 'Ne pas perdre d\'argent par rapport à ton capital initial.',
+        goalType: 'wallet_gte_start',
+        goalValue: 0
       }
     });
   } else {
     goal = await prisma.goal.create({
       data: {
         title: "Reste en positif",
-        description:
-          "Ne pas perdre d'argent par rapport à ton capital initial.",
+        description: "Ne pas perdre d'argent par rapport à ton capital initial.",
+        goalType: 'wallet_gte_start',
+        goalValue: 0
       },
     });
   }
-  console.log(`✅ Objectif créé: ${goal.title}`);
+  console.log(`✅ Objectif créé: ${goal.title} (type: ${goal.goalType})`);
 
   // 9. Créer le LevelGoal
   console.log('🔗 Liaison niveau-objectif...');

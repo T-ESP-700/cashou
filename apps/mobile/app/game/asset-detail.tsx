@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { CashouHeader } from '@/components/cashou-header';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 
@@ -19,7 +18,7 @@ export default function AssetDetailScreen() {
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const router = useRouter();
   const params = useLocalSearchParams();
-  
+
   const [asset, setAsset] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,8 +53,6 @@ export default function AssetDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <CashouHeader showBackButton={true} onBackPress={() => router.back()} />
-
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {loading ? (
           <View style={styles.centerContainer}>
@@ -93,10 +90,10 @@ export default function AssetDetailScreen() {
                   Taux
                 </Text>
                 <View style={styles.rateContainer}>
-                  <Ionicons 
-                    name={asset.taux >= 0 ? 'caret-up' : 'caret-down'} 
-                    size={24} 
-                    color="#FFB472" 
+                  <Ionicons
+                    name={asset.taux >= 0 ? 'caret-up' : 'caret-down'}
+                    size={24}
+                    color="#FFB472"
                   />
                   <Text style={[styles.rateValue, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>
                     {Math.abs(asset.taux)}%

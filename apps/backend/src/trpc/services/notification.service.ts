@@ -56,6 +56,7 @@ export class NotificationService {
         type: data.type,
         ...(data.game_instance_id !== undefined && { gameInstanceId: data.game_instance_id }),
         ...(data.quiz_id !== undefined && { quizId: data.quiz_id }),
+        ...(data.event_id !== undefined && { eventId: data.event_id }),
         userId: data.user_id,
         isOpened: data.is_open,
         sentAt: data.sent_at,

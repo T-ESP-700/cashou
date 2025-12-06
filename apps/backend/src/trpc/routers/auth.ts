@@ -4,6 +4,8 @@ import { auth } from '@cashou/auth/server';
 import { TRPCError } from '@trpc/server';
 import { prisma } from '@cashou/db-app';
 import { getUserActivityService } from '../../services/user-activity.service';
+import { GameTimeService } from '../services/game-time.service';
+import { GameEndTriggerService } from '../services/game-end-trigger.service';
 
 export const authRouter = router({
   // Register a new user
@@ -215,16 +217,14 @@ export const authRouter = router({
             title: true,
             description: true,
             startBalance: true,
+            duration: true,
+            speed: true,
           },
         },
         gameInstances: {
           where: {
-            // Récupérer les parties actives (non terminées)
-            OR: [
-              { isPaused: true },
-              { isPaused: false },
-              { isPaused: null },
-            ],
+            // Récupérer uniquement les parties non terminées
+            isEnded: false,
           },
           orderBy: { createdAt: 'desc' },
           take: 1,
@@ -235,10 +235,15 @@ export const authRouter = router({
             startBalance: true,
             createdAt: true,
             levelId: true,
+            totalPausedDuration: true,
+            pausedAt: true,
+            isEnded: true,
             level: {
               select: {
                 number: true,
                 title: true,
+                duration: true,
+                speed: true,
               },
             },
             wallets: {
@@ -246,6 +251,27 @@ export const authRouter = router({
                 amount: true,
               },
             },
+          },
+        },
+      },
+    });
+
+    // Récupérer aussi la dernière partie terminée pour afficher l'état "terminé"
+    const lastCompletedGame = await prisma.gameInstance.findFirst({
+      where: {
+        userId: ctx.session.user.id,
+        isEnded: true,
+      },
+      orderBy: { endedAt: 'desc' },
+      select: {
+        id: true,
+        levelId: true,
+        endedAt: true,
+        level: {
+          select: {
+            id: true,
+            number: true,
+            title: true,
           },
         },
       },
@@ -259,9 +285,43 @@ export const authRouter = router({
     }
 
     // Calculer la progression du niveau actuel si une partie est en cours
-    const activeGame = user.gameInstances[0] || null;
+    const activeGameFromDb = user.gameInstances[0] || null;
+    let activeGame: typeof activeGameFromDb | null = activeGameFromDb;
     let levelProgression = 0;
     let currentReturn = 0;
+
+    // Vérifier si la partie aurait dû se terminer (safety net)
+    // On ignore les pauses pour cette vérification : si le temps RÉEL depuis
+    // la création dépasse la durée totale, la partie est terminée.
+    if (activeGame && activeGame.level) {
+      const gameTimeService = new GameTimeService();
+      const totalDurationSeconds = gameTimeService.calculateTotalDuration(activeGame.level as Parameters<typeof gameTimeService.calculateTotalDuration>[0]);
+      const realElapsedSeconds = Math.floor((Date.now() - new Date(activeGame.createdAt).getTime()) / 1000);
+      const shouldHaveEnded = realElapsedSeconds >= totalDurationSeconds;
+
+      console.log(`[getHomeData] Game ${activeGame.id} time check:`, {
+        levelDuration: activeGame.level.duration,
+        levelSpeed: activeGame.level.speed,
+        totalDurationSeconds,
+        realElapsedSeconds,
+        shouldHaveEnded,
+        isEnded: activeGame.isEnded,
+      });
+
+      if (shouldHaveEnded && !activeGame.isEnded) {
+        // La partie aurait dû se terminer mais le job n'a pas été exécuté
+        const gameId = activeGame.id;
+        console.log(`[getHomeData] Game ${gameId} should have ended, triggering now`);
+        try {
+          const gameEndTriggerService = new GameEndTriggerService();
+          await gameEndTriggerService.triggerGameEnd(gameId);
+          // La partie est maintenant terminée, on ne la retourne plus comme active
+          activeGame = null;
+        } catch (error) {
+          console.error(`[getHomeData] Failed to trigger game end for ${gameId}:`, error);
+        }
+      }
+    }
 
     if (activeGame && activeGame.wallets.length > 0) {
       const currentBalance = Number(activeGame.wallets[0]?.amount || 0);
@@ -296,6 +356,14 @@ export const authRouter = router({
         levelTitle: activeGame.level?.title || user.level?.title,
         progression: levelProgression,
         currentReturn,
+      } : null,
+      // Dernière partie terminée (pour afficher l'état "terminé" si pas de partie active)
+      lastCompletedGame: lastCompletedGame ? {
+        id: lastCompletedGame.id,
+        levelId: lastCompletedGame.levelId,
+        levelNumber: lastCompletedGame.level?.number,
+        levelTitle: lastCompletedGame.level?.title,
+        endedAt: lastCompletedGame.endedAt,
       } : null,
     };
   }),

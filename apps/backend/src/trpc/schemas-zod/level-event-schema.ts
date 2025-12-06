@@ -7,6 +7,9 @@ import { z } from "zod";
 export const levelEventDataSchema = z.object({
     levelId: z.number().int().positive("L'ID du niveau doit être un nombre entier positif"),
     eventId: z.number().int().positive("L'ID de l'événement doit être un nombre entier positif"),
+    // Timing fields for event scheduling
+    triggerPercent: z.number().int().min(0).max(100).default(50),
+    position: z.number().int().positive().default(1),
 });
 export type LevelEventDataSchema = z.infer<typeof levelEventDataSchema>;
 

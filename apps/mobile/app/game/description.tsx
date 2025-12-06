@@ -1,9 +1,9 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, useColorScheme as useRNColorScheme } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { CashouHeader } from '@/components/cashou-header';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
+import { useHeaderOptions } from '@/hooks/use-header';
 
 interface LevelData {
   level: {
@@ -15,16 +15,16 @@ interface LevelData {
     speed: number | null;
     startBalance: number | null;
   } | null;
-  goals: Array<{
+  goals: {
     id: number;
     title: string | null;
     description: string | null;
-  }>;
-  events: Array<{
+  }[];
+  events: {
     id: number;
     title: string | null;
     description: string | null;
-  }>;
+  }[];
 }
 
 export default function GameDescriptionScreen() {
@@ -33,6 +33,9 @@ export default function GameDescriptionScreen() {
   const colorScheme = useRNColorScheme();
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+
+  // Configure header for this screen
+  useHeaderOptions({ showBackButton: true });
 
   const [levelData, setLevelData] = useState<LevelData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,7 +74,6 @@ export default function GameDescriptionScreen() {
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <CashouHeader showBackButton={true} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.accent} />
         </View>
@@ -82,7 +84,6 @@ export default function GameDescriptionScreen() {
   if (error || !levelData?.level) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <CashouHeader showBackButton={true} />
         <View style={styles.errorContainer}>
           <Text style={[styles.errorText, { color: theme.text }]}>
             {error || 'Niveau non trouvé'}
@@ -94,13 +95,11 @@ export default function GameDescriptionScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <CashouHeader showBackButton={true} />
-
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={styles.card}>
           {/* Header */}
           <Text style={[styles.title, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
-            Campagne - Niveau {levelData.level.number}
+            Niveau {levelData.level.number}
           </Text>
 
           <View style={[styles.separator, { backgroundColor: theme.text }]} />
@@ -126,11 +125,23 @@ export default function GameDescriptionScreen() {
 
           {/* Continue Button */}
           <TouchableOpacity
-            style={[styles.continueButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+            style={[
+              {
+                ...CashouTheme.button.primary,
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+              }
+            ]}
             onPress={handleContinue}
-            activeOpacity={0.8}
+            activeOpacity={CashouTheme.button.primary.activeOpacity}
           >
-            <Text style={[styles.continueButtonText, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
+            <Text style={[
+              {
+                ...CashouTheme.button.primary.text,
+                fontFamily: CashouTheme.fonts.subheading,
+                color: theme.text,
+              }
+            ]}>
               Continuer
             </Text>
           </TouchableOpacity>
@@ -148,8 +159,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    flexGrow: 1,
     padding: 16,
-    paddingBottom: 32,
   },
   loadingContainer: {
     flex: 1,
@@ -167,10 +178,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   card: {
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    minHeight: '85%',
+    flex: 1,
+    marginBottom: 32,
+    // borderRadius: CashouTheme.borderRadius.md,
+    // padding: 20,
+    // borderWidth: 1,
+    // borderColor: CashouTheme.colors.light.border,
+    // backgroundColor: CashouTheme.colors.light.card,
   },
   title: {
     fontSize: 24,
@@ -198,16 +212,5 @@ const styles = StyleSheet.create({
   spacer: {
     flex: 1,
     minHeight: 40,
-  },
-  continueButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    alignItems: 'center',
-    alignSelf: 'flex-end',
-  },
-  continueButtonText: {
-    fontSize: 18,
   },
 });

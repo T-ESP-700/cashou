@@ -2,10 +2,11 @@ import { View, Text, useColorScheme as useRNColorScheme, StyleSheet, TouchableOp
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
-import { CashouHeader } from '@/components/cashou-header';
+// import { CashouHeader } from '@/components/cashou-header';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useAuth } from '@/hooks/use-auth';
+import { useHeaderOptions } from '@/hooks/use-header';
 
 interface Quiz {
   id: number;
@@ -39,27 +40,30 @@ export default function DailyQuizScreen() {
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
+  // Configure header for this screen
+  useHeaderOptions({ showBackButton: true, onBackPress: () => router.back() });
+
   // Récupérer les paramètres depuis la navigation
   // useLocalSearchParams peut retourner un tableau ou une chaîne
   const showCompletedParam = params?.showCompleted;
-  const showCompleted = Array.isArray(showCompletedParam) 
-    ? showCompletedParam[0] === 'true' 
+  const showCompleted = Array.isArray(showCompletedParam)
+    ? showCompletedParam[0] === 'true'
     : showCompletedParam === 'true';
-  
+
   // Récupérer le quizId si fourni (pour les quiz depuis l'historique)
   const quizIdParam = params?.quizId;
-  const specificQuizId = Array.isArray(quizIdParam) 
-    ? quizIdParam[0] 
+  const specificQuizId = Array.isArray(quizIdParam)
+    ? quizIdParam[0]
     : quizIdParam;
-  
+
   // Initialiser à null pour ne rien afficher tant que les données ne sont pas chargées
   const [quizState, setQuizState] = useState<QuizState | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswerId, setSelectedAnswerId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [userQuizId, setUserQuizId] = useState<number | null>(null);
+  // const [userQuizId, setUserQuizId] = useState<number | null>(null);
   const [hasStartedQuiz, setHasStartedQuiz] = useState(false);
   const [userAnswers, setUserAnswers] = useState<Map<number, { answerId: number; isCorrect: boolean }>>(new Map());
   const [correctionQuestionIndex, setCorrectionQuestionIndex] = useState(0);
@@ -103,7 +107,7 @@ export default function DailyQuizScreen() {
       if (quizState === 'correction') {
         return;
       }
-      
+
       try {
         // Toujours mettre isLoading à true au début pour masquer le contenu
         // Sauf si on vient de l'historique ET que showCompleted est true (on sait déjà ce qu'on veut afficher)
@@ -113,9 +117,9 @@ export default function DailyQuizScreen() {
         setError(null);
         // Réinitialiser l'état pour éviter d'afficher l'ancien état
         setQuizState(null);
-        
+
         let quizData = null;
-        
+
         // Si un quizId spécifique est fourni, charger ce quiz
         if (specificQuizId) {
           const quizId = parseInt(specificQuizId);
@@ -126,10 +130,10 @@ export default function DailyQuizScreen() {
           // Sinon, charger le quiz du jour
           quizData = await trpcClient.quiz.getTodaysDailyQuiz.query();
         }
-        
+
         if (quizData && user) {
           setQuiz(quizData as Quiz);
-          
+
           // Charger les questions pour tous les cas
           const questionsData = await trpcClient.quizQuestion.getQuestionsWithAnswers.query({
             quizId: (quizData as Quiz).id,
@@ -153,7 +157,7 @@ export default function DailyQuizScreen() {
           // Pour un quiz depuis l'historique, on utilise showCompleted
           // Sinon, on vérifie dans la base de données
           let isQuizCompleted = false;
-          
+
           if (specificQuizId && showCompleted) {
             // Si on vient de l'historique avec showCompleted=true, le quiz est complété
             isQuizCompleted = true;
@@ -265,6 +269,7 @@ export default function DailyQuizScreen() {
     };
 
     fetchQuiz();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, showCompleted, specificQuizId]); // Ne pas inclure quizState dans les dépendances pour éviter les rechargements
 
   // Rafraîchir les données utilisateur quand on quitte la page (si le quiz est complété)
@@ -288,7 +293,7 @@ export default function DailyQuizScreen() {
 
     try {
       setIsLoading(true);
-      
+
       // Récupérer les questions avec réponses
       const questionsData = await trpcClient.quizQuestion.getQuestionsWithAnswers.query({
         quizId: quiz.id,
@@ -328,18 +333,18 @@ export default function DailyQuizScreen() {
 
       // Trouver la première question non répondue
       const firstUnansweredIndex = answeredQuestions.findIndex((answeredId) => answeredId === null);
-      
+
       // Si toutes les questions sont répondues, vérifier si le quiz est complété
       if (firstUnansweredIndex === -1) {
         // Vérifier si le quiz est complété
         const existingParticipations = await trpcClient.userQuiz.getByQuiz.query({
           quizId: quiz.id,
         });
-        
+
         const userParticipation = (existingParticipations as any[]).find(
           (p: any) => p.userId === user.id && p.completedAt !== null
         );
-        
+
         if (userParticipation) {
           // Le quiz est déjà complété, afficher la page de félicitations
           setQuestions(formattedQuestions);
@@ -425,9 +430,9 @@ export default function DailyQuizScreen() {
             }
           })
         );
-        
+
         const allCorrect = allAnswers.every((correct) => correct);
-        
+
         // Récupérer toutes les réponses de l'utilisateur pour la correction
         const answersMap = new Map<number, { answerId: number; isCorrect: boolean }>();
         for (const q of questions) {
@@ -447,7 +452,7 @@ export default function DailyQuizScreen() {
           }
         }
         setUserAnswers(answersMap);
-        
+
         // Créer ou mettre à jour la participation au quiz
         try {
           console.log('[DailyQuiz] Creating/updating participation...');
@@ -456,12 +461,12 @@ export default function DailyQuizScreen() {
             isCorrect: allCorrect,
           });
           console.log('[DailyQuiz] Participation created/updated successfully');
-          
+
           // Attendre 1 seconde pour que le backend termine la mise à jour du streak
           console.log('[DailyQuiz] Waiting 1 second before refreshing user data...');
           await new Promise(resolve => setTimeout(resolve, 1000));
           console.log('[DailyQuiz] Wait completed, refreshing user...');
-          
+
           // Rafraîchir les données de l'utilisateur pour mettre à jour le currentStreak
           await refreshUser();
           console.log('[DailyQuiz] User refreshed, currentStreak should be updated');
@@ -489,7 +494,7 @@ export default function DailyQuizScreen() {
   ).length;
   const score = totalQuestions > 0 ? correctAnswers / totalQuestions : 0;
   const hasPassed = score >= 2 / 3;
-  
+
   // Messages selon le score
   const encouragementMessages = [
     'Ne vous découragez pas, continuez à apprendre !',
@@ -502,7 +507,7 @@ export default function DailyQuizScreen() {
     'Félicitations ! Vous avez bien réussi ce quiz.',
     'Parfait ! Continuez sur cette lancée !',
   ];
-  
+
   // Sélectionner un message aléatoire dans la liste appropriée
   const messageArray = hasPassed ? congratulationMessages : encouragementMessages;
   const messageIndex = Math.floor(Math.random() * messageArray.length);
@@ -512,12 +517,6 @@ export default function DailyQuizScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <CashouHeader
-        showBackButton={true}
-        onBackPress={() => router.back()}
-        onMenuPress={() => {}}
-      />
-
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {shouldShowInitialLoader ? (
           // Ne rien afficher pendant le chargement pour éviter le clignotement
@@ -689,29 +688,29 @@ export default function DailyQuizScreen() {
                 const userAnswer = userAnswers.get(questions[correctionQuestionIndex].id);
                 const isUserAnswer = userAnswer?.answerId === answer.id;
                 const isCorrect = answer.isCorrect === true;
-                const isUserAnswerCorrect = isUserAnswer && isCorrect;
+                // const isUserAnswerCorrect = isUserAnswer && isCorrect;
                 const isUserAnswerIncorrect = isUserAnswer && !isCorrect;
                 const showAsCorrect = isCorrect; // Toujours montrer la bonne réponse en vert
                 const showAsIncorrect = isUserAnswerIncorrect; // La réponse de l'utilisateur si elle est fausse
                 const currentQuestion = questions[correctionQuestionIndex];
                 const hasExplanation = currentQuestion?.explanation && currentQuestion.explanation.trim().length > 0;
-                const isCorrectAnswer = showAsCorrect;
-                
+                // const isCorrectAnswer = showAsCorrect;
+
                 return (
                   <React.Fragment key={answer.id}>
                     <View
                       style={[
                         styles.answerButton,
                         {
-                          backgroundColor: showAsCorrect 
-                            ? '#4CAF50' 
-                            : showAsIncorrect 
-                            ? '#F44336' 
+                          backgroundColor: showAsCorrect
+                            ? '#4CAF50'
+                            : showAsIncorrect
+                            ? '#F44336'
                             : theme.card,
-                          borderColor: showAsCorrect 
-                            ? '#4CAF50' 
-                            : showAsIncorrect 
-                            ? '#F44336' 
+                          borderColor: showAsCorrect
+                            ? '#4CAF50'
+                            : showAsIncorrect
+                            ? '#F44336'
                             : theme.border,
                           borderWidth: 2,
                           flexDirection: 'row',
@@ -771,7 +770,7 @@ export default function DailyQuizScreen() {
               </Text>
             </TouchableOpacity>
           )}
-          
+
           {quizState === 'question' && (
             <TouchableOpacity
               style={[
@@ -820,7 +819,7 @@ export default function DailyQuizScreen() {
                   Correction
                 </Text>
               </TouchableOpacity>
-              
+
               {/* Boutons Accueil et Historique */}
               <View style={styles.completedButtonsContainer}>
                      <TouchableOpacity
@@ -1185,4 +1184,3 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
 });
-

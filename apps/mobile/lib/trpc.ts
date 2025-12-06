@@ -5,9 +5,14 @@ import { API_URL } from './api-config';
 
 // Global error handler for authentication errors
 let authErrorHandler: (() => void) | null = null;
+let isHandlingAuthError = false;
 
 export function setAuthErrorHandler(handler: () => void) {
   authErrorHandler = handler;
+}
+
+export function resetAuthErrorHandling() {
+  isHandlingAuthError = false;
 }
 
 export const trpcClient = createTRPCClient<AppRouter>({
@@ -21,8 +26,9 @@ export const trpcClient = createTRPCClient<AppRouter>({
       fetch(url, options) {
         return fetch(url, options).then(async (response) => {
           // Check for 401 Unauthorized
-          if (response.status === 401) {
+          if (response.status === 401 && !isHandlingAuthError) {
             console.log('[tRPC] 401 Unauthorized detected, clearing token...');
+            isHandlingAuthError = true;
             await tokenStorage.removeToken();
 
             // Trigger auth error handler to redirect to login

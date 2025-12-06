@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { CashouHeader } from '@/components/cashou-header';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { API_URL } from '@/lib/api-config';
@@ -77,12 +76,11 @@ export default function AssetsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <CashouHeader showBackButton={true} />
 
       <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
           {/* Section title */}
         {!isSearching && (
-          <View style={[styles.sectionHeader, { backgroundColor: theme.secondary }]}> 
+          <View style={[styles.sectionHeader, { backgroundColor: theme.secondary }]}>
             <Text style={[styles.title, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>Assets</Text>
             <View style={[styles.separator, { backgroundColor: isDark ? '#2F324A' : '#D3D7E0' }]} />
           </View>
@@ -150,17 +148,17 @@ export default function AssetsScreen() {
 function AssetCard({ asset, isDark, router }: { asset: AssetItem; isDark: boolean; router: any }) {
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const positive = asset.changePct >= 0;
-  
+
   const handlePress = () => {
     router.push(`/game/asset-detail?id=${asset.id}`);
   };
-  
+
   return (
     <TouchableOpacity activeOpacity={0.8} style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={handlePress}>
       <Text style={[styles.cardTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>{asset.name}</Text>
       <View style={styles.tagsRow}>
         {asset.tags.map((t) => (
-          <View key={t} style={[styles.tag, { backgroundColor: isDark ? '#2A2D45' : '#EFF1F5', borderColor: theme.border }]}> 
+          <View key={t} style={[styles.tag, { backgroundColor: isDark ? '#2A2D45' : '#EFF1F5', borderColor: theme.border }]}>
             <Text style={{ color: theme.text, fontSize: 12, fontFamily: CashouTheme.fonts.body }}>{t}</Text>
           </View>
         ))}

@@ -1,6 +1,7 @@
 import { initTRPC } from "@trpc/server";
 import { z } from "zod";
 import { GameInstanceService } from "../services/game-instance.service";
+import { EndGameService } from "../services/end-game.service";
 import {
   gameInstanceCreateSchema,
   gameInstanceUpdateWithIdSchema,
@@ -10,6 +11,7 @@ import {
 
 const t = initTRPC.create();
 const gameInstanceService = new GameInstanceService();
+const endGameService = new EndGameService();
 
 // Additional schemas
 const userIdSchema = z.object({
@@ -117,6 +119,39 @@ export const gameInstanceRouter = t.router({
     .input(gameInstanceBaseActionSchema)
     .mutation(async ({ input }) => {
       return await gameInstanceService.setActionRequired(input.id, input.actionRequired);
+    }),
+
+  /**
+   * Termine une partie et valide les objectifs
+   * - Vend tous les assets et ajoute au wallet
+   * - Vérifie si wallet >= startBalance pour le goal "Reste en positif"
+   * Endpoint: POST http://localhost:3000/trpc/gameInstance.endGame
+   */
+  endGame: t.procedure
+    .input(gameInstanceIdSchema)
+    .mutation(async ({ input }) => {
+      return await endGameService.endGame(input.id);
+    }),
+
+  /**
+   * Complete l'événement actuel et schedule le suivant
+   * Appelé quand l'utilisateur a fini d'interagir avec un événement
+   * Endpoint: POST http://localhost:3000/trpc/gameInstance.completeEvent
+   */
+  completeEvent: t.procedure
+    .input(gameInstanceIdSchema)
+    .mutation(async ({ input }) => {
+      return await gameInstanceService.completeEvent(input.id);
+    }),
+
+  /**
+   * Récupère les informations de temps pour une instance de jeu
+   * Endpoint: GET http://localhost:3000/trpc/gameInstance.getTimeInfo?input={"id":1}
+   */
+  getTimeInfo: t.procedure
+    .input(gameInstanceIdSchema)
+    .query(async ({ input }) => {
+      return await gameInstanceService.getTimeInfo(input.id);
     }),
 });
 

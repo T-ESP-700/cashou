@@ -20,13 +20,16 @@ import { View, ActivityIndicator } from 'react-native';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/hooks/use-auth';
+import { HeaderProvider, useHeader } from '@/hooks/use-header';
+import { CashouHeader } from '@/components/cashou-header';
 import { CashouTheme } from '@/constants/cashou-theme';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
-function RootNavigator() {
+function RootNavigatorContent() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { options: headerOptions } = useHeader();
   const segments = useSegments();
   const navigationState = useRootNavigationState();
   const colorScheme = useColorScheme();
@@ -62,13 +65,33 @@ function RootNavigator() {
     return <Redirect href="/(tabs)" />;
   }
 
+  // Show header for authenticated routes (tabs and game)
+  const showHeader = isAuthenticated && (inTabs || inGame);
+
   return (
-    <Stack>
-      <Stack.Screen name="auth" options={{ headerShown: false }} />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="game" options={{ headerShown: false }} />
-      <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-    </Stack>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
+      {showHeader && (
+        <CashouHeader
+          showBackButton={headerOptions.showBackButton}
+          onMenuPress={headerOptions.onMenuPress}
+          onBackPress={headerOptions.onBackPress}
+        />
+      )}
+      <Stack screenOptions={{ headerShown: false, contentStyle: { flex: 1 } }}>
+        <Stack.Screen name="auth" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="game" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+      </Stack>
+    </View>
+  );
+}
+
+function RootNavigator() {
+  return (
+    <HeaderProvider>
+      <RootNavigatorContent />
+    </HeaderProvider>
   );
 }
 

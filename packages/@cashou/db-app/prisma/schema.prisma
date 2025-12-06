@@ -21,6 +21,8 @@ enum NotificationType {
   NEWS     @map("News")
   REMINDER @map("Reminder")
   PROFILE  @map("Profile")
+  EVENT    @map("Event")
+  GAME_END @map("GameEnd")
 }
 
 // Modèle User avec better-auth + relations Cashou
@@ -42,6 +44,7 @@ model User {
   points        Int?           @default(0)
   currentStreak Int            @default(0) @map("current_streak")
   maxStreak     Int            @default(0) @map("max_streak")
+  expoPushToken String?        @map("expo_push_token")
   level         Level          @relation(fields: [levelId], references: [id])
   gameInstances GameInstance[]
   gameUsers     GameUser[]
@@ -137,9 +140,10 @@ model Event {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
-  levelEvents LevelEvent[]
-  eventAssets EventAsset[]
-  impacts     Impact[]
+  levelEvents   LevelEvent[]
+  eventAssets   EventAsset[]
+  impacts       Impact[]
+  notifications Notification[]
 
   @@map("events")
 }
@@ -148,6 +152,8 @@ model Goal {
   id          Int      @id @default(autoincrement())
   title       String?
   description String?
+  goalType    String?  @map("goal_type")
+  goalValue   Float?   @map("goal_value")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -172,11 +178,13 @@ model LevelGoal {
 }
 
 model LevelEvent {
-  id        Int      @id @default(autoincrement())
-  levelId   Int      @map("level_id")
-  eventId   Int      @map("event_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id             Int      @id @default(autoincrement())
+  levelId        Int      @map("level_id")
+  eventId        Int      @map("event_id")
+  triggerPercent Int      @default(50) @map("trigger_percent")
+  position       Int      @default(1)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   // Relations
   level Level @relation(fields: [levelId], references: [id])
@@ -310,16 +318,20 @@ model Impact {
 }
 
 model GameInstance {
-  id             Int       @id @default(autoincrement())
-  type           String?
-  userId         String?   @map("user_id")
-  levelId        Int?      @map("level_id")
-  startBalance   Int?      @map("start_balance")
-  isPaused       Boolean?  @map("is_paused")
-  pausedAt       DateTime? @map("paused_at")
-  actionRequired Boolean?  @map("action_required")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+  id                  Int       @id @default(autoincrement())
+  type                String?
+  userId              String?   @map("user_id")
+  levelId             Int?      @map("level_id")
+  startBalance        Int?      @map("start_balance")
+  isPaused            Boolean?  @map("is_paused")
+  pausedAt            DateTime? @map("paused_at")
+  actionRequired      Boolean?  @map("action_required")
+  totalPausedDuration Int       @default(0) @map("total_paused_duration")
+  currentEventIndex   Int       @default(0) @map("current_event_index")
+  isEnded             Boolean   @default(false) @map("is_ended")
+  endedAt             DateTime? @map("ended_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
   // Relations
   user          User?          @relation(fields: [userId], references: [id])
@@ -495,6 +507,7 @@ model Notification {
   type           NotificationType?
   gameInstanceId Int?              @map("game_instance_id")
   quizId         Int?              @map("quiz_id")
+  eventId        Int?              @map("event_id")
   isOpened       Boolean?          @map("is_opened")
   sentAt         DateTime?         @map("sent_at")
   createdAt      DateTime          @default(now()) @map("created_at")
@@ -504,6 +517,7 @@ model Notification {
   user         User?         @relation(fields: [userId], references: [id])
   gameInstance GameInstance? @relation(fields: [gameInstanceId], references: [id])
   quiz         Quiz?         @relation(fields: [quizId], references: [id])
+  event        Event?        @relation(fields: [eventId], references: [id])
 
   @@map("notifications")
 }

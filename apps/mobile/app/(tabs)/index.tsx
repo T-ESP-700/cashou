@@ -1,11 +1,11 @@
 import { ScrollView, View, Text, useColorScheme as useRNColorScheme, StyleSheet, ActivityIndicator } from 'react-native';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { CashouHeader } from '@/components/cashou-header';
 import { LevelCard } from '@/components/level-card';
 import { DailyQuizCard } from '@/components/daily-quiz-card';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { useAuth } from '@/hooks/use-auth';
+import { useHeaderOptions } from '@/hooks/use-header';
 import { trpcClient } from '@/lib/trpc';
 
 // Types pour les données de la home
@@ -34,6 +34,13 @@ interface HomeData {
     levelTitle: string | null;
     progression: number;
     currentReturn: number;
+  } | null;
+  lastCompletedGame: {
+    id: number;
+    levelId: number | null;
+    levelNumber: number | null;
+    levelTitle: string | null;
+    endedAt: Date | null;
   } | null;
 }
 
@@ -120,6 +127,9 @@ export default function HomeScreen() {
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const { user, isAuthenticated, refreshUser } = useAuth();
   const router = useRouter();
+
+  // Configure header for this screen
+  useHeaderOptions({ showBackButton: false });
   const [dailyQuizStatus, setDailyQuizStatus] = useState<'todo' | 'done'>('todo');
   const [isLoadingDailyQuiz, setIsLoadingDailyQuiz] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<string>('0h0m');
@@ -247,6 +257,7 @@ export default function HomeScreen() {
 
   // Données pour le LevelCard
   const levelCardData = useMemo(() => {
+    // Si une partie est en cours (non terminée)
     if (homeData?.activeGame) {
       return {
         level: homeData.activeGame.levelNumber,
@@ -254,12 +265,51 @@ export default function HomeScreen() {
         title: homeData.activeGame.levelTitle,
         progression: homeData.activeGame.progression,
         currentReturn: homeData.activeGame.currentReturn,
-        status: homeData.activeGame.isPaused ? 'completed' as const : 'in_progress' as const,
+        status: 'in_progress' as const,
         hasGame: true,
         gameId: homeData.activeGame.id,
       };
     }
-    // Pas de partie en cours, afficher le niveau comme "prêt à commencer"
+
+    // Pas de partie en cours
+    // Vérifier si le dernier niveau complété est le même que le niveau actuel de l'utilisateur - 1
+    // (ce qui signifie que l'utilisateur vient de terminer un niveau et peut voir le suivant)
+    const lastCompleted = homeData?.lastCompletedGame;
+    const currentLevel = homeData?.level;
+
+    // Si on a terminé un niveau récemment et que c'est le niveau juste avant le niveau actuel
+    // → Afficher le niveau actuel comme "prêt à commencer"
+    // Sinon si on a terminé un niveau et qu'on n'a pas de niveau suivant
+    // → Afficher le dernier niveau comme "terminé"
+    if (lastCompleted && currentLevel) {
+      // L'utilisateur a un niveau suivant à faire
+      return {
+        level: currentLevel.number || 1,
+        levelId: currentLevel.id,
+        title: currentLevel.title,
+        progression: 0,
+        currentReturn: 0,
+        status: 'not_started' as const,
+        hasGame: false,
+        gameId: null,
+      };
+    }
+
+    // Si on a terminé un niveau mais pas de niveau suivant (tous les niveaux complétés)
+    if (lastCompleted && !currentLevel) {
+      return {
+        level: lastCompleted.levelNumber || 1,
+        levelId: lastCompleted.levelId ?? undefined,
+        title: lastCompleted.levelTitle,
+        progression: 100,
+        currentReturn: 0,
+        status: 'completed' as const,
+        hasGame: true, // On a une partie (terminée)
+        gameId: lastCompleted.id, // ID de la partie terminée
+      };
+    }
+
+    // Pas de partie en cours et aucune partie terminée → niveau prêt à commencer
     return {
       level: homeData?.level?.number || 1,
       levelId: homeData?.level?.id,
@@ -296,12 +346,6 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Header */}
-      <CashouHeader
-        showBackButton={true}
-        onMenuPress={() => console.log('Menu pressed')}
-      />
-
       {/* Content */}
       <ScrollView style={styles.scrollView}>
         {/* Loading State */}

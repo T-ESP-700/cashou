@@ -1,10 +1,10 @@
 import { View, Text, useColorScheme as useRNColorScheme, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { CashouHeader } from '@/components/cashou-header';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useAuth } from '@/hooks/use-auth';
+import { useHeaderOptions } from '@/hooks/use-header';
 
 interface DayStatus {
   date: Date;
@@ -19,6 +19,9 @@ export default function HistoryScreen() {
   const colorScheme = useRNColorScheme();
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+
+  // Configure header for this screen
+  useHeaderOptions({ showBackButton: true, onBackPress: () => router.back() });
 
   // Commencer au mois en cours, mais ne pas pouvoir naviguer avant Octobre 2025
   const today = new Date();
@@ -308,12 +311,6 @@ export default function HistoryScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <CashouHeader
-        showBackButton={true}
-        onBackPress={() => router.back()}
-        onMenuPress={() => {}}
-      />
-
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Header avec mois, année et flèches */}
         <View style={styles.calendarHeader}>
