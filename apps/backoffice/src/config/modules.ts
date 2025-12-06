@@ -2,6 +2,7 @@ import {
   Atom,
   BarChart3,
   BookOpenCheck,
+  BookText,
   Boxes,
   CheckSquare,
   Flame,
@@ -359,6 +360,34 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
     icon: Users,
     entityName: 'Joueur',
   },
+  dicoEntries: {
+    key: 'dicoEntries',
+    title: 'Dictionnaire',
+    icon: BookText,
+    entityName: 'Entrée',
+    columns: [
+      { key: 'term', label: 'Terme' },
+      {
+        key: 'definition',
+        label: 'Définition',
+        render: (record) => {
+          const def = record.definition as string | undefined
+          return def ? (def.length > 80 ? def.slice(0, 80) + '...' : def) : '—'
+        },
+      },
+    ],
+    fields: [
+      { key: 'term', label: 'Terme', type: 'text', required: true, placeholder: 'Ex: Action' },
+      {
+        key: 'definition',
+        label: 'Définition',
+        type: 'textarea',
+        required: true,
+        placeholder: 'Explication du terme...',
+        helperText: 'Utilisez \\n pour les sauts de ligne',
+      },
+    ],
+  },
 }
 
 export const ORDERED_MODULES: BackofficeModule[] = [
@@ -370,6 +399,7 @@ export const ORDERED_MODULES: BackofficeModule[] = [
   'questions',
   'answers',
   'quizQuestions',
+  'dicoEntries',
   'markets',
   'submarkets',
   'fields',

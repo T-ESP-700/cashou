@@ -1,0 +1,19 @@
+meta {
+  name: Get All Paginated
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/api/trpc/dicoEntry.getAllPaginated?input={"page":1,"limit":10}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"page":1,"limit":10}
+}
+
+settings {
+  encodeUrl: true
+}

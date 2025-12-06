@@ -25,6 +25,7 @@ import { gameUserRouter } from './routers/game_user.router';
 import { walletRouter } from './routers/wallet.router';
 import { transactionRouter } from './routers/transaction.router';
 import { notificationRouter } from './routers/notification.router';
+import { dicoEntryRouter } from './routers/dico-entry.router';
 
 // Main tRPC router
 export const trpcRouter = router({
@@ -67,6 +68,9 @@ export const trpcRouter = router({
 
   // Notification system
   notification: notificationRouter,
+
+  // Dictionary system
+  dicoEntry: dicoEntryRouter,
 
   // Health check
   health: publicProcedure.query(() => ({

@@ -111,6 +111,33 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="dico"
+        options={{
+          title: 'Dico',
+          tabBarIcon: ({ size, focused }) => (
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              {focused && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    backgroundColor: '#E87F00',
+                    borderRadius: 14,
+                    width: size + 20,
+                    height: size + 20,
+                  }}
+                />
+              )}
+              <Ionicons
+                name={(focused ? "book" : "book-outline") as any}
+                size={size}
+                color="#FFFFFF"
+                style={{ opacity: focused ? 1 : 0.6 }}
+              />
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: 'Account',

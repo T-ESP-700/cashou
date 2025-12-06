@@ -507,3 +507,13 @@ model Notification {
 
   @@map("notifications")
 }
+
+model DicoEntry {
+  id         Int      @id @default(autoincrement())
+  term       String   @unique
+  definition String   @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("dico_entries")
+}

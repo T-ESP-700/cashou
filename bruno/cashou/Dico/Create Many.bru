@@ -1,0 +1,34 @@
+meta {
+  name: Create Many
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url}}/api/trpc/dicoEntry.createMany
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "entries": [
+      {
+        "term": "Action",
+        "definition": "Titre de propriété d'une part du capital d'une entreprise.\nUn morceau de gâteau que tu possèdes dans une grande entreprise. Plus l'entreprise va bien, plus ton morceau de gâteau prend de la valeur !"
+      },
+      {
+        "term": "Obligation",
+        "definition": "Titre de créance émis par une entreprise ou un État contre des intérêts réguliers.\nTu prêtes de l'argent à une entreprise ou à l'État. En échange, ils te versent des intérêts !"
+      },
+      {
+        "term": "ETF",
+        "definition": "Exchange Traded Fund - Fonds négocié en bourse qui réplique un indice.\nUn panier d'actions tout fait qu'on achète d'un coup. Comme un menu complet plutôt que de commander plat par plat !"
+      }
+    ]
+  }
+}
+
+settings {
+  encodeUrl: true
+}

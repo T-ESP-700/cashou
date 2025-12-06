@@ -24,6 +24,7 @@ const CRUD_HANDLERS: Partial<Record<BackofficeModule, any>> = {
   assetHistory: backofficeApi.assetHistory,
   eventAsset: backofficeApi.eventAsset,
   impacts: backofficeApi.impact,
+  dicoEntries: backofficeApi.dicoEntry,
 }
 
 export function EntityWorkspace({ moduleKey }: { moduleKey?: BackofficeModule } = {}) {
@@ -49,6 +50,7 @@ export function EntityWorkspace({ moduleKey }: { moduleKey?: BackofficeModule } 
   const assetHistory = useBackofficeStore((state) => state.assetHistory)
   const eventAsset = useBackofficeStore((state) => state.eventAsset)
   const impacts = useBackofficeStore((state) => state.impacts)
+  const dicoEntries = useBackofficeStore((state) => state.dicoEntries)
   const quizTypeFilter = useBackofficeStore((state) => state.quizTypeFilter)
 
   const config = MODULE_CONFIGS[module]
@@ -73,6 +75,7 @@ export function EntityWorkspace({ moduleKey }: { moduleKey?: BackofficeModule } 
         assetHistory,
         eventAsset,
         impacts,
+        dicoEntries,
       }),
     [
       module,
@@ -92,6 +95,7 @@ export function EntityWorkspace({ moduleKey }: { moduleKey?: BackofficeModule } 
       assetHistory,
       eventAsset,
       impacts,
+      dicoEntries,
     ],
   )
 
@@ -460,6 +464,7 @@ function getRecordsForModule(
     assetHistory: any[]
     eventAsset: any[]
     impacts: any[]
+    dicoEntries: any[]
   },
 ) {
   switch (module) {
@@ -495,6 +500,8 @@ function getRecordsForModule(
       return data.eventAsset
     case 'impacts':
       return data.impacts
+    case 'dicoEntries':
+      return data.dicoEntries
     default:
       return []
   }

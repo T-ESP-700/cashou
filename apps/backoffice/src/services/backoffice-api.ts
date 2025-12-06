@@ -3,6 +3,7 @@ import type {
   Asset,
   AssetHistory,
   BackofficeData,
+  DicoEntry,
   Event,
   EventAsset,
   Field,
@@ -24,7 +25,6 @@ import type {
   Answer,
   QuizQuestion,
   PlayerSnapshot,
-  GameInstance,
 } from '@/lib/domain'
 
 const normalizeApiUrl = (rawUrl?: string) => {
@@ -188,6 +188,7 @@ export async function fetchBackofficeDataset(): Promise<BackofficeData> {
     impacts,
     users,
     gameInstances,
+    dicoEntries,
   ] = await Promise.all([
     callApi(() => client.level.getAll.query()) as Promise<any>,
     callApi(() => client.goal.getAll.query()) as Promise<any>,
@@ -207,6 +208,7 @@ export async function fetchBackofficeDataset(): Promise<BackofficeData> {
     callApi(() => client.impact.getAll.query()) as Promise<any>,
     callApi(() => client.user.getAll.query()).catch(() => []) as Promise<any>,
     callApi(() => client.gameInstance.getAll.query()).catch(() => []) as Promise<any>,
+    callApi(() => client.dicoEntry.getAll.query()).catch(() => []) as Promise<any>,
   ])
 
   // Map users to PlayerSnapshot format
@@ -238,6 +240,7 @@ export async function fetchBackofficeDataset(): Promise<BackofficeData> {
     impacts: impacts as Impact[],
     players,
     gameInstances: gameInstances as GameInstance[],
+    dicoEntries: dicoEntries as DicoEntry[],
   }
 }
 
@@ -381,6 +384,14 @@ export const backofficeApi = {
     create: async (payload: Record<string, unknown>) =>
       callApi(() => getClient().quizQuestion.create.mutate(payload)),
     delete: async (id: number) => callApi(() => getClient().quizQuestion.delete.mutate({ id })),
+  },
+  dicoEntry: {
+    list: async () => callApi(() => getClient().dicoEntry.getAll.query()),
+    create: async (payload: Record<string, unknown>) =>
+      callApi(() => getClient().dicoEntry.create.mutate(payload)),
+    update: async (payload: Record<string, unknown>) =>
+      callApi(() => getClient().dicoEntry.update.mutate(payload)),
+    delete: async (id: number) => callApi(() => getClient().dicoEntry.delete.mutate({ id })),
   },
 }
 export interface MarketInsightsPayload {
