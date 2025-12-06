@@ -16,7 +16,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { CashouHeader } from '@/components/cashou-header';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 
@@ -155,10 +154,6 @@ export default function DicoScreen() {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-          <CashouHeader
-            showBackButton={false}
-            onMenuPress={() => console.log('Menu pressed')}
-          />
           <View style={styles.centerContainer}>
             <ActivityIndicator size="large" color={theme.accent} />
             <Text
@@ -180,10 +175,6 @@ export default function DicoScreen() {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-          <CashouHeader
-            showBackButton={false}
-            onMenuPress={() => console.log('Menu pressed')}
-          />
           <View style={styles.centerContainer}>
             <Ionicons
               name="cloud-offline-outline"
@@ -220,12 +211,6 @@ export default function DicoScreen() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        {/* Header */}
-        <CashouHeader
-          showBackButton={false}
-          onMenuPress={() => console.log('Menu pressed')}
-        />
-
         {/* Content */}
         <View style={styles.content}>
           {/* Title */}

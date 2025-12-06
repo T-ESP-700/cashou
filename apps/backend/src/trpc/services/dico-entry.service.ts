@@ -1,8 +1,12 @@
 // Service métier pour la gestion des entrées du dictionnaire (Dico)
 // Couche d'abstraction entre les routers et la base de données
-import type { DicoEntry, PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
 import defaultPrisma from "../../database.ts";
 import type { DicoEntryCreateSchema, DicoEntryDataSchema } from "../schemas-zod/dico-entry-schema.ts";
+
+// Type DicoEntry extrait depuis le retour de Prisma
+// Note: Ce type sera automatiquement disponible après avoir regénéré le client Prisma avec `bun run generate`
+type DicoEntry = NonNullable<Awaited<ReturnType<typeof defaultPrisma.dicoEntry.findUnique>>>;
 
 export class DicoEntryService {
     private prisma: PrismaClient;
