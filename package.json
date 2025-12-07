@@ -49,6 +49,7 @@
     "db:seed": "cd apps/backend && bun run src/seed-data.ts",
     "db:seed:cac40": "cd apps/backend && bun run scripts/seed-cac40.ts",
     "db:seed:level1": "cd apps/backend && bunx dotenv -e ../../.env -- bun run scripts/seed-level1.ts",
+    "healthy:game": "cd apps/backend && bun run scripts/healthy-game.ts",
     "db:empty": "cd packages/@cashou/db-app && bunx dotenv -e ../../../.env -- prisma migrate reset --force",
     "db:check": "cd packages/@cashou/db-app && bunx dotenv -e ../../../.env -- prisma db pull --force",
     "db:status": "cd apps/backend && bun run scripts/db-check.ts",

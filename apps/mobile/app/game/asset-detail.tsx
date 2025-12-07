@@ -138,7 +138,7 @@ export default function AssetDetailScreen() {
                   </Text>
                 </View>
                 <Text style={[styles.holdingValue, { color: '#4CAF50', fontFamily: CashouTheme.fonts.heading }]}>
-                  {currentHolding.toFixed(2)} EUR
+                  {Math.round(currentHolding)} EUR
                 </Text>
               </View>
             )}

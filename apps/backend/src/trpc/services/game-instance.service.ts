@@ -100,6 +100,9 @@ export class GameInstanceService {
       }
     }
 
+    // Respecter le paramètre isPaused si fourni (mode préparation)
+    const isPausedValue = data.isPaused ?? false;
+
     const sanitizedData = {
       ...data,
       userId: data.userId ?? null,
@@ -109,13 +112,14 @@ export class GameInstanceService {
       totalPausedDuration: 0,
       currentEventIndex: 0,
       isEnded: false,
-      isPaused: false,
+      isPaused: isPausedValue,
     };
 
     const gameInstance = await this.prisma.gameInstance.create({ data: sanitizedData });
 
-    // Schedule the first event (or game end if no events)
-    if (gameInstance.levelId) {
+    // Schedule the first event only if game is not paused (mode préparation)
+    // Si isPaused=true, les événements seront schedulés lors de l'appel à start()
+    if (gameInstance.levelId && !isPausedValue) {
       await this.gameEventTriggerService.scheduleFirstEvent(gameInstance.id);
     }
 
@@ -240,6 +244,47 @@ export class GameInstanceService {
     // Reschedule events if not ended
     if (!gameInstance.isEnded) {
       await this.gameEventTriggerService.rescheduleAfterResume(id);
+    }
+
+    return updated;
+  }
+
+  /**
+   * Démarre une partie qui était en mode préparation
+   * Réinitialise le createdAt et démarre le chrono
+   */
+  async start(id: number): Promise<GameInstance> {
+    const gameInstance = await this.prisma.gameInstance.findUnique({
+      where: { id },
+      include: { level: true },
+    });
+
+    if (!gameInstance) {
+      throw new Error(`GameInstance ${id} not found`);
+    }
+
+    if (!gameInstance.isPaused) {
+      return gameInstance; // Already running
+    }
+
+    if (gameInstance.isEnded) {
+      throw new Error(`Cannot start an ended game`);
+    }
+
+    // Réinitialiser le createdAt à maintenant et démarrer le jeu
+    const updated = await this.prisma.gameInstance.update({
+      where: { id },
+      data: {
+        createdAt: new Date(),
+        isPaused: false,
+        pausedAt: null,
+        totalPausedDuration: 0,
+      },
+    });
+
+    // Schedule the first event
+    if (gameInstance.levelId) {
+      await this.gameEventTriggerService.scheduleFirstEvent(id);
     }
 
     return updated;

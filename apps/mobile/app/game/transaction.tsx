@@ -130,7 +130,7 @@ export default function TransactionScreen() {
 
     if (type === 'buy') {
       if (numAmount > walletBalance) {
-        return `Solde insuffisant. Disponible: ${walletBalance.toFixed(2)} EUR`;
+        return `Solde insuffisant. Disponible: ${Math.round(walletBalance)} EUR`;
       }
       if (asset?.minAmount && numAmount < Number(asset.minAmount)) {
         return `Montant minimum: ${asset.minAmount} EUR`;
@@ -138,12 +138,12 @@ export default function TransactionScreen() {
       if (asset?.maxAmount) {
         const maxAllowed = Number(asset.maxAmount) - currentHolding;
         if (numAmount > maxAllowed) {
-          return `Plafond atteint. Maximum: ${maxAllowed.toFixed(2)} EUR`;
+          return `Plafond atteint. Maximum: ${Math.round(maxAllowed)} EUR`;
         }
       }
     } else {
       if (numAmount > currentHolding) {
-        return `Quantite insuffisante. Disponible: ${currentHolding.toFixed(2)} EUR`;
+        return `Quantite insuffisante. Disponible: ${Math.round(currentHolding)} EUR`;
       }
     }
 
@@ -176,7 +176,7 @@ export default function TransactionScreen() {
         });
         Alert.alert(
           'Achat effectue',
-          `Vous avez investi ${numAmount.toFixed(2)} EUR dans ${asset?.title}`,
+          `Vous avez investi ${Math.round(numAmount)} EUR dans ${asset?.title}`,
           [{ text: 'OK', onPress: () => router.back() }]
         );
       } else {
@@ -188,7 +188,7 @@ export default function TransactionScreen() {
         });
         Alert.alert(
           'Vente effectuee',
-          `Vous avez recupere ${result.amountReceived.toFixed(2)} EUR (dont ${result.interests.toFixed(2)} EUR d'interets)`,
+          `Vous avez recupere ${Math.round(result.amountReceived)} EUR (dont ${Math.round(result.interests)} EUR d'interets)`,
           [{ text: 'OK', onPress: () => router.back() }]
         );
       }
@@ -260,7 +260,7 @@ export default function TransactionScreen() {
               {isBuy ? 'Solde disponible' : 'Quantite detenue'}
             </Text>
             <Text style={[styles.balanceValue, { color: theme.text }]}>
-              {maxAvailable.toFixed(2)} EUR
+              {Math.round(maxAvailable)} EUR
             </Text>
           </View>
           {isBuy && asset.maxAmount && (
@@ -269,7 +269,7 @@ export default function TransactionScreen() {
                 Plafond
               </Text>
               <Text style={[styles.balanceValue, { color: theme.text }]}>
-                {currentHolding.toFixed(2)} / {Number(asset.maxAmount).toFixed(2)} EUR
+                {Math.round(currentHolding)} / {Math.round(Number(asset.maxAmount))} EUR
               </Text>
             </View>
           )}

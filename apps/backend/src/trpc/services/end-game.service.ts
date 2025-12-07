@@ -173,8 +173,8 @@ export class EndGameService {
             totalValue,
             goals: goalResults,
             message: allGoalsValidated
-                ? `Bravo ! Tu as termine avec ${totalValue.toFixed(2)} EUR (wallet: ${currentWalletBalance.toFixed(2)} EUR + assets: ${totalAssetsValue.toFixed(2)} EUR dont ${totalInterests.toFixed(2)} EUR d'interets) pour un depart de ${startBalance} EUR`
-                : `Objectifs non atteints. Total: ${totalValue.toFixed(2)} EUR (depart: ${startBalance} EUR)`,
+                ? `Bravo ! Tu as termine avec ${Math.round(totalValue)} EUR (wallet: ${Math.round(currentWalletBalance)} EUR + assets: ${Math.round(totalAssetsValue)} EUR dont ${Math.round(totalInterests)} EUR d'interets) pour un depart de ${startBalance} EUR`
+                : `Objectifs non atteints. Total: ${Math.round(totalValue)} EUR (depart: ${startBalance} EUR)`,
         };
     }
 

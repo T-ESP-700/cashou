@@ -29,6 +29,7 @@ interface GameInstanceData {
   id: number;
   createdAt: string;
   endedAt: string | null;
+  totalPausedDuration: number | null;
   level: {
     id: number;
     title: string | null;
@@ -87,11 +88,7 @@ export default function GameSummaryScreen() {
     router.replace('/(tabs)');
   };
 
-  const handleViewHistory = () => {
-    router.replace('/(tabs)/game-history');
-  };
-
-  // Calculate time elapsed
+  // Calculate time elapsed (excluding paused time)
   const calculateTimeElapsed = (): string => {
     if (!gameInstance?.createdAt || !gameInstance?.endedAt) {
       return 'N/A';
@@ -99,7 +96,11 @@ export default function GameSummaryScreen() {
 
     const start = new Date(gameInstance.createdAt);
     const end = new Date(gameInstance.endedAt);
-    const diffMs = end.getTime() - start.getTime();
+    let diffMs = end.getTime() - start.getTime();
+
+    // Soustraire le temps de pause (stocké en secondes)
+    const pausedDurationMs = (gameInstance.totalPausedDuration ?? 0) * 1000;
+    diffMs = Math.max(0, diffMs - pausedDurationMs);
 
     const diffSeconds = Math.floor(diffMs / 1000);
     const diffMinutes = Math.floor(diffSeconds / 60);
@@ -167,7 +168,7 @@ export default function GameSummaryScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 16 }]}>
         {/* Header with result */}
         <View style={[styles.resultHeader, { backgroundColor: endGameResult.success ? '#4CAF50' : '#F44336' }]}>
           <Ionicons
@@ -208,28 +209,28 @@ export default function GameSummaryScreen() {
             <View style={styles.financialItem}>
               <Text style={[styles.financialLabel, { color: theme.text, opacity: 0.7 }]}>Capital initial</Text>
               <Text style={[styles.financialValue, { color: theme.text }]}>
-                {endGameResult.startBalance.toLocaleString('fr-FR')} EUR
+                {Math.round(endGameResult.startBalance).toLocaleString('fr-FR')} EUR
               </Text>
             </View>
 
             <View style={styles.financialItem}>
               <Text style={[styles.financialLabel, { color: theme.text, opacity: 0.7 }]}>Cash final</Text>
               <Text style={[styles.financialValue, { color: theme.text }]}>
-                {endGameResult.walletBalance.toLocaleString('fr-FR')} EUR
+                {Math.round(endGameResult.walletBalance).toLocaleString('fr-FR')} EUR
               </Text>
             </View>
 
             <View style={styles.financialItem}>
               <Text style={[styles.financialLabel, { color: theme.text, opacity: 0.7 }]}>Valeur des actifs</Text>
               <Text style={[styles.financialValue, { color: theme.text }]}>
-                {endGameResult.assetsValue.toLocaleString('fr-FR')} EUR
+                {Math.round(endGameResult.assetsValue).toLocaleString('fr-FR')} EUR
               </Text>
             </View>
 
             <View style={[styles.financialItem, styles.totalItem]}>
               <Text style={[styles.financialLabel, { color: theme.text }]}>Portefeuille final</Text>
               <Text style={[styles.totalValue, { color: getProfitColor() }]}>
-                {endGameResult.totalValue.toLocaleString('fr-FR')} EUR
+                {Math.round(endGameResult.totalValue).toLocaleString('fr-FR')} EUR
               </Text>
               <Text style={[styles.profitPercent, { color: getProfitColor() }]}>
                 {calculateProfitPercent()}
@@ -266,25 +267,6 @@ export default function GameSummaryScreen() {
           ))}
         </View>
       </ScrollView>
-
-      {/* Bottom buttons */}
-      <View style={[styles.bottomButtons, { paddingBottom: insets.bottom + 16, backgroundColor: theme.background }]}>
-        <TouchableOpacity
-          style={[styles.button, styles.secondaryButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-          onPress={handleViewHistory}
-        >
-          <Ionicons name="list-outline" size={20} color={theme.text} />
-          <Text style={[styles.buttonText, { color: theme.text }]}>Historique</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.button, styles.primaryButton, { backgroundColor: theme.accent }]}
-          onPress={handleGoHome}
-        >
-          <Ionicons name="home-outline" size={20} color="#FFFFFF" />
-          <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>Accueil</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
@@ -418,24 +400,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 2,
   },
-  bottomButtons: {
-    flexDirection: 'row',
-    padding: 16,
-    gap: 12,
-  },
   button: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
     borderRadius: 12,
     gap: 8,
-  },
-  secondaryButton: {
     borderWidth: 2,
   },
-  primaryButton: {},
   buttonText: {
     fontSize: 16,
     fontWeight: '600',

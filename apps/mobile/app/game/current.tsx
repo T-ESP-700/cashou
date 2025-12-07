@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, useColorScheme as useRNColorScheme, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, useColorScheme as useRNColorScheme, Alert, Modal } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
@@ -72,6 +72,10 @@ export default function GameCurrentScreen() {
   const [isPaused, setIsPaused] = useState(true); // Game starts paused until user clicks "Démarrer"
   const [isStarting, setIsStarting] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
+  const [holdingsCount, setHoldingsCount] = useState(0);
+  const [showNoInvestmentModal, setShowNoInvestmentModal] = useState(false);
+  const [isEndingGame, setIsEndingGame] = useState(false);
 
   // Mode dev (a configurer selon l'environnement)
   const __DEV__ = process.env.NODE_ENV === 'development' || true; // Force true pour le dev
@@ -81,8 +85,11 @@ export default function GameCurrentScreen() {
   const [targetDate, setTargetDate] = useState<Date | null>(null); // Date cible pour l'animation
   const [isGameEnded, setIsGameEnded] = useState(false); // Partie terminée
 
-  // Game has started if we have a game instance ID
-  const hasGameStarted = gameInstanceId !== null;
+  // Game has started if we have a game instance ID AND the timer is running (not paused)
+  const hasGameStarted = gameInstanceId !== null && !isPaused;
+
+  // Game is in preparation mode (instance created but not yet started)
+  const isInPreparation = gameInstanceId !== null && isPaused && !isGameEnded;
 
   // Stats simulées pour la démo (à remplacer par de vraies données)
   const [stats, setStats] = useState<GameStats>({
@@ -102,6 +109,43 @@ export default function GameCurrentScreen() {
     endDate.setDate(endDate.getDate() + duration);
     return endDate;
   }, []);
+
+  // Vérifie si le temps est écoulé
+  const checkIfTimeElapsed = useCallback((timeState: GameTimeState): boolean => {
+    if (timeState.isEnded) return true;
+
+    const now = Date.now();
+    const startTime = timeState.createdAt.getTime();
+
+    let elapsedSeconds = Math.floor((now - startTime) / 1000);
+    elapsedSeconds -= timeState.totalPausedDuration;
+    elapsedSeconds = Math.max(0, elapsedSeconds);
+
+    const totalDurationSeconds = (timeState.duration / timeState.speed) * 86400;
+    return elapsedSeconds >= totalDurationSeconds;
+  }, []);
+
+  // Fonction pour terminer la partie quand le temps est écoulé
+  const handleGameEnd = useCallback(async () => {
+    if (!gameInstanceId || isEndingGame || isGameEnded) return;
+
+    try {
+      setIsEndingGame(true);
+      console.log('Game time elapsed, ending game...');
+
+      // Appeler le backend pour terminer la partie
+      await trpcClient.gameInstance.endGame.mutate({ id: gameInstanceId });
+
+      // Mettre à jour l'état local
+      setIsGameEnded(true);
+      // La redirection vers summary sera déclenchée par le useEffect qui surveille isGameEnded
+    } catch (err) {
+      console.error('Error ending game:', err);
+      Alert.alert('Erreur', 'Impossible de terminer la partie');
+    } finally {
+      setIsEndingGame(false);
+    }
+  }, [gameInstanceId, isEndingGame, isGameEnded]);
 
   // Calcul de la date de jeu (purement local, aucun appel backend)
   const calculateGameDate = useCallback((timeState: GameTimeState): Date => {
@@ -132,6 +176,55 @@ export default function GameCurrentScreen() {
     gameDate.setDate(gameDate.getDate() + Math.floor(gameDaysElapsed));
     return gameDate;
   }, [calculateEndDate]);
+
+  // Helper function to load holdings count for a game instance
+  const loadHoldingsCount = async (gInstanceId: number) => {
+    try {
+      const holdings = await trpcClient.holding.getByGameInstance.query({ gameInstanceId: gInstanceId });
+      setHoldingsCount(holdings?.length ?? 0);
+    } catch (err) {
+      console.error('Error fetching holdings:', err);
+      setHoldingsCount(0);
+    }
+  };
+
+  // Helper function to create game instance and wallet in preparation mode
+  const createGameInstanceForPreparation = async (levelData: LevelData) => {
+    if (!user || !levelId || !levelData?.level) return null;
+
+    try {
+      setIsInitializing(true);
+
+      // Créer une nouvelle GameInstance en mode pause (préparation)
+      const gameInstance = await trpcClient.gameInstance.create.mutate({
+        levelId: parseInt(levelId, 10),
+        userId: user.id,
+        startBalance: levelData.level.startBalance,
+        isPaused: true, // En mode préparation
+        actionRequired: false,
+      });
+
+      // Créer le wallet pour cette instance de jeu
+      const wallet = await trpcClient.wallet.create.mutate({
+        userId: user.id,
+        gameInstanceId: gameInstance.id,
+        amount: levelData.level.startBalance ?? 1000,
+      });
+
+      setGameInstanceId(gameInstance.id);
+      setWalletId(wallet.id);
+      setIsPaused(true);
+      setIsGameEnded(false);
+      setHoldingsCount(0);
+
+      return { gameInstance, wallet };
+    } catch (err) {
+      console.error('Error creating game instance for preparation:', err);
+      return null;
+    } finally {
+      setIsInitializing(false);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -175,6 +268,9 @@ export default function GameCurrentScreen() {
               } catch (walletErr) {
                 console.error('Error fetching wallet:', walletErr);
               }
+
+              // Charger les holdings
+              await loadHoldingsCount(gameInstance.id);
 
               // Initialiser l'état du temps pour l'animation locale
               if (gameInstance.level) {
@@ -237,6 +333,9 @@ export default function GameCurrentScreen() {
             setGameTimeState(null);
             setIsGameEnded(false);
           }
+        } else if (user && data.level) {
+          // Pas de gameId fourni, créer automatiquement une instance en mode préparation
+          await createGameInstanceForPreparation(data as LevelData);
         }
       } catch (err) {
         console.error('Error fetching level data:', err);
@@ -247,7 +346,7 @@ export default function GameCurrentScreen() {
     };
 
     fetchData();
-  }, [levelId, gameId, calculateEndDate]);
+  }, [levelId, gameId, calculateEndDate, user]);
 
   // Animation visuelle de la date (quand on revient sur une partie)
   useEffect(() => {
@@ -291,18 +390,30 @@ export default function GameCurrentScreen() {
   // Animation locale de la date en temps réel (aucun appel backend)
   useEffect(() => {
     // Ne pas exécuter si on est en train d'animer ou si la partie est terminée
-    if (!gameTimeState || isPaused || isAnimating || isGameEnded) return;
+    if (!gameTimeState || isPaused || isAnimating || isGameEnded || isEndingGame) return;
+
+    // Vérifier immédiatement si le temps est écoulé
+    if (checkIfTimeElapsed(gameTimeState)) {
+      handleGameEnd();
+      return;
+    }
 
     // Mise à jour immédiate
     setGameDate(calculateGameDate(gameTimeState));
 
     // Puis toutes les secondes
     const interval = setInterval(() => {
+      // Vérifier si le temps est écoulé à chaque tick
+      if (checkIfTimeElapsed(gameTimeState)) {
+        clearInterval(interval);
+        handleGameEnd();
+        return;
+      }
       setGameDate(calculateGameDate(gameTimeState));
     }, UPDATE_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [gameTimeState, isPaused, isAnimating, isGameEnded, calculateGameDate]);
+  }, [gameTimeState, isPaused, isAnimating, isGameEnded, isEndingGame, calculateGameDate, checkIfTimeElapsed, handleGameEnd]);
 
   // Resynchronisation quand on revient sur la page (sans animation)
   useFocusEffect(
@@ -330,6 +441,9 @@ export default function GameCurrentScreen() {
               setGameDate(calculateEndDate(duration));
             }
           }
+
+          // Recharger les holdings pour mettre à jour le compteur
+          await loadHoldingsCount(gameInstanceId);
         } catch (err) {
           console.error('Error resyncing game state:', err);
         }
@@ -344,7 +458,7 @@ export default function GameCurrentScreen() {
     if (isGameEnded && gameInstanceId) {
       // Rediriger vers l'écran de résumé
       router.replace({
-        pathname: '/game/summary',
+        pathname: '/(tabs)/summary',
         params: { gameId: gameInstanceId.toString() },
       });
     }
@@ -352,7 +466,7 @@ export default function GameCurrentScreen() {
 
   const handleAddAsset = () => {
     if (!gameInstanceId || !walletId) {
-      Alert.alert('Erreur', 'Veuillez demarrer une partie avant d\'ajouter des assets');
+      Alert.alert('Erreur', 'Initialisation en cours, veuillez patienter...');
       return;
     }
     router.push({
@@ -369,41 +483,21 @@ export default function GameCurrentScreen() {
     console.log('Asset pressed:', asset.title);
   };
 
-  const handleStartGame = async () => {
-    if (!user) {
-      Alert.alert('Erreur', 'Vous devez etre connecte pour jouer');
-      return;
-    }
-
-    if (!levelId || !levelData?.level) {
-      Alert.alert('Erreur', 'Niveau non trouve');
+  // Fonction pour effectivement démarrer le jeu (unpause)
+  const startGameNow = async () => {
+    if (!gameInstanceId || !levelData?.level) {
+      Alert.alert('Erreur', 'Instance de jeu non trouvée');
       return;
     }
 
     try {
       setIsStarting(true);
 
-      // Créer une nouvelle GameInstance via l'API
-      const gameInstance = await trpcClient.gameInstance.create.mutate({
-        levelId: parseInt(levelId, 10),
-        userId: user.id,
-        startBalance: levelData.level.startBalance,
-        isPaused: false,
-        actionRequired: false,
-      });
+      // Démarrer le jeu via l'API (réinitialise createdAt et démarre le chrono)
+      await trpcClient.gameInstance.start.mutate({ id: gameInstanceId });
 
-      // Créer le wallet pour cette instance de jeu
-      const wallet = await trpcClient.wallet.create.mutate({
-        userId: user.id,
-        gameInstanceId: gameInstance.id,
-        amount: levelData.level.startBalance ?? 1000,
-      });
-
-      setGameInstanceId(gameInstance.id);
-      setWalletId(wallet.id);
       setIsPaused(false); // Le jeu démarre
-      setIsGameEnded(false);
-      setIsAnimating(false); // Pas d'animation pour une nouvelle partie
+      setIsAnimating(false);
       setTargetDate(null);
       setGameDate(new Date(GAME_START_DATE)); // Commencer au jour 1
 
@@ -416,11 +510,38 @@ export default function GameCurrentScreen() {
         isEnded: false,
       });
     } catch (err) {
-      console.error('Error creating game instance:', err);
+      console.error('Error starting game:', err);
       Alert.alert('Erreur', 'Impossible de demarrer la partie');
     } finally {
       setIsStarting(false);
     }
+  };
+
+  const handleStartGame = async () => {
+    if (!user) {
+      Alert.alert('Erreur', 'Vous devez etre connecte pour jouer');
+      return;
+    }
+
+    if (!gameInstanceId) {
+      Alert.alert('Erreur', 'Initialisation en cours, veuillez patienter...');
+      return;
+    }
+
+    // Vérifier si des investissements ont été faits
+    if (holdingsCount === 0) {
+      setShowNoInvestmentModal(true);
+      return;
+    }
+
+    // Des investissements existent, démarrer directement
+    await startGameNow();
+  };
+
+  // Confirmation pour démarrer sans investissement
+  const handleConfirmStartWithoutInvestment = async () => {
+    setShowNoInvestmentModal(false);
+    await startGameNow();
   };
 
   const handleResetLevel = async () => {
@@ -673,6 +794,46 @@ export default function GameCurrentScreen() {
             </View>
         )}
       </View>
+
+      {/* Modal de confirmation si aucun investissement */}
+      <Modal
+        visible={showNoInvestmentModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowNoInvestmentModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+            <Text style={[styles.modalTitle, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
+              Aucun investissement
+            </Text>
+            <Text style={[styles.modalMessage, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
+              Vous n'avez fait aucun investissement. Si vous demarrez maintenant, vous ne pourrez pas gagner d'argent pendant la partie.
+            </Text>
+            <Text style={[styles.modalMessage, { fontFamily: CashouTheme.fonts.body, color: theme.text, marginTop: 8 }]}>
+              Voulez-vous vraiment demarrer sans investir ?
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonCancel, { borderColor: theme.border }]}
+                onPress={() => setShowNoInvestmentModal(false)}
+              >
+                <Text style={[styles.modalButtonText, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
+                  Investir d'abord
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonConfirm, { backgroundColor: theme.accent }]}
+                onPress={handleConfirmStartWithoutInvestment}
+              >
+                <Text style={[styles.modalButtonText, { fontFamily: CashouTheme.fonts.body, color: '#FFFFFF' }]}>
+                  Demarrer quand meme
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -835,5 +996,47 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    opacity: 0.8,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    marginTop: 24,
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalButtonCancel: {
+    borderWidth: 2,
+  },
+  modalButtonConfirm: {
+  },
+  modalButtonText: {
+    fontSize: 14,
   },
 });

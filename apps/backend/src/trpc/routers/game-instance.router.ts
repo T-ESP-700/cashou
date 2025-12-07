@@ -112,6 +112,17 @@ export const gameInstanceRouter = t.router({
     }),
 
   /**
+   * Démarre une partie en mode préparation (première fois)
+   * Réinitialise le createdAt et démarre le chrono
+   * Endpoint: POST http://localhost:3000/trpc/gameInstance.start
+   */
+  start: t.procedure
+    .input(gameInstanceIdSchema)
+    .mutation(async ({ input }) => {
+      return await gameInstanceService.start(input.id);
+    }),
+
+  /**
    * Met à jour le statut d’action requise
    * Endpoint: POST http://localhost:3000/trpc/gameInstance.setActionRequired
    */

@@ -80,7 +80,7 @@ export default function GameHistoryScreen() {
     if (game.isEnded) {
       // Partie terminee -> ecran de resume
       router.push({
-        pathname: '/game/summary',
+        pathname: '/(tabs)/summary',
         params: { gameId: game.id.toString() },
       });
     } else {
