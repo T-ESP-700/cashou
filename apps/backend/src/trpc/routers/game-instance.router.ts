@@ -153,6 +153,19 @@ export const gameInstanceRouter = t.router({
     .query(async ({ input }) => {
       return await gameInstanceService.getTimeInfo(input.id);
     }),
+
+  /**
+   * Reinitialise un niveau pour un utilisateur (dev only)
+   * Endpoint: POST http://localhost:3000/trpc/gameInstance.resetLevel
+   */
+  resetLevel: t.procedure
+    .input(z.object({
+      userId: z.string().min(1, "L'ID de l'utilisateur est requis"),
+      levelId: z.number().int().positive("L'ID du niveau est requis"),
+    }))
+    .mutation(async ({ input }) => {
+      return await gameInstanceService.resetLevelForUser(input.userId, input.levelId);
+    }),
 });
 
 export type GameInstanceRouter = typeof gameInstanceRouter;

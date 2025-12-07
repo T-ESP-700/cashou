@@ -172,6 +172,10 @@ export class GameInstanceService {
     return this.prisma.gameInstance.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
+      include: {
+        level: true,
+        wallets: true,
+      },
     });
   }
 
@@ -287,5 +291,57 @@ export class GameInstanceService {
     }
 
     return updated;
+  }
+
+  /**
+   * Reinitialise un niveau pour un utilisateur (dev only)
+   * Supprime toutes les parties de l'utilisateur sur ce niveau
+   */
+  async resetLevelForUser(userId: string, levelId: number): Promise<{ deletedCount: number }> {
+    // Trouver toutes les parties de l'utilisateur sur ce niveau
+    const gameInstances = await this.prisma.gameInstance.findMany({
+      where: {
+        userId,
+        levelId,
+      },
+    });
+
+    if (gameInstances.length === 0) {
+      return { deletedCount: 0 };
+    }
+
+    const gameInstanceIds = gameInstances.map(gi => gi.id);
+
+    // Annuler les jobs schedules pour ces parties (ignorer les erreurs)
+    for (const id of gameInstanceIds) {
+      try {
+        await cancelGameJobs(id);
+      } catch (err) {
+        console.warn(`[resetLevelForUser] Could not cancel jobs for game ${id}:`, err);
+      }
+    }
+
+    // Supprimer dans l'ordre pour respecter les contraintes de cle etrangere
+    // 1. Holdings
+    await this.prisma.holding.deleteMany({
+      where: { gameInstanceId: { in: gameInstanceIds } },
+    });
+
+    // 2. Transactions
+    await this.prisma.transaction.deleteMany({
+      where: { gameInstanceId: { in: gameInstanceIds } },
+    });
+
+    // 3. Wallets
+    await this.prisma.wallet.deleteMany({
+      where: { gameInstanceId: { in: gameInstanceIds } },
+    });
+
+    // 4. GameInstances
+    await this.prisma.gameInstance.deleteMany({
+      where: { id: { in: gameInstanceIds } },
+    });
+
+    return { deletedCount: gameInstances.length };
   }
 }

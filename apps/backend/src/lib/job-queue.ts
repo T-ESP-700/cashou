@@ -204,7 +204,7 @@ async function getJobIdsBySingletonPattern(
   const result = await prisma.$queryRaw<{ id: string }[]>`
     SELECT id FROM pgboss.job
     WHERE name = ${queueName}
-    AND singletonKey LIKE ${sqlPattern}
+    AND singleton_key LIKE ${sqlPattern}
     AND state IN ('created', 'retry')
   `;
 

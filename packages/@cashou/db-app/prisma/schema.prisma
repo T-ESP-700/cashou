@@ -252,6 +252,8 @@ model Asset {
   marketId    Int?     @map("market_id")
   submarketId Int?     @map("submarket_id")
   taux        Float?
+  maxAmount   Decimal? @map("max_amount") // Plafond (ex: 22950 pour Livret A)
+  minAmount   Decimal? @map("min_amount") // Montant minimum (ex: 10€)
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -263,6 +265,7 @@ model Asset {
   eventAssets    EventAsset[]
   transactions   Transaction[]
   impacts        Impact[]
+  holdings       Holding[]
 
   @@map("assets")
 }
@@ -271,6 +274,7 @@ model AssetHistory {
   id        Int       @id @default(autoincrement())
   assetId   Int?      @map("asset_id")
   timestamp DateTime?
+  value     Decimal? // Prix/valeur de l'asset à ce moment
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
@@ -343,6 +347,7 @@ model GameInstance {
   marketId      Int?
   submarkets    Submarket[]
   notifications Notification[]
+  holdings      Holding[]
 
   @@map("game_instances")
 }
@@ -376,6 +381,7 @@ model Wallet {
   user         User?         @relation(fields: [userId], references: [id])
   gameInstance GameInstance? @relation(fields: [gameInstanceId], references: [id])
   transactions Transaction[]
+  holdings     Holding[]
 
   @@map("wallets")
 }
@@ -400,6 +406,26 @@ model Transaction {
   gameInstance GameInstance? @relation(fields: [gameInstanceId], references: [id])
 
   @@map("transactions")
+}
+
+model Holding {
+  id             Int       @id @default(autoincrement())
+  walletId       Int       @map("wallet_id")
+  assetId        Int       @map("asset_id")
+  gameInstanceId Int       @map("game_instance_id")
+  quantity       Decimal // Montant investi (en €) ou nombre de parts
+  acquiredAt     DateTime  @default(now()) @map("acquired_at") // Date d'acquisition pour calcul intérêts
+  lastInterestAt DateTime? @map("last_interest_at") // Dernier calcul d'intérêts (pour livrets)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  wallet       Wallet       @relation(fields: [walletId], references: [id])
+  asset        Asset        @relation(fields: [assetId], references: [id])
+  gameInstance GameInstance @relation(fields: [gameInstanceId], references: [id])
+
+  @@unique([walletId, assetId]) // Un seul holding par asset par wallet
+  @@map("holdings")
 }
 
 model Quiz {
@@ -438,11 +464,11 @@ model UserQuiz {
 }
 
 model Question {
-  id        Int      @id @default(autoincrement())
-  text      String?
+  id          Int      @id @default(autoincrement())
+  text        String?
   explanation String?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
   answers       Answer[]

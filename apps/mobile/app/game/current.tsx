@@ -68,8 +68,13 @@ export default function GameCurrentScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [gameInstanceId, setGameInstanceId] = useState<number | null>(gameId ? parseInt(gameId, 10) : null);
+  const [walletId, setWalletId] = useState<number | null>(null);
   const [isPaused, setIsPaused] = useState(true); // Game starts paused until user clicks "Démarrer"
   const [isStarting, setIsStarting] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+
+  // Mode dev (a configurer selon l'environnement)
+  const __DEV__ = process.env.NODE_ENV === 'development' || true; // Force true pour le dev
   const [gameDate, setGameDate] = useState(GAME_START_DATE);
   const [gameTimeState, setGameTimeState] = useState<GameTimeState | null>(null);
   const [isAnimating, setIsAnimating] = useState(false); // Animation en cours
@@ -160,6 +165,16 @@ export default function GameCurrentScreen() {
               setGameInstanceId(gameInstance.id);
               setIsPaused(gameInstance.isPaused ?? true);
               setIsGameEnded(gameInstance.isEnded ?? false);
+
+              // Charger le wallet associé à cette instance
+              try {
+                const wallets = await trpcClient.wallet.getByGameInstance.query({ gameInstanceId: gameInstance.id });
+                if (wallets && wallets.length > 0) {
+                  setWalletId(wallets[0].id);
+                }
+              } catch (walletErr) {
+                console.error('Error fetching wallet:', walletErr);
+              }
 
               // Initialiser l'état du temps pour l'animation locale
               if (gameInstance.level) {
@@ -324,9 +339,29 @@ export default function GameCurrentScreen() {
     }, [gameInstanceId, calculateEndDate])
   );
 
+  // Redirection vers l'écran de résumé quand la partie est terminée
+  useEffect(() => {
+    if (isGameEnded && gameInstanceId) {
+      // Rediriger vers l'écran de résumé
+      router.replace({
+        pathname: '/game/summary',
+        params: { gameId: gameInstanceId.toString() },
+      });
+    }
+  }, [isGameEnded, gameInstanceId]);
+
   const handleAddAsset = () => {
-    // TODO: Ouvrir un modal pour ajouter un asset
-      router.push('/game/assets');
+    if (!gameInstanceId || !walletId) {
+      Alert.alert('Erreur', 'Veuillez demarrer une partie avant d\'ajouter des assets');
+      return;
+    }
+    router.push({
+      pathname: '/game/assets',
+      params: {
+        gameInstanceId: gameInstanceId.toString(),
+        walletId: walletId.toString(),
+      },
+    });
   };
 
   const handleAssetPress = (asset: Asset) => {
@@ -336,12 +371,12 @@ export default function GameCurrentScreen() {
 
   const handleStartGame = async () => {
     if (!user) {
-      Alert.alert('Erreur', 'Vous devez être connecté pour jouer');
+      Alert.alert('Erreur', 'Vous devez etre connecte pour jouer');
       return;
     }
 
     if (!levelId || !levelData?.level) {
-      Alert.alert('Erreur', 'Niveau non trouvé');
+      Alert.alert('Erreur', 'Niveau non trouve');
       return;
     }
 
@@ -357,7 +392,15 @@ export default function GameCurrentScreen() {
         actionRequired: false,
       });
 
+      // Créer le wallet pour cette instance de jeu
+      const wallet = await trpcClient.wallet.create.mutate({
+        userId: user.id,
+        gameInstanceId: gameInstance.id,
+        amount: levelData.level.startBalance ?? 1000,
+      });
+
       setGameInstanceId(gameInstance.id);
+      setWalletId(wallet.id);
       setIsPaused(false); // Le jeu démarre
       setIsGameEnded(false);
       setIsAnimating(false); // Pas d'animation pour une nouvelle partie
@@ -374,10 +417,50 @@ export default function GameCurrentScreen() {
       });
     } catch (err) {
       console.error('Error creating game instance:', err);
-      Alert.alert('Erreur', 'Impossible de démarrer la partie');
+      Alert.alert('Erreur', 'Impossible de demarrer la partie');
     } finally {
       setIsStarting(false);
     }
+  };
+
+  const handleResetLevel = async () => {
+    if (!user || !levelId) return;
+
+    Alert.alert(
+      'Reinitialiser le niveau',
+      'Cette action supprimera toutes vos parties sur ce niveau. Voulez-vous continuer ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Reinitialiser',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsResetting(true);
+              await trpcClient.gameInstance.resetLevel.mutate({
+                userId: user.id,
+                levelId: parseInt(levelId, 10),
+              });
+
+              // Reinitialiser les etats locaux
+              setGameInstanceId(null);
+              setWalletId(null);
+              setIsPaused(true);
+              setIsGameEnded(false);
+              setGameTimeState(null);
+              setGameDate(GAME_START_DATE);
+
+              Alert.alert('Succes', 'Le niveau a ete reinitialise. Vous pouvez recommencer !');
+            } catch (err) {
+              console.error('Error resetting level:', err);
+              Alert.alert('Erreur', 'Impossible de reinitialiser le niveau');
+            } finally {
+              setIsResetting(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const formatDate = (date: Date) => {
@@ -521,35 +604,59 @@ export default function GameCurrentScreen() {
       {/* Bottom Game Controls */}
       <View style={[styles.bottomControls, { paddingBottom: insets.bottom }]}>
         {!hasGameStarted ? (
-          // Bouton "Démarrer" avant que le jeu ne commence
-          <TouchableOpacity
-            style={[
-              {
-                ...CashouTheme.button.primary,
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-                opacity: isStarting ? 0.6 : 1,
-                minWidth: 140,
-              }
-            ]}
-            onPress={handleStartGame}
-            activeOpacity={CashouTheme.button.primary.activeOpacity}
-            disabled={isStarting}
-          >
-            {isStarting ? (
-              <ActivityIndicator size="small" color={theme.text} />
-            ) : (
-              <Text style={[
+          // Boutons avant que le jeu ne commence
+          <View style={styles.startButtonsContainer}>
+            <TouchableOpacity
+              style={[
                 {
-                  ...CashouTheme.button.primary.text,
-                  fontFamily: CashouTheme.fonts.subheading,
-                  color: theme.text,
+                  ...CashouTheme.button.primary,
+                  backgroundColor: theme.card,
+                  borderColor: theme.border,
+                  opacity: isStarting ? 0.6 : 1,
+                  minWidth: 140,
                 }
-              ]}>
-                Démarrer
-              </Text>
+              ]}
+              onPress={handleStartGame}
+              activeOpacity={CashouTheme.button.primary.activeOpacity}
+              disabled={isStarting}
+            >
+              {isStarting ? (
+                <ActivityIndicator size="small" color={theme.text} />
+              ) : (
+                <Text style={[
+                  {
+                    ...CashouTheme.button.primary.text,
+                    fontFamily: CashouTheme.fonts.subheading,
+                    color: theme.text,
+                  }
+                ]}>
+                  Demarrer
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Bouton Reset (dev only) */}
+            {__DEV__ && (
+              <TouchableOpacity
+                style={[
+                  styles.resetButton,
+                  {
+                    backgroundColor: '#FF5252',
+                    opacity: isResetting ? 0.6 : 1,
+                  }
+                ]}
+                onPress={handleResetLevel}
+                activeOpacity={0.8}
+                disabled={isResetting}
+              >
+                {isResetting ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.resetButtonText}>Reset</Text>
+                )}
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
+          </View>
         ) : (
 
             <View style={[styles.dateContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -710,5 +817,23 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 18,
+  },
+  startButtonsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  resetButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    minWidth: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resetButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

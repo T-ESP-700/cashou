@@ -2,9 +2,17 @@
  * Service de fin de partie
  * Gère la liquidation des assets et la validation des objectifs
  */
-import type { PrismaClient } from "@cashou/db-app";
-import { Prisma } from "@cashou/db-app";
+import type { PrismaClient, Holding, Asset, Level, GameInstance } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
+import { GameTimeService } from "./game-time.service.ts";
+
+type HoldingWithAsset = Holding & {
+    asset: Asset;
+};
+
+type GameInstanceWithLevel = GameInstance & {
+    level: Level | null;
+};
 
 export interface GoalResult {
     id: number;
@@ -26,20 +34,54 @@ export interface EndGameResult {
 
 export class EndGameService {
     private prisma: PrismaClient;
+    private gameTimeService: GameTimeService;
 
     constructor(prismaClient?: PrismaClient) {
         this.prisma = prismaClient || defaultPrisma;
+        this.gameTimeService = new GameTimeService();
+    }
+
+    /**
+     * Calcule les interets pour un holding
+     */
+    private calculateInterests(holding: HoldingWithAsset, gameInstance: GameInstanceWithLevel): number {
+        const asset = holding.asset;
+        const level = gameInstance.level;
+
+        if (!level || !asset.rate) {
+            return 0;
+        }
+
+        const annualRate = asset.rate;
+
+        // Temps reel ecoule depuis l'acquisition
+        const elapsedRealSeconds = this.gameTimeService.calculateElapsedTimeSince(
+            gameInstance,
+            new Date(holding.acquiredAt)
+        );
+
+        // Conversion en jours de jeu
+        const elapsedGameDays = this.gameTimeService.convertRealSecondsToGameDays(level, elapsedRealSeconds);
+
+        // Calcul des interets
+        const quantity = holding.quantity ? Number(holding.quantity) : 0;
+        const dailyRate = annualRate / 100 / 365;
+        const interests = quantity * dailyRate * elapsedGameDays;
+
+        return Math.max(0, interests);
     }
 
     /**
      * Termine une partie de jeu:
-     * 1. Vend tous les assets détenus et ajoute au wallet
-     * 2. Valide les objectifs du niveau
+     * 1. Applique les interets aux holdings
+     * 2. Calcule la valeur totale (wallet + assets + interets)
+     * 3. Valide les objectifs du niveau
+     * 4. Marque la partie comme terminee
      * @param gameInstanceId - ID de l'instance de jeu
      * @returns EndGameResult - Résultat de la fin de partie
      */
     async endGame(gameInstanceId: number): Promise<EndGameResult> {
-        // 1. Récupérer l'instance de jeu avec toutes ses données
+        // 1. Recuperer l'instance de jeu avec toutes ses donnees
         const gameInstance = await this.prisma.gameInstance.findUnique({
             where: { id: gameInstanceId },
             include: {
@@ -53,7 +95,7 @@ export class EndGameService {
                     },
                 },
                 wallets: true,
-                transactions: {
+                holdings: {
                     include: {
                         asset: true,
                     },
@@ -76,26 +118,24 @@ export class EndGameService {
             throw new Error(`Aucun wallet trouvé pour la partie ${gameInstanceId}`);
         }
 
-        // 2. Calculer les assets détenus (différence entre BUY et SELL)
-        const assetHoldings = this.calculateAssetHoldings(gameInstance.transactions);
-
-        // 3. Calculer la valeur totale des assets (sans les vendre)
+        // 2. Calculer la valeur totale des holdings avec interets
         let totalAssetsValue = 0;
+        let totalInterests = 0;
 
-        for (const [, holding] of Object.entries(assetHoldings)) {
-            if (holding.quantity > 0) {
-                // Valeur de l'asset = quantité * dernier prix connu
-                const assetPrice = holding.lastPrice || 1;
-                const assetValue = holding.quantity * assetPrice;
-                totalAssetsValue += assetValue;
-            }
+        for (const holding of gameInstance.holdings) {
+            const holdingWithAsset = holding as HoldingWithAsset;
+            const quantity = holdingWithAsset.quantity ? Number(holdingWithAsset.quantity) : 0;
+            const interests = this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
+
+            totalInterests += interests;
+            totalAssetsValue += quantity + interests;
         }
 
-        // 4. Calculer la valeur totale (wallet + assets)
+        // 3. Calculer la valeur totale (wallet + assets avec interets)
         const currentWalletBalance = Number(wallet.amount || 0);
         const totalValue = currentWalletBalance + totalAssetsValue;
 
-        // 5. Valider les objectifs
+        // 4. Valider les objectifs
         const goals = gameInstance.level.levelGoals.map((lg) => lg.goal);
         const goalResults: GoalResult[] = [];
 
@@ -112,7 +152,16 @@ export class EndGameService {
             });
         }
 
-        // 6. Retourner le résultat
+        // 5. Marquer la partie comme terminee
+        await this.prisma.gameInstance.update({
+            where: { id: gameInstanceId },
+            data: {
+                isEnded: true,
+                endedAt: new Date(),
+            },
+        });
+
+        // 6. Retourner le resultat
         const allGoalsValidated = goalResults.every((g) => g.validated);
 
         return {
@@ -124,48 +173,9 @@ export class EndGameService {
             totalValue,
             goals: goalResults,
             message: allGoalsValidated
-                ? `🎉 Bravo ! Tu as terminé avec ${totalValue}€ (wallet: ${currentWalletBalance}€ + assets: ${totalAssetsValue}€) pour un départ de ${startBalance}€`
-                : `❌ Objectifs non atteints. Total: ${totalValue}€ (départ: ${startBalance}€)`,
+                ? `Bravo ! Tu as termine avec ${totalValue.toFixed(2)} EUR (wallet: ${currentWalletBalance.toFixed(2)} EUR + assets: ${totalAssetsValue.toFixed(2)} EUR dont ${totalInterests.toFixed(2)} EUR d'interets) pour un depart de ${startBalance} EUR`
+                : `Objectifs non atteints. Total: ${totalValue.toFixed(2)} EUR (depart: ${startBalance} EUR)`,
         };
-    }
-
-    /**
-     * Calcule les assets détenus par le joueur
-     * @param transactions - Liste des transactions
-     * @returns Map<assetId, {quantity, lastPrice, asset}>
-     */
-    private calculateAssetHoldings(
-        transactions: Array<{
-            assetId: number | null;
-            type: string | null;
-            quantity: number | null;
-            unitPrice: Prisma.Decimal | null;
-            asset: { id: number; title: string | null; rate: number | null } | null;
-        }>
-    ): Record<string, { quantity: number; lastPrice: number; asset: { title: string | null; rate: number | null } | null }> {
-        const holdings: Record<string, { quantity: number; lastPrice: number; asset: { title: string | null; rate: number | null } | null }> = {};
-
-        for (const tx of transactions) {
-            if (!tx.assetId) continue;
-
-            const assetIdStr = tx.assetId.toString();
-
-            if (!holdings[assetIdStr]) {
-                holdings[assetIdStr] = { quantity: 0, lastPrice: 1, asset: tx.asset };
-            }
-
-            const quantity = tx.quantity || 0;
-            const price = tx.unitPrice ? Number(tx.unitPrice) : 1;
-
-            if (tx.type === "BUY") {
-                holdings[assetIdStr].quantity += quantity;
-                holdings[assetIdStr].lastPrice = price;
-            } else if (tx.type === "SELL") {
-                holdings[assetIdStr].quantity -= quantity;
-            }
-        }
-
-        return holdings;
     }
 
     /**
