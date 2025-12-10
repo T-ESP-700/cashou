@@ -200,62 +200,67 @@ async function main() {
     const assets = await Promise.all([
         prisma.asset.upsert({
             where: { symbol: 'AAPL' },
-            update: { fieldId: fields[0].id }, // Technologie
+            update: { fieldId: fields[0].id, taux: 2 }, // Technologie
             create: {
                 title: 'Apple Inc.',
                 symbol: 'AAPL',
                 description: 'Entreprise technologique américaine',
                 marketId: markets[0].id,
                 submarketId: submarkets[1].id,
-                fieldId: fields[0].id // Utilise fieldId au lieu de field
+                fieldId: fields[0].id,
+                taux: 2
             }
         }),
         prisma.asset.upsert({
             where: { symbol: 'BNP' },
-            update: { fieldId: fields[1].id }, // Finance
+            update: { fieldId: fields[1].id, taux: 5 }, // Finance
             create: {
                 title: 'BNP Paribas',
                 symbol: 'BNP',
                 description: 'Banque française',
                 marketId: markets[0].id,
                 submarketId: submarkets[0].id,
-                fieldId: fields[1].id
+                fieldId: fields[1].id,
+                taux: 5
             }
         }),
         prisma.asset.upsert({
             where: { symbol: 'BTC' },
-            update: { fieldId: fields[4].id }, // Blockchain
+            update: { fieldId: fields[4].id, taux: 4.5 }, // Blockchain
             create: {
                 title: 'Bitcoin',
                 symbol: 'BTC',
                 description: 'Première cryptomonnaie',
                 marketId: markets[1].id,
                 submarketId: submarkets[2].id,
-                fieldId: fields[4].id
+                fieldId: fields[4].id,
+                taux: 4.5
             }
         }),
         prisma.asset.upsert({
             where: { symbol: 'ETH' },
-            update: { fieldId: fields[4].id }, // Blockchain
+            update: { fieldId: fields[4].id, taux: 8 }, // Blockchain
             create: {
                 title: 'Ethereum',
                 symbol: 'ETH',
                 description: 'Plateforme blockchain pour smart contracts',
                 marketId: markets[1].id,
                 submarketId: submarkets[2].id,
-                fieldId: fields[4].id
+                fieldId: fields[4].id,
+                taux: 8
             }
         }),
         prisma.asset.upsert({
             where: { symbol: 'TOTA' },
-            update: { fieldId: fields[2].id }, // Énergie
+            update: { fieldId: fields[2].id, taux: 2.5 }, // Énergie
             create: {
                 title: 'TotalEnergies',
                 symbol: 'TOTA',
                 description: 'Compagnie pétrolière et gazière française',
                 marketId: markets[0].id,
                 submarketId: submarkets[0].id,
-                fieldId: fields[2].id
+                fieldId: fields[2].id,
+                taux: 2.5
             }
         })
     ]);

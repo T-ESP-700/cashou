@@ -78,7 +78,7 @@ async function main() {
     update: {
       title: 'Livret A',
       fieldId: null,
-      rate: 1.7,
+      taux: 1.7,
       description: 'Produit d\'épargne sécurisé et toujours disponible. Le Livret A offre un rendement modéré mais garanti, idéal pour constituer une réserve d\'urgence et apprendre les bases de la gestion prudente. Aucun risque de perte et des retraits possibles à tout moment.',
       marketId: market.id,
       submarketId: submarket.id
@@ -87,20 +87,20 @@ async function main() {
       title: 'Livret A',
       symbol: 'LIVRET_A',
       fieldId: null,
-      rate: 1.7,
+      taux: 1.7,
       description: 'Produit d\'épargne sécurisé et toujours disponible. Le Livret A offre un rendement modéré mais garanti, idéal pour constituer une réserve d\'urgence et apprendre les bases de la gestion prudente. Aucun risque de perte et des retraits possibles à tout moment.',
       marketId: market.id,
       submarketId: submarket.id
     }
   });
-  console.log(`✅ Actif créé: ${livretA.title} (${livretA.symbol}) - Rate: ${livretA.rate}%`);
+  console.log(`✅ Actif créé: ${livretA.title} (${livretA.symbol}) - Taux: ${livretA.taux}%`);
 
   const livretLED = await prisma.asset.upsert({
     where: { symbol: 'LIVRET_DDS' },
     update: {
       title: 'Livret de Développement Durable et Solidaire',
       fieldId: null,
-      rate: 1.7,
+      taux: 1.7,
       description: 'Livret d\'épargne sécurisé dédié au financement de projets responsables et durables. Rendement stable et légèrement supérieur au Livret A dans l\'univers Cashou. Idéal pour initier le joueur à la notion d\'impact positif tout en conservant une gestion prudente et sans risque.',
       marketId: market.id,
       submarketId: submarket.id
@@ -109,13 +109,13 @@ async function main() {
       title: 'Livret de Développement Durable et Solidaire',
       symbol: 'LIVRET_DDS',
       fieldId: null,
-      rate: 1.7,
+      taux: 1.7,
       description: 'Livret d\'épargne sécurisé dédié au financement de projets responsables et durables. Rendement stable et légèrement supérieur au Livret A dans l\'univers Cashou. Idéal pour initier le joueur à la notion d\'impact positif tout en conservant une gestion prudente et sans risque.',
       marketId: market.id,
       submarketId: submarket.id
     }
   });
-  console.log(`✅ Actif créé: ${livretLED.title} (${livretLED.symbol}) - Rate: ${livretLED.rate}%`);
+  console.log(`✅ Actif créé: ${livretLED.title} (${livretLED.symbol}) - Taux: ${livretLED.taux}%`);
 
   // 5. Créer le Level
   console.log('📚 Création du niveau...');
