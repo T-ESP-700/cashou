@@ -4,7 +4,7 @@ import { trpcRouter } from './trpc/router';
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 import { cors } from './middleware/cors';
 import { getJobQueue, stopJobQueue } from './lib/job-queue';
-import { startGameEventWorkers, recoverPendingGames } from './workers/game-event.worker';
+import { startGameEventWorkers } from './workers/game-event.worker';
 
 // Server instance variable to track if server is already running
 let serverInstance: ReturnType<typeof Bun.serve> | null = null;
@@ -20,8 +20,6 @@ async function startServer() {
     console.log('Initializing job queue...');
     await getJobQueue();
     await startGameEventWorkers();
-    // Recover any games that missed events while server was down
-    await recoverPendingGames();
     console.log('Job queue and workers initialized successfully');
   } catch (error) {
     console.error('Failed to initialize job queue:', error);

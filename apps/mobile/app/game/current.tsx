@@ -7,6 +7,7 @@ import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useAuth } from '@/hooks/use-auth';
 import { useHeaderOptions } from '@/hooks/use-header';
+import { useNotifications } from '@/hooks/use-notifications';
 import FastForwardIcon from '@/assets/images/fast-forward.svg';
 import PauseIcon from '@/assets/images/pause.svg';
 import StopIcon from '@/assets/images/stop.svg';
@@ -60,6 +61,7 @@ export default function GameCurrentScreen() {
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { pendingEventCompletion, setPendingEventCompletion, isOnAssetsScreen, setActiveGameInstanceId } = useNotifications();
 
   // Configure header for this screen
   useHeaderOptions({ showBackButton: true });
@@ -154,8 +156,11 @@ export default function GameCurrentScreen() {
 
         // Si on a un gameId, charger l'état de la partie existante
         if (gameId) {
+          const gameInstanceId = parseInt(gameId, 10);
+          setGameInstanceId(gameInstanceId);
+          setActiveGameInstanceId(gameInstanceId);
           try {
-            const gameInstance = await trpcClient.gameInstance.getById.query({ id: parseInt(gameId, 10) });
+            const gameInstance = await trpcClient.gameInstance.getById.query({ id: gameInstanceId });
             if (gameInstance) {
               setGameInstanceId(gameInstance.id);
               setIsPaused(gameInstance.isPaused ?? true);
@@ -218,6 +223,7 @@ export default function GameCurrentScreen() {
             console.error('Error fetching game instance:', err);
             // La partie n'existe plus, on réinitialise
             setGameInstanceId(null);
+            setActiveGameInstanceId(null);
             setIsPaused(true);
             setGameTimeState(null);
             setIsGameEnded(false);
@@ -275,8 +281,8 @@ export default function GameCurrentScreen() {
 
   // Animation locale de la date en temps réel (aucun appel backend)
   useEffect(() => {
-    // Ne pas exécuter si on est en train d'animer ou si la partie est terminée
-    if (!gameTimeState || isPaused || isAnimating || isGameEnded) return;
+    // Ne pas exécuter si on est en train d'animer, si la partie est terminée, ou si on est dans les assets
+    if (!gameTimeState || isPaused || isAnimating || isGameEnded || isOnAssetsScreen) return;
 
     // Mise à jour immédiate
     setGameDate(calculateGameDate(gameTimeState));
@@ -287,7 +293,7 @@ export default function GameCurrentScreen() {
     }, UPDATE_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [gameTimeState, isPaused, isAnimating, isGameEnded, calculateGameDate]);
+  }, [gameTimeState, isPaused, isAnimating, isGameEnded, isOnAssetsScreen, calculateGameDate]);
 
   // Resynchronisation quand on revient sur la page (sans animation)
   useFocusEffect(
@@ -296,9 +302,20 @@ export default function GameCurrentScreen() {
 
       const resync = async () => {
         try {
+          console.log('[GameCurrentScreen] 🔄 Resyncing game state for gameInstanceId:', gameInstanceId);
+
+          // Add a small delay to let the backend process any pending resume operations
+          // This ensures we get the latest state after assets screen resumes the game
+          await new Promise(resolve => setTimeout(resolve, 200));
+
           const instance = await trpcClient.gameInstance.getById.query({ id: gameInstanceId });
           if (instance?.level) {
             const isEnded = instance.isEnded ?? false;
+            const wasPaused = isPaused;
+            const nowPaused = instance.isPaused ?? false;
+
+            console.log('[GameCurrentScreen] 📊 Game state: isPaused=', nowPaused, '(was:', wasPaused, ')');
+
             setGameTimeState({
               createdAt: new Date(instance.createdAt),
               totalPausedDuration: instance.totalPausedDuration ?? 0,
@@ -306,8 +323,12 @@ export default function GameCurrentScreen() {
               speed: instance.level.speed ?? 1,
               isEnded,
             });
-            setIsPaused(instance.isPaused ?? false);
+            setIsPaused(nowPaused);
             setIsGameEnded(isEnded);
+
+            if (wasPaused && !nowPaused) {
+              console.log('[GameCurrentScreen] ✅ Game was resumed, state updated');
+            }
 
             // Si la partie est terminée, afficher directement la date de fin
             if (isEnded) {
@@ -316,13 +337,16 @@ export default function GameCurrentScreen() {
             }
           }
         } catch (err) {
-          console.error('Error resyncing game state:', err);
+          console.error('[GameCurrentScreen] Error resyncing game state:', err);
         }
       };
 
       resync();
-    }, [gameInstanceId, calculateEndDate])
+    }, [gameInstanceId, calculateEndDate, isPaused])
   );
+
+  // Note: Event completion is now handled in assets.tsx and asset-detail.tsx
+  // when the user leaves those screens, so we don't need to handle it here anymore
 
   const handleAddAsset = () => {
     // TODO: Ouvrir un modal pour ajouter un asset
@@ -358,6 +382,7 @@ export default function GameCurrentScreen() {
       });
 
       setGameInstanceId(gameInstance.id);
+      setActiveGameInstanceId(gameInstance.id); // Mettre à jour le contexte global
       setIsPaused(false); // Le jeu démarre
       setIsGameEnded(false);
       setIsAnimating(false); // Pas d'animation pour une nouvelle partie

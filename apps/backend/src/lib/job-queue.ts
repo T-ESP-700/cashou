@@ -9,19 +9,9 @@ let boss: PgBoss | null = null;
  * Job queue names used throughout the application
  */
 export const JOB_NAMES = {
-  /** Triggers a game event at a specific time */
-  EVENT_TRIGGER: "game-event-trigger",
   /** Triggers end of game at 100% duration */
   GAME_END: "game-end",
 } as const;
-
-/**
- * Job data types
- */
-export interface EventTriggerJobData {
-  gameInstanceId: number;
-  levelEventId: number;
-}
 
 export interface GameEndJobData {
   gameInstanceId: number;
@@ -69,7 +59,7 @@ export async function getJobQueue(): Promise<PgBoss> {
  * Create queues if they don't exist (required for pg-boss v10+)
  */
 async function createQueuesIfNotExist(queue: PgBoss): Promise<void> {
-  const queuesToCreate = [JOB_NAMES.EVENT_TRIGGER, JOB_NAMES.GAME_END];
+  const queuesToCreate = [JOB_NAMES.GAME_END];
 
   for (const queueName of queuesToCreate) {
     try {
@@ -96,35 +86,6 @@ export async function stopJobQueue(): Promise<void> {
     boss = null;
     console.log("[pg-boss] Job queue stopped");
   }
-}
-
-/**
- * Schedule an event trigger job
- */
-export async function scheduleEventTrigger(
-  gameInstanceId: number,
-  levelEventId: number,
-  delaySeconds: number
-): Promise<string | null> {
-  const queue = await getJobQueue();
-
-  const data: EventTriggerJobData = {
-    gameInstanceId,
-    levelEventId,
-  };
-
-  const jobId = await queue.send(JOB_NAMES.EVENT_TRIGGER, data, {
-    startAfter: delaySeconds,
-    singletonKey: `event-${gameInstanceId}-${levelEventId}`,
-    retryLimit: 3,
-    retryDelay: 60,
-  });
-
-  console.log(
-    `[pg-boss] Scheduled event trigger for game ${gameInstanceId}, event ${levelEventId} in ${delaySeconds}s (job: ${jobId})`
-  );
-
-  return jobId;
 }
 
 /**
@@ -161,31 +122,22 @@ export async function scheduleGameEnd(
 export async function cancelGameJobs(gameInstanceId: number): Promise<void> {
   const queue = await getJobQueue();
 
-  // Get job IDs for event triggers with matching singleton key pattern
-  const eventJobIds = await getJobIdsBySingletonPattern(
-    JOB_NAMES.EVENT_TRIGGER,
-    `event-${gameInstanceId}-%`
-  );
-
   // Get job ID for game end
   const gameEndJobIds = await getJobIdsBySingletonPattern(
     JOB_NAMES.GAME_END,
     `game-end-${gameInstanceId}`
   );
 
-  // Cancel all found jobs
-  const allJobIds = [...eventJobIds, ...gameEndJobIds];
-
-  for (const jobId of allJobIds) {
+  for (const jobId of gameEndJobIds) {
     try {
-      await queue.cancel(JOB_NAMES.EVENT_TRIGGER, jobId);
+      await queue.cancel(JOB_NAMES.GAME_END, jobId);
     } catch {
       // Job might not exist anymore, ignore
     }
   }
 
   console.log(
-    `[pg-boss] Cancelled ${allJobIds.length} jobs for game ${gameInstanceId}`
+    `[pg-boss] Cancelled ${gameEndJobIds.length} jobs for game ${gameInstanceId}`
   );
 }
 
@@ -204,7 +156,7 @@ async function getJobIdsBySingletonPattern(
   const result = await prisma.$queryRaw<{ id: string }[]>`
     SELECT id FROM pgboss.job
     WHERE name = ${queueName}
-    AND singletonKey LIKE ${sqlPattern}
+    AND singleton_key LIKE ${sqlPattern}
     AND state IN ('created', 'retry')
   `;
 

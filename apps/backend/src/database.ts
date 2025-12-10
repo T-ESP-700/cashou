@@ -9,8 +9,8 @@ const databaseUrl = process.env.CASHOU_DB_URL;
 // En Docker, on remplace 'localhost' par 'db_cashou' (nom du service Docker)
 // Cela permet de connecter les conteneurs entre eux via le réseau Docker
 const url = process.env.DOCKER_CONTAINER
-    ? databaseUrl?.replace('localhost', 'db_cashou')
-    : databaseUrl;
+  ? databaseUrl?.replace('localhost', 'db_cashou')
+  : databaseUrl;
 
 // Factory pour créer une instance Prisma avec la configuration personnalisée
 const prismaClientSingleton = () => {
@@ -31,7 +31,10 @@ const globalForPrisma = globalThis as unknown as {
 
 // Pattern Singleton : une seule instance Prisma dans toute l'application
 // Réutilise l'instance existante ou en crée une nouvelle si nécessaire
-export const prisma = globalForPrisma.prisma ?? prismaClientSingleton()
+// SKIP_PRISMA_INIT permet aux tests unitaires de ne pas initialiser Prisma
+export const prisma = process.env.SKIP_PRISMA_INIT
+  ? (null as unknown as PrismaClient)
+  : (globalForPrisma.prisma ?? prismaClientSingleton())
 
 // En développement, stocke l'instance globalement pour éviter les reconnexions
 // lors du hot-reload (rechargement automatique du code)

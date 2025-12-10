@@ -21,6 +21,7 @@ import { userQuizRouter } from './routers/user-quiz.router';
 import { userAnswerRouter } from './routers/user-answer.router';
 import { backofficeAuthRouter } from '../routers/backoffice-auth';
 import { gameInstanceRouter } from './routers/game-instance.router';
+import { gameInstanceEventRouter } from './routers/game-instance-event.router';
 import { gameUserRouter } from './routers/game_user.router';
 import { walletRouter } from './routers/wallet.router';
 import { transactionRouter } from './routers/transaction.router';
@@ -45,6 +46,7 @@ export const trpcRouter = router({
   levelGoal: levelGoalRouter,
   levelEvent: levelEventRouter,
   gameInstance: gameInstanceRouter,
+  gameInstanceEvent: gameInstanceEventRouter,
   gameUser: gameUserRouter,
 
   // Trading system

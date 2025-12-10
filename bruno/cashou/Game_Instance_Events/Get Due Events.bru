@@ -1,0 +1,16 @@
+meta {
+  name: Get Due Events
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/api/trpc/gameInstanceEvent.findDue
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,13 @@ import {
   useColorScheme as useRNColorScheme,
   TouchableOpacity,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { API_URL } from '@/lib/api-config';
+import { useNotifications } from '@/hooks/use-notifications';
+import { useAuth } from '@/hooks/use-auth';
 
 // UI representation of an asset for display purposes
 type AssetItem = {
@@ -28,11 +30,160 @@ export default function AssetsScreen() {
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const router = useRouter();
+  const { setIsOnAssetsScreen, activeGameInstanceId, pendingEventCompletion, setPendingEventCompletion, assetsScreenDepth, setAssetsScreenDepth, assetsScreenDepthRef, setPausedByAssets, pausedByAssets } = useNotifications();
+  const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [assets, setAssets] = useState<AssetItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const isSearching = useMemo(() => query.trim().length > 0, [query]);
+
+  // Use refs to track values needed during cleanup to avoid stale closure issues
+  const activeGameInstanceIdRef = useRef(activeGameInstanceId);
+  const userRef = useRef(user);
+  const pendingEventCompletionRef = useRef(pendingEventCompletion);
+
+  // Keep refs in sync with current values
+  useEffect(() => {
+    activeGameInstanceIdRef.current = activeGameInstanceId;
+  }, [activeGameInstanceId]);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  useEffect(() => {
+    pendingEventCompletionRef.current = pendingEventCompletion;
+  }, [pendingEventCompletion]);
+
+  // Pause game when entering assets screen, resume when leaving (only if no nested screens)
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
+
+      const pauseGame = async () => {
+        const gameId = activeGameInstanceIdRef.current;
+        const currentUser = userRef.current;
+        const currentDepth = assetsScreenDepthRef.current;
+
+        console.log('[AssetsScreen] ENTER - gameId:', gameId, 'user:', currentUser?.id, 'currentDepth:', currentDepth);
+
+        // Increment depth counter (the ref is updated by setAssetsScreenDepth in the context)
+        setAssetsScreenDepth((prev: number) => prev + 1);
+
+        if (!gameId || !currentUser) {
+          console.log('[AssetsScreen] ENTER - No gameId or user, skipping');
+          return;
+        }
+
+        // Only pause if this is the first assets screen (depth was 0)
+        if (currentDepth === 0) {
+          try {
+            // Check if game is already paused
+            const gameInstance = await trpcClient.gameInstance.getById.query({ id: gameId });
+            const wasAlreadyPaused = gameInstance?.isPaused ?? false;
+
+            console.log('[AssetsScreen] ENTER - Game state: isPaused=', wasAlreadyPaused);
+
+            if (!isMounted) return;
+
+            // Only pause if not already paused
+            if (!wasAlreadyPaused) {
+              console.log('[AssetsScreen] Pausing game', gameId);
+              await trpcClient.gameInstance.pause.mutate({ id: gameId });
+              if (isMounted) setPausedByAssets(true);
+              console.log('[AssetsScreen] ✅ Game paused by assets screen');
+            } else {
+              if (isMounted) setPausedByAssets(false);
+              console.log('[AssetsScreen] Game already paused (not by us)');
+            }
+          } catch (error) {
+            console.error('[AssetsScreen] Failed to pause game:', error);
+            if (isMounted) setPausedByAssets(false);
+          }
+        }
+
+        if (isMounted) setIsOnAssetsScreen(true);
+      };
+
+      pauseGame();
+
+      return () => {
+        isMounted = false;
+
+        // Get current values from refs to avoid stale closures
+        const gameId = activeGameInstanceIdRef.current;
+        const currentUser = userRef.current;
+        const pendingCompletion = pendingEventCompletionRef.current;
+
+        console.log('[AssetsScreen] EXIT - gameId:', gameId, 'user:', currentUser?.id, 'currentDepth:', assetsScreenDepthRef.current);
+
+        // Decrement depth (the ref is updated by setAssetsScreenDepth in the context)
+        const newDepth = Math.max(0, assetsScreenDepthRef.current - 1);
+        setAssetsScreenDepth(newDepth);
+
+        console.log('[AssetsScreen] EXIT - newDepth:', newDepth);
+
+        // If we're leaving all assets screens (depth becomes 0), wait a bit then check if we should resume
+        // The delay allows asset-detail to increment depth if we're navigating there
+        if (newDepth === 0 && gameId && currentUser) {
+          console.log('[AssetsScreen] EXIT - Depth is 0, scheduling resume check in 150ms');
+
+          setTimeout(async () => {
+            console.log('[AssetsScreen] EXIT - Resume check executing, current depth:', assetsScreenDepthRef.current);
+
+            // Check if depth is still 0 after the delay (no other assets screen took focus)
+            if (assetsScreenDepthRef.current > 0) {
+              console.log('[AssetsScreen] ⏸️  Another assets screen took focus (depth=' + assetsScreenDepthRef.current + '), not resuming');
+              return;
+            }
+
+            console.log('[AssetsScreen] EXIT - No other assets screen, proceeding with resume');
+
+            try {
+              // Check current game state before resuming
+              console.log('[AssetsScreen] EXIT - Fetching game state...');
+              const gameInstance = await trpcClient.gameInstance.getById.query({ id: gameId });
+              const isCurrentlyPaused = gameInstance?.isPaused ?? false;
+
+              console.log('[AssetsScreen] EXIT - Game state: isPaused=', isCurrentlyPaused);
+
+              // Resume if game is currently paused
+              if (isCurrentlyPaused) {
+                console.log('[AssetsScreen] 🎮 Resuming game', gameId);
+                await trpcClient.gameInstance.resume.mutate({ id: gameId });
+                console.log('[AssetsScreen] ✅ Game resumed successfully');
+              } else {
+                console.log('[AssetsScreen] ⚠️  Game is not paused, nothing to resume');
+              }
+
+              // If there's a pending event completion, complete it now
+              if (pendingCompletion && pendingCompletion === gameId) {
+                console.log('[AssetsScreen] 📋 Completing pending event for game', gameId);
+                await trpcClient.gameInstance.completeEvent.mutate({ id: gameId });
+                setPendingEventCompletion(null);
+                console.log('[AssetsScreen] ✅ Event completed');
+              }
+
+              setPausedByAssets(false);
+              setIsOnAssetsScreen(false);
+            } catch (error) {
+              console.error('[AssetsScreen] ❌ Failed to resume game or complete event:', error);
+              // Clear pending completion on error to avoid retry loops
+              if (pendingCompletion === gameId) {
+                setPendingEventCompletion(null);
+              }
+              setPausedByAssets(false);
+              setIsOnAssetsScreen(false);
+            }
+          }, 150); // Wait 150ms to see if another assets screen takes focus
+        } else {
+          console.log('[AssetsScreen] EXIT - Not leaving all assets (newDepth=' + newDepth + ' or no game/user)');
+          setIsOnAssetsScreen(newDepth > 0);
+        }
+      };
+    }, [setIsOnAssetsScreen, setPendingEventCompletion, setAssetsScreenDepth, setPausedByAssets, assetsScreenDepthRef])
+  );
 
   const fetchAssets = useCallback(async () => {
     let localError: unknown = null;

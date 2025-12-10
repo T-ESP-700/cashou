@@ -11,6 +11,7 @@ export interface PushNotificationPayload {
   data?: Record<string, unknown>;
   badge?: number;
   sound?: "default" | null;
+  channelId?: string;
 }
 
 export interface PushNotificationResult {
@@ -39,7 +40,7 @@ export class ExpoPushService {
   async sendPushNotification(
     payload: PushNotificationPayload
   ): Promise<PushNotificationResult> {
-    const { pushToken, title, body, data, badge, sound = "default" } = payload;
+    const { pushToken, title, body, data, badge, sound = "default", channelId = "default" } = payload;
 
     if (!this.isValidPushToken(pushToken)) {
       console.warn(`Invalid Expo push token: ${pushToken}`);
@@ -56,6 +57,7 @@ export class ExpoPushService {
       body,
       data,
       badge,
+      channelId,
     };
 
     try {

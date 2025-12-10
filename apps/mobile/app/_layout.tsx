@@ -21,7 +21,9 @@ import { View, ActivityIndicator } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/hooks/use-auth';
 import { HeaderProvider, useHeader } from '@/hooks/use-header';
+import { NotificationProvider } from '@/hooks/use-notifications';
 import { CashouHeader } from '@/components/cashou-header';
+import { EventNotificationModal } from '@/components/event-notification-modal';
 import { CashouTheme } from '@/constants/cashou-theme';
 
 // Keep the splash screen visible while we fetch resources
@@ -119,10 +121,13 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <RootNavigator />
-          <StatusBar style="auto" />
-        </ThemeProvider>
+        <NotificationProvider>
+          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <RootNavigator />
+            <EventNotificationModal />
+            <StatusBar style="auto" />
+          </ThemeProvider>
+        </NotificationProvider>
       </AuthProvider>
     </GestureHandlerRootView>
   );

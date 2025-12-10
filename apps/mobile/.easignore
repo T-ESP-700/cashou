@@ -1,0 +1,5 @@
+# Ignore workspace files that might cause issues
+../package.json
+../bun.lock
+../node_modules
+../packages
