@@ -314,6 +314,7 @@ export class GameInstanceService {
 
     // Schedule the first event
     if (gameInstance.levelId) {
+      await this.gameInstanceEventService.scheduleEventsForGameInstance(id);
       await this.gameEventTriggerService.scheduleFirstEvent(id);
     }
 

@@ -26,6 +26,7 @@ export function EventNotificationModal() {
   const router = useRouter();
   const { eventNotification, clearEventNotification, setPendingEventCompletion } = useNotifications();
   const [isCompleting, setIsCompleting] = useState(false);
+  const [isOpeningAssets, setIsOpeningAssets] = useState(false);
 
   const isVisible = eventNotification !== null;
 
@@ -59,14 +60,48 @@ export function EventNotificationModal() {
     }
   };
 
-  const handleGoToAssets = () => {
-    // Don't complete the event yet - keep the game paused
-    // Mark that we need to complete it when returning to the game
-    if (eventNotification?.gameInstanceId) {
-      setPendingEventCompletion(eventNotification.gameInstanceId);
+  const handleGoToAssets = async () => {
+    if (!eventNotification?.gameInstanceId) {
+      clearEventNotification();
+      router.push('/game/assets');
+      return;
     }
+
+    const gameInstanceId = eventNotification.gameInstanceId;
+
+    // Don't complete the event yet - keep the game paused.
+    // Mark that we need to complete it when returning to the game.
+    setPendingEventCompletion(gameInstanceId);
     clearEventNotification();
-    router.push('/game/assets');
+
+    try {
+      setIsOpeningAssets(true);
+
+      // Fetch the wallet tied to this game instance to navigate with the same context
+      let walletId: string | null = null;
+      try {
+        const wallets = await trpcClient.wallet.getByGameInstance.query({ gameInstanceId });
+        if (Array.isArray(wallets) && wallets.length > 0 && wallets[0]?.id) {
+          walletId = wallets[0].id.toString();
+        }
+      } catch (err) {
+        console.error(`[EventNotificationModal] Failed to fetch wallet for game ${gameInstanceId}:`, err);
+      }
+
+      const params: Record<string, string> = {
+        gameInstanceId: gameInstanceId.toString(),
+      };
+      if (walletId) {
+        params.walletId = walletId;
+      }
+
+      router.push({
+        pathname: '/game/assets',
+        params,
+      });
+    } finally {
+      setIsOpeningAssets(false);
+    }
   };
 
   if (!eventNotification) {
@@ -121,13 +156,18 @@ export function EventNotificationModal() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.button, styles.primaryButton, { backgroundColor: theme.accent }]}
+                style={[styles.button, styles.primaryButton, { backgroundColor: theme.accent, opacity: isOpeningAssets ? 0.8 : 1 }]}
                 onPress={handleGoToAssets}
                 activeOpacity={0.7}
+                disabled={isOpeningAssets}
               >
-                <Text style={[styles.buttonText, { color: '#1C1E33', fontFamily: CashouTheme.fonts.subheading }]}>
-                  Voir mes assets
-                </Text>
+                {isOpeningAssets ? (
+                  <ActivityIndicator size="small" color="#1C1E33" />
+                ) : (
+                  <Text style={[styles.buttonText, { color: '#1C1E33', fontFamily: CashouTheme.fonts.subheading }]}>
+                    Voir mes assets
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>

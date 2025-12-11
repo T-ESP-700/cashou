@@ -516,17 +516,7 @@ export default function GameCurrentScreen() {
 
       await trpcClient.gameInstance.start.mutate({ id: gameInstanceId });
 
-      // Créer une nouvelle GameInstance via l'API
-      const gameInstance = await trpcClient.gameInstance.create.mutate({
-        levelId: parseInt(levelId, 10),
-        userId: user.id,
-        startBalance: levelData.level.startBalance,
-        isPaused: false,
-        actionRequired: false,
-      });
-
-      setGameInstanceId(gameInstance.id);
-      setActiveGameInstanceId(gameInstance.id); // Mettre à jour le contexte global
+      setActiveGameInstanceId(gameInstanceId); // Mettre à jour le contexte global
       setIsPaused(false); // Le jeu démarre
       setIsAnimating(false);
       setTargetDate(null);

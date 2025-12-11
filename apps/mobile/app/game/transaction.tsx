@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,12 +12,14 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useHeaderOptions } from '@/hooks/use-header';
+import { useNotifications } from '@/hooks/use-notifications';
+import { useAuth } from '@/hooks/use-auth';
 
 type TransactionType = 'buy' | 'sell';
 
@@ -37,8 +39,110 @@ export default function TransactionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
+  const { activeGameInstanceId, pendingEventCompletion, setPendingEventCompletion, setAssetsScreenDepth, assetsScreenDepthRef, setIsOnAssetsScreen, setPausedByAssets } = useNotifications();
+  const { user } = useAuth();
 
   useHeaderOptions({ showBackButton: true });
+
+  // Use refs to track values needed during cleanup to avoid stale closure issues
+  const activeGameInstanceIdRef = useRef(activeGameInstanceId);
+  const userRef = useRef(user);
+  const pendingEventCompletionRef = useRef(pendingEventCompletion);
+
+  // Keep refs in sync with current values
+  useEffect(() => {
+    activeGameInstanceIdRef.current = activeGameInstanceId;
+  }, [activeGameInstanceId]);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  useEffect(() => {
+    pendingEventCompletionRef.current = pendingEventCompletion;
+  }, [pendingEventCompletion]);
+
+  // Track depth for nested navigation (assets -> asset-detail -> transaction)
+  useFocusEffect(
+    useCallback(() => {
+      console.log('[TransactionScreen] ENTER - currentDepth:', assetsScreenDepthRef.current);
+
+      // Increment depth when entering transaction (the ref is updated by setAssetsScreenDepth in the context)
+      setAssetsScreenDepth((prev: number) => prev + 1);
+
+      return () => {
+        // Get current values from refs to avoid stale closures
+        const gameId = activeGameInstanceIdRef.current;
+        const currentUser = userRef.current;
+        const pendingCompletion = pendingEventCompletionRef.current;
+
+        console.log('[TransactionScreen] EXIT - gameId:', gameId, 'user:', currentUser?.id, 'currentDepth:', assetsScreenDepthRef.current);
+
+        // Decrement depth when leaving transaction (the ref is updated by setAssetsScreenDepth in the context)
+        const newDepth = Math.max(0, assetsScreenDepthRef.current - 1);
+        setAssetsScreenDepth(newDepth);
+
+        console.log('[TransactionScreen] EXIT - newDepth:', newDepth);
+
+        // If we're leaving all assets screens (depth = 0), wait a bit then check if we should resume
+        // The delay allows asset-detail or assets.tsx to increment depth if we're navigating back there
+        if (newDepth === 0 && gameId && currentUser) {
+          console.log('[TransactionScreen] EXIT - Depth is 0, scheduling resume check in 150ms');
+
+          setTimeout(async () => {
+            console.log('[TransactionScreen] EXIT - Resume check executing, current depth:', assetsScreenDepthRef.current);
+
+            // Check if depth is still 0 after the delay (no other assets screen took focus)
+            if (assetsScreenDepthRef.current > 0) {
+              console.log('[TransactionScreen] ⏸️  Another assets screen took focus (depth=' + assetsScreenDepthRef.current + '), not resuming');
+              return;
+            }
+
+            console.log('[TransactionScreen] EXIT - No other assets screen, proceeding with resume');
+
+            try {
+              // Check current game state before resuming
+              console.log('[TransactionScreen] EXIT - Fetching game state...');
+              const gameInstance = await trpcClient.gameInstance.getById.query({ id: gameId });
+              const isCurrentlyPaused = gameInstance?.isPaused ?? false;
+
+              console.log('[TransactionScreen] EXIT - Game state: isPaused=', isCurrentlyPaused);
+
+              // Resume if game is currently paused
+              if (isCurrentlyPaused) {
+                console.log('[TransactionScreen] 🎮 Resuming game', gameId);
+                await trpcClient.gameInstance.resume.mutate({ id: gameId });
+                console.log('[TransactionScreen] ✅ Game resumed successfully');
+              } else {
+                console.log('[TransactionScreen] ⚠️  Game is not paused, nothing to resume');
+              }
+
+              // Complete pending event if any
+              if (pendingCompletion && pendingCompletion === gameId) {
+                console.log('[TransactionScreen] 📋 Completing pending event for game', gameId);
+                await trpcClient.gameInstance.completeEvent.mutate({ id: gameId });
+                setPendingEventCompletion(null);
+                console.log('[TransactionScreen] ✅ Event completed');
+              }
+
+              setPausedByAssets(false);
+              setIsOnAssetsScreen(false);
+            } catch (error) {
+              console.error('[TransactionScreen] ❌ Failed to resume game or complete event:', error);
+              if (pendingCompletion === gameId) {
+                setPendingEventCompletion(null);
+              }
+              setPausedByAssets(false);
+              setIsOnAssetsScreen(false);
+            }
+          }, 150); // Wait 150ms to see if another assets screen takes focus
+        } else {
+          console.log('[TransactionScreen] EXIT - Not leaving all assets (newDepth=' + newDepth + ' or no game/user)');
+          setIsOnAssetsScreen(newDepth > 0);
+        }
+      };
+    }, [setAssetsScreenDepth, setPendingEventCompletion, setIsOnAssetsScreen, setPausedByAssets, assetsScreenDepthRef])
+  );
 
   // Params
   const assetId = params.assetId ? parseInt(params.assetId as string, 10) : null;
