@@ -601,7 +601,10 @@ export default function GameCurrentScreen() {
               setIsGameEnded(false);
               setGameTimeState(null);
               setGameDate(GAME_START_DATE);
-
+              // Créer automatiquement une nouvelle instance en mode préparation
+              if (levelData) {
+                await createGameInstanceForPreparation(levelData);
+              }
               Alert.alert('Succes', 'Le niveau a ete reinitialise. Vous pouvez recommencer !');
             } catch (err) {
               console.error('Error resetting level:', err);
