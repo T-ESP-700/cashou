@@ -37,4 +37,9 @@ WORKDIR /app
 
 EXPOSE 3000
 
-CMD ["bun", "run", "apps/backend/src/index.ts"]
+# En dev: hot reload avec --watch, en prod: exécution directe
+CMD if [ "$NODE_ENV" = "production" ]; then \
+      bun run apps/backend/src/index.ts; \
+    else \
+      bun --watch run apps/backend/src/index.ts; \
+    fi

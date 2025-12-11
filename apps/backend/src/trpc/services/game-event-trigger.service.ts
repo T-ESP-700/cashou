@@ -143,7 +143,7 @@ export class GameEventTriggerService {
     }
 
     console.log(
-      `[GameEventTrigger] Events handled via cron for game ${gameInstanceId}, no pg-boss scheduling required`
+      `[GameEventTrigger] Events scheduled via pg-boss for game ${gameInstanceId}`
     );
   }
 

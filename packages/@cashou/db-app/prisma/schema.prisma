@@ -221,7 +221,7 @@ model Submarket {
 
   // Relations
   market       Market?       @relation(fields: [marketId], references: [id])
-  gameInstance GameInstance? @relation(fields: [gameInstanceId], references: [id])
+  gameInstance GameInstance? @relation(fields: [gameInstanceId], references: [id], onDelete: Cascade)
   assets       Asset[]
   impacts      Impact[]
 
@@ -363,7 +363,7 @@ model GameInstanceEvent {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  gameInstance GameInstance @relation(fields: [gameInstanceId], references: [id])
+  gameInstance GameInstance @relation(fields: [gameInstanceId], references: [id], onDelete: Cascade)
   levelEvent   LevelEvent   @relation(fields: [levelEventId], references: [id])
 
   @@map("game_instance_events")
@@ -381,7 +381,7 @@ model GameUser {
 
   // Relations
   user         User?         @relation(fields: [userId], references: [id])
-  gameInstance GameInstance? @relation(fields: [gameInstanceId], references: [id])
+  gameInstance GameInstance? @relation(fields: [gameInstanceId], references: [id], onDelete: Cascade)
 
   @@map("game_users")
 }
@@ -396,7 +396,7 @@ model Wallet {
 
   // Relations
   user         User?         @relation(fields: [userId], references: [id])
-  gameInstance GameInstance? @relation(fields: [gameInstanceId], references: [id])
+  gameInstance GameInstance? @relation(fields: [gameInstanceId], references: [id], onDelete: Cascade)
   transactions Transaction[]
   holdings     Holding[]
 
@@ -420,7 +420,7 @@ model Transaction {
   // Relations
   asset        Asset?        @relation(fields: [assetId], references: [id])
   wallet       Wallet?       @relation(fields: [walletId], references: [id])
-  gameInstance GameInstance? @relation(fields: [gameInstanceId], references: [id])
+  gameInstance GameInstance? @relation(fields: [gameInstanceId], references: [id], onDelete: Cascade)
 
   @@map("transactions")
 }
@@ -439,7 +439,7 @@ model Holding {
   // Relations
   wallet       Wallet       @relation(fields: [walletId], references: [id])
   asset        Asset        @relation(fields: [assetId], references: [id])
-  gameInstance GameInstance @relation(fields: [gameInstanceId], references: [id])
+  gameInstance GameInstance @relation(fields: [gameInstanceId], references: [id], onDelete: Cascade)
 
   @@unique([walletId, assetId]) // Un seul holding par asset par wallet
   @@map("holdings")
@@ -558,7 +558,7 @@ model Notification {
 
   // Relations
   user         User?         @relation(fields: [userId], references: [id])
-  gameInstance GameInstance? @relation(fields: [gameInstanceId], references: [id])
+  gameInstance GameInstance? @relation(fields: [gameInstanceId], references: [id], onDelete: Cascade)
   quiz         Quiz?         @relation(fields: [quizId], references: [id])
   event        Event?        @relation(fields: [eventId], references: [id])
 

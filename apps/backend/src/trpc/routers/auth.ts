@@ -367,4 +367,63 @@ export const authRouter = router({
       } : null,
     };
   }),
+
+  // Get pending event that requires user action (fallback for when push notification didn't work)
+  getPendingEvent: protectedProcedure.query(async ({ ctx }) => {
+    // Find the active game instance with actionRequired = true
+    const gameInstance = await prisma.gameInstance.findFirst({
+      where: {
+        userId: ctx.session.user.id,
+        isEnded: false,
+        actionRequired: true,
+        isPaused: true,
+      },
+      select: {
+        id: true,
+        currentEventIndex: true,
+      },
+    });
+
+    if (!gameInstance) {
+      return null;
+    }
+
+    // Find the most recently triggered event for this game instance
+    // This is the event that requires user action
+    const triggeredEvent = await prisma.gameInstanceEvent.findFirst({
+      where: {
+        gameInstanceId: gameInstance.id,
+        triggeredAt: { not: null },
+      },
+      orderBy: {
+        triggeredAt: 'desc',
+      },
+      include: {
+        levelEvent: {
+          include: {
+            event: {
+              select: {
+                id: true,
+                title: true,
+                description: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!triggeredEvent?.levelEvent?.event) {
+      return null;
+    }
+
+    const event = triggeredEvent.levelEvent.event;
+
+    return {
+      gameInstanceId: gameInstance.id,
+      eventId: event.id,
+      title: event.title ?? 'Nouvel événement',
+      body: event.description ?? 'Un événement requiert votre attention dans le jeu.',
+    };
+  }),
 });

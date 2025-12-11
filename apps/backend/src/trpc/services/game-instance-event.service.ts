@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
+import { scheduleGameEvent, cancelGameEvent } from "../../lib/job-queue.ts";
 
 /**
  * Service for managing GameInstanceEvent records.
@@ -104,19 +105,31 @@ export class GameInstanceEventService {
       };
     });
 
-    // Batch create all events
+    // Batch create all events in database
     await this.prisma.gameInstanceEvent.createMany({
       data: eventsToCreate,
     });
 
+    // Fetch the created events to get their IDs
+    const createdEvents = await this.prisma.gameInstanceEvent.findMany({
+      where: { gameInstanceId },
+      orderBy: { scheduledAt: "asc" },
+    });
+
+    // Schedule pg-boss jobs for each event
+    for (const event of createdEvents) {
+      await scheduleGameEvent(event.id, event.scheduledAt);
+    }
+
     console.log(
-      `[GameInstanceEventService] Scheduled ${eventsToCreate.length} events for GameInstance ${gameInstanceId}`
+      `[GameInstanceEventService] Scheduled ${eventsToCreate.length} events for GameInstance ${gameInstanceId} (DB + pg-boss)`
     );
   }
 
   /**
    * Shift all non-triggered events forward by the pause duration.
    * Called when resuming a paused game to maintain correct timeline.
+   * Also reschedules the pg-boss jobs with the new times.
    *
    * @param gameInstanceId - The ID of the GameInstance being resumed
    * @param pauseDurationSeconds - How long the game was paused (in seconds)
@@ -144,13 +157,16 @@ export class GameInstanceEventService {
       return;
     }
 
-    // Update each event's scheduledAt time
-    // Using a transaction to ensure atomicity
+    // Calculate new scheduled times
+    const updatedEvents: { id: number; newScheduledAt: Date }[] = [];
+
+    // Update each event's scheduledAt time in database
     await this.prisma.$transaction(
       pendingEvents.map((event) => {
         const newScheduledAt = new Date(
           event.scheduledAt.getTime() + pauseDurationSeconds * 1000
         );
+        updatedEvents.push({ id: event.id, newScheduledAt });
         return this.prisma.gameInstanceEvent.update({
           where: { id: event.id },
           data: { scheduledAt: newScheduledAt },
@@ -158,8 +174,14 @@ export class GameInstanceEventService {
       })
     );
 
+    // Cancel old pg-boss jobs and schedule new ones with updated times
+    for (const { id, newScheduledAt } of updatedEvents) {
+      await cancelGameEvent(id);
+      await scheduleGameEvent(id, newScheduledAt);
+    }
+
     console.log(
-      `[GameInstanceEventService] Shifted ${pendingEvents.length} events forward by ${pauseDurationSeconds}s for GameInstance ${gameInstanceId}`
+      `[GameInstanceEventService] Shifted ${pendingEvents.length} events forward by ${pauseDurationSeconds}s for GameInstance ${gameInstanceId} (DB + pg-boss rescheduled)`
     );
   }
 
@@ -178,32 +200,23 @@ export class GameInstanceEventService {
   /**
    * Find all due events that need to be processed.
    * Returns events where:
-   * - scheduledAt <= now (with a small buffer to account for timing precision)
+   * - scheduledAt <= now
    * - triggeredAt IS NULL
    * - gameInstance.isEnded = false
    * - gameInstance.userId IS NOT NULL (we need a user to send notifications)
    * - gameInstance.isPaused = false OR actionRequired = false
    *   (exclude games already paused with actionRequired=true, as they're waiting for user action)
    *
-   * Note: We exclude games that are paused with actionRequired=true because those games
-   * are already waiting for user interaction from a previous event. Games paused manually
-   * (actionRequired=false) can still have events processed.
+   * Note: This method is kept for debugging purposes. Events are now processed via pg-boss workers.
    */
   async findDueEvents() {
-    // Use a buffer equal to the cron interval (5 seconds) to account for timing precision
-    // and ensure events aren't missed between cron runs. The cron runs every 5 seconds,
-    // so we check for events that are due up to 5 seconds in the future to catch any
-    // events that became due just after the last check.
     const now = new Date();
-    const POLL_INTERVAL_MS = 5000; // Match the cron interval in run-event-cron.ts
-    const bufferMs = POLL_INTERVAL_MS; // 5 second buffer
-    const checkTime = new Date(now.getTime() + bufferMs);
 
-    console.log(`[GameInstanceEventService] Looking for due events at ${now.toISOString()} (checking up to ${checkTime.toISOString()} with ${bufferMs}ms buffer)`);
+    console.log(`[GameInstanceEventService] Looking for due events at ${now.toISOString()}`);
 
     const events = await this.prisma.gameInstanceEvent.findMany({
       where: {
-        scheduledAt: { lte: checkTime },
+        scheduledAt: { lte: now },
         triggeredAt: null,
         gameInstance: {
           isEnded: false,

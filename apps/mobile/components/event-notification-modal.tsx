@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,12 @@ import {
   useColorScheme as useRNColorScheme,
   Dimensions,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname, useLocalSearchParams } from 'expo-router';
 import { CashouTheme } from '@/constants/cashou-theme';
-import { useNotifications, type EventNotificationData } from '@/hooks/use-notifications';
+import { useNotifications } from '@/hooks/use-notifications';
 import { trpcClient } from '@/lib/trpc';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -24,11 +23,42 @@ export function EventNotificationModal() {
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const router = useRouter();
+  const pathname = usePathname();
+  const params = useLocalSearchParams<{ gameId?: string }>();
   const { eventNotification, clearEventNotification, setPendingEventCompletion } = useNotifications();
-  const [isCompleting, setIsCompleting] = useState(false);
   const [isOpeningAssets, setIsOpeningAssets] = useState(false);
+  const hasNavigatedRef = useRef<number | null>(null);
 
   const isVisible = eventNotification !== null;
+
+  // Navigate to /game/current when an event notification is received
+  useEffect(() => {
+    if (!eventNotification?.gameInstanceId) {
+      hasNavigatedRef.current = null;
+      return;
+    }
+
+    const gameInstanceId = eventNotification.gameInstanceId;
+
+    // Don't navigate if we already navigated for this notification
+    if (hasNavigatedRef.current === gameInstanceId) {
+      return;
+    }
+
+    // Check if we're already on /game/current with the same gameId
+    const isOnCurrentGame =
+      pathname === '/game/current' &&
+      params.gameId === gameInstanceId.toString();
+
+    if (!isOnCurrentGame) {
+      hasNavigatedRef.current = gameInstanceId;
+      // Navigate to /game/current with the gameId
+      router.push({
+        pathname: '/game/current',
+        params: { gameId: gameInstanceId.toString() },
+      });
+    }
+  }, [eventNotification, pathname, params.gameId, router]);
 
   const handleClose = async () => {
     if (!eventNotification?.gameInstanceId) {
@@ -36,28 +66,11 @@ export function EventNotificationModal() {
       return;
     }
 
-    try {
-      setIsCompleting(true);
-      // Complete the event to resume the game
-      await trpcClient.gameInstance.completeEvent.mutate({
-        id: eventNotification.gameInstanceId,
-      });
-      clearEventNotification();
-    } catch (error) {
-      console.error('[EventNotificationModal] Failed to complete event:', error);
-      Alert.alert(
-        'Erreur',
-        'Impossible de reprendre la partie. Veuillez réessayer.',
-        [
-          {
-            text: 'OK',
-            onPress: () => clearEventNotification(),
-          },
-        ]
-      );
-    } finally {
-      setIsCompleting(false);
-    }
+    // Don't complete the event yet - the game stays paused until the user
+    // goes to /assets and returns to /current.
+    // Mark that we need to complete it when returning from assets.
+    setPendingEventCompletion(eventNotification.gameInstanceId);
+    clearEventNotification();
   };
 
   const handleGoToAssets = async () => {
@@ -144,15 +157,10 @@ export function EventNotificationModal() {
                 style={[styles.button, styles.secondaryButton, { borderColor: theme.border }]}
                 onPress={handleClose}
                 activeOpacity={0.7}
-                disabled={isCompleting}
               >
-                {isCompleting ? (
-                  <ActivityIndicator size="small" color={theme.text} />
-                ) : (
-                  <Text style={[styles.buttonText, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
-                    Fermer
-                  </Text>
-                )}
+                <Text style={[styles.buttonText, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
+                  Plus tard
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity

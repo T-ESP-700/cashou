@@ -19,12 +19,19 @@ interface GameStats {
   successes: number;
 }
 
-interface Asset {
+interface AssetData {
   id: number;
   title: string | null;
   symbol: string | null;
   rate: number | null;
+  taux: number | null;
   description: string | null;
+}
+
+interface HoldingData {
+  id: number;
+  quantity: string | number | null;
+  asset: AssetData | null;
 }
 
 interface LevelData {
@@ -61,7 +68,7 @@ export default function GameCurrentScreen() {
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { pendingEventCompletion, setPendingEventCompletion, isOnAssetsScreen, setActiveGameInstanceId } = useNotifications();
+  const { pendingEventCompletion, setPendingEventCompletion, isOnAssetsScreen, setActiveGameInstanceId, eventNotification } = useNotifications();
 
   // Configure header for this screen
   useHeaderOptions({ showBackButton: true });
@@ -75,7 +82,7 @@ export default function GameCurrentScreen() {
   const [isStarting, setIsStarting] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
-  const [holdingsCount, setHoldingsCount] = useState(0);
+  const [holdings, setHoldings] = useState<HoldingData[]>([]);
   const [showNoInvestmentModal, setShowNoInvestmentModal] = useState(false);
   const [isEndingGame, setIsEndingGame] = useState(false);
 
@@ -101,9 +108,6 @@ export default function GameCurrentScreen() {
     successes: 0,
   });
 
-  // Assets simulés pour la démo (à remplacer par de vraies données)
-  const [assets, setAssets] = useState<Asset[]>([
-  ]);
 
   // Calcul de la date de fin de jeu (date de départ + durée)
   const calculateEndDate = useCallback((duration: number): Date => {
@@ -179,14 +183,29 @@ export default function GameCurrentScreen() {
     return gameDate;
   }, [calculateEndDate]);
 
-  // Helper function to load holdings count for a game instance
-  const loadHoldingsCount = async (gInstanceId: number) => {
+  // Helper function to load holdings for a game instance
+  const loadHoldings = async (gInstanceId: number) => {
     try {
-      const holdings = await trpcClient.holding.getByGameInstance.query({ gameInstanceId: gInstanceId });
-      setHoldingsCount(holdings?.length ?? 0);
+      const holdingsData = await trpcClient.holding.getByGameInstance.query({ gameInstanceId: gInstanceId });
+      setHoldings((holdingsData as HoldingData[]) ?? []);
     } catch (err) {
       console.error('Error fetching holdings:', err);
-      setHoldingsCount(0);
+      setHoldings([]);
+    }
+  };
+
+  // Helper function to load wallet balance
+  const loadWalletBalance = async (wId: number) => {
+    try {
+      const wallet = await trpcClient.wallet.getById.query({ id: wId });
+      if (wallet?.amount) {
+        setStats(prev => ({
+          ...prev,
+          cash: Number(wallet.amount),
+        }));
+      }
+    } catch (err) {
+      console.error('Error fetching wallet balance:', err);
     }
   };
 
@@ -217,7 +236,7 @@ export default function GameCurrentScreen() {
       setWalletId(wallet.id);
       setIsPaused(true);
       setIsGameEnded(false);
-      setHoldingsCount(0);
+      setHoldings([]);
 
       return { gameInstance, wallet };
     } catch (err) {
@@ -230,8 +249,10 @@ export default function GameCurrentScreen() {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!levelId) {
-        setError('ID du niveau manquant');
+      // If we have gameId but no levelId, we can still load the game
+      // (e.g., when navigating from a notification)
+      if (!levelId && !gameId) {
+        setError('ID du niveau ou de la partie manquant');
         setIsLoading(false);
         return;
       }
@@ -239,45 +260,55 @@ export default function GameCurrentScreen() {
       try {
         setIsLoading(true);
 
-        // Charger les données du niveau
-        const data = await trpcClient.level.getSummary.query({ id: parseInt(levelId, 10) });
-        setLevelData(data as LevelData);
-
-        // Mettre à jour les stats avec le niveau
-        if (data.level) {
-          setStats(prev => ({
-            ...prev,
-            level: data.level?.number || 1,
-            cash: data.level?.startBalance || 1000,
-          }));
-        }
-
-        // Si on a un gameId, charger l'état de la partie existante
+        // If we have a gameId, load the game instance first
+        // This handles the case when navigating from a notification
         if (gameId) {
-          const gameInstanceId = parseInt(gameId, 10);
-          setGameInstanceId(gameInstanceId);
-          setActiveGameInstanceId(gameInstanceId);
+          const gInstanceId = parseInt(gameId, 10);
+          setGameInstanceId(gInstanceId);
+          setActiveGameInstanceId(gInstanceId);
+
           try {
-            const gameInstance = await trpcClient.gameInstance.getById.query({ id: gameInstanceId });
+            const gameInstance = await trpcClient.gameInstance.getById.query({ id: gInstanceId });
             if (gameInstance) {
               setGameInstanceId(gameInstance.id);
               setIsPaused(gameInstance.isPaused ?? true);
               setIsGameEnded(gameInstance.isEnded ?? false);
 
-              // Charger le wallet associé à cette instance
+              // If we have level data from the gameInstance, use it
+              if (gameInstance.level) {
+                const levelFromGame = {
+                  level: {
+                    id: gameInstance.level.id,
+                    title: gameInstance.level.title ?? null,
+                    number: gameInstance.level.number ?? null,
+                    startBalance: gameInstance.level.startBalance ?? null,
+                    duration: gameInstance.level.duration ?? null,
+                    speed: gameInstance.level.speed ?? null,
+                  },
+                };
+                setLevelData(levelFromGame);
+                setStats(prev => ({
+                  ...prev,
+                  level: gameInstance.level?.number || 1,
+                  cash: gameInstance.level?.startBalance || 1000,
+                }));
+              }
+
+              // Load the wallet associated with this instance
               try {
                 const wallets = await trpcClient.wallet.getByGameInstance.query({ gameInstanceId: gameInstance.id });
                 if (wallets && wallets.length > 0) {
                   setWalletId(wallets[0].id);
+                  await loadWalletBalance(wallets[0].id);
                 }
               } catch (walletErr) {
                 console.error('Error fetching wallet:', walletErr);
               }
 
-              // Charger les holdings
-              await loadHoldingsCount(gameInstance.id);
+              // Load holdings
+              await loadHoldings(gameInstance.id);
 
-              // Initialiser l'état du temps pour l'animation locale
+              // Initialize game time state
               if (gameInstance.level) {
                 const duration = gameInstance.level.duration ?? 30;
                 const speed = gameInstance.level.speed ?? 1;
@@ -292,17 +323,15 @@ export default function GameCurrentScreen() {
                 };
                 setGameTimeState(newTimeState);
 
-                // Calculer la date cible pour l'animation
+                // Calculate target date for animation
                 const target = isEnded
                   ? calculateEndDate(duration)
                   : (() => {
-                      // Calculer la date actuelle du jeu
                       const now = Date.now();
                       const startTime = new Date(gameInstance.createdAt).getTime();
                       let elapsedSeconds = Math.floor((now - startTime) / 1000);
                       elapsedSeconds -= (gameInstance.totalPausedDuration ?? 0);
 
-                      // Si le jeu est actuellement en pause, soustraire aussi la durée de pause actuelle
                       if (gameInstance.isPaused && gameInstance.pausedAt) {
                         const currentPauseDuration = Math.floor((now - new Date(gameInstance.pausedAt).getTime()) / 1000);
                         elapsedSeconds -= currentPauseDuration;
@@ -317,13 +346,11 @@ export default function GameCurrentScreen() {
                       return currentDate;
                     })();
 
-                // Si la partie est terminée, afficher directement la date finale sans animation
                 if (isEnded) {
                   setGameDate(target);
                 } else if (target.getTime() > GAME_START_DATE.getTime()) {
-                  // Sinon, animer si la date cible est différente de la date de départ
                   setTargetDate(target);
-                  setGameDate(new Date(GAME_START_DATE)); // Commencer depuis le début
+                  setGameDate(new Date(GAME_START_DATE));
                   setIsAnimating(true);
                 } else {
                   setGameDate(target);
@@ -332,20 +359,41 @@ export default function GameCurrentScreen() {
             }
           } catch (err) {
             console.error('Error fetching game instance:', err);
-            // La partie n'existe plus, on réinitialise
             setGameInstanceId(null);
             setActiveGameInstanceId(null);
             setIsPaused(true);
             setGameTimeState(null);
             setIsGameEnded(false);
+            // If we only had gameId and it failed, show error
+            if (!levelId) {
+              setError('Partie introuvable');
+              setIsLoading(false);
+              return;
+            }
           }
-        } else if (user && data.level) {
-          // Pas de gameId fourni, créer automatiquement une instance en mode préparation
-          await createGameInstanceForPreparation(data as LevelData);
+        }
+
+        // If we have levelId, load level data (or skip if already loaded from gameInstance)
+        if (levelId) {
+          const data = await trpcClient.level.getSummary.query({ id: parseInt(levelId, 10) });
+          setLevelData(data as LevelData);
+
+          if (data.level) {
+            setStats(prev => ({
+              ...prev,
+              level: data.level?.number || 1,
+              cash: data.level?.startBalance || 1000,
+            }));
+          }
+
+          // If no gameId was provided and we have a user, create game instance
+          if (!gameId && user && data.level) {
+            await createGameInstanceForPreparation(data as LevelData);
+          }
         }
       } catch (err) {
-        console.error('Error fetching level data:', err);
-        setError('Erreur lors du chargement du niveau');
+        console.error('Error fetching data:', err);
+        setError('Erreur lors du chargement');
       } finally {
         setIsLoading(false);
       }
@@ -392,6 +440,64 @@ export default function GameCurrentScreen() {
       if (animationFrame) clearTimeout(animationFrame);
     };
   }, [isAnimating, targetDate]);
+
+  // Force pause when an event notification is active
+  // This ensures the game pauses immediately when the server triggers an event
+  // Also fetch the latest game state from backend to ensure date is in sync
+  useEffect(() => {
+    if (!gameInstanceId) return;
+
+    // Only force pause when event notification popup is visible
+    // Don't force pause based on pendingEventCompletion alone - let backend be source of truth
+    if (eventNotification) {
+      console.log('[GameCurrentScreen] ⏸️ Forcing pause due to event notification');
+      setIsPaused(true);
+
+      // Fetch latest game state from backend to sync the date
+      const syncFromBackend = async () => {
+        try {
+          const instance = await trpcClient.gameInstance.getById.query({ id: gameInstanceId });
+          if (instance?.level) {
+            console.log('[GameCurrentScreen] 🔄 Syncing game state from backend after event pause');
+
+            setGameTimeState({
+              createdAt: new Date(instance.createdAt),
+              totalPausedDuration: instance.totalPausedDuration ?? 0,
+              duration: instance.level.duration ?? 30,
+              speed: instance.level.speed ?? 1,
+              isEnded: instance.isEnded ?? false,
+            });
+
+            // Calculate and set the current game date based on backend state
+            const now = Date.now();
+            const startTime = new Date(instance.createdAt).getTime();
+            let elapsedRealSeconds = Math.floor((now - startTime) / 1000);
+            elapsedRealSeconds -= (instance.totalPausedDuration ?? 0);
+
+            // If currently paused, subtract current pause duration
+            if (instance.isPaused && instance.pausedAt) {
+              const currentPauseDuration = Math.floor((now - new Date(instance.pausedAt).getTime()) / 1000);
+              elapsedRealSeconds -= currentPauseDuration;
+            }
+
+            const speed = instance.level.speed ?? 1;
+            const elapsedGameSeconds = elapsedRealSeconds * speed;
+            const elapsedGameDays = Math.floor(elapsedGameSeconds / 86400);
+
+            const syncedDate = new Date(GAME_START_DATE);
+            syncedDate.setDate(syncedDate.getDate() + elapsedGameDays);
+            setGameDate(syncedDate);
+
+            console.log('[GameCurrentScreen] 📅 Synced game date:', syncedDate.toLocaleDateString('fr-FR'));
+          }
+        } catch (err) {
+          console.error('[GameCurrentScreen] Error syncing game state:', err);
+        }
+      };
+
+      syncFromBackend();
+    }
+  }, [eventNotification, gameInstanceId]);
 
   // Animation locale de la date en temps réel (aucun appel backend)
   useEffect(() => {
@@ -440,7 +546,7 @@ export default function GameCurrentScreen() {
             const wasPaused = isPaused;
             const nowPaused = instance.isPaused ?? false;
 
-            console.log('[GameCurrentScreen] 📊 Game state: isPaused=', nowPaused, '(was:', wasPaused, ')');
+            console.log('[GameCurrentScreen] 📊 Game state: isPaused=', nowPaused, '(was:', wasPaused, '), isEnded=', isEnded);
 
             setGameTimeState({
               createdAt: new Date(instance.createdAt),
@@ -463,27 +569,32 @@ export default function GameCurrentScreen() {
             }
           }
 
-          // Recharger les holdings pour mettre à jour le compteur
-          await loadHoldingsCount(gameInstanceId);
+          // Recharger les holdings et le solde du wallet
+          await loadHoldings(gameInstanceId);
+          if (walletId) {
+            await loadWalletBalance(walletId);
+          }
         } catch (err) {
           console.error('[GameCurrentScreen] Error resyncing game state:', err);
         }
       };
 
       resync();
-    }, [gameInstanceId, calculateEndDate, isPaused])
+    }, [gameInstanceId, calculateEndDate, isPaused, walletId])
   );
 
   // Redirection vers l'écran de résumé quand la partie est terminée
   useEffect(() => {
+    console.log('[GameCurrentScreen] 🎯 Redirect effect check: isGameEnded=', isGameEnded, 'gameInstanceId=', gameInstanceId);
     if (isGameEnded && gameInstanceId) {
+      console.log('[GameCurrentScreen] 🚀 Redirecting to summary for game', gameInstanceId);
       // Rediriger vers l'écran de résumé
       router.replace({
         pathname: '/(tabs)/summary',
         params: { gameId: gameInstanceId.toString() },
       });
     }
-  }, [isGameEnded, gameInstanceId]);
+  }, [isGameEnded, gameInstanceId, router]);
 
   const handleAddAsset = () => {
     if (!gameInstanceId || !walletId) {
@@ -499,9 +610,17 @@ export default function GameCurrentScreen() {
     });
   };
 
-  const handleAssetPress = (asset: Asset) => {
-    // TODO: Ouvrir le détail de l'asset ou permettre l'achat
-    console.log('Asset pressed:', asset.title);
+  const handleHoldingPress = (holding: HoldingData) => {
+    if (!gameInstanceId || !walletId || !holding.asset) return;
+    // Naviguer vers la page des assets avec l'asset pré-sélectionné
+    router.push({
+      pathname: '/game/assets',
+      params: {
+        gameInstanceId: gameInstanceId.toString(),
+        walletId: walletId.toString(),
+        selectedAssetId: holding.asset.id.toString(),
+      },
+    });
   };
 
   // Fonction pour effectivement démarrer le jeu (unpause)
@@ -550,7 +669,7 @@ export default function GameCurrentScreen() {
     }
 
     // Vérifier si des investissements ont été faits
-    if (holdingsCount === 0) {
+    if (holdings.length === 0) {
       setShowNoInvestmentModal(true);
       return;
     }
@@ -722,21 +841,26 @@ export default function GameCurrentScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Asset Cards */}
-            {assets.map((asset) => (
-              <View key={asset.id} style={styles.assetCardWrapper}>
+            {/* Holding Cards */}
+            {holdings.map((holding) => (
+              <View key={holding.id} style={styles.assetCardWrapper}>
                 <TouchableOpacity
                   style={[styles.assetCard, { backgroundColor: theme.card, borderColor: theme.border }]}
-                  onPress={() => handleAssetPress(asset)}
+                  onPress={() => handleHoldingPress(holding)}
                   activeOpacity={0.8}
                 >
                   <Text style={[styles.assetTitle, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
-                    {asset.title}
+                    {holding.asset?.title ?? 'Asset'}
+                  </Text>
+                  <Text style={[styles.holdingQuantity, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
+                    {Number(holding.quantity ?? 0).toFixed(2)}€
                   </Text>
                   <View style={styles.assetRateContainer}>
-                    <Text style={styles.assetRateArrow}>▲</Text>
+                    <Text style={[styles.assetRateArrow, { color: (holding.asset?.taux ?? 0) >= 0 ? '#4CAF50' : '#F44336' }]}>
+                      {(holding.asset?.taux ?? 0) >= 0 ? '▲' : '▼'}
+                    </Text>
                     <Text style={[styles.assetRate, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
-                      {asset.rate}%
+                      {holding.asset?.taux ?? 0}%
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -810,7 +934,7 @@ export default function GameCurrentScreen() {
               ) : isPaused ? (
                 <PauseIcon width={28} height={28} stroke={theme.text} />
               ) : (
-                <FastForwardIcon width={28} height={28} fill={theme.text} />
+                <FastForwardIcon width={28} height={28} color={theme.text} />
               )}
               <Text style={[styles.dateText, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
                 {formatDate(gameDate)}
@@ -957,7 +1081,12 @@ const styles = StyleSheet.create({
   },
   assetTitle: {
     fontSize: 14,
-    marginBottom: 12,
+    marginBottom: 4,
+  },
+  holdingQuantity: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
   },
   assetRateContainer: {
     flexDirection: 'row',

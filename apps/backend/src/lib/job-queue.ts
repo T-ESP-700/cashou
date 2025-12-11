@@ -11,10 +11,16 @@ let boss: PgBoss | null = null;
 export const JOB_NAMES = {
   /** Triggers end of game at 100% duration */
   GAME_END: "game-end",
+  /** Triggers a game event at a scheduled time */
+  GAME_EVENT: "game-event",
 } as const;
 
 export interface GameEndJobData {
   gameInstanceId: number;
+}
+
+export interface GameEventJobData {
+  gameInstanceEventId: number;
 }
 
 /**
@@ -59,7 +65,7 @@ export async function getJobQueue(): Promise<PgBoss> {
  * Create queues if they don't exist (required for pg-boss v10+)
  */
 async function createQueuesIfNotExist(queue: PgBoss): Promise<void> {
-  const queuesToCreate = [JOB_NAMES.GAME_END];
+  const queuesToCreate = [JOB_NAMES.GAME_END, JOB_NAMES.GAME_EVENT];
 
   for (const queueName of queuesToCreate) {
     try {
@@ -116,13 +122,69 @@ export async function scheduleGameEnd(
 }
 
 /**
- * Cancel all scheduled jobs for a game instance
+ * Schedule a game event job
+ * @param gameInstanceEventId - The ID of the GameInstanceEvent to trigger
+ * @param scheduledAt - The date/time when the event should be triggered
+ */
+export async function scheduleGameEvent(
+  gameInstanceEventId: number,
+  scheduledAt: Date
+): Promise<string | null> {
+  const queue = await getJobQueue();
+
+  const data: GameEventJobData = {
+    gameInstanceEventId,
+  };
+
+  // Calculate delay in seconds from now
+  const delaySeconds = Math.max(0, Math.floor((scheduledAt.getTime() - Date.now()) / 1000));
+
+  const jobId = await queue.send(JOB_NAMES.GAME_EVENT, data, {
+    startAfter: delaySeconds,
+    singletonKey: `game-event-${gameInstanceEventId}`,
+    retryLimit: 3,
+    retryDelay: 60,
+  });
+
+  console.log(
+    `[pg-boss] Scheduled game event ${gameInstanceEventId} at ${scheduledAt.toISOString()} (in ${delaySeconds}s, job: ${jobId})`
+  );
+
+  return jobId;
+}
+
+/**
+ * Cancel a specific game event job
+ */
+export async function cancelGameEvent(gameInstanceEventId: number): Promise<void> {
+  const queue = await getJobQueue();
+
+  const jobIds = await getJobIdsBySingletonPattern(
+    JOB_NAMES.GAME_EVENT,
+    `game-event-${gameInstanceEventId}`
+  );
+
+  for (const jobId of jobIds) {
+    try {
+      await queue.cancel(JOB_NAMES.GAME_EVENT, jobId);
+    } catch {
+      // Job might not exist anymore, ignore
+    }
+  }
+
+  if (jobIds.length > 0) {
+    console.log(`[pg-boss] Cancelled game event job for event ${gameInstanceEventId}`);
+  }
+}
+
+/**
+ * Cancel all scheduled jobs for a game instance (both GAME_END and GAME_EVENT jobs)
  * Uses raw SQL to find and cancel jobs by singleton key pattern
  */
 export async function cancelGameJobs(gameInstanceId: number): Promise<void> {
   const queue = await getJobQueue();
 
-  // Get job ID for game end
+  // Get job IDs for game end
   const gameEndJobIds = await getJobIdsBySingletonPattern(
     JOB_NAMES.GAME_END,
     `game-end-${gameInstanceId}`
@@ -136,9 +198,53 @@ export async function cancelGameJobs(gameInstanceId: number): Promise<void> {
     }
   }
 
+  // Get job IDs for game events (using pattern matching with %)
+  const gameEventJobIds = await getJobIdsByGameInstanceId(gameInstanceId);
+
+  for (const jobId of gameEventJobIds) {
+    try {
+      await queue.cancel(JOB_NAMES.GAME_EVENT, jobId);
+    } catch {
+      // Job might not exist anymore, ignore
+    }
+  }
+
   console.log(
-    `[pg-boss] Cancelled ${gameEndJobIds.length} jobs for game ${gameInstanceId}`
+    `[pg-boss] Cancelled ${gameEndJobIds.length} game-end jobs and ${gameEventJobIds.length} game-event jobs for game ${gameInstanceId}`
   );
+}
+
+/**
+ * Get game event job IDs by game instance ID
+ * Looks up GameInstanceEvents in the database to find the corresponding job singleton keys
+ */
+async function getJobIdsByGameInstanceId(gameInstanceId: number): Promise<string[]> {
+  const { default: prisma } = await import("../database.ts");
+
+  // Get all non-triggered events for this game instance
+  const events = await prisma.gameInstanceEvent.findMany({
+    where: {
+      gameInstanceId,
+      triggeredAt: null,
+    },
+    select: { id: true },
+  });
+
+  if (events.length === 0) {
+    return [];
+  }
+
+  // Get job IDs for each event
+  const allJobIds: string[] = [];
+  for (const event of events) {
+    const jobIds = await getJobIdsBySingletonPattern(
+      JOB_NAMES.GAME_EVENT,
+      `game-event-${event.id}`
+    );
+    allJobIds.push(...jobIds);
+  }
+
+  return allJobIds;
 }
 
 /**

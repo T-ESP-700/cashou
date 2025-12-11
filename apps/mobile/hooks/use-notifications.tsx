@@ -216,6 +216,68 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     };
   }, [expoPushToken, isAuthenticated, registerForPushNotifications]);
 
+  // Check for pending events on app launch and when returning to foreground
+  // This is a fallback for when push notification didn't trigger properly (e.g., Expo Go redirect issue)
+  const checkPendingEvent = useCallback(async () => {
+    // Don't check if:
+    // - Not authenticated
+    // - Already showing an event notification
+    // - Already have a pending event completion (user clicked "Plus tard" or "Voir mes assets")
+    // - Currently on assets screen
+    if (!isAuthenticated || eventNotification || pendingEventCompletion || assetsScreenDepthRef.current > 0) {
+      console.log('[Notifications] Skipping pending event check:', {
+        isAuthenticated,
+        hasEventNotification: !!eventNotification,
+        hasPendingCompletion: !!pendingEventCompletion,
+        assetsScreenDepth: assetsScreenDepthRef.current,
+      });
+      return;
+    }
+
+    try {
+      const pendingEvent = await trpcClient.auth.getPendingEvent.query();
+      if (pendingEvent) {
+        console.log('[Notifications] Found pending event via fallback check:', pendingEvent);
+        setEventNotification({
+          type: 'EVENT',
+          gameInstanceId: pendingEvent.gameInstanceId,
+          eventId: pendingEvent.eventId,
+          title: pendingEvent.title,
+          body: pendingEvent.body,
+        });
+      }
+    } catch (error) {
+      console.error('[Notifications] Error checking pending event:', error);
+    }
+  }, [isAuthenticated, eventNotification, pendingEventCompletion]);
+
+  // Check for pending events on initial mount when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Small delay to let the app fully initialize
+      const timeoutId = setTimeout(() => {
+        checkPendingEvent();
+      }, 1000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isAuthenticated, checkPendingEvent]);
+
+  // Check for pending events when app returns to foreground
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && isAuthenticated) {
+        // Small delay to ensure app state is stable
+        setTimeout(() => {
+          checkPendingEvent();
+        }, 500);
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [isAuthenticated, checkPendingEvent]);
+
   // Register global setters so the handler can update state directly
   useEffect(() => {
     setGlobalNotificationSetters(setEventNotification, setNotification);
