@@ -203,7 +203,9 @@ export class InvestmentService {
     const holdingWithAsset = existingHolding as HoldingWithAsset;
     const totalInterests = this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
     const proportionalInterests = (amount / currentQuantity) * totalInterests;
-    const amountReceived = amount + proportionalInterests;
+    // Arrondi supérieur pour éviter les centimes perdus qui resteraient en cash
+    const amountReceived = Math.ceil(amount + proportionalInterests);
+    const roundedInterests = amountReceived - amount;
 
     // 4. Exécuter la transaction
     return await this.prisma.$transaction(async (tx) => {
@@ -257,7 +259,7 @@ export class InvestmentService {
       return {
         holding: updatedHolding,
         amountReceived,
-        interests: proportionalInterests,
+        interests: roundedInterests,
       };
     });
   }

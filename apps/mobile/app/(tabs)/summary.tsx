@@ -52,6 +52,7 @@ export default function GameSummaryScreen() {
   const [error, setError] = useState<string | null>(null);
   const [endGameResult, setEndGameResult] = useState<EndGameResult | null>(null);
   const [gameInstance, setGameInstance] = useState<GameInstanceData | null>(null);
+  const [levelQuizId, setLevelQuizId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -68,6 +69,18 @@ export default function GameSummaryScreen() {
         const instance = await trpcClient.gameInstance.getById.query({ id: parseInt(gameId, 10) });
         if (instance) {
           setGameInstance(instance as GameInstanceData);
+
+          // Fetch quiz for this level
+          if (instance.level?.id) {
+            try {
+              const quizzes = await trpcClient.quiz.getByLevel.query({ levelId: instance.level.id });
+              if (quizzes && quizzes.length > 0) {
+                setLevelQuizId(quizzes[0].id);
+              }
+            } catch (quizErr) {
+              console.error('Error fetching level quiz:', quizErr);
+            }
+          }
         }
 
         // Fetch end game results
@@ -86,6 +99,15 @@ export default function GameSummaryScreen() {
 
   const handleGoHome = () => {
     router.replace('/(tabs)');
+  };
+
+  const handleGoToQuiz = () => {
+    if (levelQuizId) {
+      router.push({
+        pathname: '/(tabs)/daily-quiz',
+        params: { quizId: levelQuizId.toString() }
+      });
+    }
   };
 
   // Calculate time elapsed (excluding paused time)
@@ -266,6 +288,17 @@ export default function GameSummaryScreen() {
             </View>
           ))}
         </View>
+
+        {/* Quiz button */}
+        {levelQuizId && (
+          <TouchableOpacity
+            style={styles.quizButton}
+            onPress={handleGoToQuiz}
+          >
+            <Ionicons name="school-outline" size={24} color="#FFFFFF" />
+            <Text style={styles.quizButtonText}>Faire le quiz du niveau</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </View>
   );
@@ -410,6 +443,21 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   buttonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  quizButton: {
+    backgroundColor: '#FF9800',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+    marginTop: 8,
+  },
+  quizButtonText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },

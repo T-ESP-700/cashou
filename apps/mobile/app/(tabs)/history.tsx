@@ -406,6 +406,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'flex-start',
     paddingHorizontal: 16,
     paddingTop: 24,
     paddingBottom: 32,

@@ -230,8 +230,9 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
+    paddingTop: 32,
     gap: 16,
   },
   loadingText: {
@@ -239,9 +240,10 @@ const styles = StyleSheet.create({
   },
   errorContainer: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
     padding: 16,
+    paddingTop: 32,
     gap: 16,
   },
   errorText: {
@@ -250,9 +252,10 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
     padding: 32,
+    paddingTop: 32,
     gap: 16,
   },
   emptyText: {
@@ -272,6 +275,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   listContent: {
+    flexGrow: 1,
+    justifyContent: 'flex-start',
     padding: 16,
     gap: 12,
   },

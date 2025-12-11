@@ -51,6 +51,8 @@ interface GameTimeState {
   duration: number; // jours de jeu
   speed: number; // multiplicateur
   isEnded: boolean; // partie terminée
+  isPaused: boolean; // partie en pause
+  pausedAt: Date | null; // date de début de pause actuelle
 }
 
 // Constantes pour l'animation de la date
@@ -166,6 +168,13 @@ export default function GameCurrentScreen() {
     // Temps réel écoulé (en secondes)
     let elapsedSeconds = Math.floor((now - startTime) / 1000);
     elapsedSeconds -= timeState.totalPausedDuration;
+
+    // Si actuellement en pause, soustraire aussi la durée de pause en cours
+    if (timeState.isPaused && timeState.pausedAt) {
+      const currentPauseDuration = Math.floor((now - timeState.pausedAt.getTime()) / 1000);
+      elapsedSeconds -= currentPauseDuration;
+    }
+
     elapsedSeconds = Math.max(0, elapsedSeconds);
 
     // Durée totale en secondes réelles
@@ -320,6 +329,8 @@ export default function GameCurrentScreen() {
                   duration,
                   speed,
                   isEnded,
+                  isPaused: gameInstance.isPaused ?? false,
+                  pausedAt: gameInstance.pausedAt ? new Date(gameInstance.pausedAt) : null,
                 };
                 setGameTimeState(newTimeState);
 
@@ -460,35 +471,17 @@ export default function GameCurrentScreen() {
           if (instance?.level) {
             console.log('[GameCurrentScreen] 🔄 Syncing game state from backend after event pause');
 
+            // Update gameTimeState - the date will be calculated automatically
+            // by the initial date effect which watches gameTimeState changes
             setGameTimeState({
               createdAt: new Date(instance.createdAt),
               totalPausedDuration: instance.totalPausedDuration ?? 0,
               duration: instance.level.duration ?? 30,
               speed: instance.level.speed ?? 1,
               isEnded: instance.isEnded ?? false,
+              isPaused: instance.isPaused ?? false,
+              pausedAt: instance.pausedAt ? new Date(instance.pausedAt) : null,
             });
-
-            // Calculate and set the current game date based on backend state
-            const now = Date.now();
-            const startTime = new Date(instance.createdAt).getTime();
-            let elapsedRealSeconds = Math.floor((now - startTime) / 1000);
-            elapsedRealSeconds -= (instance.totalPausedDuration ?? 0);
-
-            // If currently paused, subtract current pause duration
-            if (instance.isPaused && instance.pausedAt) {
-              const currentPauseDuration = Math.floor((now - new Date(instance.pausedAt).getTime()) / 1000);
-              elapsedRealSeconds -= currentPauseDuration;
-            }
-
-            const speed = instance.level.speed ?? 1;
-            const elapsedGameSeconds = elapsedRealSeconds * speed;
-            const elapsedGameDays = Math.floor(elapsedGameSeconds / 86400);
-
-            const syncedDate = new Date(GAME_START_DATE);
-            syncedDate.setDate(syncedDate.getDate() + elapsedGameDays);
-            setGameDate(syncedDate);
-
-            console.log('[GameCurrentScreen] 📅 Synced game date:', syncedDate.toLocaleDateString('fr-FR'));
           }
         } catch (err) {
           console.error('[GameCurrentScreen] Error syncing game state:', err);
@@ -498,6 +491,17 @@ export default function GameCurrentScreen() {
       syncFromBackend();
     }
   }, [eventNotification, gameInstanceId]);
+
+  // Calculate initial game date whenever gameTimeState changes
+  // This ensures the correct date is shown even when paused
+  useEffect(() => {
+    if (!gameTimeState) return;
+
+    // Calculate and set the current game date
+    const currentDate = calculateGameDate(gameTimeState);
+    setGameDate(currentDate);
+    console.log('[GameCurrentScreen] 📅 Initial date calculated:', currentDate.toLocaleDateString('fr-FR'));
+  }, [gameTimeState, calculateGameDate]);
 
   // Animation locale de la date en temps réel (aucun appel backend)
   useEffect(() => {
@@ -536,9 +540,10 @@ export default function GameCurrentScreen() {
         try {
           console.log('[GameCurrentScreen] 🔄 Resyncing game state for gameInstanceId:', gameInstanceId);
 
-          // Add a small delay to let the backend process any pending resume operations
-          // This ensures we get the latest state after assets screen resumes the game
-          await new Promise(resolve => setTimeout(resolve, 200));
+          // Add a delay to let the backend process any pending operations
+          // /assets has a 150ms delay before calling completeEvent, plus execution time
+          // So we wait 400ms to ensure the backend state is up to date
+          await new Promise(resolve => setTimeout(resolve, 400));
 
           const instance = await trpcClient.gameInstance.getById.query({ id: gameInstanceId });
           if (instance?.level) {
@@ -554,6 +559,8 @@ export default function GameCurrentScreen() {
               duration: instance.level.duration ?? 30,
               speed: instance.level.speed ?? 1,
               isEnded,
+              isPaused: nowPaused,
+              pausedAt: instance.pausedAt ? new Date(instance.pausedAt) : null,
             });
             setIsPaused(nowPaused);
             setIsGameEnded(isEnded);
@@ -612,13 +619,13 @@ export default function GameCurrentScreen() {
 
   const handleHoldingPress = (holding: HoldingData) => {
     if (!gameInstanceId || !walletId || !holding.asset) return;
-    // Naviguer vers la page des assets avec l'asset pré-sélectionné
+    // Naviguer vers la fiche détaillée de l'asset
     router.push({
-      pathname: '/game/assets',
+      pathname: '/game/asset-detail',
       params: {
+        id: holding.asset.id.toString(),
         gameInstanceId: gameInstanceId.toString(),
         walletId: walletId.toString(),
-        selectedAssetId: holding.asset.id.toString(),
       },
     });
   };
@@ -648,6 +655,8 @@ export default function GameCurrentScreen() {
         duration: levelData.level.duration ?? 30,
         speed: levelData.level.speed ?? 1,
         isEnded: false,
+        isPaused: false,
+        pausedAt: null,
       });
     } catch (err) {
       console.error('Error starting game:', err);
@@ -934,7 +943,7 @@ export default function GameCurrentScreen() {
               ) : isPaused ? (
                 <PauseIcon width={28} height={28} stroke={theme.text} />
               ) : (
-                <FastForwardIcon width={28} height={28} color={theme.text} />
+                <FastForwardIcon width={28} height={28} fill={theme.text} />
               )}
               <Text style={[styles.dateText, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
                 {formatDate(gameDate)}
@@ -1069,7 +1078,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     borderWidth: 2,
-    minHeight: 100,
+    height: 120,
   },
   addAssetCard: {
     justifyContent: 'center',

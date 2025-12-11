@@ -13,7 +13,7 @@ interface HeaderContextType {
 }
 
 const defaultOptions: HeaderOptions = {
-  showBackButton: true,
+  showBackButton: false,
   onMenuPress: undefined,
   onBackPress: undefined,
 };
