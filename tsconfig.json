@@ -2,14 +2,19 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
-    "lib": ["ES2022"],
+    "lib": [
+      "ES2022"
+    ],
     "moduleResolution": "bundler",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "@cashou/*": ["./packages/*/src"]
+      "@cashou/*": [
+        "./packages/*/src"
+      ]
     }
-  }
+  },
+  "extends": "expo/tsconfig.base"
 }

@@ -26,6 +26,8 @@ import { gameUserRouter } from './routers/game_user.router';
 import { walletRouter } from './routers/wallet.router';
 import { transactionRouter } from './routers/transaction.router';
 import { notificationRouter } from './routers/notification.router';
+import { holdingRouter } from './routers/holding.router';
+import { investmentRouter } from './routers/investment.router';
 import { dicoEntryRouter } from './routers/dico-entry.router';
 
 // Main tRPC router
@@ -64,9 +66,11 @@ export const trpcRouter = router({
   quizQuestion: quizQuestionRouter,
   answer: answerRouter,
 
-  // Wallet system
+  // Wallet & Investment system
   wallet: walletRouter,
   transaction: transactionRouter,
+  holding: holdingRouter,
+  investment: investmentRouter,
 
   // Notification system
   notification: notificationRouter,

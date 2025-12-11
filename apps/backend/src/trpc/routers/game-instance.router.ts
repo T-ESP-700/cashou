@@ -112,6 +112,17 @@ export const gameInstanceRouter = t.router({
     }),
 
   /**
+   * Démarre une partie en mode préparation (première fois)
+   * Réinitialise le createdAt et démarre le chrono
+   * Endpoint: POST http://localhost:3000/trpc/gameInstance.start
+   */
+  start: t.procedure
+    .input(gameInstanceIdSchema)
+    .mutation(async ({ input }) => {
+      return await gameInstanceService.start(input.id);
+    }),
+
+  /**
    * Met à jour le statut d’action requise
    * Endpoint: POST http://localhost:3000/trpc/gameInstance.setActionRequired
    */
@@ -152,6 +163,19 @@ export const gameInstanceRouter = t.router({
     .input(gameInstanceIdSchema)
     .query(async ({ input }) => {
       return await gameInstanceService.getTimeInfo(input.id);
+    }),
+
+  /**
+   * Reinitialise un niveau pour un utilisateur (dev only)
+   * Endpoint: POST http://localhost:3000/trpc/gameInstance.resetLevel
+   */
+  resetLevel: t.procedure
+    .input(z.object({
+      userId: z.string().min(1, "L'ID de l'utilisateur est requis"),
+      levelId: z.number().int().positive("L'ID du niveau est requis"),
+    }))
+    .mutation(async ({ input }) => {
+      return await gameInstanceService.resetLevelForUser(input.userId, input.levelId);
     }),
 });
 

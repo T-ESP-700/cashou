@@ -27,7 +27,8 @@
     "test:integration": "bun test tests/service/level.service.integration.test.ts",
     "test:regression": "bun test tests/service/level.service.regression.test.ts",
     "test:router": "bun test tests/router/level.router.test.ts",
-    "test:grep:unit": "bun test --grep='Tests unitaires'"
+    "test:grep:unit": "bun test --grep='Tests unitaires'",
+    "healthy:game": "bun run scripts/healthy-game.ts"
   },
   "dependencies": {
     "@cashou/auth": "workspace:*",

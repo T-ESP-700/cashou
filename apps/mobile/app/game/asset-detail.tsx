@@ -6,8 +6,10 @@ import {
   StyleSheet,
   useColorScheme as useRNColorScheme,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
@@ -20,16 +22,20 @@ export default function AssetDetailScreen() {
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const router = useRouter();
   const params = useLocalSearchParams();
+  const insets = useSafeAreaInsets();
   const { activeGameInstanceId, pendingEventCompletion, setPendingEventCompletion, setAssetsScreenDepth, assetsScreenDepthRef, setIsOnAssetsScreen, setPausedByAssets } = useNotifications();
   const { user } = useAuth();
 
   const [asset, setAsset] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentHolding, setCurrentHolding] = useState(0);
 
-  // Get asset ID from URL params
+  // Get params from URL
   const assetIdParam = params?.id;
   const assetId = Array.isArray(assetIdParam) ? assetIdParam[0] : assetIdParam;
+  const gameInstanceId = params?.gameInstanceId as string;
+  const walletId = params?.walletId as string;
 
   // Use refs to track values needed during cleanup to avoid stale closure issues
   const activeGameInstanceIdRef = useRef(activeGameInstanceId);
@@ -144,6 +150,19 @@ export default function AssetDetailScreen() {
         setError(null);
         const data = await trpcClient.asset.getById.query({ id: parseInt(assetId) });
         setAsset(data);
+
+        // Fetch current holding if walletId is provided
+        if (walletId) {
+          try {
+            const holdings = await trpcClient.holding.getByWallet.query({ walletId: parseInt(walletId) });
+            const holding = holdings.find((h: any) => h.assetId === parseInt(assetId));
+            if (holding) {
+              setCurrentHolding(Number(holding.quantity) || 0);
+            }
+          } catch (e) {
+            console.error('[AssetDetail] Failed to load holding:', e);
+          }
+        }
       } catch (e: any) {
         console.error('[AssetDetail] Failed to load asset:', e);
         setError(e?.message ? String(e.message) : 'Impossible de charger l\'asset');
@@ -153,11 +172,37 @@ export default function AssetDetailScreen() {
     };
 
     fetchAsset();
-  }, [assetId]);
+  }, [assetId, walletId]);
+
+  const handleBuy = () => {
+    router.push({
+      pathname: '/game/transaction',
+      params: {
+        assetId,
+        type: 'buy',
+        gameInstanceId,
+        walletId,
+      },
+    });
+  };
+
+  const handleSell = () => {
+    router.push({
+      pathname: '/game/transaction',
+      params: {
+        assetId,
+        type: 'sell',
+        gameInstanceId,
+        walletId,
+      },
+    });
+  };
+
+  const canTrade = gameInstanceId && walletId;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: canTrade ? 100 : 32 }]}>
         {loading ? (
           <View style={styles.centerContainer}>
             <ActivityIndicator size="large" color={theme.accent} />
@@ -186,6 +231,21 @@ export default function AssetDetailScreen() {
                 </View>
               )}
             </View>
+
+            {/* Current Holding Section */}
+            {currentHolding > 0 && (
+              <View style={[styles.section, styles.holdingSection, { backgroundColor: '#4CAF5020', borderColor: '#4CAF50' }]}>
+                <View style={styles.holdingHeader}>
+                  <Ionicons name="wallet" size={24} color="#4CAF50" />
+                  <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading, marginBottom: 0, marginLeft: 8 }]}>
+                    Votre position
+                  </Text>
+                </View>
+                <Text style={[styles.holdingValue, { color: '#4CAF50', fontFamily: CashouTheme.fonts.heading }]}>
+                  {Math.round(currentHolding)} EUR
+                </Text>
+              </View>
+            )}
 
             {/* Rate Section */}
             {typeof asset.taux === 'number' && (
@@ -331,6 +391,34 @@ export default function AssetDetailScreen() {
           </>
         ) : null}
       </ScrollView>
+
+      {/* Bottom Buy/Sell Buttons */}
+      {canTrade && asset && !loading && !error && (
+        <View style={[styles.bottomButtons, { paddingBottom: insets.bottom + 16, backgroundColor: theme.background }]}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.buyButton]}
+            onPress={handleBuy}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="arrow-down-circle" size={24} color="#FFFFFF" />
+            <Text style={styles.actionButtonText}>Acheter</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              styles.sellButton,
+              currentHolding === 0 && styles.actionButtonDisabled,
+            ]}
+            onPress={handleSell}
+            activeOpacity={0.8}
+            disabled={currentHolding === 0}
+          >
+            <Ionicons name="arrow-up-circle" size={24} color="#FFFFFF" />
+            <Text style={styles.actionButtonText}>Vendre</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -422,5 +510,48 @@ const styles = StyleSheet.create({
   },
   infoValue: {
     fontSize: 14,
+  },
+  holdingSection: {
+    alignItems: 'center',
+  },
+  holdingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  holdingValue: {
+    fontSize: 28,
+  },
+  bottomButtons: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    padding: 16,
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  buyButton: {
+    backgroundColor: '#4CAF50',
+  },
+  sellButton: {
+    backgroundColor: '#FF9800',
+  },
+  actionButtonDisabled: {
+    opacity: 0.5,
+  },
+  actionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

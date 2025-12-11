@@ -189,4 +189,69 @@ export class GameTimeService {
 
     return elapsedSeconds >= eventTriggerTime;
   }
+
+  /**
+   * Calculate elapsed time since a specific date (e.g., holding acquisition)
+   * considering game pauses
+   * @param gameInstance - The game instance with level
+   * @param sinceDate - The date to calculate elapsed time from
+   * @returns Elapsed real seconds since the given date (excluding pauses)
+   */
+  calculateElapsedTimeSince(
+    gameInstance: GameInstanceWithLevel,
+    sinceDate: Date
+  ): number {
+    const now = new Date();
+    const startTime = new Date(sinceDate);
+    const gameStartTime = new Date(gameInstance.createdAt);
+
+    // If sinceDate is before game start, use game start
+    const effectiveStartTime = startTime < gameStartTime ? gameStartTime : startTime;
+
+    // Total real time since the effective start
+    let totalElapsed = Math.floor(
+      (now.getTime() - effectiveStartTime.getTime()) / 1000
+    );
+
+    // Calculate pause duration that occurred during this period
+    const pausedDuration = gameInstance.totalPausedDuration ?? 0;
+
+    // Calculate what fraction of the total game time is since our start date
+    const gameElapsedSinceCreation = Math.floor(
+      (now.getTime() - gameStartTime.getTime()) / 1000
+    );
+
+    // Proportionally subtract pause duration
+    if (gameElapsedSinceCreation > 0) {
+      const pauseFraction = (now.getTime() - effectiveStartTime.getTime()) /
+                           (now.getTime() - gameStartTime.getTime());
+      const pauseToSubtract = Math.floor(pausedDuration * pauseFraction);
+      totalElapsed -= pauseToSubtract;
+    }
+
+    // If currently paused, also subtract current pause duration proportionally
+    if (gameInstance.isPaused && gameInstance.pausedAt) {
+      const pauseStartTime = new Date(gameInstance.pausedAt);
+      if (pauseStartTime > effectiveStartTime) {
+        const currentPauseDuration = Math.floor(
+          (now.getTime() - pauseStartTime.getTime()) / 1000
+        );
+        totalElapsed -= currentPauseDuration;
+      }
+    }
+
+    return Math.max(0, totalElapsed);
+  }
+
+  /**
+   * Convert real elapsed seconds to game days
+   * @param level - The level with speed configuration
+   * @param realSeconds - Real seconds elapsed
+   * @returns Game days elapsed
+   */
+  convertRealSecondsToGameDays(level: Level, realSeconds: number): number {
+    const speed = level.speed ?? 1;
+    // Real seconds to game days: realSeconds * speed / 86400
+    return (realSeconds * speed) / 86400;
+  }
 }

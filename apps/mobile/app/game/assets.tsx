@@ -8,7 +8,7 @@ import {
   useColorScheme as useRNColorScheme,
   TouchableOpacity,
 } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
@@ -30,6 +30,7 @@ export default function AssetsScreen() {
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const router = useRouter();
+  const params = useLocalSearchParams();
   const { setIsOnAssetsScreen, activeGameInstanceId, pendingEventCompletion, setPendingEventCompletion, assetsScreenDepth, setAssetsScreenDepth, assetsScreenDepthRef, setPausedByAssets, pausedByAssets } = useNotifications();
   const { user } = useAuth();
   const [query, setQuery] = useState('');
@@ -37,6 +38,10 @@ export default function AssetsScreen() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const isSearching = useMemo(() => query.trim().length > 0, [query]);
+
+  // Get params for trading
+  const gameInstanceId = params?.gameInstanceId as string;
+  const walletId = params?.walletId as string;
 
   // Use refs to track values needed during cleanup to avoid stale closure issues
   const activeGameInstanceIdRef = useRef(activeGameInstanceId);
@@ -282,7 +287,14 @@ export default function AssetsScreen() {
 
           <View style={styles.grid}>
             {filtered.map((asset) => (
-              <AssetCard key={asset.id} asset={asset} isDark={isDark} router={router} />
+              <AssetCard
+                key={asset.id}
+                asset={asset}
+                isDark={isDark}
+                router={router}
+                gameInstanceId={gameInstanceId}
+                walletId={walletId}
+              />
             ))}
             {!loading && !error && filtered.length === 0 && (
               <Text style={{ color: theme.text, fontFamily: CashouTheme.fonts.body }}>
@@ -296,12 +308,23 @@ export default function AssetsScreen() {
   );
 }
 
-function AssetCard({ asset, isDark, router }: { asset: AssetItem; isDark: boolean; router: any }) {
+interface AssetCardProps {
+  asset: AssetItem;
+  isDark: boolean;
+  router: any;
+  gameInstanceId?: string;
+  walletId?: string;
+}
+
+function AssetCard({ asset, isDark, router, gameInstanceId, walletId }: AssetCardProps) {
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const positive = asset.changePct >= 0;
 
   const handlePress = () => {
-    router.push(`/game/asset-detail?id=${asset.id}`);
+    const params = new URLSearchParams({ id: asset.id });
+    if (gameInstanceId) params.append('gameInstanceId', gameInstanceId);
+    if (walletId) params.append('walletId', walletId);
+    router.push(`/game/asset-detail?${params.toString()}`);
   };
 
   return (

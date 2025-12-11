@@ -103,6 +103,9 @@ export class GameInstanceService {
       }
     }
 
+    // Respecter le paramètre isPaused si fourni (mode préparation)
+    const isPausedValue = data.isPaused ?? false;
+
     const sanitizedData = {
       ...data,
       userId: data.userId ?? null,
@@ -112,13 +115,13 @@ export class GameInstanceService {
       totalPausedDuration: 0,
       currentEventIndex: 0,
       isEnded: false,
-      isPaused: false,
+      isPaused: isPausedValue,
     };
 
     const gameInstance = await this.prisma.gameInstance.create({ data: sanitizedData });
 
     // Schedule events for this game
-    if (gameInstance.levelId) {
+    if (gameInstance.levelId && !isPausedValue) {
       // Schedule events using the new database-persisted system
       await this.gameInstanceEventService.scheduleEventsForGameInstance(gameInstance.id);
 
@@ -179,6 +182,10 @@ export class GameInstanceService {
     return this.prisma.gameInstance.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
+      include: {
+        level: true,
+        wallets: true,
+      },
     });
   }
 
@@ -273,6 +280,47 @@ export class GameInstanceService {
   }
 
   /**
+   * Démarre une partie qui était en mode préparation
+   * Réinitialise le createdAt et démarre le chrono
+   */
+  async start(id: number): Promise<GameInstance> {
+    const gameInstance = await this.prisma.gameInstance.findUnique({
+      where: { id },
+      include: { level: true },
+    });
+
+    if (!gameInstance) {
+      throw new Error(`GameInstance ${id} not found`);
+    }
+
+    if (!gameInstance.isPaused) {
+      return gameInstance; // Already running
+    }
+
+    if (gameInstance.isEnded) {
+      throw new Error(`Cannot start an ended game`);
+    }
+
+    // Réinitialiser le createdAt à maintenant et démarrer le jeu
+    const updated = await this.prisma.gameInstance.update({
+      where: { id },
+      data: {
+        createdAt: new Date(),
+        isPaused: false,
+        pausedAt: null,
+        totalPausedDuration: 0,
+      },
+    });
+
+    // Schedule the first event
+    if (gameInstance.levelId) {
+      await this.gameEventTriggerService.scheduleFirstEvent(id);
+    }
+
+    return updated;
+  }
+
+  /**
    * Met à jour le statut d'action requise
    */
   async setActionRequired(id: number, required: boolean): Promise<GameInstance> {
@@ -318,5 +366,57 @@ export class GameInstanceService {
     }
 
     return updated;
+  }
+
+  /**
+   * Reinitialise un niveau pour un utilisateur (dev only)
+   * Supprime toutes les parties de l'utilisateur sur ce niveau
+   */
+  async resetLevelForUser(userId: string, levelId: number): Promise<{ deletedCount: number }> {
+    // Trouver toutes les parties de l'utilisateur sur ce niveau
+    const gameInstances = await this.prisma.gameInstance.findMany({
+      where: {
+        userId,
+        levelId,
+      },
+    });
+
+    if (gameInstances.length === 0) {
+      return { deletedCount: 0 };
+    }
+
+    const gameInstanceIds = gameInstances.map(gi => gi.id);
+
+    // Annuler les jobs schedules pour ces parties (ignorer les erreurs)
+    for (const id of gameInstanceIds) {
+      try {
+        await cancelGameJobs(id);
+      } catch (err) {
+        console.warn(`[resetLevelForUser] Could not cancel jobs for game ${id}:`, err);
+      }
+    }
+
+    // Supprimer dans l'ordre pour respecter les contraintes de cle etrangere
+    // 1. Holdings
+    await this.prisma.holding.deleteMany({
+      where: { gameInstanceId: { in: gameInstanceIds } },
+    });
+
+    // 2. Transactions
+    await this.prisma.transaction.deleteMany({
+      where: { gameInstanceId: { in: gameInstanceIds } },
+    });
+
+    // 3. Wallets
+    await this.prisma.wallet.deleteMany({
+      where: { gameInstanceId: { in: gameInstanceIds } },
+    });
+
+    // 4. GameInstances
+    await this.prisma.gameInstance.deleteMany({
+      where: { id: { in: gameInstanceIds } },
+    });
+
+    return { deletedCount: gameInstances.length };
   }
 }
