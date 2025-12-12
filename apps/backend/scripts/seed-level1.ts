@@ -137,7 +137,7 @@ async function main() {
       data: {
         title: 'Premier pas dans l\'épargne',
         duration: 1825,
-        speed: 5258000,
+        speed: 1314000,
         startBalance: 2000,
         pointsRequired: 0,
         description: 'Découvre les bases de l\'épargne avec des produits sécurisés. Apprends à gérer ton capital sans risque et à comprendre les notions essentielles de la finance personnelle.'

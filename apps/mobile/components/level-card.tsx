@@ -7,7 +7,7 @@ interface LevelCardProps {
   title?: string | null;
   progression: number; // 0-100
   currentReturn: number; // percentage
-  status?: 'not_started' | 'in_progress' | 'completed';
+  status?: 'not_started' | 'in_progress' | 'completed' | 'quiz_pending';
   onPress?: () => void;
 }
 
@@ -33,6 +33,8 @@ export function LevelCard({
         return { text: 'En cours', color: theme.accent };
       case 'completed':
         return { text: 'Terminé', color: '#9E9E9E' }; // Gris
+      case 'quiz_pending':
+        return { text: 'Quiz', color: '#FF9800' }; // Orange
       default:
         return { text: 'En cours', color: theme.accent };
     }

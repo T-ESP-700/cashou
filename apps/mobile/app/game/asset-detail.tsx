@@ -15,6 +15,7 @@ import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useAuth } from '@/hooks/use-auth';
+import { useHeader } from '@/hooks/use-header';
 
 export default function AssetDetailScreen() {
   const colorScheme = useRNColorScheme();
@@ -25,6 +26,17 @@ export default function AssetDetailScreen() {
   const insets = useSafeAreaInsets();
   const { activeGameInstanceId, pendingEventCompletion, setPendingEventCompletion, setAssetsScreenDepth, assetsScreenDepthRef, setIsOnAssetsScreen, setPausedByAssets } = useNotifications();
   const { user } = useAuth();
+  const { setOptions } = useHeader();
+
+  // Ensure back button is always visible when this screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      setOptions({ showBackButton: true });
+      return () => {
+        // Optionally reset on unmount, but we keep it visible
+      };
+    }, [setOptions])
+  );
 
   const [asset, setAsset] = useState<any>(null);
   const [loading, setLoading] = useState(true);
