@@ -146,12 +146,22 @@ export const authRouter = router({
     )
     .mutation(async ({ input }) => {
       try {
-        await auth.api.resetPassword({
-          body: {
+        // Use the better-auth HTTP endpoint for forgot password
+        const baseURL = process.env.BETTER_AUTH_URL || 'http://localhost:3000';
+        const response = await fetch(`${baseURL}/api/auth/forgot-password`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
             email: input.email,
             redirectTo: (process.env.FRONTEND_URL || 'http://localhost:3000') + '/reset-password',
-          },
+          }),
         });
+
+        if (!response.ok) {
+          throw new Error('Failed to send reset email');
+        }
 
         return {
           success: true,

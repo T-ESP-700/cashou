@@ -12,4 +12,8 @@ if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.backofficePrisma = prisma;
 }
 
+// Export PrismaClient type
+export { PrismaClient } from './generated/client';
+
+// Export all types from generated client
 export * from './generated/client';

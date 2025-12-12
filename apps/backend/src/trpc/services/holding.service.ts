@@ -1,5 +1,6 @@
 import type { Holding, PrismaClient } from "@cashou/db-app";
 import { Prisma } from "@cashou/db-app";
+import { Decimal } from "@prisma/client/runtime/library";
 
 import defaultPrisma from "../../database.ts";
 import type {
@@ -108,7 +109,7 @@ export class HoldingService {
   async create(data: HoldingCreateSchema): Promise<Holding> {
     const normalizedData = {
       ...data,
-      quantity: new Prisma.Decimal(data.quantity),
+      quantity: new Decimal(data.quantity),
       acquiredAt: data.acquiredAt || new Date(),
     };
 
@@ -129,7 +130,7 @@ export class HoldingService {
     const normalizedData: Record<string, unknown> = { ...data };
 
     if (data.quantity !== undefined) {
-      normalizedData.quantity = new Prisma.Decimal(data.quantity);
+      normalizedData.quantity = new Decimal(data.quantity);
     }
 
     return this.prisma.holding.update({
