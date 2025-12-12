@@ -1,6 +1,6 @@
 // tests/service/level.service.integration.test.ts
 import { describe, it, expect, afterAll } from "bun:test";
-import { PrismaClient, type Level } from "@prisma/client";
+import { PrismaClient, type Level } from "@cashou/db-app";
 import { LevelService } from "../../src/trpc/services/level.service";
 
 const shouldRun = !!process.env.CASHOU_DB_URL;

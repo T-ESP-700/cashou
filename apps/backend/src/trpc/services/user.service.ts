@@ -1,6 +1,6 @@
 // Service métier pour la gestion des utilisateurs du jeu
 // Couche d'abstraction entre les routers et la base de données
-import type { User, PrismaClient } from "@prisma/client";
+import type { User, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {UserCreateSchema, UserDataSchema} from "../schemas-zod/user-schema.ts";
 

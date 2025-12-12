@@ -1,6 +1,6 @@
 // Service métier pour la gestion des participations aux quiz (UserQuiz)
 // Couche d'abstraction entre les routers et la base de données
-import type { UserQuiz, PrismaClient } from "@prisma/client";
+import type { UserQuiz, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {UserQuizCreateSchema, UserQuizDataSchema} from "../schemas-zod/user-quiz-schema.ts";
 

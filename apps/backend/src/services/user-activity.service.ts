@@ -1,6 +1,6 @@
 // Service pour gérer la vérification de l'activité utilisateur et des streaks à la connexion
 import defaultPrisma from '../database.ts';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@cashou/db-app';
 
 export class UserActivityService {
   private prisma: PrismaClient;

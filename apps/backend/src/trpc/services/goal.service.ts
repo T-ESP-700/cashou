@@ -1,5 +1,5 @@
 // Service métier pour la gestion des objectifs du jeu
-import type { Goal, PrismaClient } from "@prisma/client";
+import type { Goal, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type { GoalCreateSchema, GoalDataSchema } from "../schemas-zod/goal-schema.ts";
 

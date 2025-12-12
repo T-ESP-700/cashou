@@ -1,6 +1,6 @@
 // tests/router/event.router.test.ts
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import type { Event } from "@prisma/client";
+import type { Event } from "@cashou/db-app";
 import { eventRouter } from "../../src/trpc/routers/event.router";
 import { EventService } from "../../src/trpc/services/event.service";
 
