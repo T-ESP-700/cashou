@@ -52,6 +52,14 @@ apps/*/node_modules/.prisma
 *.tsbuildinfo
 .turbo
 
+# Expo
+.expo/
+.expo-shared/
+
+# React Native / Expo generated native folders
+ios/
+android/
+
 # Vite specific
 .vite
 vite.config.*.timestamp-*
