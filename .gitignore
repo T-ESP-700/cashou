@@ -204,3 +204,11 @@ web_modules/
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Expo
+.expo/
+.expo-shared/
+# React Native / Expo generated native folders
+
+ios/
+android/

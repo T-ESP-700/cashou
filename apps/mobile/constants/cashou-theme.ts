@@ -42,6 +42,11 @@ export const CashouTheme = {
     lg: 16,
     xl: 24,
   },
+  borderWidth: {
+    thin: 1,
+    medium: 2,
+    thick: 4,
+  },
   button: {
     primary: {
       paddingVertical: 18,
