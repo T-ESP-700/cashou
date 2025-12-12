@@ -407,7 +407,7 @@ async function main() {
     // 11. Créer des participations aux quiz
     console.log(`🎯 Création de ${DATA_COUNT} participations aux quiz...`);
     const userQuizzes = await Promise.all(
-        Array.from({ length: DATA_COUNT }, (_, index) => {
+        Array.from({ length: DATA_COUNT }, (_) => {
             const randomUser = users[Math.floor(Math.random() * users.length)];
             const randomQuiz = quiz[Math.floor(Math.random() * quiz.length)];
 
@@ -440,7 +440,7 @@ async function main() {
     // 12. Créer des réponses d'utilisateurs
     console.log(`📝 Création de ${DATA_COUNT} réponses d'utilisateurs...`);
     const userAnswers = await Promise.all(
-        Array.from({ length: DATA_COUNT }, (_, index) => {
+        Array.from({ length: DATA_COUNT }, (_) => {
             const randomUser = users[Math.floor(Math.random() * users.length)];
             const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
             

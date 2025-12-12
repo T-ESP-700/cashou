@@ -42,8 +42,13 @@ export const userRouter = router({
             id: true,
             email: true,
             username: true,
-            role: true,
-            level: true,
+            levelId: true,
+            level: {
+              select: {
+                id: true,
+                threshold: true,
+              },
+            },
             points: true,
             createdAt: true,
             updatedAt: true,
@@ -157,15 +162,20 @@ export const userRouter = router({
       // Hash password
       const hashedPassword = await hash.password(input.password);
 
-      // Create user
+      // Create user with account for password
       const user = await prisma.user.create({
         data: {
           email: input.email,
           username: input.username,
-          hashedPassword,
-          role: input.role,
-          level: input.level,
-          points: input.points,
+          levelId: input.level || 1,
+          points: input.points || 0,
+          accounts: {
+            create: {
+              accountId: input.email,
+              providerId: 'credential',
+              password: hashedPassword,
+            },
+          },
         },
       });
 
@@ -245,17 +255,40 @@ export const userRouter = router({
         }
       }
 
-      // Hash password if provided
+      // Handle password update separately via Account
+      let hashedPassword: string | undefined;
       if (input.password) {
-        (updateData as any).hashedPassword = await hash.password(input.password);
+        hashedPassword = await hash.password(input.password);
         delete (updateData as any).password;
       }
+
+      // Map level to levelId
+      if ('level' in updateData && updateData.level !== undefined) {
+        (updateData as any).levelId = updateData.level;
+        delete (updateData as any).level;
+      }
+
+      // Remove role if present (not in schema)
+      delete (updateData as any).role;
 
       // Update user
       const user = await prisma.user.update({
         where: { id },
         data: updateData,
       });
+
+      // Update password in Account if provided
+      if (hashedPassword) {
+        await prisma.account.updateMany({
+          where: {
+            userId: id,
+            providerId: 'credential',
+          },
+          data: {
+            password: hashedPassword,
+          },
+        });
+      }
 
       return {
         success: true,
@@ -334,11 +367,21 @@ export const userRouter = router({
           });
         }
 
-        const user = await prisma.user.findUnique({
-          where: { id: userId },
+        const account = await prisma.account.findFirst({
+          where: {
+            userId,
+            providerId: 'credential',
+          },
         });
 
-        const isValid = await hash.verify(input.currentPassword, user!.hashedPassword);
+        if (!account || !account.password) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'No password set for this user',
+          });
+        }
+
+        const isValid = await hash.verify(input.currentPassword, account.password);
         if (!isValid) {
           throw new TRPCError({
             code: 'UNAUTHORIZED',
@@ -346,7 +389,16 @@ export const userRouter = router({
           });
         }
 
-        updateData.hashedPassword = await hash.password(input.newPassword);
+        const hashedPassword = await hash.password(input.newPassword);
+        await prisma.account.updateMany({
+          where: {
+            userId,
+            providerId: 'credential',
+          },
+          data: {
+            password: hashedPassword,
+          },
+        });
       }
 
       // Update username if provided
@@ -376,9 +428,14 @@ export const userRouter = router({
           id: true,
           email: true,
           username: true,
-          level: true,
+          levelId: true,
+          level: {
+            select: {
+              id: true,
+              threshold: true,
+            },
+          },
           points: true,
-          role: true,
         },
       });
 

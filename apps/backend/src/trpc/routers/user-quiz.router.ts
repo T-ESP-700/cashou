@@ -1,6 +1,6 @@
 // src/server/routers/user-quiz.router.ts
-import { initTRPC, TRPCError } from "@trpc/server";
-import { router, protectedProcedure, createContext } from "../index.ts";
+import { initTRPC } from "@trpc/server";
+import { router, protectedProcedure } from "../index.ts";
 import { UserQuizService } from "../../trpc/services/user-quiz.service.ts";
 import {
     userQuizCreateSchema, 
@@ -339,8 +339,9 @@ export const userQuizRouter = router({
     getInProgressByUser: publicRouter.getInProgressByUser,
     abandonQuiz: publicRouter.abandonQuiz,
     resumeQuiz: publicRouter.resumeQuiz,
-    getHistory: publicRouter.getHistory,
-    getDetailedStats: publicRouter.getDetailedStats,
+    getHistoryByUser: publicRouter.getHistoryByUser,
+    getElapsedTime: publicRouter.getElapsedTime,
+    getUserDetailedStats: publicRouter.getUserDetailedStats,
     getLeaderboard: publicRouter.getLeaderboard,
     getStatsByType: publicRouter.getStatsByType,
     getStreaks: publicRouter.getStreaks,

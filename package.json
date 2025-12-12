@@ -9,6 +9,8 @@
     "packages/@cashou/*"
   ],
   "scripts": {
+    "ci:check": "bash scripts/ci-check.sh",
+    "ci:quick": "bun run typecheck && cd apps/backend && bunx eslint . --ext .ts,.tsx && bun test",
     "dev:setup": "bun install && docker compose up db_cashou db_backoffice -d && bun run db:generate && bun run migrate",
     "dev": "docker stop cashou-backend-1 cashou-backoffice-1 2>/dev/null || true && docker compose up db_cashou db_backoffice -d && concurrently \"bun run dev:backend\" \"bun run dev:backoffice\"",
     "dev:all": "docker stop cashou-backend-1 cashou-backoffice-1 2>/dev/null || true && docker compose up db_cashou db_backoffice -d && concurrently \"bun run dev:backend\" \"bun run dev:backoffice\" \"bun run dev:mobile\"",

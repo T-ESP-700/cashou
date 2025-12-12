@@ -116,8 +116,7 @@ export class EventAssetService {
                     data: {
                         assetId: data.assetId,
                         timestamp: data.date,  // Le champ date devient timestamp
-                        value: data.value,
-                        volume: data.volume
+                        value: data.value
                     }
                 });
             }
@@ -172,8 +171,7 @@ export class EventAssetService {
                         where: { id: existingAssetHistory.id },
                         data: {
                             timestamp: date,
-                            value: data.value,
-                            volume: data.volume
+                            value: data.value
                         }
                     });
                 } else {
@@ -182,8 +180,7 @@ export class EventAssetService {
                         data: {
                             assetId: assetId,
                             timestamp: date,
-                            value: data.value,
-                            volume: data.volume
+                            value: data.value
                         }
                     });
                 }
