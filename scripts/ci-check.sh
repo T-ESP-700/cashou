@@ -135,13 +135,12 @@ PASS_COUNT=$(echo "$TEST_OUTPUT" | grep -oE "[0-9]+ pass" | grep -oE "[0-9]+" | 
 FAIL_COUNT=$(echo "$TEST_OUTPUT" | grep -oE "[0-9]+ fail" | grep -oE "[0-9]+" | head -1 || echo "0")
 SKIP_COUNT=$(echo "$TEST_OUTPUT" | grep -oE "[0-9]+ skip" | grep -oE "[0-9]+" | head -1 || echo "0")
 
-# Vérifier s'il y a des erreurs système (pas juste des tests qui fail)
-if echo "$TEST_OUTPUT" | grep -q "error:"; then
-    print_warning "Tests backend: Erreurs système détectées (DB non configurée?)"
-    print_warning "  Pass: ${PASS_COUNT}, Fail: ${FAIL_COUNT}, Skip: ${SKIP_COUNT}"
-    ((WARNINGS++))
-elif [ "$FAIL_COUNT" -eq 0 ] || [ "$TEST_EXIT_CODE" -eq 0 ]; then
+# Vérifier le résultat des tests
+if [ "$TEST_EXIT_CODE" -eq 0 ]; then
     print_success "Tests backend: ${PASS_COUNT} pass, ${FAIL_COUNT} fail, ${SKIP_COUNT} skip"
+    if [ "$SKIP_COUNT" -gt 0 ] && [ -z "$CASHOU_DB_URL" ]; then
+        print_warning "  Note: ${SKIP_COUNT} tests d'intégration skippés (pas de DB locale)"
+    fi
     ((PASSED++))
 else
     print_error "Tests backend: ${PASS_COUNT} pass, ${FAIL_COUNT} fail, ${SKIP_COUNT} skip"
