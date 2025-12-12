@@ -8,6 +8,7 @@ import { LevelsModule } from '@/components/modules/LevelsModule'
 import { QuizzesModule } from '@/components/modules/QuizzesModule'
 import { QuestionsModule } from '@/components/modules/QuestionsModule'
 import { PlayersMonitor } from '@/components/modules/PlayersMonitor'
+import { DicoModule } from '@/components/modules/DicoModule'
 import { LocalAuthGate } from '@/components/auth/LocalAuthGate'
 import { useBackofficeStore } from '@/store/useBackofficeStore'
 import type { BackofficeModule } from '@/lib/domain'
@@ -88,6 +89,8 @@ function renderModule(module: BackofficeModule) {
       return <QuestionsModule />
     case 'players':
       return <PlayersMonitor />
+    case 'dicoEntries':
+      return <DicoModule />
     default:
       return <EntityWorkspace />
   }

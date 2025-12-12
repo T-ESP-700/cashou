@@ -19,6 +19,7 @@ export type BackofficeModule =
   | 'eventAsset'
   | 'impacts'
   | 'players'
+  | 'dicoEntries'
 
 export type EntityIdentifier = number | string
 
@@ -216,6 +217,14 @@ export interface GameInstance {
   updatedAt?: string | Date | null
 }
 
+export interface DicoEntry {
+  id: number
+  term: string
+  definition: string
+  createdAt?: string | Date | null
+  updatedAt?: string | Date | null
+}
+
 export interface MarketKpis {
   total_assets?: number
   total_submarkets?: number
@@ -364,4 +373,5 @@ export interface BackofficeData {
   impacts: Impact[]
   players?: PlayerSnapshot[]
   gameInstances?: GameInstance[]
+  dicoEntries?: DicoEntry[]
 }

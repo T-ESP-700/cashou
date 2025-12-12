@@ -1,0 +1,22 @@
+meta {
+  name: Create
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{base_url}}/api/trpc/dicoEntry.create
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "term": "Action",
+    "definition": "Titre de propriété d'une part du capital d'une entreprise.\nUn morceau de gâteau que tu possèdes dans une grande entreprise. Plus l'entreprise va bien, plus ton morceau de gâteau prend de la valeur !"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

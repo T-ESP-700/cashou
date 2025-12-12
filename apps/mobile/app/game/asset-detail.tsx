@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,12 +6,15 @@ import {
   StyleSheet,
   useColorScheme as useRNColorScheme,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { CashouHeader } from '@/components/cashou-header';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
+import { useNotifications } from '@/hooks/use-notifications';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function AssetDetailScreen() {
   const colorScheme = useRNColorScheme();
@@ -19,14 +22,120 @@ export default function AssetDetailScreen() {
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const router = useRouter();
   const params = useLocalSearchParams();
-  
+  const insets = useSafeAreaInsets();
+  const { activeGameInstanceId, pendingEventCompletion, setPendingEventCompletion, setAssetsScreenDepth, assetsScreenDepthRef, setIsOnAssetsScreen, setPausedByAssets } = useNotifications();
+  const { user } = useAuth();
+
   const [asset, setAsset] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentHolding, setCurrentHolding] = useState(0);
 
-  // Get asset ID from URL params
+  // Get params from URL
   const assetIdParam = params?.id;
   const assetId = Array.isArray(assetIdParam) ? assetIdParam[0] : assetIdParam;
+  const gameInstanceId = params?.gameInstanceId as string;
+  const walletId = params?.walletId as string;
+
+  // Use refs to track values needed during cleanup to avoid stale closure issues
+  const activeGameInstanceIdRef = useRef(activeGameInstanceId);
+  const userRef = useRef(user);
+  const pendingEventCompletionRef = useRef(pendingEventCompletion);
+
+  // Keep refs in sync with current values
+  useEffect(() => {
+    activeGameInstanceIdRef.current = activeGameInstanceId;
+  }, [activeGameInstanceId]);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  useEffect(() => {
+    pendingEventCompletionRef.current = pendingEventCompletion;
+  }, [pendingEventCompletion]);
+
+  // Track depth for nested navigation
+  useFocusEffect(
+    useCallback(() => {
+      console.log('[AssetDetailScreen] ENTER - currentDepth:', assetsScreenDepthRef.current);
+
+      // Increment depth when entering asset-detail (the ref is updated by setAssetsScreenDepth in the context)
+      setAssetsScreenDepth((prev: number) => prev + 1);
+
+      return () => {
+        // Get current values from refs to avoid stale closures
+        const gameId = activeGameInstanceIdRef.current;
+        const currentUser = userRef.current;
+        const pendingCompletion = pendingEventCompletionRef.current;
+
+        console.log('[AssetDetailScreen] EXIT - gameId:', gameId, 'user:', currentUser?.id, 'currentDepth:', assetsScreenDepthRef.current);
+
+        // Decrement depth when leaving asset-detail (the ref is updated by setAssetsScreenDepth in the context)
+        const newDepth = Math.max(0, assetsScreenDepthRef.current - 1);
+        setAssetsScreenDepth(newDepth);
+
+        console.log('[AssetDetailScreen] EXIT - newDepth:', newDepth);
+
+        // If we're leaving all assets screens (depth = 0), wait a bit then check if we should resume
+        // The delay allows assets.tsx to increment depth if we're navigating back there
+        if (newDepth === 0 && gameId && currentUser) {
+          console.log('[AssetDetailScreen] EXIT - Depth is 0, scheduling resume check in 150ms');
+
+          setTimeout(async () => {
+            console.log('[AssetDetailScreen] EXIT - Resume check executing, current depth:', assetsScreenDepthRef.current);
+
+            // Check if depth is still 0 after the delay (no other assets screen took focus)
+            if (assetsScreenDepthRef.current > 0) {
+              console.log('[AssetDetailScreen] ⏸️  Another assets screen took focus (depth=' + assetsScreenDepthRef.current + '), not resuming');
+              return;
+            }
+
+            console.log('[AssetDetailScreen] EXIT - No other assets screen, proceeding with resume');
+
+            try {
+              // Check current game state before resuming
+              console.log('[AssetDetailScreen] EXIT - Fetching game state...');
+              const gameInstance = await trpcClient.gameInstance.getById.query({ id: gameId });
+              const isCurrentlyPaused = gameInstance?.isPaused ?? false;
+
+              console.log('[AssetDetailScreen] EXIT - Game state: isPaused=', isCurrentlyPaused);
+
+              // Resume if game is currently paused
+              if (isCurrentlyPaused) {
+                console.log('[AssetDetailScreen] 🎮 Resuming game', gameId);
+                await trpcClient.gameInstance.resume.mutate({ id: gameId });
+                console.log('[AssetDetailScreen] ✅ Game resumed successfully');
+              } else {
+                console.log('[AssetDetailScreen] ⚠️  Game is not paused, nothing to resume');
+              }
+
+              // Complete pending event if any
+              if (pendingCompletion && pendingCompletion === gameId) {
+                console.log('[AssetDetailScreen] 📋 Completing pending event for game', gameId);
+                await trpcClient.gameInstance.completeEvent.mutate({ id: gameId });
+                setPendingEventCompletion(null);
+                console.log('[AssetDetailScreen] ✅ Event completed');
+              }
+
+              setPausedByAssets(false);
+              setIsOnAssetsScreen(false);
+            } catch (error) {
+              console.error('[AssetDetailScreen] ❌ Failed to resume game or complete event:', error);
+              if (pendingCompletion === gameId) {
+                setPendingEventCompletion(null);
+              }
+              setPausedByAssets(false);
+              setIsOnAssetsScreen(false);
+            }
+          }, 150); // Wait 150ms to see if another assets screen takes focus
+        } else {
+          console.log('[AssetDetailScreen] EXIT - Not leaving all assets (newDepth=' + newDepth + ' or no game/user)');
+          setIsOnAssetsScreen(newDepth > 0);
+        }
+      };
+    }, [setAssetsScreenDepth, setPendingEventCompletion, setIsOnAssetsScreen, setPausedByAssets, assetsScreenDepthRef])
+  );
 
   useEffect(() => {
     const fetchAsset = async () => {
@@ -41,6 +150,19 @@ export default function AssetDetailScreen() {
         setError(null);
         const data = await trpcClient.asset.getById.query({ id: parseInt(assetId) });
         setAsset(data);
+
+        // Fetch current holding if walletId is provided
+        if (walletId) {
+          try {
+            const holdings = await trpcClient.holding.getByWallet.query({ walletId: parseInt(walletId) });
+            const holding = holdings.find((h: any) => h.assetId === parseInt(assetId));
+            if (holding) {
+              setCurrentHolding(Number(holding.quantity) || 0);
+            }
+          } catch (e) {
+            console.error('[AssetDetail] Failed to load holding:', e);
+          }
+        }
       } catch (e: any) {
         console.error('[AssetDetail] Failed to load asset:', e);
         setError(e?.message ? String(e.message) : 'Impossible de charger l\'asset');
@@ -50,13 +172,37 @@ export default function AssetDetailScreen() {
     };
 
     fetchAsset();
-  }, [assetId]);
+  }, [assetId, walletId]);
+
+  const handleBuy = () => {
+    router.push({
+      pathname: '/game/transaction',
+      params: {
+        assetId,
+        type: 'buy',
+        gameInstanceId,
+        walletId,
+      },
+    });
+  };
+
+  const handleSell = () => {
+    router.push({
+      pathname: '/game/transaction',
+      params: {
+        assetId,
+        type: 'sell',
+        gameInstanceId,
+        walletId,
+      },
+    });
+  };
+
+  const canTrade = gameInstanceId && walletId;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <CashouHeader showBackButton={true} onBackPress={() => router.back()} />
-
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: canTrade ? 100 : 32 }]}>
         {loading ? (
           <View style={styles.centerContainer}>
             <ActivityIndicator size="large" color={theme.accent} />
@@ -86,6 +232,21 @@ export default function AssetDetailScreen() {
               )}
             </View>
 
+            {/* Current Holding Section */}
+            {currentHolding > 0 && (
+              <View style={[styles.section, styles.holdingSection, { backgroundColor: '#4CAF5020', borderColor: '#4CAF50' }]}>
+                <View style={styles.holdingHeader}>
+                  <Ionicons name="wallet" size={24} color="#4CAF50" />
+                  <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading, marginBottom: 0, marginLeft: 8 }]}>
+                    Votre position
+                  </Text>
+                </View>
+                <Text style={[styles.holdingValue, { color: '#4CAF50', fontFamily: CashouTheme.fonts.heading }]}>
+                  {Math.round(currentHolding)} EUR
+                </Text>
+              </View>
+            )}
+
             {/* Rate Section */}
             {typeof asset.taux === 'number' && (
               <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -93,10 +254,10 @@ export default function AssetDetailScreen() {
                   Taux
                 </Text>
                 <View style={styles.rateContainer}>
-                  <Ionicons 
-                    name={asset.taux >= 0 ? 'caret-up' : 'caret-down'} 
-                    size={24} 
-                    color="#FFB472" 
+                  <Ionicons
+                    name={asset.taux >= 0 ? 'caret-up' : 'caret-down'}
+                    size={24}
+                    color="#FFB472"
                   />
                   <Text style={[styles.rateValue, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>
                     {Math.abs(asset.taux)}%
@@ -230,6 +391,34 @@ export default function AssetDetailScreen() {
           </>
         ) : null}
       </ScrollView>
+
+      {/* Bottom Buy/Sell Buttons */}
+      {canTrade && asset && !loading && !error && (
+        <View style={[styles.bottomButtons, { paddingBottom: insets.bottom + 16, backgroundColor: theme.background }]}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.buyButton]}
+            onPress={handleBuy}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="arrow-down-circle" size={24} color="#FFFFFF" />
+            <Text style={styles.actionButtonText}>Acheter</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              styles.sellButton,
+              currentHolding === 0 && styles.actionButtonDisabled,
+            ]}
+            onPress={handleSell}
+            activeOpacity={0.8}
+            disabled={currentHolding === 0}
+          >
+            <Ionicons name="arrow-up-circle" size={24} color="#FFFFFF" />
+            <Text style={styles.actionButtonText}>Vendre</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -321,5 +510,48 @@ const styles = StyleSheet.create({
   },
   infoValue: {
     fontSize: 14,
+  },
+  holdingSection: {
+    alignItems: 'center',
+  },
+  holdingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  holdingValue: {
+    fontSize: 28,
+  },
+  bottomButtons: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    padding: 16,
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  buyButton: {
+    backgroundColor: '#4CAF50',
+  },
+  sellButton: {
+    backgroundColor: '#FF9800',
+  },
+  actionButtonDisabled: {
+    opacity: 0.5,
+  },
+  actionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

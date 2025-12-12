@@ -8,6 +8,8 @@ export default function GameLayout() {
         <Stack.Screen name="current" />
         <Stack.Screen name="asset" />
         <Stack.Screen name="asset-detail" />
+        <Stack.Screen name="transaction" />
+        <Stack.Screen name="summary" />
     </Stack>
   );
 }

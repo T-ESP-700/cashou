@@ -1,6 +1,9 @@
 # backend/Dockerfile
 FROM oven/bun:1.2
 
+# Install OpenSSL for Prisma
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copy package files from the monorepo root
@@ -34,4 +37,9 @@ WORKDIR /app
 
 EXPOSE 3000
 
-CMD ["bun", "run", "apps/backend/src/index.ts"]
+# En dev: hot reload avec --watch, en prod: exécution directe
+CMD if [ "$NODE_ENV" = "production" ]; then \
+      bun run apps/backend/src/index.ts; \
+    else \
+      bun --watch run apps/backend/src/index.ts; \
+    fi

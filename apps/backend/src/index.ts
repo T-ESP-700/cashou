@@ -3,14 +3,27 @@ import { createContext } from './trpc';
 import { trpcRouter } from './trpc/router';
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 import { cors } from './middleware/cors';
+import { getJobQueue, stopJobQueue } from './lib/job-queue';
+import { startGameEventWorkers } from './workers/game-event.worker';
 
 // Server instance variable to track if server is already running
 let serverInstance: ReturnType<typeof Bun.serve> | null = null;
 
 // Start server only if not already started and not in test mode during imports
-function startServer() {
+async function startServer() {
   if (serverInstance) {
     return serverInstance;
+  }
+
+  // Initialize pg-boss job queue and workers
+  try {
+    console.log('Initializing job queue...');
+    await getJobQueue();
+    await startGameEventWorkers();
+    console.log('Job queue and workers initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize job queue:', error);
+    // Don't fail server startup, but log the error
   }
 
   serverInstance = Bun.serve({
@@ -106,6 +119,29 @@ function startServer() {
 
   return serverInstance;
 }
+
+// Graceful shutdown handler
+async function gracefulShutdown(signal: string) {
+  console.log(`Received ${signal}, shutting down gracefully...`);
+
+  try {
+    await stopJobQueue();
+    console.log('Job queue stopped');
+  } catch (error) {
+    console.error('Error stopping job queue:', error);
+  }
+
+  if (serverInstance) {
+    serverInstance.stop();
+    console.log('Server stopped');
+  }
+
+  process.exit(0);
+}
+
+// Register shutdown handlers
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Only start server if this file is run directly (not imported by tests)
 if (import.meta.main) {

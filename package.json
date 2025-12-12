@@ -15,8 +15,7 @@
     "dev:backend": "cd apps/backend && bun run dev",
     "dev:backoffice": "cd apps/backoffice && bun run dev",
     "dev:mobile": "cd apps/mobile && npx expo start",
-    "dev:mobile:android": "cd apps/mobile && npx expo start --android",
-    "dev:mobile:ios": "xcrun simctl boot \"iPhone 17 Pro\" 2>/dev/null || true && cd apps/mobile && npx expo start --ios",
+    "dev:mobile:go": "cd apps/mobile && npx expo start --go",
     "dev:mobile:web": "cd apps/mobile && npx expo start --web",
     "dev:stop": "docker stop cashou-db_cashou-1 cashou-db_backoffice-1",
     "prod:setup": "bun install && bun run docker:build && bun run docker:up && bun run db:generate && bun run migrate:deploy",
@@ -49,6 +48,8 @@
     "db:seed": "cd apps/backend && bun run src/seed-data.ts",
     "db:seed:cac40": "cd apps/backend && bun run scripts/seed-cac40.ts",
     "db:seed:level1": "cd apps/backend && bunx dotenv -e ../../.env -- bun run scripts/seed-level1.ts",
+    "healthy:game": "cd apps/backend && bun run scripts/healthy-game.ts",
+    "db:seed:dico": "cd apps/backend && bunx dotenv -e ../../.env -- bun run scripts/seed-dico.ts",
     "db:empty": "cd packages/@cashou/db-app && bunx dotenv -e ../../../.env -- prisma migrate reset --force",
     "db:check": "cd packages/@cashou/db-app && bunx dotenv -e ../../../.env -- prisma db pull --force",
     "db:status": "cd apps/backend && bun run scripts/db-check.ts",
@@ -58,7 +59,7 @@
     "docker:build": "docker compose build",
     "docker:logs": "docker compose logs -f",
     "docker:clean": "docker compose down -v && docker system prune -f",
-    "setup": "bun install && bun run docker:up && bun run generate && bun run migrate && (cd packages/@cashou/db-backoffice && bunx prisma generate && bunx dotenv -e ../../../.env -- prisma migrate deploy && bunx dotenv -e ../../../.env -- bunx tsx seed-admin.ts) && bun run db:seed:level1",
+    "setup": "bun install && docker compose down -v 2>/dev/null || true && docker compose up -d --build && bun run generate && bun run migrate && (cd packages/@cashou/db-backoffice && bunx prisma generate && bunx dotenv -e ../../../.env -- prisma migrate deploy && bunx dotenv -e ../../../.env -- bunx tsx seed-admin.ts) && bun run db:seed:level1 && bun run db:seed:dico",
     "setup:clean": "bun --bun pm cache rm",
     "setup:cac40": "bun run setup && bun run db:seed:cac40",
     "reset": "bun run docker:down && bun run docker:clean && bun run docker:up && bun run migrate:reset",
@@ -104,7 +105,9 @@
   "license": "MIT",
   "dependencies": {
     "@trpc/server": "^11.4.3",
-    "@trpc/react-query": "^11.7.1"
+    "@trpc/react-query": "^11.7.1",
+    "pg-boss": "^12.5.2",
+    "expo-server-sdk": "^4.0.0"
   },
   "resolutions": {
     "react": "19.1.0",

@@ -387,4 +387,38 @@ export const userRouter = router({
         user,
       };
     }),
+
+  // Update Expo push token for push notifications
+  updateExpoPushToken: protectedProcedure
+    .input(
+      z.object({
+        expoPushToken: z.string().min(1, 'Push token is required'),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.session?.user?.id;
+      if (!userId) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Authentication required',
+        });
+      }
+
+      const user = await prisma.user.update({
+        where: { id: userId },
+        data: { expoPushToken: input.expoPushToken },
+        select: {
+          id: true,
+          email: true,
+          expoPushToken: true,
+        },
+      });
+
+      console.log(`[User] Updated Expo push token for user ${userId}`);
+
+      return {
+        success: true,
+        user,
+      };
+    }),
 });

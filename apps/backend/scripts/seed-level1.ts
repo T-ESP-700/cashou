@@ -81,7 +81,9 @@ async function main() {
       rate: 1.7,
       description: 'Produit d\'épargne sécurisé et toujours disponible. Le Livret A offre un rendement modéré mais garanti, idéal pour constituer une réserve d\'urgence et apprendre les bases de la gestion prudente. Aucun risque de perte et des retraits possibles à tout moment.',
       marketId: market.id,
-      submarketId: submarket.id
+      submarketId: submarket.id,
+      maxAmount: 22950, // Plafond réel du Livret A
+      minAmount: 10     // Montant minimum de dépôt
     },
     create: {
       title: 'Livret A',
@@ -90,10 +92,12 @@ async function main() {
       rate: 1.7,
       description: 'Produit d\'épargne sécurisé et toujours disponible. Le Livret A offre un rendement modéré mais garanti, idéal pour constituer une réserve d\'urgence et apprendre les bases de la gestion prudente. Aucun risque de perte et des retraits possibles à tout moment.',
       marketId: market.id,
-      submarketId: submarket.id
+      submarketId: submarket.id,
+      maxAmount: 22950, // Plafond réel du Livret A
+      minAmount: 10     // Montant minimum de dépôt
     }
   });
-  console.log(`✅ Actif créé: ${livretA.title} (${livretA.symbol}) - Rate: ${livretA.rate}%`);
+  console.log(`✅ Actif créé: ${livretA.title} (${livretA.symbol}) - Rate: ${livretA.rate}% - Plafond: ${livretA.maxAmount}€`);
 
   const livretLED = await prisma.asset.upsert({
     where: { symbol: 'LIVRET_DDS' },
@@ -103,7 +107,9 @@ async function main() {
       rate: 1.7,
       description: 'Livret d\'épargne sécurisé dédié au financement de projets responsables et durables. Rendement stable et légèrement supérieur au Livret A dans l\'univers Cashou. Idéal pour initier le joueur à la notion d\'impact positif tout en conservant une gestion prudente et sans risque.',
       marketId: market.id,
-      submarketId: submarket.id
+      submarketId: submarket.id,
+      maxAmount: 12000, // Plafond réel du LDDS
+      minAmount: 10     // Montant minimum de dépôt
     },
     create: {
       title: 'Livret de Développement Durable et Solidaire',
@@ -112,10 +118,12 @@ async function main() {
       rate: 1.7,
       description: 'Livret d\'épargne sécurisé dédié au financement de projets responsables et durables. Rendement stable et légèrement supérieur au Livret A dans l\'univers Cashou. Idéal pour initier le joueur à la notion d\'impact positif tout en conservant une gestion prudente et sans risque.',
       marketId: market.id,
-      submarketId: submarket.id
+      submarketId: submarket.id,
+      maxAmount: 12000, // Plafond réel du LDDS
+      minAmount: 10     // Montant minimum de dépôt
     }
   });
-  console.log(`✅ Actif créé: ${livretLED.title} (${livretLED.symbol}) - Rate: ${livretLED.rate}%`);
+  console.log(`✅ Actif créé: ${livretLED.title} (${livretLED.symbol}) - Rate: ${livretLED.rate}% - Plafond: ${livretLED.maxAmount}€`);
 
   // 5. Créer le Level
   console.log('📚 Création du niveau...');
@@ -212,19 +220,22 @@ async function main() {
     goal = await prisma.goal.update({
       where: { id: goal.id },
       data: {
-        description: 'Ne pas perdre d\'argent par rapport à ton capital initial.'
+        description: 'Ne pas perdre d\'argent par rapport à ton capital initial.',
+        goalType: 'wallet_gte_start',
+        goalValue: 0
       }
     });
   } else {
     goal = await prisma.goal.create({
       data: {
         title: "Reste en positif",
-        description:
-          "Ne pas perdre d'argent par rapport à ton capital initial.",
+        description: "Ne pas perdre d'argent par rapport à ton capital initial.",
+        goalType: 'wallet_gte_start',
+        goalValue: 0
       },
     });
   }
-  console.log(`✅ Objectif créé: ${goal.title}`);
+  console.log(`✅ Objectif créé: ${goal.title} (type: ${goal.goalType})`);
 
   // 9. Créer le LevelGoal
   console.log('🔗 Liaison niveau-objectif...');

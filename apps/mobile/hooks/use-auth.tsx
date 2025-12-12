@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import type { ReactNode } from 'react';
-import { trpcClient, setAuthErrorHandler } from '@/lib/trpc';
+import { trpcClient, setAuthErrorHandler, resetAuthErrorHandling } from '@/lib/trpc';
 import { tokenStorage } from '@/lib/token-storage';
 
 interface User {
@@ -154,25 +154,33 @@ function useProvideAuth(): UseAuthReturn {
     }
   }, []);
 
-  const logout = useCallback(async () => {
+  const logout = useCallback(async (skipBackendCall = false) => {
     try {
       setIsLoading(true);
-      console.log('[useAuth] Logging out...');
+      console.log('[useAuth] Logging out...', skipBackendCall ? '(skipping backend call)' : '');
 
-      // Call logout endpoint (with timeout)
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Logout timeout')), 5000)
-      );
+      // Only call backend if we have a valid token and not triggered by 401
+      if (!skipBackendCall) {
+        const token = await tokenStorage.getToken();
+        if (token) {
+          try {
+            // Call logout endpoint (with timeout)
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Logout timeout')), 5000)
+            );
 
-      await Promise.race([
-        trpcClient.auth.logout.mutate(),
-        timeoutPromise
-      ]);
+            await Promise.race([
+              trpcClient.auth.logout.mutate(),
+              timeoutPromise
+            ]);
 
-      console.log('[useAuth] Logout successful');
-    } catch (err) {
-      console.error('[useAuth] Logout error:', err);
-      // Don't throw, always proceed with local cleanup
+            console.log('[useAuth] Logout successful');
+          } catch (err) {
+            console.error('[useAuth] Logout backend error:', err);
+            // Don't throw, always proceed with local cleanup
+          }
+        }
+      }
     } finally {
       // Always clear local state and token
       await tokenStorage.removeToken();
@@ -181,6 +189,8 @@ function useProvideAuth(): UseAuthReturn {
       setIsLoading(false);
       isInitialLoadRef.current = true; // Reset for next login
       retryCountRef.current = 0;
+      // Reset the auth error handling flag so future 401s are handled
+      resetAuthErrorHandling();
       console.log('[useAuth] Logout completed, local state cleared');
     }
   }, []);
@@ -188,8 +198,9 @@ function useProvideAuth(): UseAuthReturn {
   // Set up auth error handler for tRPC
   useEffect(() => {
     setAuthErrorHandler(() => {
-      console.log('[useAuth] Auth error handler triggered, logging out...');
-      logout();
+      console.log('[useAuth] Auth error handler triggered, logging out (skip backend)...');
+      // Skip backend call since we know the token is already invalid (401)
+      logout(true);
     });
   }, [logout]);
 
