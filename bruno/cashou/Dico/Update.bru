@@ -1,0 +1,25 @@
+meta {
+  name: Update
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{base_url}}/api/trpc/dicoEntry.update
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 1,
+    "data": {
+      "term": "Action (modifié)",
+      "definition": "Nouvelle définition mise à jour."
+    }
+  }
+}
+
+settings {
+  encodeUrl: true
+}

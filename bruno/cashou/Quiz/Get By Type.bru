@@ -1,0 +1,16 @@
+meta {
+  name: Get By Type
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{base_url}}/api/trpc/quiz.getByType?input={"type":"DAILY"}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"type":"DAILY"}
+  ~input: {"type":"MCQ"}
+}

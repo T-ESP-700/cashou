@@ -1,0 +1,24 @@
+meta {
+  name: Update an event_asset
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url}}/api/trpc/eventAsset.update
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 4,
+    "data": {
+      "volume": 1700
+    }
+  }
+}
+
+settings {
+  encodeUrl: true
+}

@@ -1,0 +1,22 @@
+meta {
+  name: Delete a level
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{base_url}}/api/trpc/goal.delete
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 1
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

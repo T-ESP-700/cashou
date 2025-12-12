@@ -1,0 +1,19 @@
+meta {
+  name: Get Quiz By Id Random Question (3 quesiton)
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{base_url}}/api/trpc/quizQuestion.getRandomQuestions?input={"quizId":1,"count":3}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"quizId":1,"count":3}
+}
+
+settings {
+  encodeUrl: true
+}

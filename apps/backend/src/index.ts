@@ -1,0 +1,151 @@
+import { auth } from '@cashou/auth/server';
+import { createContext } from './trpc';
+import { trpcRouter } from './trpc/router';
+import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
+import { cors } from './middleware/cors';
+import { getJobQueue, stopJobQueue } from './lib/job-queue';
+import { startGameEventWorkers } from './workers/game-event.worker';
+
+// Server instance variable to track if server is already running
+let serverInstance: ReturnType<typeof Bun.serve> | null = null;
+
+// Start server only if not already started and not in test mode during imports
+async function startServer() {
+  if (serverInstance) {
+    return serverInstance;
+  }
+
+  // Initialize pg-boss job queue and workers
+  try {
+    console.log('Initializing job queue...');
+    await getJobQueue();
+    await startGameEventWorkers();
+    console.log('Job queue and workers initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize job queue:', error);
+    // Don't fail server startup, but log the error
+  }
+
+  serverInstance = Bun.serve({
+    port: 3000,
+    hostname: '0.0.0.0', // Listen on all network interfaces
+    async fetch(req) {
+      const url = new URL(req.url);
+
+      // CORS headers for all requests
+      const corsHeaders = cors();
+
+      // Handle CORS preflight requests
+      if (req.method === 'OPTIONS') {
+        return new Response(null, { headers: corsHeaders });
+      }
+
+      // Health check endpoint
+      if (url.pathname === '/health') {
+        return new Response('OK', { headers: corsHeaders });
+      }
+
+      // Route d'accueil - Retourne un message simple pour vérifier que le serveur fonctionne
+      if (url.pathname === "/") {
+          return new Response("Cashou Backend API", {
+              status: 200,
+              headers: {
+                  "Content-Type": "text/plain",
+              },
+          });
+      }
+
+      // Better-auth endpoints
+      if (url.pathname.startsWith('/api/auth')) {
+        try {
+          console.log('Auth request:', req.method, url.pathname);
+
+          // Clone the request to read the body for debugging
+          const clonedReq = req.clone();
+          if (req.method === 'POST' && req.headers.get('content-type')?.includes('application/json')) {
+            try {
+              const body = await clonedReq.json();
+              console.log('Request body:', body);
+            } catch (e) {
+              console.error('Failed to parse request body:', e);
+            }
+          }
+
+          const response = await auth.handler(req);
+
+          // Add CORS headers to auth response
+          Object.entries(corsHeaders).forEach(([key, value]) => {
+            response.headers.set(key, value);
+          });
+
+          return response;
+        } catch (error) {
+          console.error('Auth handler error:', error);
+          return new Response(JSON.stringify({ error: 'Authentication error' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+      }
+
+      // tRPC endpoints
+      if (url.pathname.startsWith('/api/trpc')) {
+        const response = await fetchRequestHandler({
+          endpoint: '/api/trpc',
+          req,
+          router: trpcRouter,
+          createContext,
+          onError: ({ error }) => {
+            console.error('tRPC Error:', error);
+          },
+        });
+
+        // Add CORS headers to tRPC response
+        Object.entries(corsHeaders).forEach(([key, value]) => {
+          response.headers.set(key, value);
+        });
+
+        return response;
+      }
+
+      // Default response
+      return new Response('Cashou Backend API', { headers: corsHeaders });
+    },
+  });
+
+  console.log(`Backend listening on http://localhost:${serverInstance.port}`);
+  console.log('Auth endpoints available at http://localhost:3000/api/auth/*');
+  console.log('tRPC endpoints available at http://localhost:3000/api/trpc/*');
+
+  return serverInstance;
+}
+
+// Graceful shutdown handler
+async function gracefulShutdown(signal: string) {
+  console.log(`Received ${signal}, shutting down gracefully...`);
+
+  try {
+    await stopJobQueue();
+    console.log('Job queue stopped');
+  } catch (error) {
+    console.error('Error stopping job queue:', error);
+  }
+
+  if (serverInstance) {
+    serverInstance.stop();
+    console.log('Server stopped');
+  }
+
+  process.exit(0);
+}
+
+// Register shutdown handlers
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Only start server if this file is run directly (not imported by tests)
+if (import.meta.main) {
+  startServer();
+}
+
+export { startServer, serverInstance };

@@ -1,0 +1,26 @@
+meta {
+  name: Update
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}/api/trpc/gameInstanceEvent.update
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 1,
+    "data": {
+      "scheduledAt": "2025-01-15T11:00:00.000Z",
+      "triggeredAt": null
+    }
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

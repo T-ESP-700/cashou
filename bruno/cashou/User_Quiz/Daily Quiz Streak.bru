@@ -1,0 +1,19 @@
+meta {
+  name: Daily Quiz Streak
+  type: http
+  seq: 25
+}
+
+get {
+  url: {{base_url}}/api/trpc/userQuiz.getDailyStreak?input={"userId": "usr_demo_1"}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"userId": "usr_demo_1"}
+}
+
+settings {
+  encodeUrl: true
+}

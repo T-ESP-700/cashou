@@ -1,0 +1,19 @@
+meta {
+  name: Get the full tree of a market (market + submarkets + asset counters)
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{base_url}}/api/trpc/market.getTree?input={"marketId":1}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"marketId":1}
+}
+
+settings {
+  encodeUrl: true
+}

@@ -1,0 +1,26 @@
+meta {
+  name: By Game Instance Id - Wallets
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}/api/trpc/wallet.getByGameInstance?input={"gameInstanceId":3}
+  body: json
+  auth: inherit
+}
+
+params:query {
+  input: {"gameInstanceId":3}
+}
+
+body:json {
+  {
+    
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

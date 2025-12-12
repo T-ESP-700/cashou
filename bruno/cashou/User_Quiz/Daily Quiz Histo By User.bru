@@ -1,0 +1,19 @@
+meta {
+  name: Daily Quiz Histo By User
+  type: http
+  seq: 23
+}
+
+get {
+  url: {{base_url}}/api/trpc/userQuiz.getDailyHistory?input={"userId": "usr_demo_1","days":30}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"userId": "usr_demo_1","days":30}
+}
+
+settings {
+  encodeUrl: true
+}

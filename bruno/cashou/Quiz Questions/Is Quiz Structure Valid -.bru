@@ -1,0 +1,19 @@
+meta {
+  name: Is Quiz Structure Valid ?
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{base_url}}/api/trpc/quizQuestion.validateQuizStructure?input={"quizId":1}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"quizId":1}
+}
+
+settings {
+  encodeUrl: true
+}

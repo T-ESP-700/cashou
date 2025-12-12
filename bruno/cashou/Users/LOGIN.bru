@@ -1,0 +1,31 @@
+meta {
+  name: LOGIN
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url}}/api/auth/sign-in/email
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "test@gmail.com",
+    "password": "azerty123456"
+  }
+}
+
+tests {
+  test("Status is 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("Save token", function() {
+    const data = res.body;
+    if (data.token) {
+      bru.setEnvVar("auth_token", data.token);
+    }
+  });
+}

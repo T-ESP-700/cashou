@@ -1,0 +1,15 @@
+meta {
+  name: Get By Id
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/api/trpc/quizQuestion.getById?input={"id":3}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"id":3}
+}

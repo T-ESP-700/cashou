@@ -1,0 +1,15 @@
+meta {
+  name: Get all impacts
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/api/trpc/impact.getAll
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}

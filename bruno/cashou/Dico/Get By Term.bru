@@ -1,0 +1,19 @@
+meta {
+  name: Get By Term
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}/api/trpc/dicoEntry.getByTerm?input={"term":"Action"}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"term":"Action"}
+}
+
+settings {
+  encodeUrl: true
+}

@@ -1,0 +1,18 @@
+meta {
+  name: Update points
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}/api/trpc/user.addPoints
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": "usr_demo_1",
+    "points": 50
+  }
+}

@@ -1,0 +1,19 @@
+meta {
+  name: Get By Keyword
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}/api/trpc/question.search?input={"keyword":"vie"}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"keyword":"vie"}
+}
+
+settings {
+  encodeUrl: true
+}

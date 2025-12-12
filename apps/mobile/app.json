@@ -1,0 +1,62 @@
+{
+  "expo": {
+    "name": "Cashou",
+    "slug": "mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/cashou-logo.png",
+    "scheme": "mobile",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.cashou.mobile",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#F7B267",
+        "foregroundImage": "./assets/images/cashou-logo.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "com.cashou.mobile"
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/cashou-logo.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/cashou-logo.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#F7B267"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/cashou-logo.png",
+          "color": "#F7B267"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b1c1daac-96e7-4097-8723-6fa1e7621615"
+      }
+    },
+    "owner": "soso7"
+  }
+}

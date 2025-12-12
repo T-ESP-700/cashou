@@ -1,0 +1,19 @@
+meta {
+  name: Get asset_histories of a specific asset
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}/api/trpc/assetHistory.getByAssetId?input={"assetId":3}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"assetId":3}
+}
+
+settings {
+  encodeUrl: true
+}

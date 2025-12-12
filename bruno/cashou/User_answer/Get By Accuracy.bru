@@ -1,0 +1,15 @@
+meta {
+  name: Get By Accuracy
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{base_url}}/api/trpc/userAnswer.getByAccuracy?input={"accurate":true}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"accurate":true}
+}

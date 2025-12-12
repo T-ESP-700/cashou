@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "user" ADD COLUMN "points" INTEGER DEFAULT 0,
+ADD COLUMN "level_id" INTEGER;

@@ -1,0 +1,48 @@
+{
+  "findManyArgs": {
+    "include": {
+      "levelEvents": {
+        "include": {
+          "level": true
+        }
+      },
+      "eventAssets": {
+        "include": {
+          "asset": true
+        }
+      },
+      "impacts": {
+        "include": {
+          "field": true,
+          "submarket": true
+        }
+      }
+    },
+    "orderBy": {
+      "title": "asc"
+    }
+  },
+  "findUniqueArgs": {
+    "where": {
+      "id": 7
+    },
+    "include": {
+      "levelEvents": {
+        "include": {
+          "level": true
+        }
+      },
+      "eventAssets": {
+        "include": {
+          "asset": true
+        }
+      },
+      "impacts": {
+        "include": {
+          "field": true,
+          "submarket": true
+        }
+      }
+    }
+  }
+}

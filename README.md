@@ -107,6 +107,23 @@ bun prisma migrate deploy
 bun prisma migrate reset
 ```
 
+### Tests avec Bun
+# Vérifier que Bun reconnaît la config
+```bash
+bun test --dry-run
+```
+
+```bash
+# Lancer les tests
+bun test
+```
+
+# Avec couverture
+```bash
+bun test --coverage
+```
+
+
 ## 🛠️ Scripts disponibles
 
 ### Scripts depuis la racine (Recommandé)
@@ -377,6 +394,8 @@ Cela ouvrira une interface web sur `http://localhost:5555`.
 - **backoffice** : Interface admin (port 5173)
 - **db_cashou** : PostgreSQL pour l'app (port 5432)
 - **db_backoffice** : PostgreSQL pour le backoffice (port 5433)
+
+
 
 ### Commandes utiles
 ```bash

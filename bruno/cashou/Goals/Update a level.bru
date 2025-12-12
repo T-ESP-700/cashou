@@ -1,0 +1,26 @@
+meta {
+  name: Update a level
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{base_url}}/api/trpc/goal.update
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 1,
+    "data": {
+      "title": "Objectif modifié - 3500 points",
+      "description": "Description mise à jour avec nouveaux critères"
+    }
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

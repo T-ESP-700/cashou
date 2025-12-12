@@ -1,0 +1,32 @@
+meta {
+  name: CREATE
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/api/auth/sign-up/email
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "password123"
+  }
+}
+
+tests {
+  test("Status is 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("Save token", function() {
+    const data = res.body;
+    if (data.token) {
+      bru.setEnvVar("auth_token", data.token);
+    }
+  });
+}

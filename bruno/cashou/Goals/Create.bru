@@ -1,0 +1,23 @@
+meta {
+  name: Create
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/api/trpc/goal.create
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "title": "Payer toutes les dépenses essentielles",
+    "description": "Assurez-vous que les dépenses obligatoires du mois (logement, transports, téléphonie…) sont correctement couvertes."
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

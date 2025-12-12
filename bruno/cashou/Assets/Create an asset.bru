@@ -1,0 +1,28 @@
+meta {
+  name: Create an asset
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/api/trpc/asset.create
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "title": "Hey",
+    "symbol": "TOTO 5",
+    "fieldId": 1,
+    "taux": 2.4,
+    "description": "Fonds de placement immobilier spécialisé dans les centres commerciaux",
+    "marketId": 1,
+    "submarketId": 1
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

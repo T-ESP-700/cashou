@@ -1,0 +1,26 @@
+meta {
+  name: Create a new event_asset
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/api/trpc/eventAsset.create
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "assetId": 2,
+    "eventId": 1,
+    "date": "2024-01-30",
+    "value": 125000,
+    "volume": 450
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

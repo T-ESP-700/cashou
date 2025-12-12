@@ -1,0 +1,21 @@
+meta {
+  name: Delete a field
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{base_url}}/api/trpc/field.delete
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 1
+  }
+}
+
+settings {
+  encodeUrl: true
+}

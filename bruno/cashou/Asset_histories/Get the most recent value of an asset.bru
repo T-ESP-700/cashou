@@ -1,0 +1,19 @@
+meta {
+  name: Get the most recent value of an asset
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}/api/trpc/assetHistory.getLatestByAssetId?input={"assetId":1}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"assetId":1}
+}
+
+settings {
+  encodeUrl: true
+}

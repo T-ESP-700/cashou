@@ -1,0 +1,19 @@
+meta {
+  name: Get all event_assets for a specific period
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}/api/trpc/eventAsset.getByPeriod?input={"startDate":"2024-01-10","endDate":"2024-01-15"}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"startDate":"2024-01-10","endDate":"2024-01-15"}
+}
+
+settings {
+  encodeUrl: true
+}

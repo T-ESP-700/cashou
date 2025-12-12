@@ -1,0 +1,20 @@
+meta {
+  name: all events by Level Id
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/api/trpc/level.getEvents?input={"id":1}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"id":1}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

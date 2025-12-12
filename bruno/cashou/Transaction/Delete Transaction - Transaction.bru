@@ -1,0 +1,22 @@
+meta {
+  name: Delete Transaction - Transaction
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}/api/trpc/transaction.delete
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 11
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

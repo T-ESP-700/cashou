@@ -1,0 +1,19 @@
+{
+  "name": "@cashou/db-app",
+  "version": "1.0.0",
+  "main": "./src/client.ts",
+  "types": "./src/client.ts",
+  "scripts": {
+    "generate": "bunx dotenv -e ../../../.env -- prisma generate",
+    "migrate": "bunx dotenv -e ../../../.env -- prisma migrate dev",
+    "studio": "bunx dotenv -e ../../../.env -- prisma studio",
+    "build": "bunx dotenv -e ../../../.env -- prisma generate",
+    "test": "echo 'No tests for db-app package'"
+  },
+  "dependencies": {
+    "@prisma/client": "6.14.0"
+  },
+  "devDependencies": {
+    "prisma": "6.14.0"
+  }
+}

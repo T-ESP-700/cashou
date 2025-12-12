@@ -1,0 +1,15 @@
+meta {
+  name: Count
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{base_url}}/api/trpc/dicoEntry.count
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}

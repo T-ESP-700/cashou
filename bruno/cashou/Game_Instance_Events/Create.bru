@@ -1,0 +1,24 @@
+meta {
+  name: Create
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/api/trpc/gameInstanceEvent.create
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "gameInstanceId": 1,
+    "levelEventId": 1,
+    "scheduledAt": "2025-01-15T10:00:00.000Z"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

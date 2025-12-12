@@ -1,0 +1,20 @@
+meta {
+  name: by goalId
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{base_url}}/api/trpclevelGoal.getByGoalId?input={"goalId":2}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"goalId":2}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

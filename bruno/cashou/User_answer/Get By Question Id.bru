@@ -1,0 +1,15 @@
+meta {
+  name: Get By Question Id
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{base_url}}/api/trpc/userAnswer.getByQuestion?input={"questionId":1}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"questionId":1}
+}

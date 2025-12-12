@@ -1,0 +1,19 @@
+meta {
+  name: Search
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/api/trpc/dicoEntry.search?input={"query":"action"}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"query":"action"}
+}
+
+settings {
+  encodeUrl: true
+}

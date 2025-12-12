@@ -1,0 +1,19 @@
+meta {
+  name: Get By Id
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/api/trpc/dicoEntry.getById?input={"id":1}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"id":1}
+}
+
+settings {
+  encodeUrl: true
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Get User Stats
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{base_url}}/api/trpc/userAnswer.getUserStats?input={"userId": "usr_demo_1"}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"userId": "usr_demo_1"}
+}

@@ -1,0 +1,18 @@
+meta {
+  name: Create
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/api/trpc/question.create
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "text": "Bonjour ?",
+    "explanation": "Ceci est une explication de votre réponse fausse"
+  }
+}

@@ -1,0 +1,21 @@
+meta {
+  name: Update
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/api/trpc/userQuiz.update
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 2,
+    "data": {
+      "completedAt": "2024-01-15T10:30:00Z",
+      "isCorrect": true
+    }
+  }
+}

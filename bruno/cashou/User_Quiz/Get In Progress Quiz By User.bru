@@ -1,0 +1,19 @@
+meta {
+  name: Get In Progress Quiz By User
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{base_url}}/api/trpc/userQuiz.getInProgressByUser?input={"userId": "usr_demo_1"}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"userId": "usr_demo_1"}
+}
+
+settings {
+  encodeUrl: true
+}

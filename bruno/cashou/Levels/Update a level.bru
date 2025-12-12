@@ -1,0 +1,25 @@
+meta {
+  name: Update a level
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{base_url}}/api/trpc/level.update
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 1,
+    "data": {
+      "speed": 1314000
+    }
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

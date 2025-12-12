@@ -1,0 +1,19 @@
+meta {
+  name: Get a submarket
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/api/trpc/submarket.getById?input={"id":2}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"id":2}
+}
+
+settings {
+  encodeUrl: true
+}

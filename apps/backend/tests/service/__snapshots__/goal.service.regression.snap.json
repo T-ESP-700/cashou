@@ -1,0 +1,26 @@
+{
+  "findManyArgs": {
+    "include": {
+      "levelGoals": {
+        "include": {
+          "level": true
+        }
+      }
+    },
+    "orderBy": {
+      "title": "asc"
+    }
+  },
+  "findUniqueArgs": {
+    "where": {
+      "id": 7
+    },
+    "include": {
+      "levelGoals": {
+        "include": {
+          "level": true
+        }
+      }
+    }
+  }
+}

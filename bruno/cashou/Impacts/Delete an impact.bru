@@ -1,0 +1,21 @@
+meta {
+  name: Delete an impact
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{base_url}}/api/trpc/impact.delete
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+  "id": 1
+  }
+}
+
+settings {
+  encodeUrl: true
+}

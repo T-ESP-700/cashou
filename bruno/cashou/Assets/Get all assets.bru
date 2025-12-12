@@ -1,0 +1,15 @@
+meta {
+  name: Get all assets
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/api/trpc/asset.getAll
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}

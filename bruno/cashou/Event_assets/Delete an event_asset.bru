@@ -1,0 +1,21 @@
+meta {
+  name: Delete an event_asset
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{base_url}}/api/trpc/eventAsset.delete
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 4
+  }
+}
+
+settings {
+  encodeUrl: true
+}

@@ -1,0 +1,20 @@
+meta {
+  name: by levelId
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{base_url}}/api/trpc/levelGoal.getByLevelId?input={"levelId":2}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"levelId":2}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

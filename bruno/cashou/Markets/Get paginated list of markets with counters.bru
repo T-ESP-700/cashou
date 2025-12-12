@@ -1,0 +1,19 @@
+meta {
+  name: Get paginated list of markets with counters
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}/api/trpc/market.list?input={"limit":20,"offset":0}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"limit":20,"offset":0}
+}
+
+settings {
+  encodeUrl: true
+}

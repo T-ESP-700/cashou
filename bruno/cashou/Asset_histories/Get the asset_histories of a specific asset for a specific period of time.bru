@@ -1,0 +1,19 @@
+meta {
+  name: Get the asset_histories of a specific asset for a specific period of time
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/api/trpc/assetHistory.getByAssetIdAndPeriod?input={"assetId":1,"startDate":"2024-01-16","endDate":"2024-01-18"}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  input: {"assetId":1,"startDate":"2024-01-16","endDate":"2024-01-18"}
+}
+
+settings {
+  encodeUrl: true
+}
