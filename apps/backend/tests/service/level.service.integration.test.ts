@@ -1,5 +1,5 @@
 // tests/service/level.service.integration.test.ts
-import { describe, it, expect, afterAll } from "bun:test";
+import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { PrismaClient, type Level } from "@cashou/db-app";
 import { LevelService } from "../../src/trpc/services/level.service";
 
@@ -10,11 +10,26 @@ const shouldRun = !!process.env.CASHOU_DB_URL;
   const service = new LevelService(prisma); // Suppression du "as unknown"
   let createdId: number | null = null;
 
+  beforeAll(async () => {
+    // Clean up any existing test data with number 9999
+    await prisma.level.deleteMany({
+      where: {
+        number: 9999
+      }
+    });
+  });
+
   afterAll(async () => {
     try {
       if (createdId) {
-        await prisma.level.delete({ where: { id: createdId } });
+        await prisma.level.delete({ where: { id: createdId } }).catch(() => {});
       }
+      // Clean up any remaining test data
+      await prisma.level.deleteMany({
+        where: {
+          number: 9999
+        }
+      });
     } finally {
       await prisma.$disconnect();
     }
@@ -22,13 +37,13 @@ const shouldRun = !!process.env.CASHOU_DB_URL;
 
   it("create → findOne → update → delete", async () => {
     const data: Omit<Level, "id" | "createdAt" | "updatedAt"> = {
-      title: "Niveau IT",
-      number: 101,
+      title: "Niveau IT Test",
+      number: 9999, // Use a unique number unlikely to conflict with real data
       duration: 45,
       speed: 2,
       startBalance: 5000,
       pointsRequired: 250,
-      description: "Cas d'intégration",
+      description: "Cas d'intégration test",
     };
 
     const created = await service.create(data); // Suppression du "as unknown as Level"
@@ -38,13 +53,12 @@ const shouldRun = !!process.env.CASHOU_DB_URL;
     const fetched = await service.findOne(createdId!);
     expect(fetched?.id).toBe(createdId);
 
-    const updated = await service.update(createdId!, { title: "Niveau IT (maj)" }); // Suppression du "as unknown as Level"
-    expect(updated.title).toBe("Niveau IT (maj)");
+    const updated = await service.update(createdId!, { title: "Niveau IT Test (maj)" }); // Suppression du "as unknown as Level"
+    expect(updated.title).toBe("Niveau IT Test (maj)");
 
     const deleted = await service.delete(createdId!);
     expect(deleted.id).toBe(createdId);
 
-    const again = await prisma.level.create({ data });
-    createdId = again.id;
+    createdId = null; // Mark as deleted so afterAll doesn't try to delete again
   });
 });
