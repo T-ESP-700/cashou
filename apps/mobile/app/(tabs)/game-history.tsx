@@ -23,6 +23,7 @@ interface GameHistoryItem {
     id: number;
     amount: string | number | null;
   } | null;
+  levelQuizCompleted?: boolean; // Indique si le quiz du niveau est complété
 }
 
 export default function GameHistoryScreen() {
@@ -53,7 +54,38 @@ export default function GameHistoryScreen() {
         const sorted = [...instances].sort((a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
-        setGameHistory(sorted as GameHistoryItem[]);
+        
+        // Pour chaque partie terminée, vérifier si le quiz du niveau est complété
+        const gamesWithQuizStatus = await Promise.all(
+          sorted.map(async (game: any) => {
+            if (!game.isEnded || !game.level?.id) {
+              return { ...game, levelQuizCompleted: false };
+            }
+
+            try {
+              // Récupérer le quiz du niveau
+              const quizzes = await trpcClient.quiz.getByLevel.query({ levelId: game.level.id });
+              if (!quizzes || quizzes.length === 0) {
+                return { ...game, levelQuizCompleted: true }; // Pas de quiz = considéré comme complété
+              }
+
+              const quizId = quizzes[0].id;
+              
+              // Vérifier si l'utilisateur a complété ce quiz
+              const participations = await trpcClient.userQuiz.getByQuiz.query({ quizId });
+              const userParticipation = (participations as any[]).find(
+                (p: any) => p.userId === user.id && p.completedAt !== null
+              );
+
+              return { ...game, levelQuizCompleted: userParticipation !== undefined };
+            } catch (err) {
+              console.error('Error checking quiz completion for game', game.id, err);
+              return { ...game, levelQuizCompleted: false };
+            }
+          })
+        );
+
+        setGameHistory(gamesWithQuizStatus as GameHistoryItem[]);
       } catch (err) {
         console.error('Error fetching game history:', err);
         setError('Erreur lors du chargement de l\'historique');
@@ -112,10 +144,16 @@ export default function GameHistoryScreen() {
           </View>
           <View style={[
             styles.statusBadge,
-            { backgroundColor: item.isEnded ? '#4CAF50' : '#FF9800' }
+            { 
+              backgroundColor: item.isEnded 
+                ? (item.levelQuizCompleted ? '#4CAF50' : '#FF9800') // Vert si quiz complété, orange sinon
+                : '#FF9800' // Orange pour en cours
+            }
           ]}>
             <Text style={styles.statusText}>
-              {item.isEnded ? 'Termine' : 'En cours'}
+              {item.isEnded 
+                ? (item.levelQuizCompleted ? 'Termine' : 'Quiz') 
+                : 'En cours'}
             </Text>
           </View>
         </View>

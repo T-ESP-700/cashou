@@ -135,6 +135,7 @@ export default function HomeScreen() {
   const [timeRemaining, setTimeRemaining] = useState<string>('0h0m');
   const [homeData, setHomeData] = useState<HomeData | null>(null);
   const [isLoadingHomeData, setIsLoadingHomeData] = useState(true);
+  const [levelCardStatus, setLevelCardStatus] = useState<'not_started' | 'in_progress' | 'completed' | 'quiz_pending'>('not_started');
 
   // Générer le greeting une seule fois au montage (pour éviter les changements aléatoires)
   const greeting = useMemo(() => {
@@ -255,6 +256,49 @@ export default function HomeScreen() {
     }, [isAuthenticated, refreshUser])
   );
 
+  // Vérifier si le quiz du niveau est complété pour le dernier niveau complété
+  useEffect(() => {
+    const checkQuizCompletion = async () => {
+      if (!user || !homeData?.lastCompletedGame?.levelId) {
+        return;
+      }
+
+      const lastCompleted = homeData.lastCompletedGame;
+      const currentLevel = homeData.level;
+
+      // Si on a terminé un niveau mais pas de niveau suivant, vérifier le quiz
+      if (lastCompleted && !currentLevel) {
+        try {
+          // Récupérer le quiz du niveau
+          const quizzes = await trpcClient.quiz.getByLevel.query({ levelId: lastCompleted.levelId });
+          if (!quizzes || quizzes.length === 0) {
+            // Pas de quiz = considéré comme complété
+            setLevelCardStatus('completed');
+            return;
+          }
+
+          const quizId = quizzes[0].id;
+          
+          // Vérifier si l'utilisateur a complété ce quiz
+          const participations = await trpcClient.userQuiz.getByQuiz.query({ quizId });
+          const userParticipation = (participations as any[]).find(
+            (p: any) => p.userId === user.id && p.completedAt !== null
+          );
+
+          setLevelCardStatus(userParticipation ? 'completed' : 'quiz_pending');
+        } catch (err) {
+          console.error('Error checking quiz completion:', err);
+          setLevelCardStatus('quiz_pending'); // Par défaut quiz_pending en cas d'erreur
+        }
+      } else {
+        // Pas de niveau complété ou niveau suivant disponible
+        setLevelCardStatus('not_started');
+      }
+    };
+
+    checkQuizCompletion();
+  }, [user, homeData]);
+
   // Données pour le LevelCard
   const levelCardData = useMemo(() => {
     // Si une partie est en cours (non terminée)
@@ -280,7 +324,7 @@ export default function HomeScreen() {
     // Si on a terminé un niveau récemment et que c'est le niveau juste avant le niveau actuel
     // → Afficher le niveau actuel comme "prêt à commencer"
     // Sinon si on a terminé un niveau et qu'on n'a pas de niveau suivant
-    // → Afficher le dernier niveau comme "terminé"
+    // → Afficher le dernier niveau comme "terminé" ou "quiz" selon si le quiz est complété
     if (lastCompleted && currentLevel) {
       // L'utilisateur a un niveau suivant à faire
       return {
@@ -303,7 +347,7 @@ export default function HomeScreen() {
         title: lastCompleted.levelTitle,
         progression: 100,
         currentReturn: 0,
-        status: 'completed' as const,
+        status: levelCardStatus, // Utiliser le statut vérifié dans useEffect
         hasGame: true, // On a une partie (terminée)
         gameId: lastCompleted.id, // ID de la partie terminée
       };
@@ -320,7 +364,7 @@ export default function HomeScreen() {
       hasGame: false,
       gameId: null,
     };
-  }, [homeData]);
+  }, [homeData, levelCardStatus]);
 
   // Handler pour naviguer vers la description du niveau
   const handleLevelPress = () => {

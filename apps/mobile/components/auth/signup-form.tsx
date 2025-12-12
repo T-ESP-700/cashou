@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { StyleSheet, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, TextInput, TouchableOpacity, Alert, ActivityIndicator, useColorScheme as useRNColorScheme } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { tokenStorage } from '@/lib/token-storage';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors } from '@/constants/theme';
+import { CashouTheme } from '@/constants/cashou-theme';
 import { AUTH_URL } from '@/lib/api-config';
 
 interface SignupFormProps {
@@ -17,8 +16,9 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const colorScheme = useRNColorScheme();
+  const isDark = colorScheme === 'dark';
+  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
 
   const handleSignup = async () => {
     if (!name || !email || !password || !confirmPassword) {
@@ -91,13 +91,13 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
         style={[
           styles.input,
           {
-            backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#f5f5f5',
-            color: colors.text,
-            borderColor: colors.tint,
+            backgroundColor: theme.card,
+            color: theme.text,
+            borderColor: theme.border,
           }
         ]}
         placeholder="Full Name"
-        placeholderTextColor={colorScheme === 'dark' ? '#666' : '#999'}
+        placeholderTextColor={theme.text + '80'}
         value={name}
         onChangeText={setName}
         autoCapitalize="words"
@@ -108,13 +108,13 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
         style={[
           styles.input,
           {
-            backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#f5f5f5',
-            color: colors.text,
-            borderColor: colors.tint,
+            backgroundColor: theme.card,
+            color: theme.text,
+            borderColor: theme.border,
           }
         ]}
         placeholder="Email"
-        placeholderTextColor={colorScheme === 'dark' ? '#666' : '#999'}
+        placeholderTextColor={theme.text + '80'}
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
@@ -126,13 +126,13 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
         style={[
           styles.input,
           {
-            backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#f5f5f5',
-            color: colors.text,
-            borderColor: colors.tint,
+            backgroundColor: theme.card,
+            color: theme.text,
+            borderColor: theme.border,
           }
         ]}
         placeholder="Password (min. 8 characters)"
-        placeholderTextColor={colorScheme === 'dark' ? '#666' : '#999'}
+        placeholderTextColor={theme.text + '80'}
         value={password}
         onChangeText={setPassword}
         secureTextEntry
@@ -143,13 +143,13 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
         style={[
           styles.input,
           {
-            backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#f5f5f5',
-            color: colors.text,
-            borderColor: colors.tint,
+            backgroundColor: theme.card,
+            color: theme.text,
+            borderColor: theme.border,
           }
         ]}
         placeholder="Confirm Password"
-        placeholderTextColor={colorScheme === 'dark' ? '#666' : '#999'}
+        placeholderTextColor={theme.text + '80'}
         value={confirmPassword}
         onChangeText={setConfirmPassword}
         secureTextEntry
@@ -157,7 +157,7 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
       />
 
       <TouchableOpacity
-        style={[styles.button, { backgroundColor: colors.tint }]}
+        style={[styles.button, { backgroundColor: theme.accent }]}
         onPress={handleSignup}
         disabled={isLoading}
       >

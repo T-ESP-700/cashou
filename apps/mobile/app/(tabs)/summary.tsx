@@ -110,36 +110,6 @@ export default function GameSummaryScreen() {
     }
   };
 
-  // Calculate time elapsed (excluding paused time)
-  const calculateTimeElapsed = (): string => {
-    if (!gameInstance?.createdAt || !gameInstance?.endedAt) {
-      return 'N/A';
-    }
-
-    const start = new Date(gameInstance.createdAt);
-    const end = new Date(gameInstance.endedAt);
-    let diffMs = end.getTime() - start.getTime();
-
-    // Soustraire le temps de pause (stocké en secondes)
-    const pausedDurationMs = (gameInstance.totalPausedDuration ?? 0) * 1000;
-    diffMs = Math.max(0, diffMs - pausedDurationMs);
-
-    const diffSeconds = Math.floor(diffMs / 1000);
-    const diffMinutes = Math.floor(diffSeconds / 60);
-    const diffHours = Math.floor(diffMinutes / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffDays > 0) {
-      return `${diffDays}j ${diffHours % 24}h`;
-    } else if (diffHours > 0) {
-      return `${diffHours}h ${diffMinutes % 60}m`;
-    } else if (diffMinutes > 0) {
-      return `${diffMinutes}m ${diffSeconds % 60}s`;
-    } else {
-      return `${diffSeconds}s`;
-    }
-  };
-
   // Calculate profit percentage
   const calculateProfitPercent = (): string => {
     if (!endGameResult) return '0%';
@@ -203,20 +173,6 @@ export default function GameSummaryScreen() {
           </Text>
           <Text style={styles.resultSubtitle}>
             Niveau {gameInstance?.level?.number || '?'} - {gameInstance?.level?.title || 'Sans titre'}
-          </Text>
-        </View>
-
-        {/* Time elapsed */}
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <View style={styles.cardHeader}>
-            <Ionicons name="time-outline" size={24} color={theme.text} />
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Temps de jeu</Text>
-          </View>
-          <Text style={[styles.timeValue, { color: theme.text }]}>
-            {calculateTimeElapsed()}
-          </Text>
-          <Text style={[styles.timeSubtext, { color: theme.text, opacity: 0.7 }]}>
-            {gameInstance?.level?.duration || 0} jours simules
           </Text>
         </View>
 
@@ -367,16 +323,6 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: '600',
-  },
-  timeValue: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  timeSubtext: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 4,
   },
   financialGrid: {
     gap: 12,

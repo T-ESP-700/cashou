@@ -1,12 +1,11 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, useColorScheme as useRNColorScheme, Alert, Modal } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useState, useEffect, useCallback } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useAuth } from '@/hooks/use-auth';
-import { useHeaderOptions } from '@/hooks/use-header';
+import { useHeader } from '@/hooks/use-header';
 import { useNotifications } from '@/hooks/use-notifications';
 import FastForwardIcon from '@/assets/images/fast-forward.svg';
 import PauseIcon from '@/assets/images/pause.svg';
@@ -71,9 +70,17 @@ export default function GameCurrentScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { pendingEventCompletion, setPendingEventCompletion, isOnAssetsScreen, setActiveGameInstanceId, eventNotification } = useNotifications();
+  const { setOptions } = useHeader();
 
-  // Configure header for this screen
-  useHeaderOptions({ showBackButton: true });
+  // Ensure back button is always visible when this screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      setOptions({ showBackButton: true });
+      return () => {
+        // Optionally reset on unmount, but we keep it visible
+      };
+    }, [setOptions])
+  );
 
   const [levelData, setLevelData] = useState<LevelData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -397,8 +404,13 @@ export default function GameCurrentScreen() {
             }));
           }
 
-          // If no gameId was provided and we have a user, create game instance
-          if (!gameId && user && data.level) {
+          // Only create game instance if:
+          // 1. No gameId was provided in params (not navigating from notification)
+          // 2. We have a user
+          // 3. We have level data
+          // 4. We don't already have a gameInstanceId set (from previous fetch)
+          // This prevents creating a new instance when navigating from a notification
+          if (!gameId && !gameInstanceId && user && data.level) {
             await createGameInstanceForPreparation(data as LevelData);
           }
         }

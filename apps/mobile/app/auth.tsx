@@ -1,25 +1,25 @@
 import React, { useState } from 'react';
-import { StyleSheet, TouchableOpacity, ScrollView, View, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, TouchableOpacity, ScrollView, View, KeyboardAvoidingView, Platform, useColorScheme as useRNColorScheme } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { LoginForm } from '@/components/auth/login-form';
 import { SignupForm } from '@/components/auth/signup-form';
 import { useAuth } from '@/hooks/use-auth';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors } from '@/constants/theme';
+import { CashouTheme } from '@/constants/cashou-theme';
 
 export default function AuthScreen() {
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
   const { refreshUser } = useAuth();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const colorScheme = useRNColorScheme();
+  const isDark = colorScheme === 'dark';
+  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <ThemedView style={styles.container}>
+      <ThemedView style={[styles.container, { backgroundColor: theme.background }]}>
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
@@ -35,12 +35,12 @@ export default function AuthScreen() {
             </ThemedText>
           </ThemedView>
 
-          <ThemedView style={styles.tabContainer}>
+          <ThemedView style={[styles.tabContainer, { borderBottomColor: theme.border }]}>
             <TouchableOpacity
               style={[
                 styles.tab,
                 activeTab === 'login' && styles.activeTab,
-                { borderBottomColor: activeTab === 'login' ? colors.tint : 'transparent' }
+                { borderBottomColor: activeTab === 'login' ? theme.accent : 'transparent' }
               ]}
               onPress={() => setActiveTab('login')}
             >
@@ -48,7 +48,7 @@ export default function AuthScreen() {
                 style={[
                   styles.tabText,
                   activeTab === 'login' && styles.activeTabText,
-                  { color: activeTab === 'login' ? colors.tint : colors.text }
+                  { color: activeTab === 'login' ? theme.accent : theme.text }
                 ]}
               >
                 Login
@@ -59,7 +59,7 @@ export default function AuthScreen() {
               style={[
                 styles.tab,
                 activeTab === 'signup' && styles.activeTab,
-                { borderBottomColor: activeTab === 'signup' ? colors.tint : 'transparent' }
+                { borderBottomColor: activeTab === 'signup' ? theme.accent : 'transparent' }
               ]}
               onPress={() => setActiveTab('signup')}
             >
@@ -67,7 +67,7 @@ export default function AuthScreen() {
                 style={[
                   styles.tabText,
                   activeTab === 'signup' && styles.activeTabText,
-                  { color: activeTab === 'signup' ? colors.tint : colors.text }
+                  { color: activeTab === 'signup' ? theme.accent : theme.text }
                 ]}
               >
                 Sign Up
@@ -113,7 +113,6 @@ const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
   tab: {
     flex: 1,
