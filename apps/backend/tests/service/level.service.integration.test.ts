@@ -17,6 +17,17 @@ const shouldRun = !!process.env.CASHOU_DB_URL;
         number: 9999
       }
     });
+    // Reset the sequence to avoid ID conflicts
+    // This ensures the next ID will be higher than any existing ID
+    await prisma.$executeRawUnsafe(`
+      SELECT setval(
+        pg_get_serial_sequence('levels', 'id'),
+        COALESCE((SELECT MAX(id) FROM levels), 1),
+        true
+      );
+    `).catch(() => {
+      // Ignore errors if sequence doesn't exist or table is empty
+    });
   });
 
   afterAll(async () => {
@@ -36,6 +47,13 @@ const shouldRun = !!process.env.CASHOU_DB_URL;
   });
 
   it("create → findOne → update → delete", async () => {
+    // Ensure cleanup before creating
+    await prisma.level.deleteMany({
+      where: {
+        number: 9999
+      }
+    });
+
     const data: Omit<Level, "id" | "createdAt" | "updatedAt"> = {
       title: "Niveau IT Test",
       number: 9999, // Use a unique number unlikely to conflict with real data
