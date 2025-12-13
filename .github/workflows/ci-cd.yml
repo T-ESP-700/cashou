@@ -50,6 +50,10 @@ jobs:
             packages/*/node_modules
           key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
       - run: bun install --frozen-lockfile
+      - name: Generate Prisma client for app database
+        run: bun run db:generate:app
+      - name: Generate Prisma client for backoffice database
+        run: bun run db:generate:backoffice
       - name: TypeScript check
         run: bun run typecheck
       - name: Code quality
@@ -191,14 +195,8 @@ jobs:
         run: bun run db:migrate:app
       - name: Run migrations for backoffice database
         run: bun run db:migrate:backoffice
-      - name: Start backend server
-        run: |
-          bun run --filter backend dev &
-          sleep 10
       - name: Run API tests
         run: bun run --filter backend test --timeout 30000
-      - name: Stop server
-        run: pkill -f "bun.*backend.*dev" || true
 
   # Build des applications
   apps-build:

@@ -1,6 +1,6 @@
 // tests/service/level-event.service.integration.test.ts
 import { describe, it, expect, afterAll, beforeAll } from "bun:test";
-import { PrismaClient, type LevelEvent } from "@prisma/client";
+import { PrismaClient, type LevelEvent } from "@cashou/db-app";
 import { LevelEventService } from "../../src/trpc/services/level-event.service";
 
 const shouldRun = !!process.env.CASHOU_DB_URL;

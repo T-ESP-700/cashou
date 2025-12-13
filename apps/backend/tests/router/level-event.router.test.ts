@@ -129,7 +129,8 @@ describe("levelEvent.router — createCaller (sans HTTP)", () => {
         const res = await caller.create(payload);
         expect(res).toMatchObject({ id: 123, ...payload });
         const hit = calls.find((c) => c.method === "create");
-        expect(hit?.args).toEqual({ data: payload });
+        // Zod ajoute les valeurs par défaut position: 1, triggerPercent: 50
+        expect(hit?.args).toEqual({ data: { ...payload, position: 1, triggerPercent: 50 } });
     });
 
     it("levelEvent.update → appelle service.update(id, data)", async () => {
@@ -137,7 +138,8 @@ describe("levelEvent.router — createCaller (sans HTTP)", () => {
         const res = await caller.update({ id: 99, data: { levelId: 4, eventId: 5 } });
         expect(res).toMatchObject({ id: 99, levelId: 4, eventId: 5 });
         const hit = calls.find((c) => c.method === "update");
-        expect(hit?.args).toEqual({ id: 99, data: { levelId: 4, eventId: 5 } });
+        // Zod ajoute les valeurs par défaut position: 1, triggerPercent: 50
+        expect(hit?.args).toEqual({ id: 99, data: { levelId: 4, eventId: 5, position: 1, triggerPercent: 50 } });
     });
 
     it("levelEvent.delete → appelle service.delete(id)", async () => {
