@@ -35,9 +35,10 @@ async function main() {
       } else {
         console.log('⚠️  Échec de la création de l\'utilisateur via Better-Auth');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Si l'utilisateur existe déjà (erreur 422), on le récupère
-      if (error?.status === 422 || error?.message?.includes('already exists')) {
+      const err = error as { status?: number; message?: string };
+      if (err?.status === 422 || err?.message?.includes('already exists')) {
         testUser = await prisma.user.findFirst({
           where: { email: TEST_USER_EMAIL }
         });

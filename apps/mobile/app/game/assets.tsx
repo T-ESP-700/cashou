@@ -8,13 +8,24 @@ import {
   useColorScheme as useRNColorScheme,
   TouchableOpacity,
 } from 'react-native';
-import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect, Router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { API_URL } from '@/lib/api-config';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useAuth } from '@/hooks/use-auth';
+
+// Backend Asset type from API
+interface ApiAsset {
+  id: number;
+  title: string | null;
+  symbol: string | null;
+  taux: number | null;
+  market?: {
+    title: string | null;
+  } | null;
+}
 
 // UI representation of an asset for display purposes
 type AssetItem = {
@@ -195,9 +206,9 @@ export default function AssetsScreen() {
     try {
       setLoading(true);
       setError(null);
-      const data: any[] = await trpcClient.asset.getAll.query();
+      const data = await trpcClient.asset.getAll.query();
       // Map backend Asset to UI AssetItem
-      const mapped: AssetItem[] = (data || []).map((a: any) => ({
+      const mapped: AssetItem[] = ((data || []) as ApiAsset[]).map((a) => ({
         id: String(a.id ?? a.symbol ?? a.title ?? Math.random()),
         name: String(a.title ?? a.symbol ?? 'Asset'),
         // Basic tags mapping (extend later if backend exposes richer fields)
@@ -209,10 +220,10 @@ export default function AssetsScreen() {
         changePct: typeof a?.taux === 'number' ? a.taux : 0,
       }));
       setAssets(mapped);
-    } catch (e: any) {
+    } catch (e: unknown) {
       localError = e;
       console.error('[AssetsScreen] Failed to load assets from', API_URL, e);
-      setError(e?.message ? String(e.message) : 'Impossible de charger les assets');
+      setError(e instanceof Error ? e.message : 'Impossible de charger les assets');
     } finally {
       setLoading(false);
     }
@@ -311,7 +322,7 @@ export default function AssetsScreen() {
 interface AssetCardProps {
   asset: AssetItem;
   isDark: boolean;
-  router: any;
+  router: Router;
   gameInstanceId?: string;
   walletId?: string;
 }

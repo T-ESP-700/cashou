@@ -1,6 +1,5 @@
-// Re-export AppRouter type from backend
-// This is a placeholder that will be overridden by the actual AppRouter type at build time
-export type AppRouter = any;
+// Re-export AppRouter type from client (which imports from backend)
+export type { AppRouter } from './client';
 
 export interface ApiResponse<T> {
   success: boolean;

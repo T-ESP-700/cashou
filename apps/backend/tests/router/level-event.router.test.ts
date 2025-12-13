@@ -21,6 +21,8 @@ function makeLevelEvent(id: number, over: Partial<LevelEvent> = {}): LevelEvent 
         id,
         levelId: over.levelId ?? 1,
         eventId: over.eventId ?? 1,
+        triggerPercent: over.triggerPercent ?? 0,
+        position: over.position ?? 0,
         createdAt: over.createdAt ?? now,
         updatedAt: over.updatedAt ?? now,
     };

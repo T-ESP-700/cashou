@@ -2,12 +2,22 @@ import { useEffect, useMemo, useState } from 'react'
 import { AlertCircle, CheckCircle2, Plus } from 'lucide-react'
 import { MODULE_CONFIGS } from '@/config/modules'
 import type { BackofficeModule, EntityField } from '@/lib/domain'
-import { backofficeApi } from '@/services/backoffice-api'
+import { backofficeApi, CrudOperations } from '@/services/backoffice-api'
 import { useBackofficeStore } from '@/store/useBackofficeStore'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-const CRUD_HANDLERS: Partial<Record<BackofficeModule, any>> = {
+// Base entity type for dynamic collections
+interface BaseEntity {
+  id: number
+  title?: string | null
+  name?: string | null
+  text?: string | null
+  number?: number | null
+  [key: string]: unknown
+}
+
+const CRUD_HANDLERS: Partial<Record<BackofficeModule, CrudOperations>> = {
   levels: backofficeApi.level,
   goals: backofficeApi.goal,
   levelGoals: backofficeApi.levelGoal,
@@ -448,23 +458,23 @@ function formatValue(value: unknown) {
 function getRecordsForModule(
   module: BackofficeModule,
   data: {
-    levels: any[]
-    goals: any[]
-    levelGoals: any[]
-    levelEvents: any[]
-    quizzes: any[]
-    questions: any[]
-    answers: any[]
-    quizQuestions: any[]
-    markets: any[]
-    submarkets: any[]
-    fields: any[]
-    assets: any[]
-    events: any[]
-    assetHistory: any[]
-    eventAsset: any[]
-    impacts: any[]
-    dicoEntries: any[]
+    levels: BaseEntity[]
+    goals: BaseEntity[]
+    levelGoals: BaseEntity[]
+    levelEvents: BaseEntity[]
+    quizzes: BaseEntity[]
+    questions: BaseEntity[]
+    answers: BaseEntity[]
+    quizQuestions: BaseEntity[]
+    markets: BaseEntity[]
+    submarkets: BaseEntity[]
+    fields: BaseEntity[]
+    assets: BaseEntity[]
+    events: BaseEntity[]
+    assetHistory: BaseEntity[]
+    eventAsset: BaseEntity[]
+    impacts: BaseEntity[]
+    dicoEntries: BaseEntity[]
   },
 ) {
   switch (module) {
@@ -518,15 +528,15 @@ function buildDynamicOptions({
   quizzes,
   questions,
 }: {
-  markets: any[]
-  submarkets: any[]
-  fields: any[]
-  assets: any[]
-  events: any[]
-  levels: any[]
-  goals: any[]
-  quizzes: any[]
-  questions: any[]
+  markets: BaseEntity[]
+  submarkets: BaseEntity[]
+  fields: BaseEntity[]
+  assets: BaseEntity[]
+  events: BaseEntity[]
+  levels: BaseEntity[]
+  goals: BaseEntity[]
+  quizzes: BaseEntity[]
+  questions: BaseEntity[]
 }): Record<string, Array<{ value: number; label: string }>> {
   return {
     marketId: markets.map((market) => ({

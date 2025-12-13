@@ -24,6 +24,8 @@ const shouldRun = !!process.env.CASHOU_DB_URL;
         const data: Omit<Goal, "id" | "createdAt" | "updatedAt"> = {
             title: "Objectif IT",
             description: "Atteindre 1000 points pour les tests d'intégration",
+            goalType: null,
+            goalValue: null,
         };
 
         const created = await service.create(data);

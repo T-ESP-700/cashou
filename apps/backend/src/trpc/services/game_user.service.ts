@@ -3,7 +3,6 @@ import defaultPrisma from "../../database.ts";
 import {
   GameUserCreateSchema,
   GameUserUpdateSchema,
-  GameUserDataSchema,
   GameUserSearchByUserSchema,
   GameUserSearchByGameInstanceSchema,
   GameUserSearchByStatusSchema,

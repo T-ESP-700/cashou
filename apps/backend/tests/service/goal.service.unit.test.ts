@@ -32,6 +32,8 @@ function makePrismaMock() {
                     id: 123,
                     title: (data as Goal).title ?? "Objectif",
                     description: (data as Goal).description ?? null,
+                    goalType: (data as Goal).goalType ?? null,
+                    goalValue: (data as Goal).goalValue ?? null,
                     createdAt: now,
                     updatedAt: now,
                 };
@@ -45,6 +47,8 @@ function makePrismaMock() {
                     id,
                     title: (data as Goal).title ?? "Objectif",
                     description: (data as Goal).description ?? null,
+                    goalType: (data as Goal).goalType ?? null,
+                    goalValue: (data as Goal).goalValue ?? null,
                     createdAt: now,
                     updatedAt: now,
                 };
@@ -57,6 +61,8 @@ function makePrismaMock() {
                     id,
                     title: "Deleted",
                     description: null,
+                    goalType: null,
+                    goalValue: null,
                     createdAt: now,
                     updatedAt: now,
                 };

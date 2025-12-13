@@ -1,6 +1,6 @@
 // Service métier pour la gestion des participations aux quiz (UserQuiz)
 // Couche d'abstraction entre les routers et la base de données
-import type { UserQuiz, Quiz, PrismaClient } from "@prisma/client";
+import type { UserQuiz, PrismaClient } from "@prisma/client";
 import defaultPrisma from "../../database.ts";
 import type {UserQuizCreateSchema, UserQuizDataSchema} from "../schemas-zod/user-quiz-schema.ts";
 
@@ -71,7 +71,7 @@ export class UserQuizService {
      * @param userId - Identifiant de l'utilisateur
      * @returns Promise<UserQuiz[]> - Liste des participations de l'utilisateur
      */
-    async findByUser(userId: number): Promise<UserQuiz[]> {
+    async findByUser(userId: string): Promise<UserQuiz[]> {
         return this.prisma.userQuiz.findMany({
             where: { userId },
             orderBy: { createdAt: 'desc' }
@@ -111,7 +111,7 @@ export class UserQuizService {
      * @param userId - Identifiant de l'utilisateur (number ou string)
      * @returns Promise<UserQuiz> - La participation créée
      */
-    async startQuiz(quizId: number, userId: number | string): Promise<UserQuiz> {
+    async startQuiz(quizId: number, userId: string): Promise<UserQuiz> {
         const userIdStr = userId.toString();
         // Vérifier si l'utilisateur a déjà participé à ce quiz
         const existingParticipation = await this.prisma.userQuiz.findFirst({
@@ -215,7 +215,7 @@ export class UserQuizService {
         }
 
         // Récupérer toutes les réponses de l'utilisateur pour ce quiz
-        const questionIds = quizQuestions.map(qq => qq.questionId);
+        const questionIds = quizQuestions.map(qq => qq.questionId).filter((id): id is number => id !== null);
         const userAnswers = await this.prisma.userAnswer.findMany({
             where: {
                 userId,
@@ -293,7 +293,7 @@ export class UserQuizService {
      * @param userId - Identifiant de l'utilisateur
      * @returns Promise<boolean> - true si l'utilisateur a déjà participé
      */
-    async hasUserParticipated(quizId: number, userId: number): Promise<boolean> {
+    async hasUserParticipated(quizId: number, userId: string): Promise<boolean> {
         const participation = await this.prisma.userQuiz.findFirst({
             where: { quizId, userId }
         });
@@ -305,7 +305,7 @@ export class UserQuizService {
      * @param userId - Identifiant de l'utilisateur
      * @returns Promise<object> - Statistiques (total, réussites, échecs, taux de réussite)
      */
-    async getUserStats(userId: number): Promise<{
+    async getUserStats(userId: string): Promise<{
         total: number;
         completed: number;
         correct: number;
@@ -385,7 +385,7 @@ export class UserQuizService {
     /**
      * Obtenir le statut d'un utilisateur sur un quiz spécifique
      */
-    async getStatus(userId: number, quizId: number) {
+    async getStatus(userId: string, quizId: number) {
         const participation = await this.prisma.userQuiz.findFirst({
             where: { userId, quizId }
         });
@@ -414,7 +414,7 @@ export class UserQuizService {
     /**
      * Obtenir tous les quiz en cours pour un utilisateur
      */
-    async getInProgressByUser(userId: number) {
+    async getInProgressByUser(userId: string) {
         return this.prisma.userQuiz.findMany({
             where: {
                 userId,
@@ -447,7 +447,7 @@ export class UserQuizService {
     /**
      * Reprendre un quiz interrompu
      */
-    async resumeQuiz(userId: number, quizId: number) {
+    async resumeQuiz(userId: string, quizId: number) {
         const participation = await this.prisma.userQuiz.findFirst({
             where: {
                 userId,
@@ -482,7 +482,7 @@ export class UserQuizService {
     /**
      * Obtenir l'historique complet des quiz d'un utilisateur avec pagination
      */
-    async getHistoryByUser(userId: number, limit: number = 20, offset: number = 0) {
+    async getHistoryByUser(userId: string, limit: number = 20, offset: number = 0) {
         const [history, total] = await Promise.all([
             this.prisma.userQuiz.findMany({
                 where: {
@@ -549,7 +549,7 @@ export class UserQuizService {
     /**
      * Statistiques détaillées d'un utilisateur avec période
      */
-    async getUserDetailedStats(userId: number, period?: 'week' | 'month' | 'year') {
+    async getUserDetailedStats(userId: string, period?: 'week' | 'month' | 'year') {
         let dateFilter = {};
         
         if (period) {
@@ -593,7 +593,7 @@ export class UserQuizService {
         ]);
 
         // Type helper for quiz data with included quiz relation
-        type UserQuizWithQuiz = UserQuiz & { quiz: { type: string; levelId: number | null } | null };
+        type UserQuizWithQuiz = typeof quizData[number];
 
         // Analyse par type de quiz
         const dailyQuizzes = quizData.filter((uq: UserQuizWithQuiz) => uq.quiz?.type === 'DAILY');
@@ -671,9 +671,9 @@ export class UserQuizService {
         });
 
         // Grouper par utilisateur et calculer les statistiques
-        type UserQuizWithUser = UserQuiz & { user: { id: number; username: string | null; points: number; levelId: number | null } | null };
-        const userStatsMap = new Map<number, {
-            user: { id: number; username: string | null; points: number; levelId: number | null };
+        type UserQuizWithUser = UserQuiz & { user: { id: string; username: string | null; points: number | null; levelId: number } | null };
+        const userStatsMap = new Map<string, {
+            user: { id: string; username: string | null; points: number | null; levelId: number };
             totalQuizzes: number;
             correctQuizzes: number;
         }>();
@@ -720,7 +720,7 @@ export class UserQuizService {
     /**
      * Statistiques par type de quiz
      */
-    async getStatsByType(userId: number) {
+    async getStatsByType(userId: string) {
         const [dailyQuizzes, mcqQuizzes] = await Promise.all([
             this.prisma.userQuiz.findMany({
                 where: {
@@ -763,7 +763,7 @@ export class UserQuizService {
     /**
      * Obtenir les séries de réussite (streaks)
      */
-    async getStreaks(userId: number) {
+    async getStreaks(userId: string) {
         // Récupérer tous les quiz terminés, triés par date
         const completedQuizzes = await this.prisma.userQuiz.findMany({
             where: {
@@ -815,7 +815,7 @@ export class UserQuizService {
      * Vérifier si l'utilisateur a fait son daily quiz aujourd'hui
      * Trouve d'abord le quiz Daily du jour (par date ou createdAt), puis vérifie si l'utilisateur l'a complété
      */
-    async hasDoneDailyToday(userId: number | string) {
+    async hasDoneDailyToday(userId: string) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
@@ -881,7 +881,7 @@ export class UserQuizService {
     /**
      * Obtenir l'historique des daily quiz
      */
-    async getDailyHistory(userId: number, days: number = 30) {
+    async getDailyHistory(userId: string, days: number = 30) {
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - days);
 
@@ -907,7 +907,7 @@ export class UserQuizService {
     /**
      * Obtenir la série de daily quiz consécutifs
      */
-    async getDailyStreak(userId: number) {
+    async getDailyStreak(userId: string) {
         // Récupérer les daily quiz des derniers jours
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);

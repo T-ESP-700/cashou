@@ -81,8 +81,8 @@ export default function CreateQuestionPage() {
         { text: '', isCorrect: false },
       ]);
       navigate('/questions');
-    } catch (error: any) {
-      toast.error(`Échec de la création de la question: ${error.message}`);
+    } catch (error: unknown) {
+      toast.error(`Échec de la création de la question: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
     }
   };
 

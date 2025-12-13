@@ -44,6 +44,11 @@ interface HomeData {
   } | null;
 }
 
+interface UserQuizParticipation {
+  userId: string | null;
+  completedAt: Date | null;
+}
+
 // Messages de bienvenue créatifs selon l'heure et le contexte
 const getGreeting = (name: string | null, hour: number): string => {
   const displayName = name || 'Investisseur';
@@ -281,8 +286,8 @@ export default function HomeScreen() {
           
           // Vérifier si l'utilisateur a complété ce quiz
           const participations = await trpcClient.userQuiz.getByQuiz.query({ quizId });
-          const userParticipation = (participations as any[]).find(
-            (p: any) => p.userId === user.id && p.completedAt !== null
+          const userParticipation = (participations as UserQuizParticipation[]).find(
+            (p) => p.userId === user.id && p.completedAt !== null
           );
 
           setLevelCardStatus(userParticipation ? 'completed' : 'quiz_pending');

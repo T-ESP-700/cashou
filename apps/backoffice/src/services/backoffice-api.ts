@@ -27,6 +27,47 @@ import type {
   PlayerSnapshot,
 } from '@/lib/domain'
 
+// Generic CRUD operations interface for backoffice modules
+export interface CrudOperations {
+  list: () => Promise<unknown[]>
+  create: (payload: Record<string, unknown>) => Promise<unknown>
+  update?: (payload: Record<string, unknown>) => Promise<unknown>
+  delete: (id: number) => Promise<unknown>
+}
+
+// User type for mapping
+interface BackofficeUser {
+  id: string | number
+  email?: string
+  username?: string
+  level?: number
+  levelId?: number
+  points?: number
+  role?: string
+  status?: string
+  activeGame?: unknown
+  walletAmount?: number
+  lastActivity?: string
+  updatedAt?: string
+  createdAt?: string
+}
+
+// Game instance type for mapping
+interface BackofficeGameInstance {
+  id: number
+  title?: string
+  type?: string
+  status?: string
+  isPaused?: boolean
+  actionRequired?: boolean
+  marketId?: number | null
+  levelId?: number | null
+  userId?: string | null
+  user?: { id: string }
+  createdAt?: string | null
+  updatedAt?: string | null
+}
+
 const normalizeApiUrl = (rawUrl?: string) => {
   if (!rawUrl || rawUrl.trim() === '') {
     return 'http://localhost:3000/api/trpc'
@@ -116,7 +157,7 @@ async function callApi<T>(action: () => Promise<T>): Promise<T> {
   }
 }
 
-const mapUsersToPlayerSnapshots = (users: any[]): PlayerSnapshot[] => {
+const mapUsersToPlayerSnapshots = (users: BackofficeUser[]): PlayerSnapshot[] => {
   if (!Array.isArray(users)) return []
   return users
     .map((user) => {
@@ -142,7 +183,7 @@ const mapUsersToPlayerSnapshots = (users: any[]): PlayerSnapshot[] => {
     .filter((player): player is PlayerSnapshot => Boolean(player))
 }
 
-const mapGameInstances = (instances: any[]): GameInstance[] => {
+const mapGameInstances = (instances: BackofficeGameInstance[]): GameInstance[] => {
   if (!Array.isArray(instances)) return []
   return instances
     .map((instance) => {
@@ -190,29 +231,29 @@ export async function fetchBackofficeDataset(): Promise<BackofficeData> {
     gameInstances,
     dicoEntries,
   ] = await Promise.all([
-    callApi(() => client.level.getAll.query()) as Promise<any>,
-    callApi(() => client.goal.getAll.query()) as Promise<any>,
-    callApi(() => client.levelGoal.getAll.query()) as Promise<any>,
-    callApi(() => client.levelEvent.getAll.query()) as Promise<any>,
-    callApi(() => client.quiz.getAll.query()) as Promise<any>,
-    callApi(() => client.question.getAll.query()) as Promise<any>,
-    callApi(() => client.answer.getAll.query()) as Promise<any>,
-    callApi(() => client.quizQuestion.getAll.query()) as Promise<any>,
-    callApi(() => client.market.getAll.query()) as Promise<any>,
-    callApi(() => client.submarket.getAll.query()) as Promise<any>,
-    callApi(() => client.field.getAll.query()) as Promise<any>,
-    callApi(() => client.asset.getAll.query()) as Promise<any>,
-    callApi(() => client.event.getAll.query()) as Promise<any>,
-    callApi(() => client.assetHistory.getAll.query()) as Promise<any>,
-    callApi(() => client.eventAsset.getAll.query()) as Promise<any>,
-    callApi(() => client.impact.getAll.query()) as Promise<any>,
-    callApi(() => client.user.getAll.query()).catch(() => []) as Promise<any>,
-    callApi(() => client.gameInstance.getAll.query()).catch(() => []) as Promise<any>,
-    callApi(() => client.dicoEntry.getAll.query()).catch(() => []) as Promise<any>,
+    callApi(() => client.level.getAll.query()) as Promise<Level[]>,
+    callApi(() => client.goal.getAll.query()) as Promise<Goal[]>,
+    callApi(() => client.levelGoal.getAll.query()) as Promise<LevelGoal[]>,
+    callApi(() => client.levelEvent.getAll.query()) as Promise<LevelEvent[]>,
+    callApi(() => client.quiz.getAll.query()) as Promise<Quiz[]>,
+    callApi(() => client.question.getAll.query()) as Promise<Question[]>,
+    callApi(() => client.answer.getAll.query()) as Promise<Answer[]>,
+    callApi(() => client.quizQuestion.getAll.query()) as Promise<QuizQuestion[]>,
+    callApi(() => client.market.getAll.query()) as Promise<Market[]>,
+    callApi(() => client.submarket.getAll.query()) as Promise<Submarket[]>,
+    callApi(() => client.field.getAll.query()) as Promise<Field[]>,
+    callApi(() => client.asset.getAll.query()) as Promise<Asset[]>,
+    callApi(() => client.event.getAll.query()) as Promise<Event[]>,
+    callApi(() => client.assetHistory.getAll.query()) as Promise<AssetHistory[]>,
+    callApi(() => client.eventAsset.getAll.query()) as Promise<EventAsset[]>,
+    callApi(() => client.impact.getAll.query()) as Promise<Impact[]>,
+    callApi(() => client.user.getAll.query()).catch(() => []) as Promise<BackofficeUser[]>,
+    callApi(() => client.gameInstance.getAll.query()).catch(() => []) as Promise<BackofficeGameInstance[]>,
+    callApi(() => client.dicoEntry.getAll.query()).catch(() => []) as Promise<DicoEntry[]>,
   ])
 
   // Map users to PlayerSnapshot format
-  const players = (users as any[]).map((user: any) => ({
+  const players = (users as BackofficeUser[]).map((user) => ({
     id: user.id,
     username: user.username || user.email,
     levelId: user.level ?? user.levelId,

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@cashou/db-app';
+import { PrismaClient, Prisma } from '@cashou/db-app';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -219,7 +219,7 @@ async function seedCAC40Data() {
     let historyCount = 0;
     let historySkipped = 0;
     let batchSize = 1000;
-    let currentBatch: any[] = [];
+    let currentBatch: Prisma.AssetHistoryCreateManyInput[] = [];
 
     console.log('⏳ Traitement des données historiques par lots de 1000...\n');
 
@@ -238,7 +238,7 @@ async function seedCAC40Data() {
 
       // Parse values
       const valeur = parseFloat(row.valeur);
-      const volume = parseInt(row.volume);
+      // Note: row.volume exists in CSV but is not stored in AssetHistory schema
       const timestamp = new Date(row.date);
 
       // Check if this history entry already exists
@@ -254,7 +254,7 @@ async function seedCAC40Data() {
           assetId: asset.id,
           timestamp: timestamp,
           value: Math.round(valeur * 100), // Convert to cents
-          volume: volume
+          // Note: volume field removed from AssetHistory schema
         });
       } else {
         historySkipped++;

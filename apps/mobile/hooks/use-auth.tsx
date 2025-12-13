@@ -44,25 +44,28 @@ function useProvideAuth(): UseAuthReturn {
 
   const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-  const isNetworkError = (err: any): boolean => {
+  const isNetworkError = (err: unknown): boolean => {
     // Check for common network error patterns
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    const errorObj = err as { message?: string };
     return (
       err instanceof TypeError &&
-      (err.message === 'Network request failed' || err.message.includes('fetch'))
+      (errorMessage === 'Network request failed' || errorMessage.includes('fetch'))
     ) || (
-      err?.message?.includes('network') ||
-      err?.message?.includes('timeout') ||
-      err?.message?.includes('ECONNREFUSED')
+      errorObj?.message?.includes('network') === true ||
+      errorObj?.message?.includes('timeout') === true ||
+      errorObj?.message?.includes('ECONNREFUSED') === true
     );
   };
 
-  const isAuthError = (err: any): boolean => {
+  const isAuthError = (err: unknown): boolean => {
     // Check for 401 Unauthorized or token invalid errors
+    const errorObj = err as { message?: string; data?: { code?: string } };
     return (
-      err?.message?.includes('401') ||
-      err?.message?.includes('Unauthorized') ||
-      err?.message?.includes('token') ||
-      err?.data?.code === 'UNAUTHORIZED'
+      errorObj?.message?.includes('401') ||
+      errorObj?.message?.includes('Unauthorized') ||
+      errorObj?.message?.includes('token') ||
+      errorObj?.data?.code === 'UNAUTHORIZED'
     );
   };
 
@@ -89,7 +92,7 @@ function useProvideAuth(): UseAuthReturn {
       }
 
       // Fetch user data from backend with retry logic
-      let lastError: any = null;
+      let lastError: unknown = null;
       let attempt = 0;
 
       while (attempt <= RETRY_CONFIG.maxRetries) {
@@ -99,7 +102,7 @@ function useProvideAuth(): UseAuthReturn {
           console.log('[useAuth] User data received:', response);
 
           // Extract user from response (backend returns { session, user })
-          const userData = (response as any).user as User;
+          const userData = (response as { user: User }).user;
           console.log('[useAuth] Extracted user:', userData);
           setUser(userData);
           console.log('[useAuth] User state updated');

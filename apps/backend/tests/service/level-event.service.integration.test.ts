@@ -66,6 +66,8 @@ const shouldRun = !!process.env.CASHOU_DB_URL;
         const data: Omit<LevelEvent, "id" | "createdAt" | "updatedAt"> = {
             levelId: testLevelId,
             eventId: testEventId,
+            triggerPercent: 50,
+            position: 1,
         };
 
         const created = await service.create(data);

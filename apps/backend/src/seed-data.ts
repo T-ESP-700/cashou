@@ -1,6 +1,6 @@
 // Fichier de seed pour peupler la base de données avec des données de test
 // Utilise Prisma Client pour insérer des données cohérentes dans toutes les tables
-import { PrismaClient } from "@cashou/db-app";
+import { PrismaClient, Answer } from "@cashou/db-app";
 
 const prisma = new PrismaClient();
 
@@ -77,7 +77,7 @@ const answerTemplates = [
     ]
 ];
 
-function generateRandomData(templates: any[], count: number, startIndex: number = 0) {
+function generateRandomData<T>(templates: T[], count: number, startIndex: number = 0): T[] {
     const result = [];
     for (let i = 0; i < count; i++) {
         const templateIndex = (startIndex + i) % templates.length;
@@ -315,7 +315,7 @@ async function main() {
 
     // 8. Créer des réponses pour chaque question
     console.log(`💡 Création de ${DATA_COUNT * 4} réponses (4 par question)...`);
-    const answers: any[] = [];
+    const answers: Answer[] = [];
 
     for (let i = 0; i < questions.length; i++) {
         const question = questions[i];
@@ -407,7 +407,7 @@ async function main() {
     // 11. Créer des participations aux quiz
     console.log(`🎯 Création de ${DATA_COUNT} participations aux quiz...`);
     const userQuizzes = await Promise.all(
-        Array.from({ length: DATA_COUNT }, (_, index) => {
+        Array.from({ length: DATA_COUNT }, () => {
             const randomUser = users[Math.floor(Math.random() * users.length)];
             const randomQuiz = quiz[Math.floor(Math.random() * quiz.length)];
 
@@ -440,7 +440,7 @@ async function main() {
     // 12. Créer des réponses d'utilisateurs
     console.log(`📝 Création de ${DATA_COUNT} réponses d'utilisateurs...`);
     const userAnswers = await Promise.all(
-        Array.from({ length: DATA_COUNT }, (_, index) => {
+        Array.from({ length: DATA_COUNT }, () => {
             const randomUser = users[Math.floor(Math.random() * users.length)];
             const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
             

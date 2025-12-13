@@ -26,6 +26,11 @@ interface GameHistoryItem {
   levelQuizCompleted?: boolean; // Indique si le quiz du niveau est complété
 }
 
+interface UserQuizParticipation {
+  userId: string | null;
+  completedAt: Date | null;
+}
+
 export default function GameHistoryScreen() {
   const colorScheme = useRNColorScheme();
   const isDark = colorScheme === 'dark';
@@ -57,7 +62,7 @@ export default function GameHistoryScreen() {
         
         // Pour chaque partie terminée, vérifier si le quiz du niveau est complété
         const gamesWithQuizStatus = await Promise.all(
-          sorted.map(async (game: any) => {
+          (sorted as GameHistoryItem[]).map(async (game) => {
             if (!game.isEnded || !game.level?.id) {
               return { ...game, levelQuizCompleted: false };
             }
@@ -70,11 +75,11 @@ export default function GameHistoryScreen() {
               }
 
               const quizId = quizzes[0].id;
-              
+
               // Vérifier si l'utilisateur a complété ce quiz
               const participations = await trpcClient.userQuiz.getByQuiz.query({ quizId });
-              const userParticipation = (participations as any[]).find(
-                (p: any) => p.userId === user.id && p.completedAt !== null
+              const userParticipation = (participations as UserQuizParticipation[]).find(
+                (p) => p.userId === user.id && p.completedAt !== null
               );
 
               return { ...game, levelQuizCompleted: userParticipation !== undefined };
