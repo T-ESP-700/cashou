@@ -1,9 +1,9 @@
-import { ScrollView, View, Text, useColorScheme as useRNColorScheme, StyleSheet, ActivityIndicator } from 'react-native';
+import { ScrollView, View, Text, ActivityIndicator } from 'react-native';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LevelCard } from '@/components/level-card';
 import { DailyQuizCard } from '@/components/daily-quiz-card';
-import { CashouTheme } from '@/constants/cashou-theme';
+import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { useAuth } from '@/hooks/use-auth';
 import { useHeaderOptions } from '@/hooks/use-header';
 import { trpcClient } from '@/lib/trpc';
@@ -50,26 +50,26 @@ const getGreeting = (name: string | null, hour: number): string => {
 
   if (hour >= 5 && hour < 12) {
     const morningGreetings = [
-      `Salut ${displayName} ! ☀️`,
-      `Belle matinée ${displayName} ! 🌅`,
-      `Bonjour ${displayName} ! ☕`,
-      `Hey ${displayName} ! Prêt pour une nouvelle journée ? 🚀`,
+      `Salut ${displayName} !`,
+      `Belle matinée ${displayName} !`,
+      `Bonjour ${displayName} !`,
+      `Hey ${displayName} ! Prêt pour une nouvelle journée ?`,
     ];
     return morningGreetings[Math.floor(Math.random() * morningGreetings.length)];
   } else if (hour >= 12 && hour < 18) {
     const afternoonGreetings = [
-      `Bon après-midi ${displayName} ! 🌤️`,
-      `Hey ${displayName} ! 👋`,
-      `De retour ${displayName} ? 📈`,
-      `Salut ${displayName} ! Les marchés t'attendent 💹`,
+      `Bon après-midi ${displayName} !`,
+      `Hey ${displayName} !`,
+      `De retour ${displayName} ?`,
+      `Salut ${displayName} ! Les marchés t'attendent`,
     ];
     return afternoonGreetings[Math.floor(Math.random() * afternoonGreetings.length)];
   } else {
     const eveningGreetings = [
-      `Bonsoir ${displayName} ! 🌙`,
-      `Encore là ${displayName} ? 🦉`,
-      `Salut ${displayName} ! Session nocturne ? 🌃`,
-      `Hey ${displayName} ! Dernière analyse du jour ? 📊`,
+      `Bonsoir ${displayName} !`,
+      `Encore là ${displayName} ?`,
+      `Salut ${displayName} ! Session nocturne ?`,
+      `Hey ${displayName} ! Dernière analyse du jour ?`,
     ];
     return eveningGreetings[Math.floor(Math.random() * eveningGreetings.length)];
   }
@@ -91,40 +91,38 @@ const getContextualMessage = (
   // Message sur la partie en cours
   if (activeGame) {
     if (activeGame.actionRequired) {
-      messages.push('🔔 Une action de ta part est en attente sur ta partie en cours !');
+      messages.push('Une action de ta part est en attente sur ta partie en cours !');
     } else if (activeGame.isPaused) {
-      messages.push('⏸️ Ta partie est en pause. Reprends quand tu veux !');
+      messages.push('Ta partie est en pause. Reprends quand tu veux !');
     } else if (activeGame.currentReturn > 0) {
-      messages.push(`📈 Bravo ! Ton portefeuille est en hausse de ${activeGame.currentReturn}% !`);
+      messages.push(`Bravo ! Ton portefeuille est en hausse de ${activeGame.currentReturn}% !`);
     } else if (activeGame.currentReturn < 0) {
-      messages.push(`📉 Ton portefeuille est à ${activeGame.currentReturn}%. Les marchés fluctuent, reste concentré !`);
+      messages.push(`Ton portefeuille est à ${activeGame.currentReturn}%. Les marchés fluctuent, reste concentré !`);
     } else {
-      messages.push('🎮 Ta partie est en cours, continue sur ta lancée !');
+      messages.push('Ta partie est en cours, continue sur ta lancée !');
     }
   } else {
-    messages.push('🎯 Pas de partie en cours. Lance-toi dans un nouveau niveau !');
+    messages.push('Pas de partie en cours. Lance-toi dans un nouveau niveau !');
   }
 
   // Message sur le daily quiz
   if (!dailyQuizDone) {
     if (user.currentStreak > 0) {
-      messages.push(`🔥 Tu as une série de ${user.currentStreak} jours ! Fais le quiz pour la maintenir.`);
+      messages.push(`Tu as une série de ${user.currentStreak} jours ! Fais le quiz pour la maintenir.`);
     } else {
-      messages.push('📝 N\'oublie pas le daily quiz pour gagner des points !');
+      messages.push('N\'oublie pas le daily quiz pour gagner des points !');
     }
   } else if (user.currentStreak >= 7) {
-    messages.push(`🏆 Incroyable ! ${user.currentStreak} jours de suite, tu es inarrêtable !`);
+    messages.push(`Incroyable ! ${user.currentStreak} jours de suite, tu es inarrêtable !`);
   } else if (user.currentStreak >= 3) {
-    messages.push(`✨ Belle série de ${user.currentStreak} jours ! Continue comme ça !`);
+    messages.push(`Belle série de ${user.currentStreak} jours ! Continue comme ça !`);
   }
 
   return messages;
 };
 
 export default function HomeScreen() {
-  const colorScheme = useRNColorScheme();
-  const isDark = colorScheme === 'dark';
-  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const { colors, fonts, spacing } = useCashouTheme();
   const { user, isAuthenticated, refreshUser } = useAuth();
   const router = useRouter();
 
@@ -221,7 +219,6 @@ export default function HomeScreen() {
   }, [isAuthenticated]);
 
   // Rafraîchir les données utilisateur et le statut du quiz quand la page revient au focus
-  // Cela permet de mettre à jour le currentStreak et le statut du quiz après avoir complété un quiz
   useFocusEffect(
     React.useCallback(() => {
       if (isAuthenticated) {
@@ -278,7 +275,7 @@ export default function HomeScreen() {
           }
 
           const quizId = quizzes[0].id;
-          
+
           // Vérifier si l'utilisateur a complété ce quiz
           const participations = await trpcClient.userQuiz.getByQuiz.query({ quizId });
           const userParticipation = (participations as any[]).find(
@@ -316,15 +313,9 @@ export default function HomeScreen() {
     }
 
     // Pas de partie en cours
-    // Vérifier si le dernier niveau complété est le même que le niveau actuel de l'utilisateur - 1
-    // (ce qui signifie que l'utilisateur vient de terminer un niveau et peut voir le suivant)
     const lastCompleted = homeData?.lastCompletedGame;
     const currentLevel = homeData?.level;
 
-    // Si on a terminé un niveau récemment et que c'est le niveau juste avant le niveau actuel
-    // → Afficher le niveau actuel comme "prêt à commencer"
-    // Sinon si on a terminé un niveau et qu'on n'a pas de niveau suivant
-    // → Afficher le dernier niveau comme "terminé" ou "quiz" selon si le quiz est complété
     if (lastCompleted && currentLevel) {
       // L'utilisateur a un niveau suivant à faire
       return {
@@ -347,9 +338,9 @@ export default function HomeScreen() {
         title: lastCompleted.levelTitle,
         progression: 100,
         currentReturn: 0,
-        status: levelCardStatus, // Utiliser le statut vérifié dans useEffect
-        hasGame: true, // On a une partie (terminée)
-        gameId: lastCompleted.id, // ID de la partie terminée
+        status: levelCardStatus,
+        hasGame: true,
+        gameId: lastCompleted.id,
       };
     }
 
@@ -389,27 +380,39 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Content */}
-      <ScrollView style={styles.scrollView}>
+      <ScrollView style={{ flex: 1 }}>
         {/* Loading State */}
         {isLoadingHomeData ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={theme.accent} />
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl * 1.5 }}>
+            <ActivityIndicator size="large" color={colors.accent} />
           </View>
         ) : (
           <>
             {/* Greeting Section */}
-            <View style={styles.greetingSection}>
+            <View style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.lg }}>
               <Text
-                style={[styles.greeting, { fontFamily: CashouTheme.fonts.heading, color: theme.text }]}
+                style={{
+                  fontSize: 28,
+                  fontFamily: fonts.heading,
+                  color: colors.text,
+                  marginBottom: spacing.sm + 4,
+                }}
               >
                 {greeting}
               </Text>
               {contextualMessages.map((message, index) => (
                 <Text
                   key={index}
-                  style={[styles.message, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}
+                  style={{
+                    fontSize: 15,
+                    fontFamily: fonts.body,
+                    color: colors.text,
+                    marginBottom: spacing.sm,
+                    lineHeight: 22,
+                    opacity: 0.9,
+                  }}
                 >
                   {message}
                 </Text>
@@ -446,32 +449,3 @@ export default function HomeScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 48,
-  },
-  greetingSection: {
-    paddingHorizontal: 16,
-    paddingVertical: 24,
-  },
-  greeting: {
-    fontSize: 28,
-    marginBottom: 12,
-  },
-  message: {
-    fontSize: 15,
-    marginBottom: 8,
-    lineHeight: 22,
-    opacity: 0.9,
-  },
-});

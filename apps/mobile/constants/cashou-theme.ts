@@ -5,6 +5,7 @@
 
 export const CashouTheme = {
   colors: {
+    // Mode-specific colors
     light: {
       primary: "#FFB472",
       secondary: "#F0E8E3",
@@ -13,6 +14,7 @@ export const CashouTheme = {
       accent: "#FFB472",
       card: "#FFFFFF",
       border: "#1C1E33",
+      progressBarBackground: "#E0E0E0",
     },
     dark: {
       primary: "#172D4E",
@@ -22,6 +24,43 @@ export const CashouTheme = {
       accent: "#FFB472",
       card: "#2A2D45",
       border: "#3A3D55",
+      progressBarBackground: "#3A3D55",
+    },
+    // Semantic status colors (mode-agnostic)
+    status: {
+      success: "#4CAF50",
+      successLight: "#4CAF5020",
+      error: "#F44336",
+      errorLight: "#F4433620",
+      errorDark: "#D32F2F",
+      warning: "#FF9800",
+      warningLight: "#FF980020",
+      info: "#2196F3",
+      infoLight: "#2196F320",
+      neutral: "#9E9E9E",
+    },
+    // Icon colors
+    icon: {
+      light: "#687076",
+      dark: "#9BA1A6",
+      muted: "#9CA3AF",
+      active: "#E87F00",
+    },
+    // Overlay colors
+    overlay: {
+      dark: "rgba(0, 0, 0, 0.5)",
+      medium: "rgba(0, 0, 0, 0.3)",
+      light: "rgba(0, 0, 0, 0.1)",
+      white: "rgba(255, 255, 255, 0.2)",
+    },
+    // Special colors
+    special: {
+      streak: "#E87F00",
+      streakLight: "#E87F0020",
+      gold: "#FFD700",
+      goldLight: "#FFD70020",
+      white: "#FFFFFF",
+      darkText: "#1C1E33",
     },
   },
   fonts: {
@@ -63,4 +102,11 @@ export const CashouTheme = {
   },
 } as const;
 
+// Type exports
 export type CashouThemeColors = typeof CashouTheme.colors.light;
+export type CashouStatusColors = typeof CashouTheme.colors.status;
+export type CashouIconColors = typeof CashouTheme.colors.icon;
+export type CashouOverlayColors = typeof CashouTheme.colors.overlay;
+export type CashouSpecialColors = typeof CashouTheme.colors.special;
+export type CashouSpacing = typeof CashouTheme.spacing;
+export type CashouBorderRadius = typeof CashouTheme.borderRadius;
