@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { StyleSheet, TextInput, TouchableOpacity, Alert, ActivityIndicator, useColorScheme as useRNColorScheme } from 'react-native';
-import { ThemedView } from '@/components/themed-view';
+import { View, Alert } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
+import { Button, Input } from '@/components/ui';
 import { tokenStorage } from '@/lib/token-storage';
-import { CashouTheme } from '@/constants/cashou-theme';
+import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { AUTH_URL } from '@/lib/api-config';
 
 const AUTH_BASE_URL = AUTH_URL;
@@ -18,9 +18,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   const [email, setEmail] = useState(isDev ? 'test@gmail.com' : '');
   const [password, setPassword] = useState(isDev ? 'azerty123456' : '');
   const [isLoading, setIsLoading] = useState(false);
-  const colorScheme = useRNColorScheme();
-  const isDark = colorScheme === 'dark';
-  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const { colors, spacing } = useCashouTheme();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -103,22 +101,15 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="subtitle" style={styles.title}>
+    <View
+      style={{ padding: spacing.lg, backgroundColor: colors.background, gap: spacing.md }}
+    >
+      <ThemedText type="subtitle" style={{ marginBottom: 8 }}>
         Login to your account
       </ThemedText>
 
-      <TextInput
-        style={[
-          styles.input,
-          {
-            backgroundColor: theme.card,
-            color: theme.text,
-            borderColor: theme.border,
-          }
-        ]}
+      <Input
         placeholder="Email"
-        placeholderTextColor={theme.text + '80'}
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
@@ -126,63 +117,22 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         editable={!isLoading}
       />
 
-      <TextInput
-        style={[
-          styles.input,
-          {
-            backgroundColor: theme.card,
-            color: theme.text,
-            borderColor: theme.border,
-          }
-        ]}
+      <Input
         placeholder="Password"
-        placeholderTextColor={theme.text + '80'}
         value={password}
         onChangeText={setPassword}
-        secureTextEntry
+        isPassword
         editable={!isLoading}
       />
 
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: theme.accent }]}
+      <Button
+        title="Login"
+        variant="primary"
         onPress={handleLogin}
-        disabled={isLoading}
-      >
-        {isLoading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <ThemedText style={styles.buttonText}>Login</ThemedText>
-        )}
-      </TouchableOpacity>
-    </ThemedView>
+        isLoading={isLoading}
+        fullWidth
+        style={{ marginTop: 8 }}
+      />
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    gap: 16,
-  },
-  title: {
-    marginBottom: 8,
-  },
-  input: {
-    height: 50,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    borderWidth: 1,
-  },
-  button: {
-    height: 50,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});

@@ -1,6 +1,7 @@
-import { View, Text, useColorScheme as useRNColorScheme, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CashouTheme } from '@/constants/cashou-theme';
+import { useCashouTheme } from '@/hooks/use-cashou-theme';
+import { Card, Badge } from '@/components/ui';
 import Svg, { Circle } from 'react-native-svg';
 
 interface DailyQuizCardProps {
@@ -15,13 +16,10 @@ export function DailyQuizCard({
   status = 'todo',
 }: DailyQuizCardProps) {
   const router = useRouter();
-  const colorScheme = useRNColorScheme();
-  const isDark = colorScheme === 'dark';
-  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const { colors, fonts, spacing } = useCashouTheme();
 
   const handlePress = () => {
     if (status === 'done') {
-      // Si le quiz est terminé, ouvrir directement la page de fin
       router.push({
         pathname: '/(tabs)/daily-quiz',
         params: { showCompleted: 'true' },
@@ -31,8 +29,7 @@ export function DailyQuizCard({
     }
   };
 
-  // Calculate progress for circular chart: le cercle se remplit au fur et à mesure que la journée avance
-  // 0% au début de la journée (24h restantes), 100% à la fin (0h restantes)
+  // Calculate progress for circular chart
   const calculateProgress = () => {
     const parts = timeRemaining.match(/(\d+)h(\d+)m/);
     if (!parts) return 0;
@@ -40,204 +37,129 @@ export function DailyQuizCard({
     const minutes = parseInt(parts[2]);
     const totalMinutesRemaining = hours * 60 + minutes;
     const totalMinutesInDay = 24 * 60;
-    // Plus il reste de temps, moins il y a de progression
-    // Plus le temps passe, plus la progression augmente
     const progress = ((totalMinutesInDay - totalMinutesRemaining) / totalMinutesInDay) * 100;
-    return Math.max(0, Math.min(100, progress)); // S'assurer que c'est entre 0 et 100%
+    return Math.max(0, Math.min(100, progress));
   };
 
   const progress = calculateProgress();
-  const radius = 30; 
-  const strokeWidth = 6; 
+  const radius = 30;
+  const strokeWidth = 6;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   return (
-    <TouchableOpacity
-      style={[
-        styles.card,
-        { backgroundColor: theme.card, borderColor: theme.border },
-      ]}
-      onPress={handlePress}
-      activeOpacity={0.7}
-    >
-      {/* Header with Title and Status Badge */}
-      <View style={styles.header}>
-        <Text
-          style={[
-            styles.title,
-            { fontFamily: CashouTheme.fonts.subheading, color: theme.text },
-          ]}
-        >
-          Daily Quiz
-        </Text>
-        <View style={[styles.badge, { backgroundColor: theme.accent }]}>
-          <Text style={styles.badgeIcon}>ℹ️</Text>
-          <Text
-            style={[styles.badgeText, { fontFamily: CashouTheme.fonts.body }]}
-          >
-            {status === "todo" ? "À faire" : "Terminé"}
+    <TouchableOpacity onPress={handlePress} activeOpacity={0.7}>
+      <Card
+        variant="outlined"
+        padding="md"
+        style={{ marginHorizontal: spacing.md, marginBottom: spacing.md }}
+      >
+        {/* Header with Title and Status Badge */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md }}>
+          <Text style={{ fontSize: 24, fontFamily: fonts.subheading, color: colors.text }}>
+            Daily Quiz
           </Text>
+          <Badge
+            label={status === 'todo' ? 'À faire' : 'Terminé'}
+            variant="accent"
+            icon={<Text style={{ fontSize: 14 }}>ℹ️</Text>}
+          />
         </View>
-      </View>
 
-      {/* Win Streak and Time Remaining */}
-      <View style={styles.content}>
-        {/* Win Streak */}
-        <View>
-          <Text
-            style={[
-              styles.label,
-              { fontFamily: CashouTheme.fonts.body, color: theme.text },
-            ]}
-          >
-            win streak
-          </Text>
-          <View style={styles.streakContainer}>
+        {/* Win Streak and Time Remaining */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          {/* Win Streak */}
+          <View>
             <Text
-              style={[
-                styles.streakNumber,
-                { fontFamily: CashouTheme.fonts.subheading, color: theme.text },
-              ]}
+              style={{
+                fontSize: 14,
+                fontFamily: fonts.body,
+                color: colors.text,
+                marginBottom: spacing.sm,
+              }}
             >
-              {winStreak}
+              win streak
             </Text>
-            <Text style={styles.fireEmoji}>🔥</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{ fontSize: 48, fontFamily: fonts.subheading, color: colors.text }}>
+                {winStreak}
+              </Text>
+              <Text style={{ fontSize: 36, marginLeft: 4 }}>🔥</Text>
+            </View>
           </View>
-        </View>
 
-        {/* Time Remaining with Circular Progress or Validated Logo */}
-        <View style={styles.timeContainer}>
-          <Text
-            style={[
-              styles.label,
-              { fontFamily: CashouTheme.fonts.body, color: theme.text },
-            ]}
-          >
-            {status === 'done' ? 'Prochain quiz dans :' : 'Temps restant'}
-          </Text>
-          <View style={styles.circularProgress}>
-            {/* Circular Progress Chart */}
-              <Svg width={70} height={70} style={styles.svg}>
-              {/* Background Circle */}
-              <Circle
+          {/* Time Remaining with Circular Progress */}
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text
+              style={{
+                fontSize: 14,
+                fontFamily: fonts.body,
+                color: colors.text,
+                marginBottom: spacing.sm,
+              }}
+            >
+              {status === 'done' ? 'Prochain quiz dans :' : 'Temps restant'}
+            </Text>
+            <View
+              style={{
+                position: 'relative',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 70,
+                height: 70,
+              }}
+            >
+              {/* Circular Progress Chart */}
+              <Svg width={70} height={70} style={{ position: 'absolute' }}>
+                {/* Background Circle */}
+                <Circle
                   cx="35"
                   cy="35"
-                r={radius}
-                stroke={isDark ? "#3A3D55" : "#E0E0E0"}
-                strokeWidth={strokeWidth}
-                fill="none"
-              />
-              {/* Progress Circle */}
-              <Circle
+                  r={radius}
+                  stroke={colors.progressBarBackground}
+                  strokeWidth={strokeWidth}
+                  fill="none"
+                />
+                {/* Progress Circle */}
+                <Circle
                   cx="35"
                   cy="35"
-                r={radius}
-                stroke={theme.accent}
-                strokeWidth={strokeWidth}
-                fill="none"
-                strokeDasharray={circumference}
-                strokeDashoffset={strokeDashoffset}
-                strokeLinecap="round"
-                rotation="-90"
+                  r={radius}
+                  stroke={colors.accent}
+                  strokeWidth={strokeWidth}
+                  fill="none"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeDashoffset}
+                  strokeLinecap="round"
+                  rotation="-90"
                   origin="35, 35"
-              />
-            </Svg>
-              {/* Time Text - Centré dans le cercle */}
-              <View style={styles.timeTextContainer}>
-            <Text
-              style={[
-                styles.timeText,
-                {
-                  fontFamily: CashouTheme.fonts.subheading,
-                  color: theme.text,
-                },
-              ]}
-            >
-              {timeRemaining}
-            </Text>
+                />
+              </Svg>
+              {/* Time Text - Centered in circle */}
+              <View
+                style={{
+                  position: 'absolute',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 70,
+                  height: 70,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontFamily: fonts.subheading,
+                    color: colors.text,
+                    textAlign: 'center',
+                  }}
+                >
+                  {timeRemaining}
+                </Text>
+              </View>
+            </View>
           </View>
         </View>
-      </View>
-    </View>
+      </Card>
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    borderRadius: 16,
-    padding: 16,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 24,
-  },
-  badge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  badgeIcon: {
-    fontSize: 14,
-    marginRight: 4,
-  },
-  badgeText: {
-    fontSize: 14,
-    color: '#1C1E33',
-  },
-  content: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  label: {
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  streakContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  streakNumber: {
-    fontSize: 48,
-  },
-  fireEmoji: {
-    fontSize: 36,
-    marginLeft: 4,
-  },
-  timeContainer: {
-    alignItems: 'flex-end',
-  },
-  circularProgress: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 70,
-    height: 70,
-  },
-  svg: {
-    position: 'absolute',
-  },
-  timeTextContainer: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 70,
-    height: 70,
-  },
-  timeText: {
-    fontSize: 12,
-    textAlign: 'center',
-  },
-});
