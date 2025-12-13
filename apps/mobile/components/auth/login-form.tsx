@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { StyleSheet, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, TextInput, TouchableOpacity, Alert, ActivityIndicator, useColorScheme as useRNColorScheme } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { tokenStorage } from '@/lib/token-storage';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors } from '@/constants/theme';
+import { CashouTheme } from '@/constants/cashou-theme';
 import { AUTH_URL } from '@/lib/api-config';
 
 const AUTH_BASE_URL = AUTH_URL;
@@ -19,8 +18,9 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   const [email, setEmail] = useState(isDev ? 'test@gmail.com' : '');
   const [password, setPassword] = useState(isDev ? 'azerty123456' : '');
   const [isLoading, setIsLoading] = useState(false);
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const colorScheme = useRNColorScheme();
+  const isDark = colorScheme === 'dark';
+  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -112,13 +112,13 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         style={[
           styles.input,
           {
-            backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#f5f5f5',
-            color: colors.text,
-            borderColor: colors.tint,
+            backgroundColor: theme.card,
+            color: theme.text,
+            borderColor: theme.border,
           }
         ]}
         placeholder="Email"
-        placeholderTextColor={colorScheme === 'dark' ? '#666' : '#999'}
+        placeholderTextColor={theme.text + '80'}
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
@@ -130,13 +130,13 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         style={[
           styles.input,
           {
-            backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#f5f5f5',
-            color: colors.text,
-            borderColor: colors.tint,
+            backgroundColor: theme.card,
+            color: theme.text,
+            borderColor: theme.border,
           }
         ]}
         placeholder="Password"
-        placeholderTextColor={colorScheme === 'dark' ? '#666' : '#999'}
+        placeholderTextColor={theme.text + '80'}
         value={password}
         onChangeText={setPassword}
         secureTextEntry
@@ -144,7 +144,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       />
 
       <TouchableOpacity
-        style={[styles.button, { backgroundColor: colors.tint }]}
+        style={[styles.button, { backgroundColor: theme.accent }]}
         onPress={handleLogin}
         disabled={isLoading}
       >

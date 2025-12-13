@@ -1,9 +1,9 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, useColorScheme as useRNColorScheme } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState, useEffect } from 'react';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import { useState, useEffect, useCallback } from 'react';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
-import { useHeaderOptions } from '@/hooks/use-header';
+import { useHeader } from '@/hooks/use-header';
 
 interface LevelData {
   level: {
@@ -33,9 +33,17 @@ export default function GameDescriptionScreen() {
   const colorScheme = useRNColorScheme();
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const { setOptions } = useHeader();
 
-  // Configure header for this screen
-  useHeaderOptions({ showBackButton: true });
+  // Ensure back button is always visible when this screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      setOptions({ showBackButton: true });
+      return () => {
+        // Optionally reset on unmount, but we keep it visible
+      };
+    }, [setOptions])
+  );
 
   const [levelData, setLevelData] = useState<LevelData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
