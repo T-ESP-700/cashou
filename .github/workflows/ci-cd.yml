@@ -115,6 +115,8 @@ jobs:
   apps-test:
     runs-on: ubuntu-latest
     needs: install-deps
+    env:
+      SKIP_PRISMA_INIT: "true"  # Évite l'initialisation Prisma pour les tests unitaires
     strategy:
       matrix:
         app: ['backend']  # backoffice n'a pas encore de tests
@@ -133,6 +135,10 @@ jobs:
             packages/*/node_modules
           key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
       - run: bun install --frozen-lockfile
+      - name: Generate Prisma clients
+        run: |
+          bunx prisma generate --schema=packages/@cashou/db-app/prisma/schema.prisma
+          bunx prisma generate --schema=packages/@cashou/db-backoffice/prisma/schema.prisma
       - name: Test ${{ matrix.app }}
         run: bun run --filter ${{ matrix.app }} test
 
