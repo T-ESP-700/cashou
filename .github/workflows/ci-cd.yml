@@ -57,8 +57,7 @@ jobs:
       - name: TypeScript check
         run: bun run typecheck
       - name: Code quality
-        run: bunx eslint . --ext .ts,.tsx
-        working-directory: backend
+        run: bunx eslint apps/backend --ext .ts,.tsx
 
   # Tests des packages partagés (uniquement ceux qui ont des tests)
   shared-packages-test:
