@@ -1,4 +1,4 @@
-import type { Transaction, PrismaClient } from "@prisma/client";
+import type { Transaction, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {
   TransactionCreateSchema,

@@ -1,4 +1,4 @@
-import type { Market, Submarket, PrismaClient, Prisma, AssetHistory } from "@prisma/client";
+import type { Market, Submarket, PrismaClient, Prisma, AssetHistory } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type { MarketCreateSchema, MarketDataSchema } from "../schemas-zod/market-schema.ts";
 import type {

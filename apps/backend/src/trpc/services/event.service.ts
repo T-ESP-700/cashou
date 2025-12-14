@@ -1,5 +1,5 @@
 // Service métier pour la gestion des événements du jeu
-import type { Event, PrismaClient } from "@prisma/client";
+import type { Event, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {EventCreateSchema, EventDataSchema} from "../schemas-zod/event-schemas.ts";
 

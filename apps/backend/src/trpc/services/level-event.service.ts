@@ -1,6 +1,6 @@
 
 // Service métier pour la gestion des associations niveau-événement
-import type { LevelEvent, PrismaClient } from "@prisma/client";
+import type { LevelEvent, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type { LevelEventCreateSchema, LevelEventDataSchema } from "../schemas-zod/level-event-schema.ts";
 

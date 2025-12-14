@@ -1,6 +1,6 @@
 // tests/service/level-goal.service.unit.test.ts
 import { describe, it, expect } from "bun:test";
-import type { Prisma, LevelGoal, PrismaClient } from "@prisma/client";
+import type { Prisma, LevelGoal, PrismaClient } from "@cashou/db-app";
 import { LevelGoalService } from "../../src/trpc/services/level-goal.service";
 
 type Call =

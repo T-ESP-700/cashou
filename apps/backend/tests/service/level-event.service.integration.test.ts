@@ -88,8 +88,6 @@ const shouldRun = !!process.env.CASHOU_DB_URL;
 
         const deleted = await service.delete(createdId!);
         expect(deleted.id).toBe(createdId);
-
-        const again = await prisma.levelEvent.create({ data });
-        createdId = again.id;
+        createdId = null; // Mark as deleted so afterAll doesn't try to delete again
     });
 });

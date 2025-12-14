@@ -1,4 +1,4 @@
-import type { User } from "@prisma/client";
+import type { User } from "@cashou/db-app";
 
 export type UserUpdateData = Partial<Pick<User,
   | 'name'

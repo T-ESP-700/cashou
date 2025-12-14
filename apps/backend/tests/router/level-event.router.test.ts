@@ -1,6 +1,6 @@
 // tests/router/level-event.router.test.ts
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import type { LevelEvent } from "@prisma/client";
+import type { LevelEvent } from "@cashou/db-app";
 import { levelEventRouter } from "../../src/trpc/routers/level-event.router";
 import { LevelEventService } from "../../src/trpc/services/level-event.service";
 

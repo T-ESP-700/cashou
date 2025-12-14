@@ -9,6 +9,8 @@
     "packages/@cashou/*"
   ],
   "scripts": {
+    "check": "bun run db:generate && bun run typecheck && bun run build",
+    "check:full": "bun run db:generate && bun run typecheck && bun run build && bun run test",
     "dev:setup": "bun install && docker compose up db_cashou db_backoffice -d && bun run db:generate && bun run migrate",
     "dev": "docker stop cashou-backend-1 cashou-backoffice-1 2>/dev/null || true && docker compose up db_cashou db_backoffice -d && concurrently \"bun run dev:backend\" \"bun run dev:backoffice\"",
     "dev:all": "docker stop cashou-backend-1 cashou-backoffice-1 2>/dev/null || true && docker compose up db_cashou db_backoffice -d && concurrently \"bun run dev:backend\" \"bun run dev:backoffice\" \"bun run dev:mobile\"",

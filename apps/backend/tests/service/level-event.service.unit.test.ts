@@ -1,6 +1,6 @@
 // tests/service/level-event.service.unit.test.ts
 import { describe, it, expect } from "bun:test";
-import type { Prisma, LevelEvent, PrismaClient } from "@prisma/client";
+import type { Prisma, LevelEvent, PrismaClient } from "@cashou/db-app";
 import { LevelEventService } from "../../src/trpc/services/level-event.service";
 
 type Call =

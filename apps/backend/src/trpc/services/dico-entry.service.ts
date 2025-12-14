@@ -1,6 +1,6 @@
 // Service métier pour la gestion des entrées du dictionnaire (Dico)
 // Couche d'abstraction entre les routers et la base de données
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type { DicoEntryCreateSchema, DicoEntryDataSchema } from "../schemas-zod/dico-entry-schema.ts";
 

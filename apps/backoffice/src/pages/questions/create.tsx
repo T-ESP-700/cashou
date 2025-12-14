@@ -53,7 +53,7 @@ export default function CreateQuestionPage() {
       const finalQuestionText = ensureQuestionMark(data.text);
       
       // Create question first
-      const question = await createQuestionMutation.mutateAsync({ text: finalQuestionText });
+      const result = await createQuestionMutation.mutateAsync({ text: finalQuestionText });
 
       // Create all answers
       const validAnswers = answers.filter((a) => a.text.trim() !== '');
@@ -61,7 +61,7 @@ export default function CreateQuestionPage() {
         await Promise.all(
           validAnswers.map((answer) =>
             createAnswerMutation.mutateAsync({
-              questionId: question.id,
+              questionId: result.question.id,
               text: answer.text,
               isCorrect: answer.isCorrect,
             })

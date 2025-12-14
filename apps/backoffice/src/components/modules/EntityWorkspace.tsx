@@ -7,15 +7,14 @@ import { useBackofficeStore } from '@/store/useBackofficeStore'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-// Base entity type for dynamic collections
-interface BaseEntity {
-  id: number
-  title?: string | null
-  name?: string | null
-  text?: string | null
-  number?: number | null
-  [key: string]: unknown
-}
+import type {
+  Level, Goal, LevelGoal, LevelEvent, Quiz, Question, Answer, QuizQuestion,
+  Market, Submarket, Field, Asset, Event, AssetHistory, EventAsset, Impact, DicoEntry
+} from '@/lib/domain'
+
+// Union type for all possible entity types
+type BaseEntity = Level | Goal | LevelGoal | LevelEvent | Quiz | Question | Answer | QuizQuestion |
+  Market | Submarket | Field | Asset | Event | AssetHistory | EventAsset | Impact | DicoEntry
 
 const CRUD_HANDLERS: Partial<Record<BackofficeModule, CrudOperations>> = {
   levels: backofficeApi.level,
@@ -85,7 +84,7 @@ export function EntityWorkspace({ moduleKey }: { moduleKey?: BackofficeModule } 
         assetHistory,
         eventAsset,
         impacts,
-        dicoEntries,
+        dicoEntries: dicoEntries ?? [],
       }),
     [
       module,
@@ -111,7 +110,7 @@ export function EntityWorkspace({ moduleKey }: { moduleKey?: BackofficeModule } 
 
   const moduleFilteredRecords = useMemo(() => {
     if (module === 'quizzes' && quizTypeFilter !== 'ALL') {
-      return records.filter((record) => record.type === quizTypeFilter)
+      return records.filter((record) => 'type' in record && record.type === quizTypeFilter)
     }
     return records
   }, [records, module, quizTypeFilter])
@@ -138,7 +137,7 @@ export function EntityWorkspace({ moduleKey }: { moduleKey?: BackofficeModule } 
 
   useEffect(() => {
     if (selectedRecord && selectedRecordId !== '__new__') {
-      setFormValues(selectedRecord)
+      setFormValues(selectedRecord as unknown as Record<string, unknown>)
     } else {
       setFormValues({})
     }
@@ -275,7 +274,7 @@ export function EntityWorkspace({ moduleKey }: { moduleKey?: BackofficeModule } 
                     {config.columns?.map((column) => (
                       <td key={`${record.id}-${column.key}`} className="px-4 py-3 text-slate-700">
                         {column.render
-                          ? column.render(record)
+                          ? column.render(record as unknown as Record<string, unknown>)
                           : formatValue(record[column.key as keyof typeof record])}
                       </td>
                     ))}
@@ -382,7 +381,7 @@ function FieldControl({
       {field.type === 'number' && (
         <input
           type="number"
-          value={value ?? ''}
+          value={(value as number | string) ?? ''}
           onChange={(event) => onChange(event.target.value === '' ? '' : Number(event.target.value))}
           className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
           placeholder={field.placeholder}
@@ -408,7 +407,7 @@ function FieldControl({
       )}
       {field.type === 'select' && (
         <select
-          value={value ?? ''}
+          value={(value as string | number) ?? ''}
           onChange={(event) => {
             const nextValue = event.target.value
             if (nextValue === '') {
@@ -458,25 +457,25 @@ function formatValue(value: unknown) {
 function getRecordsForModule(
   module: BackofficeModule,
   data: {
-    levels: BaseEntity[]
-    goals: BaseEntity[]
-    levelGoals: BaseEntity[]
-    levelEvents: BaseEntity[]
-    quizzes: BaseEntity[]
-    questions: BaseEntity[]
-    answers: BaseEntity[]
-    quizQuestions: BaseEntity[]
-    markets: BaseEntity[]
-    submarkets: BaseEntity[]
-    fields: BaseEntity[]
-    assets: BaseEntity[]
-    events: BaseEntity[]
-    assetHistory: BaseEntity[]
-    eventAsset: BaseEntity[]
-    impacts: BaseEntity[]
-    dicoEntries: BaseEntity[]
+    levels: Level[]
+    goals: Goal[]
+    levelGoals: LevelGoal[]
+    levelEvents: LevelEvent[]
+    quizzes: Quiz[]
+    questions: Question[]
+    answers: Answer[]
+    quizQuestions: QuizQuestion[]
+    markets: Market[]
+    submarkets: Submarket[]
+    fields: Field[]
+    assets: Asset[]
+    events: Event[]
+    assetHistory: AssetHistory[]
+    eventAsset: EventAsset[]
+    impacts: Impact[]
+    dicoEntries: DicoEntry[]
   },
-) {
+): BaseEntity[] {
   switch (module) {
     case 'levels':
       return data.levels
@@ -528,15 +527,15 @@ function buildDynamicOptions({
   quizzes,
   questions,
 }: {
-  markets: BaseEntity[]
-  submarkets: BaseEntity[]
-  fields: BaseEntity[]
-  assets: BaseEntity[]
-  events: BaseEntity[]
-  levels: BaseEntity[]
-  goals: BaseEntity[]
-  quizzes: BaseEntity[]
-  questions: BaseEntity[]
+  markets: Market[]
+  submarkets: Submarket[]
+  fields: Field[]
+  assets: Asset[]
+  events: Event[]
+  levels: Level[]
+  goals: Goal[]
+  quizzes: Quiz[]
+  questions: Question[]
 }): Record<string, Array<{ value: number; label: string }>> {
   return {
     marketId: markets.map((market) => ({

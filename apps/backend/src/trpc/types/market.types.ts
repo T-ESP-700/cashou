@@ -1,4 +1,4 @@
-import type { Market, Submarket, Asset, AssetHistory, Field, Prisma } from "@prisma/client";
+import type { Market, Submarket, Asset, AssetHistory, Field, Prisma } from "@cashou/db-app";
 
 // ============================================
 // Types composés Prisma pour les relations
