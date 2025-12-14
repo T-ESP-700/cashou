@@ -219,6 +219,10 @@ jobs:
             packages/*/node_modules
           key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
       - run: bun install --frozen-lockfile
+      - name: Generate Prisma client for app database
+        run: bun run db:generate:app
+      - name: Generate Prisma client for backoffice database
+        run: bun run db:generate:backoffice
       - name: Type-check & build ${{ matrix.app }}
         run: bun run --filter ${{ matrix.app }} build
 
