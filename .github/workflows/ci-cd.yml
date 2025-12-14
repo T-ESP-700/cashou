@@ -348,19 +348,17 @@ jobs:
         run: |
           echo "Pushing cashou-${{ matrix.service }}:latest"
 
-  # Déploiement
-  deploy:
-    needs: [docker-build]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Deploy with Docker Compose
-        run: |
-          echo "Deploying with Docker Compose..."
-          docker-compose up -d
-      - name: Run health checks
-        run: |
-          echo "Running health checks..."
-          sleep 30
-          echo "Backend health check..."
-          echo "Backoffice health check..."
+  # Déploiement - DÉSACTIVÉ (à configurer avec une vraie infra de déploiement)
+  # deploy:
+  #   needs: [docker-build]
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main'  # À activer uniquement sur main
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Deploy with Docker Compose
+  #       run: |
+  #         echo "Deploying with Docker Compose..."
+  #         # TODO: Configurer le déploiement réel (SSH, Kubernetes, etc.)
+  #     - name: Run health checks
+  #       run: |
+  #         echo "Running health checks..."
