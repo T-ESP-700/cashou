@@ -111,13 +111,13 @@ jobs:
         run: bun run --filter ${{ matrix.package }} build
         continue-on-error: true
 
-  # Tests des applications
+  # Tests des applications (uniquement celles qui ont des tests)
   apps-test:
     runs-on: ubuntu-latest
     needs: install-deps
     strategy:
       matrix:
-        app: ['backend', 'backoffice']
+        app: ['backend']  # backoffice n'a pas encore de tests
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1
@@ -135,7 +135,6 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Test ${{ matrix.app }}
         run: bun run --filter ${{ matrix.app }} test
-        continue-on-error: true
 
   # Tests API spécifiques pour le backend
   backend-api-test:
@@ -314,6 +313,28 @@ jobs:
         service: ['backend', 'backoffice']
     steps:
       - uses: actions/checkout@v4
+      - name: Create .env.docker file
+        run: |
+          cat > .env.docker << 'EOF'
+          # CAShOU database (Docker configuration)
+          CASHOU_DB_URL="postgresql://postgres:password@db_cashou:5432/cashou_db"
+          POSTGRES_USER=postgres
+          POSTGRES_PASSWORD=password
+          POSTGRES_DB=cashou_db
+
+          # BACKOFFICE database (Docker configuration)
+          BACKOFFICE_DB_URL="postgresql://postgres:password@db_backoffice:5432/backoffice"
+
+          # Supabase
+          VITE_SUPABASE_URL=https://example.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY=placeholder_key
+
+          # Better-Auth
+          BETTER_AUTH_SECRET=ci_placeholder_secret_32chars_long
+          BETTER_AUTH_URL=http://localhost:3000
+          GOOGLE_CLIENT_ID=
+          GOOGLE_CLIENT_SECRET=
+          EOF
       - name: Build Docker image for ${{ matrix.service }}
         run: |
           docker build -t cashou-${{ matrix.service }}:latest -f ./apps/${{ matrix.service }}/Dockerfile .
