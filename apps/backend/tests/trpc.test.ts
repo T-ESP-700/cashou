@@ -5,6 +5,10 @@ import { startServer } from '../src/index';
 
 type ServerInstance = Awaited<ReturnType<typeof startServer>>;
 
+// Use port 3001 for tests to avoid conflicts with Docker backend on 3000
+const TEST_PORT = process.env.TEST_PORT || '3001';
+const TEST_URL = `http://localhost:${TEST_PORT}`;
+
 function isErrorWithCode(error: unknown): error is { data?: { code?: string }; code?: string } {
   return typeof error === 'object' && error !== null;
 }
@@ -14,6 +18,9 @@ describe('tRPC Routes Tests', () => {
   let server: ServerInstance;
 
   beforeAll(async () => {
+    // Set TEST_PORT env var before starting server
+    process.env.TEST_PORT = TEST_PORT;
+    
     // Start the server explicitly
     server = await startServer();
 
@@ -21,7 +28,7 @@ describe('tRPC Routes Tests', () => {
     client = createTRPCProxyClient<AppRouter>({
       links: [
         httpBatchLink({
-          url: 'http://localhost:3000/api/trpc',
+          url: `${TEST_URL}/api/trpc`,
         }),
       ],
     });
@@ -197,7 +204,7 @@ describe('tRPC Routes Tests', () => {
   describe('Error Handling', () => {
     it('should handle malformed JSON in tRPC requests', async () => {
       try {
-        await fetch('http://localhost:3000/api/trpc/auth.login', {
+        await fetch(`${TEST_URL}/api/trpc/auth.login`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -210,7 +217,7 @@ describe('tRPC Routes Tests', () => {
     });
 
     it('should handle invalid tRPC endpoints', async () => {
-      const response = await fetch('http://localhost:3000/api/trpc/nonexistent.endpoint');
+      const response = await fetch(`${TEST_URL}/api/trpc/nonexistent.endpoint`);
       expect(response.status).toBe(404);
     });
   });

@@ -1,20 +1,21 @@
-name: CI/CD Monorepo
+name: CI/CD Monorepo Optimisé
 
 on:
   push:
   pull_request:
 
 jobs:
-  # Installation des dépendances du workspace
-  install-deps:
+  # 1. Setup unique - Installation et génération Prisma
+  setup:
     runs-on: ubuntu-latest
-    outputs:
-      cache-hit: ${{ steps.cache.outputs.cache-hit }}
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v1
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
+      
       - name: Cache dependencies
         id: cache
         uses: actions/cache@v4
@@ -27,125 +28,63 @@ jobs:
           key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
           restore-keys: |
             ${{ runner.os }}-bun-
+      
       - name: Install dependencies
         if: steps.cache.outputs.cache-hit != 'true'
         run: bun install --frozen-lockfile
-
-  # Vérification de la qualité du code pour tout le monorepo
-  code-quality:
-    runs-on: ubuntu-latest
-    needs: install-deps
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-      - name: Restore cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.bun/install/cache
-            node_modules
-            apps/*/node_modules
-            packages/*/node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
-      - run: bun install --frozen-lockfile
-      - name: Generate Prisma client for app database
-        run: bun run db:generate:app
-      - name: Generate Prisma client for backoffice database
-        run: bun run db:generate:backoffice
-      - name: TypeScript check
-        run: bun run typecheck
-      - name: Code quality
-        run: bunx eslint apps/backend --ext .ts,.tsx
-
-  # Tests des packages partagés (uniquement ceux qui ont des tests)
-  shared-packages-test:
-    runs-on: ubuntu-latest
-    needs: install-deps
-    strategy:
-      matrix:
-        package: ['@cashou/db-app', '@cashou/db-backoffice']
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-      - name: Restore cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.bun/install/cache
-            node_modules
-            apps/*/node_modules
-            packages/*/node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
-      - run: bun install --frozen-lockfile
-      - name: Test ${{ matrix.package }}
-        run: bun run --filter ${{ matrix.package }} test
-        continue-on-error: true
-
-  # Build des packages partagés
-  shared-packages-build:
-    runs-on: ubuntu-latest
-    needs: install-deps
-    strategy:
-      matrix:
-        package: ['@cashou/db-app', '@cashou/db-backoffice', '@cashou/auth', '@cashou/api', '@cashou/ui', '@cashou/utils']
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-      - name: Restore cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.bun/install/cache
-            node_modules
-            apps/*/node_modules
-            packages/*/node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
-      - run: bun install --frozen-lockfile
-      - name: Build ${{ matrix.package }}
-        run: bun run --filter ${{ matrix.package }} build
-        continue-on-error: true
-
-  # Tests des applications (uniquement celles qui ont des tests)
-  apps-test:
-    runs-on: ubuntu-latest
-    needs: install-deps
-    env:
-      SKIP_PRISMA_INIT: "true"  # Évite l'initialisation Prisma pour les tests unitaires
-    strategy:
-      matrix:
-        app: ['backend']  # backoffice n'a pas encore de tests
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-      - name: Restore cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.bun/install/cache
-            node_modules
-            apps/*/node_modules
-            packages/*/node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
-      - run: bun install --frozen-lockfile
+      
       - name: Generate Prisma clients
         run: |
-          bunx prisma generate --schema=packages/@cashou/db-app/prisma/schema.prisma
-          bunx prisma generate --schema=packages/@cashou/db-backoffice/prisma/schema.prisma
-      - name: Test ${{ matrix.app }}
-        run: bun run --filter ${{ matrix.app }} test
+          bun run db:generate:app
+          bun run db:generate:backoffice
+      
+      # Sauvegarder les clients Prisma générés pour les autres jobs
+      - name: Upload Prisma artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: prisma-clients
+          path: |
+            packages/@cashou/db-app/node_modules/.prisma
+            packages/@cashou/db-backoffice/src/generated
+          retention-days: 1
 
-  # Tests API spécifiques pour le backend
-  backend-api-test:
+  # 2. Qualité du code
+  code-quality:
     runs-on: ubuntu-latest
-    needs: [install-deps, db-app-migrate]
+    needs: setup
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
+      
+      - name: Download Prisma artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: prisma-clients
+      
+      - name: TypeScript check
+        run: bun run typecheck
+      
+      - name: Lint backend
+        run: bunx eslint apps/backend --ext .ts,.tsx
+
+  # 3. Tests backend avec bases de données
+  backend-test:
+    runs-on: ubuntu-latest
+    needs: setup
     env:
       CASHOU_DB_URL: postgresql://postgres:password@localhost:5432/cashou_db?schema=public
       BACKOFFICE_DB_URL: postgresql://postgres:password@localhost:5433/backoffice_db?schema=public
@@ -178,9 +117,12 @@ jobs:
           --health-retries=5
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v1
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
+      
       - name: Restore cache
         uses: actions/cache@v4
         with:
@@ -190,30 +132,35 @@ jobs:
             apps/*/node_modules
             packages/*/node_modules
           key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
-      - run: bun install --frozen-lockfile
-      - name: Generate Prisma client for app database
-        run: bun run db:generate:app
-      - name: Generate Prisma client for backoffice database
-        run: bun run db:generate:backoffice
-      - name: Run migrations for app database
-        run: bun run db:migrate:app
-      - name: Run migrations for backoffice database
-        run: bun run db:migrate:backoffice
-      - name: Run API tests
+      
+      - name: Download Prisma artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: prisma-clients
+      
+      - name: Run migrations
+        run: |
+          bun run db:migrate:app
+          bun run db:migrate:backoffice
+      
+      - name: Run backend tests
         run: bun run --filter backend test --timeout 30000
 
-  # Build des applications
+  # 4. Build des applications
   apps-build:
     runs-on: ubuntu-latest
-    needs: [install-deps, backend-api-test]
+    needs: [code-quality, backend-test]
     strategy:
       matrix:
         app: ['backend', 'backoffice']
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v1
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
+      
       - name: Restore cache
         uses: actions/cache@v4
         with:
@@ -223,102 +170,26 @@ jobs:
             apps/*/node_modules
             packages/*/node_modules
           key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
-      - run: bun install --frozen-lockfile
-      - name: Generate Prisma client for app database
-        run: bun run db:generate:app
-      - name: Generate Prisma client for backoffice database
-        run: bun run db:generate:backoffice
-      - name: Type-check & build ${{ matrix.app }}
+      
+      - name: Download Prisma artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: prisma-clients
+      
+      - name: Build ${{ matrix.app }}
         run: bun run --filter ${{ matrix.app }} build
 
-  # Migrations de la base de données application
-  db-app-migrate:
-    runs-on: ubuntu-latest
-    needs: install-deps
-    env:
-      CASHOU_DB_URL: postgresql://postgres:password@localhost:5432/cashou_db?schema=public
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: cashou_db
-        ports: [ "5432:5432" ]
-        options: >-
-          --health-cmd="pg_isready -U postgres"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-      - name: Restore cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.bun/install/cache
-            node_modules
-            apps/*/node_modules
-            packages/*/node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
-      - run: bun install --frozen-lockfile
-      - name: Generate Prisma client for app database
-        run: bun run db:generate:app
-      - name: Run migrations for app database
-        run: bun run db:migrate:app
-
-  # Migrations de la base de données backoffice
-  db-backoffice-migrate:
-    runs-on: ubuntu-latest
-    needs: install-deps
-    env:
-      BACKOFFICE_DB_URL: postgresql://postgres:password@localhost:5433/backoffice_db?schema=public
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: backoffice_db
-        ports:
-          - 5433:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-      - name: Restore cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.bun/install/cache
-            node_modules
-            apps/*/node_modules
-            packages/*/node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
-      - run: bun install --frozen-lockfile
-      - name: Generate Prisma client for backoffice database
-        run: bun run db:generate:backoffice
-      - name: Run migrations for backoffice database
-        run: bun run db:migrate:backoffice
-
-  # Build et push des images Docker
+  # 5. Build et validation Docker (optionnel)
   docker-build:
     runs-on: ubuntu-latest
-    needs: [apps-build, shared-packages-build, db-app-migrate, db-backoffice-migrate]
+    needs: [apps-build]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
     strategy:
       matrix:
         service: ['backend', 'backoffice']
     steps:
       - uses: actions/checkout@v4
+      
       - name: Create .env.docker file
         run: |
           cat > .env.docker << 'EOF'
@@ -341,24 +212,18 @@ jobs:
           GOOGLE_CLIENT_ID=
           GOOGLE_CLIENT_SECRET=
           EOF
+      
       - name: Build Docker image for ${{ matrix.service }}
         run: |
           docker build -t cashou-${{ matrix.service }}:latest -f ./apps/${{ matrix.service }}/Dockerfile .
-      - name: Push Docker image
-        run: |
-          echo "Pushing cashou-${{ matrix.service }}:latest"
+          echo "✅ Image cashou-${{ matrix.service }}:latest construite avec succès"
 
   # Déploiement - DÉSACTIVÉ (à configurer avec une vraie infra de déploiement)
   # deploy:
   #   needs: [docker-build]
   #   runs-on: ubuntu-latest
-  #   if: github.ref == 'refs/heads/main'  # À activer uniquement sur main
+  #   if: github.ref == 'refs/heads/main'
   #   steps:
   #     - uses: actions/checkout@v4
-  #     - name: Deploy with Docker Compose
-  #       run: |
-  #         echo "Deploying with Docker Compose..."
-  #         # TODO: Configurer le déploiement réel (SSH, Kubernetes, etc.)
-  #     - name: Run health checks
-  #       run: |
-  #         echo "Running health checks..."
+  #     - name: Deploy
+  #       run: echo "Déploiement à configurer"

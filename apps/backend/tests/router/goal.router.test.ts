@@ -1,17 +1,9 @@
 // tests/router/goal.router.test.ts
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect } from "bun:test";
 import type { Goal } from "@cashou/db-app";
 import { goalRouter } from "../../src/trpc/routers/goal.router";
 import { GoalService } from "../../src/trpc/services/goal.service";
-
-type Call =
-    | { method: "findAll"; args?: undefined }
-    | { method: "findOne"; args: { id: number } }
-    | { method: "create"; args: { data: Partial<Goal> } }
-    | { method: "update"; args: { id: number; data: Partial<Goal> } }
-    | { method: "delete"; args: { id: number } };
-
-const calls: Call[] = [];
+import { createRouterTestSetup } from "../helpers/router-test-factory";
 
 function makeGoal(id: number, over: Partial<Goal> = {}): Goal {
     const now = new Date();
@@ -26,51 +18,8 @@ function makeGoal(id: number, over: Partial<Goal> = {}): Goal {
     };
 }
 
-const original = {
-    findAll: GoalService.prototype.findAll,
-    findOne: GoalService.prototype.findOne,
-    create: GoalService.prototype.create,
-    update: GoalService.prototype.update,
-    delete: GoalService.prototype.delete,
-};
-
-beforeEach(() => {
-    calls.length = 0;
-
-    GoalService.prototype.findAll = (async function (this: unknown): Promise<Goal[]> {
-        calls.push({ method: "findAll" });
-        return [makeGoal(1, { title: "Objectif 1" })];
-    });
-
-    GoalService.prototype.findOne = (async function (this: unknown, id: number): Promise<Goal | null> {
-        calls.push({ method: "findOne", args: { id } });
-        if (id === 404) return null;
-        return makeGoal(id);
-    });
-
-    GoalService.prototype.create = (async function (this: unknown, data: Partial<Goal>): Promise<Goal> {
-        calls.push({ method: "create", args: { data } });
-        return makeGoal(123, data);
-    });
-
-    GoalService.prototype.update = (async function (this: unknown, id: number, data: Partial<Goal>): Promise<Goal> {
-        calls.push({ method: "update", args: { id, data } });
-        return makeGoal(id, data);
-    });
-
-    GoalService.prototype.delete = (async function (this: unknown, id: number): Promise<Pick<Goal, "id">> {
-        calls.push({ method: "delete", args: { id } });
-        return { id };
-    }) as unknown as typeof GoalService.prototype.delete;
-});
-
-afterEach(() => {
-    GoalService.prototype.findAll = original.findAll;
-    GoalService.prototype.findOne = original.findOne;
-    GoalService.prototype.create = original.create;
-    GoalService.prototype.update = original.update;
-    GoalService.prototype.delete = original.delete;
-});
+// Configuration automatique des mocks avec le helper
+const { calls } = createRouterTestSetup(GoalService, makeGoal);
 
 type Ctx = Parameters<typeof goalRouter.createCaller>[0];
 
@@ -78,7 +27,7 @@ describe("goal.router — createCaller (sans HTTP)", () => {
     it("goal.getAll → appelle service.findAll et retourne la liste", async () => {
         const caller = goalRouter.createCaller({} as Ctx);
         const res = await caller.getAll();
-        expect(res).toMatchObject([{ id: 1, title: "Objectif 1" }]);
+        expect(res).toMatchObject([{ id: 1, title: "Goal 1" }]);
         const hit = calls.find((c) => c.method === "findAll");
         expect(hit).toBeDefined();
     });
