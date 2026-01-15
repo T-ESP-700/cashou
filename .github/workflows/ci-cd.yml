@@ -32,21 +32,6 @@ jobs:
       - name: Install dependencies
         if: steps.cache.outputs.cache-hit != 'true'
         run: bun install --frozen-lockfile
-      
-      - name: Generate Prisma clients
-        run: |
-          bun run db:generate:app
-          bun run db:generate:backoffice
-      
-      # Sauvegarder les clients Prisma générés pour les autres jobs
-      - name: Upload Prisma artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: prisma-clients
-          path: |
-            packages/@cashou/db-app/node_modules/.prisma
-            packages/@cashou/db-backoffice/src/generated
-          retention-days: 1
 
   # 2. Qualité du code
   code-quality:
@@ -70,10 +55,10 @@ jobs:
             packages/*/node_modules
           key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
       
-      - name: Download Prisma artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: prisma-clients
+      - name: Generate Prisma clients
+        run: |
+          bun run db:generate:app
+          bun run db:generate:backoffice
       
       - name: TypeScript check
         run: bun run typecheck
@@ -133,12 +118,7 @@ jobs:
             packages/*/node_modules
           key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
       
-      - name: Download Prisma artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: prisma-clients
-      
-      - name: Run migrations
+      - name: Run migrations (génère aussi les clients Prisma)
         run: |
           bun run db:migrate:app
           bun run db:migrate:backoffice
@@ -171,10 +151,10 @@ jobs:
             packages/*/node_modules
           key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
       
-      - name: Download Prisma artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: prisma-clients
+      - name: Generate Prisma clients
+        run: |
+          bun run db:generate:app
+          bun run db:generate:backoffice
       
       - name: Build ${{ matrix.app }}
         run: bun run --filter ${{ matrix.app }} build
