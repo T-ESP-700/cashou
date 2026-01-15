@@ -2,7 +2,7 @@
 
 ## 📊 État Actuel
 
-**408 tests** | **0 échecs** | **100% router coverage** | **~1.1 secondes**
+**495 tests** | **0 échecs** | **100% router coverage** | **100% service coverage** | **~1.1 secondes**
 
 ---
 
@@ -55,11 +55,11 @@ bun run test:integration     # Intégration uniquement
 
 ## 🏗️ Ce qu'on Teste
 
-### 📁 Structure (361 tests)
+### 📁 Structure (495 tests)
 
 ```
 apps/backend/tests/
-├── router/           (259 tests) - Tests des 27 routers tRPC ✅
+├── router/           (306 tests) - Tests des 28 routers tRPC ✅
 │   ├── asset.router.test.ts           ✅ Nouveau
 │   ├── asset-history.router.test.ts  ✅ Nouveau
 │   ├── answer.router.test.ts         ✅ Nouveau
@@ -88,10 +88,10 @@ apps/backend/tests/
 │   ├── user-quiz.router.test.ts      ✅ Nouveau
 │   └── wallet.router.test.ts
 │
-├── service/          (85 tests) - Tests des services
-│   ├── *.unit.test.ts           # Tests unitaires (mocks)
-│   ├── *.integration.test.ts    # Tests avec DB
-│   └── *.regression.test.ts     # Tests de régression
+├── service/          (172 tests) - Tests des services ✅ 100% coverage!
+│   ├── *.unit.test.ts           # Tests unitaires (mocks) - 19 services
+│   ├── *.integration.test.ts    # Tests avec DB - 5 services
+│   └── *.regression.test.ts     # Tests de régression - 9 services
 │
 ├── trpc.test.ts      (12 tests) - Tests E2E tRPC
 ├── api.test.ts       (5 tests)  - Tests API REST
@@ -147,6 +147,40 @@ it("user.updateProfile → met à jour si authentifié", async () => {
 
 it("user.delete → rejette si pas admin", async () => {
   const caller = userRouter.createCaller(createUserContext());
+```
+
+**3. Service Test Factory** (`service-test-factory.ts`) ⭐ NOUVEAU !
+- Mock automatique de Prisma pour les services CRUD
+- Injecte un PrismaClient mocké dans le service
+- Capture tous les appels Prisma (findMany, findUnique, create, update, delete)
+- Helpers: `wasMethodCalled`, `findCall`, `getCallCount`, `getAllCalls`
+- **Réduit 100 lignes → 10 lignes** par test de service
+- **19 services unitaires créés en une session !**
+
+**Exemple d'utilisation :**
+```typescript
+import { createServiceTestSetup } from "../helpers/service-test-factory";
+
+function makeQuiz(id: number, over: Partial<Quiz> = {}): Quiz {
+  return { id, title: over.title ?? `Quiz ${id}`, ...over };
+}
+
+const { service, wasMethodCalled, findCall } = createServiceTestSetup(
+  QuizService,
+  makeQuiz,
+  "quiz"
+);
+
+it("findAll retourne tous les quiz", async () => {
+  const result = await service.findAll();
+  expect(result).toHaveLength(1);
+  expect(wasMethodCalled("findMany")).toBeTrue();
+  const call = findCall("findMany");
+  expect(call?.args).toHaveProperty("orderBy");
+});
+```
+
+**Impact** : **+87 tests de services**, **100% service coverage** atteint !
   expect(caller.delete("user-123")).rejects.toThrow();
 });
 ```
