@@ -54,21 +54,11 @@ export class WalletService {
        amount:
          data.amount === null || data.amount === undefined
            ? null
-           : new Prisma.Decimal(
-               typeof data.amount === "string"
-                 ? data.amount.replace(/,/g, "")
-                 : data.amount
-             ),
+           : new Prisma.Decimal(data.amount),
      };
 
      // 💾 Create the wallet record
-     const wallet = await this.prisma.wallet.create({ data: normalizedData });
-
-     // 🔢 Convert Decimal to number for API output
-     return {
-       ...wallet,
-       amount: wallet.amount ? Number(wallet.amount) : wallet.amount,
-     };
+     return this.prisma.wallet.create({ data: normalizedData });
    }
 
   /**

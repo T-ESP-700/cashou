@@ -13,6 +13,23 @@ interface DayStatus {
   quizId?: number;
 }
 
+interface QuizQuestionData {
+  question: {
+    id: number;
+  };
+}
+
+interface UserQuizParticipation {
+  userId: string | null;
+  completedAt: Date | null;
+}
+
+interface DailyQuiz {
+  id: number;
+  date: string | null;
+  createdAt: string;
+}
+
 export default function HistoryScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -77,7 +94,7 @@ export default function HistoryScreen() {
 
             // Récupérer tous les quiz daily
             const allQuizzes = await trpcClient.quiz.getByType.query({ type: 'DAILY' });
-            const dailyQuizzes = allQuizzes as any[];
+            const dailyQuizzes = allQuizzes as DailyQuiz[];
 
             // Trouver le quiz pour cette date
             let quizForDate = null;
@@ -120,7 +137,7 @@ export default function HistoryScreen() {
 
             // Vérifier si l'utilisateur a répondu à toutes les questions
             const allQuestionsAnswered = await Promise.all(
-              questionsData.map(async (qq: any) => {
+              (questionsData as QuizQuestionData[]).map(async (qq) => {
                 try {
                   const userAnswer = await trpcClient.userAnswer.getByUserAndQuestion.query({
                     userId: user.id,
@@ -141,8 +158,8 @@ export default function HistoryScreen() {
                 quizId: quizForDate.id,
               });
 
-              const userParticipation = (participations as any[]).find(
-                (p: any) => p.userId === user.id && p.completedAt !== null
+              const userParticipation = (participations as UserQuizParticipation[]).find(
+                (p) => p.userId === user.id && p.completedAt !== null
               );
 
               return {

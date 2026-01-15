@@ -1,12 +1,13 @@
 // src/server/routers/user-quiz.router.ts
-import { initTRPC, TRPCError } from "@trpc/server";
-import { router, protectedProcedure, createContext } from "../index.ts";
+import { initTRPC } from "@trpc/server";
+import { z } from "zod";
+import { router, protectedProcedure } from "../index.ts";
 import { UserQuizService } from "../../trpc/services/user-quiz.service.ts";
 import {
-    userQuizCreateSchema, 
-    userQuizUpdateSchema, 
-    userQuizIdSchema, 
-    userQuizByUserSchema, 
+    userQuizCreateSchema,
+    userQuizUpdateSchema,
+    userQuizIdSchema,
+    userQuizByUserSchema,
     userQuizByQuizSchema,
     startQuizSchema,
     completeQuizSchema,
@@ -17,7 +18,6 @@ import {
     userQuizLeaderboardSchema,
     userQuizDailyHistorySchema
 } from "../schemas-zod/user-quiz-schema.ts";
-import { z } from "zod";
 
 // Initialisation de tRPC pour ce router spécifique
 const t = initTRPC.create();
@@ -144,7 +144,7 @@ const publicRouter = t.router({
     hasParticipated: t.procedure
         .input(z.object({
             quizId: z.number().min(1, "L'ID du quiz doit être un nombre > 0"),
-            userId: z.number().min(1, "L'ID de l'utilisateur doit être un nombre > 0")
+            userId: z.string().min(1, "L'ID de l'utilisateur doit être une chaîne non vide")
         }))
         .query(async ({ input }) => {
             return await userQuizService.hasUserParticipated(input.quizId, input.userId);
@@ -339,8 +339,8 @@ export const userQuizRouter = router({
     getInProgressByUser: publicRouter.getInProgressByUser,
     abandonQuiz: publicRouter.abandonQuiz,
     resumeQuiz: publicRouter.resumeQuiz,
-    getHistory: publicRouter.getHistory,
-    getDetailedStats: publicRouter.getDetailedStats,
+    getHistory: publicRouter.getHistoryByUser,
+    getDetailedStats: publicRouter.getUserDetailedStats,
     getLeaderboard: publicRouter.getLeaderboard,
     getStatsByType: publicRouter.getStatsByType,
     getStreaks: publicRouter.getStreaks,

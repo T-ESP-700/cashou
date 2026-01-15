@@ -53,7 +53,7 @@ export default function CreateQuestionPage() {
       const finalQuestionText = ensureQuestionMark(data.text);
       
       // Create question first
-      const question = await createQuestionMutation.mutateAsync({ text: finalQuestionText });
+      const result = await createQuestionMutation.mutateAsync({ text: finalQuestionText });
 
       // Create all answers
       const validAnswers = answers.filter((a) => a.text.trim() !== '');
@@ -61,7 +61,7 @@ export default function CreateQuestionPage() {
         await Promise.all(
           validAnswers.map((answer) =>
             createAnswerMutation.mutateAsync({
-              questionId: question.id,
+              questionId: result.question.id,
               text: answer.text,
               isCorrect: answer.isCorrect,
             })
@@ -81,8 +81,8 @@ export default function CreateQuestionPage() {
         { text: '', isCorrect: false },
       ]);
       navigate('/questions');
-    } catch (error: any) {
-      toast.error(`Échec de la création de la question: ${error.message}`);
+    } catch (error: unknown) {
+      toast.error(`Échec de la création de la question: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
     }
   };
 

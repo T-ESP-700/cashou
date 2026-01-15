@@ -3,6 +3,14 @@
  * Run with: bun run scripts/create-admin.ts
  */
 
+interface AuthResponse {
+  user: {
+    id: string;
+    email: string;
+    name: string;
+  };
+}
+
 async function createAdminUser() {
   const email = process.env.ADMIN_EMAIL || 'admin@cashou.com';
   const password = process.env.ADMIN_PASSWORD || 'Admin123456!';
@@ -43,7 +51,7 @@ async function createAdminUser() {
         });
 
         if (signInResponse.ok) {
-          const data = await signInResponse.json();
+          const data = await signInResponse.json() as AuthResponse;
           console.log('Admin user signed in successfully:', {
             id: data.user.id,
             email: data.user.email,
@@ -54,7 +62,7 @@ async function createAdminUser() {
       return;
     }
 
-    const data = await response.json();
+    const data = await response.json() as AuthResponse;
 
     console.log('Admin user created successfully:', {
       id: data.user.id,

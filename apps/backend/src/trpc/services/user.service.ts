@@ -1,6 +1,6 @@
 // Service métier pour la gestion des utilisateurs du jeu
 // Couche d'abstraction entre les routers et la base de données
-import type { User, PrismaClient } from "@prisma/client";
+import type { User, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {UserCreateSchema, UserDataSchema} from "../schemas-zod/user-schema.ts";
 
@@ -28,7 +28,7 @@ export class UserService {
      * @param id - Identifiant unique de l'utilisateur
      * @returns Promise<User | null> - L'utilisateur trouvé ou null si inexistant (sans relations)
      */
-    async findOne(id: number): Promise<User | null> {
+    async findOne(id: string): Promise<User | null> {
         return this.prisma.user.findUnique({
             where: { id }
             // Pas d'include - retourne seulement les données de la table user
@@ -41,7 +41,19 @@ export class UserService {
      * @returns Promise<User> - L'utilisateur créé avec son ID généré
      */
     async create(data: UserCreateSchema): Promise<User> {
-        return this.prisma.user.create({ data });
+        // Convert null values to undefined for Prisma compatibility
+        const prismaData = {
+            ...data,
+            username: data.username ?? undefined,
+            discriminator: data.discriminator ?? undefined,
+            email: data.email ?? undefined,
+            lastActivity: data.lastActivity ?? undefined,
+            points: data.points ?? undefined,
+            currentStreak: data.currentStreak ?? undefined,
+            maxStreak: data.maxStreak ?? undefined,
+            badges: data.badges ?? undefined,
+        };
+        return this.prisma.user.create({ data: prismaData });
     }
 
     /**
@@ -50,10 +62,15 @@ export class UserService {
      * @param data - Nouvelles données validées par le schéma Zod
      * @returns Promise<User> - L'utilisateur mis à jour
      */
-    async update(id: number, data: Partial<UserDataSchema>): Promise<User> {
+    async update(id: string, data: Partial<UserDataSchema>): Promise<User> {
+        // Convert null values to undefined for Prisma compatibility
+        const prismaData: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(data)) {
+            prismaData[key] = value ?? undefined;
+        }
         return this.prisma.user.update({
             where: { id },
-            data
+            data: prismaData
         });
     }
 
@@ -62,7 +79,7 @@ export class UserService {
      * @param id - Identifiant de l'utilisateur à supprimer
      * @returns Promise<User> - L'utilisateur supprimé (pour confirmation)
      */
-    async delete(id: number): Promise<User> {
+    async delete(id: string): Promise<User> {
         return this.prisma.user.delete({ where: { id } });
     }
 
@@ -114,7 +131,7 @@ export class UserService {
      * @param id - Identifiant de l'utilisateur
      * @returns Promise<User> - L'utilisateur avec la dernière activité mise à jour
      */
-    async updateLastActivity(id: number): Promise<User> {
+    async updateLastActivity(id: string): Promise<User> {
         return this.prisma.user.update({
             where: { id },
             data: { lastActivity: new Date() }
@@ -127,12 +144,12 @@ export class UserService {
      * @param pointsToAdd - Nombre de points à ajouter
      * @returns Promise<User> - L'utilisateur avec les points mis à jour
      */
-    async addPoints(id: number, pointsToAdd: number): Promise<User> {
+    async addPoints(id: string, pointsToAdd: number): Promise<User> {
         const user = await this.findOne(id);
         if (!user) {
             throw new Error("Utilisateur introuvable");
         }
-        
+
         const currentPoints = user.points || 0;
         return this.prisma.user.update({
             where: { id },

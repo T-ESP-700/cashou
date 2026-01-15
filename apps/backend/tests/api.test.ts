@@ -1,12 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { startServer } from '../src/index';
 
+type ServerInstance = Awaited<ReturnType<typeof startServer>>;
+
 describe('API Routes Tests', () => {
-  let server: any;
+  let server: ServerInstance;
 
   beforeAll(async () => {
     // Start the server explicitly
-    server = startServer();
+    server = await startServer();
   });
 
   afterAll(async () => {

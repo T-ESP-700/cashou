@@ -32,6 +32,11 @@ interface AssetData {
   minAmount: number | null;
 }
 
+interface Holding {
+  assetId: number;
+  quantity: number | string | null;
+}
+
 export default function TransactionScreen() {
   const colorScheme = useRNColorScheme();
   const isDark = colorScheme === 'dark';
@@ -196,15 +201,15 @@ export default function TransactionScreen() {
         if (type === 'sell') {
           try {
             const holdings = await trpcClient.holding.getByWallet.query({ walletId });
-            const holding = holdings.find((h: any) => h.assetId === assetId);
+            const holding = (holdings as Holding[]).find((h) => h.assetId === assetId);
             if (holding) {
               setCurrentHolding(Number(holding.quantity) || 0);
             }
-          } catch (e) {
-            console.error('Error fetching holdings:', e);
+          } catch (holdingError) {
+            console.error('Error fetching holdings:', holdingError);
           }
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error('Error fetching data:', e);
         setError('Erreur lors du chargement des donnees');
       } finally {
@@ -305,9 +310,9 @@ export default function TransactionScreen() {
           [{ text: 'OK', onPress: () => router.back() }]
         );
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Transaction error:', e);
-      Alert.alert('Erreur', e.message || 'Erreur lors de la transaction');
+      Alert.alert('Erreur', e instanceof Error ? e.message : 'Erreur lors de la transaction');
     } finally {
       setIsSubmitting(false);
     }

@@ -4,6 +4,7 @@ import { prisma } from '@cashou/db-app';
 import { TRPCError } from '@trpc/server';
 import { hash } from '@cashou/auth/server';
 import { UserService } from '../services/user.service';
+import type { UserProfileUpdateData } from '../types/user.types';
 
 export const userRouter = router({
   // Get all users without pagination
@@ -42,7 +43,7 @@ export const userRouter = router({
             id: true,
             email: true,
             username: true,
-            role: true,
+            levelId: true,
             level: true,
             points: true,
             createdAt: true,
@@ -129,8 +130,7 @@ export const userRouter = router({
         email: z.string().email(),
         username: z.string().min(3),
         password: z.string().min(8),
-        role: z.enum(['USER', 'ADMIN']).default('USER'),
-        level: z.number().int().min(1).default(1),
+        levelId: z.number().int().min(1).default(1),
         points: z.number().int().min(0).default(0),
       })
     )
@@ -154,18 +154,23 @@ export const userRouter = router({
         });
       }
 
-      // Hash password
+      // Hash password for account
       const hashedPassword = await hash.password(input.password);
 
-      // Create user
+      // Create user with account (Better-Auth stores password in Account)
       const user = await prisma.user.create({
         data: {
           email: input.email,
           username: input.username,
-          hashedPassword,
-          role: input.role,
-          level: input.level,
+          levelId: input.levelId,
           points: input.points,
+          accounts: {
+            create: {
+              accountId: input.email,
+              providerId: 'credential',
+              password: hashedPassword,
+            },
+          },
         },
       });
 
@@ -183,13 +188,12 @@ export const userRouter = router({
         email: z.string().email().optional(),
         username: z.string().min(3).optional(),
         password: z.string().min(8).optional(),
-        role: z.enum(['USER', 'ADMIN']).optional(),
-        level: z.number().int().min(1).optional(),
+        levelId: z.number().int().min(1).optional(),
         points: z.number().int().min(0).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const { id, ...updateData } = input;
+      const { id, password, ...updateFields } = input;
 
       // Check permissions
       const currentUserId = ctx.session?.user?.id;
@@ -212,7 +216,7 @@ export const userRouter = router({
       }
 
       // Non-admin users can only update their own username
-      if (!isAdmin && (input.role || input.level || input.points || input.email)) {
+      if (!isAdmin && (input.levelId || input.points || input.email)) {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message: 'You can only update your username',
@@ -245,10 +249,20 @@ export const userRouter = router({
         }
       }
 
-      // Hash password if provided
-      if (input.password) {
-        (updateData as any).hashedPassword = await hash.password(input.password);
-        delete (updateData as any).password;
+      // Build update data
+      const updateData: { email?: string; username?: string; levelId?: number; points?: number } = {};
+      if (updateFields.email) updateData.email = updateFields.email;
+      if (updateFields.username) updateData.username = updateFields.username;
+      if (updateFields.levelId) updateData.levelId = updateFields.levelId;
+      if (updateFields.points !== undefined) updateData.points = updateFields.points;
+
+      // Update password in Account table if provided
+      if (password) {
+        const hashedPassword = await hash.password(password);
+        await prisma.account.updateMany({
+          where: { userId: id, providerId: 'credential' },
+          data: { password: hashedPassword },
+        });
       }
 
       // Update user
@@ -323,7 +337,7 @@ export const userRouter = router({
           message: 'Authentication required',
         });
       }
-      const updateData: any = {};
+      const updateData: UserProfileUpdateData = {};
 
       // If changing password, verify current password
       if (input.newPassword) {
@@ -334,11 +348,19 @@ export const userRouter = router({
           });
         }
 
-        const user = await prisma.user.findUnique({
-          where: { id: userId },
+        // Get password from Account table (Better-Auth stores it there)
+        const account = await prisma.account.findFirst({
+          where: { userId, providerId: 'credential' },
         });
 
-        const isValid = await hash.verify(input.currentPassword, user!.hashedPassword);
+        if (!account?.password) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'No credential account found',
+          });
+        }
+
+        const isValid = await hash.verify(input.currentPassword, account.password);
         if (!isValid) {
           throw new TRPCError({
             code: 'UNAUTHORIZED',
@@ -346,7 +368,12 @@ export const userRouter = router({
           });
         }
 
-        updateData.hashedPassword = await hash.password(input.newPassword);
+        // Update password in Account table
+        const hashedPassword = await hash.password(input.newPassword);
+        await prisma.account.updateMany({
+          where: { userId, providerId: 'credential' },
+          data: { password: hashedPassword },
+        });
       }
 
       // Update username if provided
@@ -368,7 +395,7 @@ export const userRouter = router({
         updateData.username = input.username;
       }
 
-      // Update user
+      // Update user (only username now, password handled above)
       const user = await prisma.user.update({
         where: { id: userId },
         data: updateData,
@@ -378,7 +405,7 @@ export const userRouter = router({
           username: true,
           level: true,
           points: true,
-          role: true,
+          levelId: true,
         },
       });
 

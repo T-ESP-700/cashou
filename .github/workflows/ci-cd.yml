@@ -50,11 +50,14 @@ jobs:
             packages/*/node_modules
           key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
       - run: bun install --frozen-lockfile
+      - name: Generate Prisma client for app database
+        run: bun run db:generate:app
+      - name: Generate Prisma client for backoffice database
+        run: bun run db:generate:backoffice
       - name: TypeScript check
         run: bun run typecheck
       - name: Code quality
-        run: bunx eslint . --ext .ts,.tsx
-        working-directory: backend
+        run: bunx eslint apps/backend --ext .ts,.tsx
 
   # Tests des packages partagés (uniquement ceux qui ont des tests)
   shared-packages-test:
@@ -108,13 +111,15 @@ jobs:
         run: bun run --filter ${{ matrix.package }} build
         continue-on-error: true
 
-  # Tests des applications
+  # Tests des applications (uniquement celles qui ont des tests)
   apps-test:
     runs-on: ubuntu-latest
     needs: install-deps
+    env:
+      SKIP_PRISMA_INIT: "true"  # Évite l'initialisation Prisma pour les tests unitaires
     strategy:
       matrix:
-        app: ['backend', 'backoffice']
+        app: ['backend']  # backoffice n'a pas encore de tests
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1
@@ -130,9 +135,12 @@ jobs:
             packages/*/node_modules
           key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
       - run: bun install --frozen-lockfile
+      - name: Generate Prisma clients
+        run: |
+          bunx prisma generate --schema=packages/@cashou/db-app/prisma/schema.prisma
+          bunx prisma generate --schema=packages/@cashou/db-backoffice/prisma/schema.prisma
       - name: Test ${{ matrix.app }}
         run: bun run --filter ${{ matrix.app }} test
-        continue-on-error: true
 
   # Tests API spécifiques pour le backend
   backend-api-test:
@@ -191,14 +199,8 @@ jobs:
         run: bun run db:migrate:app
       - name: Run migrations for backoffice database
         run: bun run db:migrate:backoffice
-      - name: Start backend server
-        run: |
-          bun run --filter backend dev &
-          sleep 10
       - name: Run API tests
         run: bun run --filter backend test --timeout 30000
-      - name: Stop server
-        run: pkill -f "bun.*backend.*dev" || true
 
   # Build des applications
   apps-build:
@@ -222,6 +224,10 @@ jobs:
             packages/*/node_modules
           key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
       - run: bun install --frozen-lockfile
+      - name: Generate Prisma client for app database
+        run: bun run db:generate:app
+      - name: Generate Prisma client for backoffice database
+        run: bun run db:generate:backoffice
       - name: Type-check & build ${{ matrix.app }}
         run: bun run --filter ${{ matrix.app }} build
 
@@ -313,26 +319,46 @@ jobs:
         service: ['backend', 'backoffice']
     steps:
       - uses: actions/checkout@v4
+      - name: Create .env.docker file
+        run: |
+          cat > .env.docker << 'EOF'
+          # CAShOU database (Docker configuration)
+          CASHOU_DB_URL="postgresql://postgres:password@db_cashou:5432/cashou_db"
+          POSTGRES_USER=postgres
+          POSTGRES_PASSWORD=password
+          POSTGRES_DB=cashou_db
+
+          # BACKOFFICE database (Docker configuration)
+          BACKOFFICE_DB_URL="postgresql://postgres:password@db_backoffice:5432/backoffice"
+
+          # Supabase
+          VITE_SUPABASE_URL=https://example.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY=placeholder_key
+
+          # Better-Auth
+          BETTER_AUTH_SECRET=ci_placeholder_secret_32chars_long
+          BETTER_AUTH_URL=http://localhost:3000
+          GOOGLE_CLIENT_ID=
+          GOOGLE_CLIENT_SECRET=
+          EOF
       - name: Build Docker image for ${{ matrix.service }}
         run: |
-          docker build -t cashou-${{ matrix.service }}:latest ./apps/${{ matrix.service }}
+          docker build -t cashou-${{ matrix.service }}:latest -f ./apps/${{ matrix.service }}/Dockerfile .
       - name: Push Docker image
         run: |
           echo "Pushing cashou-${{ matrix.service }}:latest"
 
-  # Déploiement
-  deploy:
-    needs: [docker-build]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Deploy with Docker Compose
-        run: |
-          echo "Deploying with Docker Compose..."
-          docker-compose up -d
-      - name: Run health checks
-        run: |
-          echo "Running health checks..."
-          sleep 30
-          echo "Backend health check..."
-          echo "Backoffice health check..."
+  # Déploiement - DÉSACTIVÉ (à configurer avec une vraie infra de déploiement)
+  # deploy:
+  #   needs: [docker-build]
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main'  # À activer uniquement sur main
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Deploy with Docker Compose
+  #       run: |
+  #         echo "Deploying with Docker Compose..."
+  #         # TODO: Configurer le déploiement réel (SSH, Kubernetes, etc.)
+  #     - name: Run health checks
+  #       run: |
+  #         echo "Running health checks..."

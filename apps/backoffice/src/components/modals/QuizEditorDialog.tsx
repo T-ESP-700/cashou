@@ -121,7 +121,7 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
     if (formValues.type === 'DAILY' && formValues.date && formValues.date.trim()) {
       const checkDate = async () => {
         try {
-          const exists = await backofficeApi.quiz.dailyQuizExists(formValues.date)
+          const exists = await backofficeApi.quiz.dailyQuizExists(formValues.date) as boolean
           if (exists && currentQuiz) {
             // En mode édition, vérifier que ce n'est pas le quiz actuel qui a cette date
             const existingDailyQuiz = quizzes.find(
@@ -260,7 +260,7 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
         await backofficeApi.quiz.update({ id: currentQuiz.id, data: payload })
         toast.success('Quiz mis à jour')
       } else {
-        const created = await backofficeApi.quiz.create(payload)
+        const created = await backofficeApi.quiz.create(payload) as { id: number }
         try {
           await Promise.all(
             pendingLinks.map((link, index) =>
@@ -341,7 +341,7 @@ export function QuizEditorDialog({ open, onOpenChange, quizId }: QuizEditorDialo
         quizId: internalQuizId,
         questionId,
         position: existingLinks.length + 1,
-      })
+      }) as { id: number }
       toast.success('Question créée et associée')
       setSelectedLinkKey(`existing-${createdLink.id}`)
       await refresh()

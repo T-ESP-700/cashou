@@ -107,7 +107,7 @@ export const backofficeAuthRouter = router({
             roles: user.roles.map((ur) => ur.role.name),
           },
         }
-      } catch (error) {
+      } catch {
         throw new TRPCError({
           code: 'UNAUTHORIZED',
           message: 'Token invalide',
