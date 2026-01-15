@@ -2,8 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { investmentRouter } from "../../src/trpc/routers/investment.router";
 import { InvestmentService } from "../../src/trpc/services/investment.service";
-
-import { Prisma } from "@prisma/client";
+import { Prisma } from "@cashou/db-app";
 
 type BuyInput = { walletId: number; assetId: number; amount: number; gameInstanceId: number };
 type SellInput = { walletId: number; assetId: number; amount: number; gameInstanceId: number };

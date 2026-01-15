@@ -1,7 +1,7 @@
 // tests/service/holding.service.unit.test.ts
 import { describe, it, expect } from "bun:test";
 import type { Prisma, Holding, PrismaClient } from "@cashou/db-app";
-import { Prisma as PrismaDecimal } from "@prisma/client";
+import { Prisma as PrismaDecimal } from "@cashou/db-app";
 import { HoldingService } from "../../src/trpc/services/holding.service";
 
 type Call =
