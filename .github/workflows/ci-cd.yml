@@ -118,7 +118,12 @@ jobs:
             packages/*/node_modules
           key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
       
-      - name: Run migrations (génère aussi les clients Prisma)
+      - name: Generate Prisma clients
+        run: |
+          bun run db:generate:app
+          bun run db:generate:backoffice
+      
+      - name: Run migrations
         run: |
           bun run db:migrate:app
           bun run db:migrate:backoffice
