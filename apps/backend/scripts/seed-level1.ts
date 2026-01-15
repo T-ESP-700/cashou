@@ -1,9 +1,54 @@
 import { PrismaClient } from '@cashou/db-app';
+import { auth } from '@cashou/auth/server';
 
 const prisma = new PrismaClient();
 
+// Credentials from login-form.tsx
+const TEST_USER_EMAIL = 'test@gmail.com';
+const TEST_USER_PASSWORD = 'azerty123456';
+const TEST_USER_NAME = 'Test User';
+
 async function main() {
   console.log('🌱 Début du seeding du niveau 1: Premier pas dans l\'épargne...');
+
+  // 0. Créer l'utilisateur de test
+  console.log('👤 Création de l\'utilisateur de test...');
+  let testUser = await prisma.user.findFirst({
+    where: { email: TEST_USER_EMAIL }
+  });
+
+  if (!testUser) {
+    try {
+      const signUpResult = await auth.api.signUpEmail({
+        body: {
+          email: TEST_USER_EMAIL,
+          password: TEST_USER_PASSWORD,
+          name: TEST_USER_NAME
+        }
+      });
+
+      if (signUpResult.user) {
+        testUser = await prisma.user.findUnique({
+          where: { id: signUpResult.user.id }
+        });
+        console.log(`✅ Utilisateur créé: ${testUser?.email} (ID: ${testUser?.id})`);
+      } else {
+        console.log('⚠️  Échec de la création de l\'utilisateur via Better-Auth');
+      }
+    } catch (error: any) {
+      // Si l'utilisateur existe déjà (erreur 422), on le récupère
+      if (error?.status === 422 || error?.message?.includes('already exists')) {
+        testUser = await prisma.user.findFirst({
+          where: { email: TEST_USER_EMAIL }
+        });
+        console.log(`ℹ️  Utilisateur existe déjà: ${testUser?.email} (ID: ${testUser?.id})`);
+      } else {
+        console.error('❌ Erreur lors de la création de l\'utilisateur:', error);
+      }
+    }
+  } else {
+    console.log(`ℹ️  Utilisateur existe déjà: ${testUser.email} (ID: ${testUser.id})`);
+  }
 
   // 1. Créer le Market "Épargne & Sécurité"
   console.log("📊 Création du marché Livret, plans et compte épargne...");
@@ -149,7 +194,7 @@ async function main() {
         title: 'Premier pas dans l\'épargne',
         number: 1,
         duration: 1825,
-        speed: 5258000,
+        speed: 1314000,
         startBalance: 2000,
         pointsRequired: 0,
         description: 'Découvre les bases de l\'épargne avec des produits sécurisés. Apprends à gérer ton capital sans risque et à comprendre les notions essentielles de la finance personnelle.'
@@ -710,6 +755,9 @@ async function main() {
   console.log(`   - 1 Goal: ${goal.title}`);
   console.log(`   - 1 Quiz MCQ avec ${createdQuestions.length} questions`);
   console.log(`   - 2 Daily Quiz (hier et aujourd'hui)`);
+  if (testUser) {
+    console.log(`   - 1 User de test: ${testUser.email}`);
+  }
   console.log('========================================\n');
 }
 

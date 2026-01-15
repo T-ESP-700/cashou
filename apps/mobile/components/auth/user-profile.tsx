@@ -1,15 +1,14 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity, ActivityIndicator, View, Alert, Text, useColorScheme as useRNColorScheme, ScrollView } from 'react-native';
+import { ActivityIndicator, View, Alert, Text, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/hooks/use-auth';
-import { CashouTheme } from '@/constants/cashou-theme';
+import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Card, Badge, Button } from '@/components/ui';
 
 export function UserProfile() {
   const { user, isLoading, logout } = useAuth();
-  const colorScheme = useRNColorScheme();
-  const isDark = colorScheme === 'dark';
-  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const { colors, status, special, fonts, spacing, borderRadius, borderWidth, isDark } = useCashouTheme();
   const insets = useSafeAreaInsets();
 
   const handleLogout = () => {
@@ -84,8 +83,8 @@ export function UserProfile() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.accent} />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -96,432 +95,340 @@ export function UserProfile() {
 
   return (
     <ScrollView
-      style={[styles.container, { backgroundColor: theme.background }]}
-      contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + CashouTheme.spacing.lg }]}
+      style={{ flex: 1, backgroundColor: colors.background }}
+      contentContainerStyle={{
+        padding: spacing.md,
+        gap: spacing.lg,
+        paddingBottom: insets.bottom + spacing.lg,
+      }}
       showsVerticalScrollIndicator={false}
     >
       {/* Hero Header Section */}
-      <View style={[styles.heroSection, { backgroundColor: theme.card }]}>
+      <Card
+        variant="elevated"
+        padding="lg"
+        style={{ marginTop: spacing.sm, paddingVertical: spacing.xl, alignItems: 'center' }}
+      >
         {/* Avatar Circle */}
-        <View style={[styles.avatarContainer, { borderColor: theme.accent }]}>
+        <View
+          style={{
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 100,
+            height: 100,
+            borderRadius: 50,
+            borderWidth: borderWidth.thick,
+            borderColor: colors.accent,
+            marginBottom: spacing.md,
+          }}
+        >
           {user.image ? (
-            <View style={styles.avatarImage} />
+            <View style={{ width: '100%', height: '100%', borderRadius: 50 }} />
           ) : (
-            <Text style={[styles.avatarText, { color: theme.accent }]}>
+            <Text
+              style={{
+                fontSize: 36,
+                fontWeight: 'bold',
+                fontFamily: fonts.subheading,
+                color: colors.accent,
+              }}
+            >
               {getInitials()}
             </Text>
           )}
         </View>
 
         {/* User Name */}
-        <Text style={[styles.userName, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
+        <Text
+          style={{
+            fontSize: 28,
+            fontFamily: fonts.subheading,
+            color: colors.text,
+            textAlign: 'center',
+            marginBottom: spacing.xs,
+          }}
+        >
           {getDisplayName()}
         </Text>
 
         {/* User Email */}
-        <Text style={[styles.userEmail, { color: theme.text, opacity: 0.7 }]}>
+        <Text
+          style={{
+            fontSize: 14,
+            fontFamily: fonts.body,
+            color: colors.text,
+            opacity: 0.7,
+            textAlign: 'center',
+          }}
+        >
           {user.email}
         </Text>
-      </View>
+      </Card>
 
       {/* Stats Cards Grid */}
       {hasStatsContent() && (
-        <View style={styles.statsGrid}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
           {/* Points Card */}
           {(user.points !== undefined && user.points !== null && user.points > 0) && (
-            <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              <View style={[styles.statIconContainer, { backgroundColor: `${theme.accent}20` }]}>
-                <Ionicons name="trophy" size={24} color={theme.accent} />
+            <Card variant="outlined" padding="md" style={{ flex: 1, alignItems: 'center', minWidth: '30%', gap: spacing.sm }}>
+              <View
+                style={{
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  backgroundColor: `${colors.accent}20`,
+                  marginBottom: spacing.xs,
+                }}
+              >
+                <Ionicons name="trophy" size={24} color={colors.accent} />
               </View>
-              <Text style={[styles.statValue, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
+              <Text style={{ fontSize: 24, fontWeight: 'bold', fontFamily: fonts.subheading, color: colors.text }}>
                 {user.points}
               </Text>
-              <Text style={[styles.statLabel, { color: theme.text, opacity: 0.7 }]}>
+              <Text style={{ fontSize: 12, fontFamily: fonts.body, color: colors.text, opacity: 0.7, textAlign: 'center' }}>
                 Points
               </Text>
-            </View>
+            </Card>
           )}
 
           {/* Current Streak Card */}
           {(user.currentStreak !== undefined && user.currentStreak > 0) && (
-            <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              <View style={[styles.statIconContainer, { backgroundColor: '#E87F0020' }]}>
-                <Ionicons name="flame" size={24} color="#E87F00" />
+            <Card variant="outlined" padding="md" style={{ flex: 1, alignItems: 'center', minWidth: '30%', gap: spacing.sm }}>
+              <View
+                style={{
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  backgroundColor: special.streakLight,
+                  marginBottom: spacing.xs,
+                }}
+              >
+                <Ionicons name="flame" size={24} color={special.streak} />
               </View>
-              <Text style={[styles.statValue, { color: '#E87F00', fontFamily: CashouTheme.fonts.subheading }]}>
+              <Text style={{ fontSize: 24, fontWeight: 'bold', fontFamily: fonts.subheading, color: special.streak }}>
                 {user.currentStreak}
               </Text>
-              <Text style={[styles.statLabel, { color: theme.text, opacity: 0.7 }]}>
+              <Text style={{ fontSize: 12, fontFamily: fonts.body, color: colors.text, opacity: 0.7, textAlign: 'center' }}>
                 Jours
               </Text>
-            </View>
+            </Card>
           )}
 
           {/* Best Streak Card */}
           {(user.maxStreak !== undefined && user.maxStreak > 0) && (
-            <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              <View style={[styles.statIconContainer, { backgroundColor: '#FFD70020' }]}>
-                <Ionicons name="star" size={24} color="#FFD700" />
+            <Card variant="outlined" padding="md" style={{ flex: 1, alignItems: 'center', minWidth: '30%', gap: spacing.sm }}>
+              <View
+                style={{
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  backgroundColor: special.goldLight,
+                  marginBottom: spacing.xs,
+                }}
+              >
+                <Ionicons name="star" size={24} color={special.gold} />
               </View>
-              <Text style={[styles.statValue, { color: '#FFD700', fontFamily: CashouTheme.fonts.subheading }]}>
+              <Text style={{ fontSize: 24, fontWeight: 'bold', fontFamily: fonts.subheading, color: special.gold }}>
                 {user.maxStreak}
               </Text>
-              <Text style={[styles.statLabel, { color: theme.text, opacity: 0.7 }]}>
+              <Text style={{ fontSize: 12, fontFamily: fonts.body, color: colors.text, opacity: 0.7, textAlign: 'center' }}>
                 Record
               </Text>
-            </View>
+            </Card>
           )}
         </View>
       )}
 
       {/* Level Progress Card */}
       {user.levelId && (
-        <View style={[styles.progressCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <View style={styles.progressHeader}>
-            <View style={styles.progressHeaderLeft}>
-              <Ionicons name="trending-up" size={20} color={theme.accent} />
-              <Text style={[styles.progressTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
+        <Card variant="outlined" padding="lg" style={{ gap: spacing.md }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <Ionicons name="trending-up" size={20} color={colors.accent} />
+              <Text style={{ fontSize: 18, fontFamily: fonts.subheading, color: colors.text }}>
                 Niveau actuel
               </Text>
             </View>
-            <View style={[styles.levelBadge, { backgroundColor: theme.accent }]}>
-              <Text style={[styles.levelBadgeText, { fontFamily: CashouTheme.fonts.subheading }]}>
-                Niveau {user.levelId}
-              </Text>
-            </View>
+            <Badge label={`Niveau ${user.levelId}`} variant="accent" />
           </View>
-          <View style={[styles.progressBarContainer, { backgroundColor: isDark ? '#3A3D55' : '#E0E0E0' }]}>
+          <View
+            style={{
+              height: 12,
+              borderRadius: borderRadius.sm - 2,
+              overflow: 'hidden',
+              backgroundColor: colors.progressBarBackground,
+            }}
+          >
             <View
-              style={[
-                styles.progressBarFill,
-                {
-                  backgroundColor: theme.accent,
-                  width: `${getLevelProgress()}%`,
-                },
-              ]}
+              style={{
+                height: '100%',
+                borderRadius: borderRadius.sm - 2,
+                backgroundColor: colors.accent,
+                width: `${getLevelProgress()}%`,
+              }}
             />
           </View>
-          <Text style={[styles.progressSubtext, { color: theme.text, opacity: 0.6 }]}>
+          <Text style={{ fontSize: 12, fontFamily: fonts.body, color: colors.text, opacity: 0.6, textAlign: 'center' }}>
             Progression vers le niveau suivant
           </Text>
-        </View>
+        </Card>
       )}
 
       {/* Achievements Section */}
       {hasAchievementsContent() && (
-        <View style={[styles.achievementsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <View style={styles.achievementsHeader}>
-            <Ionicons name="medal" size={24} color={theme.accent} />
-            <Text style={[styles.achievementsTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
+        <Card variant="outlined" padding="lg" style={{ gap: spacing.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <Ionicons name="medal" size={24} color={colors.accent} />
+            <Text style={{ fontSize: 18, fontFamily: fonts.subheading, color: colors.text }}>
               Réalisations
             </Text>
           </View>
-          <View style={styles.achievementsGrid}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
             {/* Streak Achievement */}
             {user.currentStreak !== undefined && user.currentStreak >= 7 && (
-              <View style={[styles.achievementBadge, { backgroundColor: `${theme.accent}20` }]}>
-                <Ionicons name="flame" size={20} color={theme.accent} />
-                <Text style={[styles.achievementText, { color: theme.text }]}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: spacing.sm,
+                  borderRadius: 20,
+                  gap: spacing.xs + 2,
+                  backgroundColor: `${colors.accent}20`,
+                }}
+              >
+                <Ionicons name="flame" size={20} color={colors.accent} />
+                <Text style={{ fontSize: 12, fontWeight: '500', fontFamily: fonts.body, color: colors.text }}>
                   Série de 7 jours
                 </Text>
               </View>
             )}
             {user.currentStreak !== undefined && user.currentStreak >= 30 && (
-              <View style={[styles.achievementBadge, { backgroundColor: `${theme.accent}20` }]}>
-                <Ionicons name="trophy" size={20} color={theme.accent} />
-                <Text style={[styles.achievementText, { color: theme.text }]}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: spacing.sm,
+                  borderRadius: 20,
+                  gap: spacing.xs + 2,
+                  backgroundColor: `${colors.accent}20`,
+                }}
+              >
+                <Ionicons name="trophy" size={20} color={colors.accent} />
+                <Text style={{ fontSize: 12, fontWeight: '500', fontFamily: fonts.body, color: colors.text }}>
                   Maître de la régularité
                 </Text>
               </View>
             )}
             {/* Points Achievement */}
             {user.points && user.points >= 1000 && (
-              <View style={[styles.achievementBadge, { backgroundColor: `${theme.accent}20` }]}>
-                <Ionicons name="star" size={20} color={theme.accent} />
-                <Text style={[styles.achievementText, { color: theme.text }]}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: spacing.sm,
+                  borderRadius: 20,
+                  gap: spacing.xs + 2,
+                  backgroundColor: `${colors.accent}20`,
+                }}
+              >
+                <Ionicons name="star" size={20} color={colors.accent} />
+                <Text style={{ fontSize: 12, fontWeight: '500', fontFamily: fonts.body, color: colors.text }}>
                   1000+ points
                 </Text>
               </View>
             )}
             {user.points && user.points >= 5000 && (
-              <View style={[styles.achievementBadge, { backgroundColor: `${theme.accent}20` }]}>
-                <Ionicons name="diamond" size={20} color={theme.accent} />
-                <Text style={[styles.achievementText, { color: theme.text }]}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: spacing.sm,
+                  borderRadius: 20,
+                  gap: spacing.xs + 2,
+                  backgroundColor: `${colors.accent}20`,
+                }}
+              >
+                <Ionicons name="diamond" size={20} color={colors.accent} />
+                <Text style={{ fontSize: 12, fontWeight: '500', fontFamily: fonts.body, color: colors.text }}>
                   Expert investisseur
                 </Text>
               </View>
             )}
             {/* Level Achievement */}
             {user.levelId && parseInt(user.levelId, 10) >= 5 && (
-              <View style={[styles.achievementBadge, { backgroundColor: `${theme.accent}20` }]}>
-                <Ionicons name="rocket" size={20} color={theme.accent} />
-                <Text style={[styles.achievementText, { color: theme.text }]}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: spacing.sm,
+                  borderRadius: 20,
+                  gap: spacing.xs + 2,
+                  backgroundColor: `${colors.accent}20`,
+                }}
+              >
+                <Ionicons name="rocket" size={20} color={colors.accent} />
+                <Text style={{ fontSize: 12, fontWeight: '500', fontFamily: fonts.body, color: colors.text }}>
                   Niveau 5 atteint
                 </Text>
               </View>
             )}
           </View>
-        </View>
+        </Card>
       )}
 
       {/* Account Info Card */}
       {hasAccountInfoContent() && (
-        <View style={[styles.infoCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <View style={styles.infoHeader}>
-            <Ionicons name="person-circle-outline" size={24} color={theme.text} />
-            <Text style={[styles.infoTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
+        <Card variant="outlined" padding="lg" style={{ gap: spacing.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs }}>
+            <Ionicons name="person-circle-outline" size={24} color={colors.text} />
+            <Text style={{ fontSize: 18, fontFamily: fonts.subheading, color: colors.text }}>
               Informations du compte
             </Text>
           </View>
           {user.username && (
-            <View style={styles.infoRow}>
-              <Text style={[styles.infoLabel, { color: theme.text, opacity: 0.7 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm }}>
+              <Text style={{ fontSize: 14, fontFamily: fonts.body, color: colors.text, opacity: 0.7 }}>
                 Nom d'utilisateur
               </Text>
-              <Text style={[styles.infoValue, { color: theme.text }]}>
+              <Text style={{ fontSize: 14, fontWeight: '500', fontFamily: fonts.body, color: colors.text }}>
                 {user.username}
               </Text>
             </View>
           )}
           {user.createdAt && (
-            <View style={styles.infoRow}>
-              <Text style={[styles.infoLabel, { color: theme.text, opacity: 0.7 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm }}>
+              <Text style={{ fontSize: 14, fontFamily: fonts.body, color: colors.text, opacity: 0.7 }}>
                 Membre depuis
               </Text>
-              <Text style={[styles.infoValue, { color: theme.text }]}>
+              <Text style={{ fontSize: 14, fontWeight: '500', fontFamily: fonts.body, color: colors.text }}>
                 {new Date(user.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
               </Text>
             </View>
           )}
-        </View>
+        </Card>
       )}
 
       {/* Logout Button */}
-      <TouchableOpacity
-        style={[styles.logoutButton, { backgroundColor: '#F44336', borderColor: '#D32F2F' }]}
+      <Button
+        title="Se déconnecter"
+        variant="danger"
         onPress={handleLogout}
-        disabled={isLoading}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="log-out-outline" size={20} color="#FFFFFF" />
-        {isLoading ? (
-          <ActivityIndicator color="#fff" size="small" />
-        ) : (
-          <Text style={styles.logoutButtonText}>
-            Se déconnecter
-          </Text>
-        )}
-      </TouchableOpacity>
+        isLoading={isLoading}
+        fullWidth
+        leftIcon={<Ionicons name="log-out-outline" size={20} color={special.white} />}
+        style={{ marginTop: 8 }}
+      />
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: CashouTheme.spacing.md,
-    gap: CashouTheme.spacing.lg,
-  },
-  heroSection: {
-    borderRadius: CashouTheme.borderRadius.xl,
-    padding: CashouTheme.spacing.xl,
-    alignItems: 'center',
-    marginTop: CashouTheme.spacing.sm,
-    borderWidth: CashouTheme.borderWidth.thin,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  avatarContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: CashouTheme.borderWidth.thick,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: CashouTheme.spacing.md,
-    backgroundColor: 'transparent',
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 50,
-  },
-  avatarText: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    fontFamily: CashouTheme.fonts.subheading,
-  },
-  userName: {
-    fontSize: 28,
-    marginBottom: CashouTheme.spacing.xs,
-    textAlign: 'center',
-    fontFamily: CashouTheme.fonts.subheading,
-  },
-  userEmail: {
-    fontSize: 14,
-    textAlign: 'center',
-    fontFamily: CashouTheme.fonts.body,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: CashouTheme.spacing.md,
-    flexWrap: 'wrap',
-  },
-  statCard: {
-    flex: 1,
-    minWidth: '30%',
-    borderRadius: CashouTheme.borderRadius.lg,
-    padding: CashouTheme.spacing.md,
-    alignItems: 'center',
-    borderWidth: CashouTheme.borderWidth.thin,
-    gap: CashouTheme.spacing.sm,
-  },
-  statIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: CashouTheme.spacing.xs,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    fontFamily: CashouTheme.fonts.subheading,
-  },
-  statLabel: {
-    fontSize: 12,
-    textAlign: 'center',
-    fontFamily: CashouTheme.fonts.body,
-  },
-  progressCard: {
-    borderRadius: CashouTheme.borderRadius.lg,
-    padding: CashouTheme.spacing.lg,
-    borderWidth: CashouTheme.borderWidth.thin,
-    gap: CashouTheme.spacing.md,
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  progressHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: CashouTheme.spacing.sm,
-  },
-  progressTitle: {
-    fontSize: 18,
-    fontFamily: CashouTheme.fonts.subheading,
-  },
-  levelBadge: {
-    paddingHorizontal: CashouTheme.spacing.md,
-    paddingVertical: CashouTheme.spacing.xs + 2,
-    borderRadius: CashouTheme.borderRadius.md,
-  },
-  levelBadgeText: {
-    color: '#1C1E33',
-    fontSize: 14,
-    fontWeight: 'bold',
-    fontFamily: CashouTheme.fonts.subheading,
-  },
-  progressBarContainer: {
-    height: 12,
-    borderRadius: CashouTheme.borderRadius.sm - 2,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: CashouTheme.borderRadius.sm - 2,
-  },
-  progressSubtext: {
-    fontSize: 12,
-    textAlign: 'center',
-    fontFamily: CashouTheme.fonts.body,
-  },
-  achievementsCard: {
-    borderRadius: CashouTheme.borderRadius.lg,
-    padding: CashouTheme.spacing.lg,
-    borderWidth: CashouTheme.borderWidth.thin,
-    gap: CashouTheme.spacing.md,
-  },
-  achievementsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: CashouTheme.spacing.sm,
-  },
-  achievementsTitle: {
-    fontSize: 18,
-    fontFamily: CashouTheme.fonts.subheading,
-  },
-  achievementsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: CashouTheme.spacing.sm,
-  },
-  achievementBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: CashouTheme.spacing.md,
-    paddingVertical: CashouTheme.spacing.sm,
-    borderRadius: 20,
-    gap: CashouTheme.spacing.xs + 2,
-  },
-  achievementText: {
-    fontSize: 12,
-    fontWeight: '500',
-    fontFamily: CashouTheme.fonts.body,
-  },
-  infoCard: {
-    borderRadius: CashouTheme.borderRadius.lg,
-    padding: CashouTheme.spacing.lg,
-    borderWidth: CashouTheme.borderWidth.thin,
-    gap: CashouTheme.spacing.md,
-  },
-  infoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: CashouTheme.spacing.sm,
-    marginBottom: CashouTheme.spacing.xs,
-  },
-  infoTitle: {
-    fontSize: 18,
-    fontFamily: CashouTheme.fonts.subheading,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: CashouTheme.spacing.sm,
-  },
-  infoLabel: {
-    fontSize: 14,
-    fontFamily: CashouTheme.fonts.body,
-  },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: CashouTheme.fonts.body,
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: CashouTheme.spacing.md,
-    borderRadius: CashouTheme.borderRadius.lg,
-    gap: CashouTheme.spacing.sm,
-    borderWidth: CashouTheme.borderWidth.medium,
-    marginTop: CashouTheme.spacing.sm,
-  },
-  logoutButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: CashouTheme.fonts.subheading,
-  },
-});

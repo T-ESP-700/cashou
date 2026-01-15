@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { StyleSheet, TextInput, TouchableOpacity, Alert, ActivityIndicator, useColorScheme as useRNColorScheme } from 'react-native';
-import { ThemedView } from '@/components/themed-view';
+import { View, Alert } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
+import { Button, Input } from '@/components/ui';
 import { tokenStorage } from '@/lib/token-storage';
-import { CashouTheme } from '@/constants/cashou-theme';
+import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { AUTH_URL } from '@/lib/api-config';
 
 interface SignupFormProps {
@@ -16,9 +16,7 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const colorScheme = useRNColorScheme();
-  const isDark = colorScheme === 'dark';
-  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const { colors, spacing } = useCashouTheme();
 
   const handleSignup = async () => {
     if (!name || !email || !password || !confirmPassword) {
@@ -82,39 +80,23 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="subtitle" style={styles.title}>
+    <View
+      style={{ padding: spacing.lg, backgroundColor: colors.background, gap: spacing.md }}
+    >
+      <ThemedText type="subtitle" style={{ marginBottom: 8 }}>
         Create a new account
       </ThemedText>
 
-      <TextInput
-        style={[
-          styles.input,
-          {
-            backgroundColor: theme.card,
-            color: theme.text,
-            borderColor: theme.border,
-          }
-        ]}
+      <Input
         placeholder="Full Name"
-        placeholderTextColor={theme.text + '80'}
         value={name}
         onChangeText={setName}
         autoCapitalize="words"
         editable={!isLoading}
       />
 
-      <TextInput
-        style={[
-          styles.input,
-          {
-            backgroundColor: theme.card,
-            color: theme.text,
-            borderColor: theme.border,
-          }
-        ]}
+      <Input
         placeholder="Email"
-        placeholderTextColor={theme.text + '80'}
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
@@ -122,80 +104,30 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
         editable={!isLoading}
       />
 
-      <TextInput
-        style={[
-          styles.input,
-          {
-            backgroundColor: theme.card,
-            color: theme.text,
-            borderColor: theme.border,
-          }
-        ]}
+      <Input
         placeholder="Password (min. 8 characters)"
-        placeholderTextColor={theme.text + '80'}
         value={password}
         onChangeText={setPassword}
-        secureTextEntry
+        isPassword
         editable={!isLoading}
       />
 
-      <TextInput
-        style={[
-          styles.input,
-          {
-            backgroundColor: theme.card,
-            color: theme.text,
-            borderColor: theme.border,
-          }
-        ]}
+      <Input
         placeholder="Confirm Password"
-        placeholderTextColor={theme.text + '80'}
         value={confirmPassword}
         onChangeText={setConfirmPassword}
-        secureTextEntry
+        isPassword
         editable={!isLoading}
       />
 
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: theme.accent }]}
+      <Button
+        title="Sign Up"
+        variant="primary"
         onPress={handleSignup}
-        disabled={isLoading}
-      >
-        {isLoading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <ThemedText style={styles.buttonText}>Sign Up</ThemedText>
-        )}
-      </TouchableOpacity>
-    </ThemedView>
+        isLoading={isLoading}
+        fullWidth
+        style={{ marginTop: 8 }}
+      />
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    gap: 16,
-  },
-  title: {
-    marginBottom: 8,
-  },
-  input: {
-    height: 50,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    borderWidth: 1,
-  },
-  button: {
-    height: 50,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});

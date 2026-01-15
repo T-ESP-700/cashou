@@ -1,10 +1,10 @@
-import { View, TouchableOpacity, useColorScheme as useRNColorScheme, StyleSheet } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import CashouLogoLight from '@/assets/images/cashou_logo_light.svg';
 import CashouLogoDark from '@/assets/images/cashou_logo_dark.svg';
-import { CashouTheme } from '@/constants/cashou-theme';
+import { useCashouTheme } from '@/hooks/use-cashou-theme';
 
 interface CashouHeaderProps {
   showBackButton?: boolean;
@@ -20,9 +20,7 @@ export function CashouHeader({
   additionalTopPadding = 0,
 }: CashouHeaderProps) {
   const router = useRouter();
-  const colorScheme = useRNColorScheme();
-  const isDark = colorScheme === 'dark';
-  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const { colors, special, spacing, isDark } = useCashouTheme();
   const insets = useSafeAreaInsets();
 
   const handleBackPress = () => {
@@ -33,31 +31,33 @@ export function CashouHeader({
     }
   };
 
+  const iconColor = isDark ? special.white : special.darkText;
+
   return (
-    <View style={[
-      styles.container,
-      {
-        backgroundColor: theme.primary,
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: colors.primary,
         paddingTop: insets.top + additionalTopPadding,
-      }
-    ]}>
+        paddingHorizontal: spacing.md,
+        paddingBottom: spacing.md,
+      }}
+    >
       {/* Back Button */}
       <TouchableOpacity
         onPress={handleBackPress}
-        style={styles.button}
+        style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}
         disabled={!showBackButton}
       >
         {showBackButton && (
-          <Ionicons
-            name="chevron-back"
-            size={28}
-            color={isDark ? '#FFFFFF' : '#1C1E33'}
-          />
+          <Ionicons name="chevron-back" size={28} color={iconColor} />
         )}
       </TouchableOpacity>
 
       {/* Logo */}
-      <View style={styles.logoContainer}>
+      <View style={{ flex: 1, alignItems: 'center' }}>
         {isDark ? (
           <CashouLogoDark width={120} height={40} />
         ) : (
@@ -68,34 +68,10 @@ export function CashouHeader({
       {/* Menu Button */}
       <TouchableOpacity
         onPress={onMenuPress}
-        style={styles.button}
+        style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}
       >
-        <Ionicons
-          name="menu"
-          size={28}
-          color={isDark ? '#FFFFFF' : '#1C1E33'}
-        />
+        <Ionicons name="menu" size={28} color={iconColor} />
       </TouchableOpacity>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  button: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoContainer: {
-    flex: 1,
-    alignItems: 'center',
-  },
-});
