@@ -2,7 +2,7 @@
 
 ## 📊 État Actuel
 
-**535 tests** | **0 échecs** | **100% router coverage** | **100% service coverage** | **~4.7 secondes**
+**548 tests** | **0 échecs** | **100% router coverage** | **100% service coverage** | **~5.7 secondes**
 
 ---
 
@@ -190,6 +190,13 @@ it("findAll retourne tous les quiz", async () => {
 - Nettoyage automatique entre tests
 - Tracking des entités créées
 
+**4. E2E Test Factory** (`e2e-test-factory.ts`) ⭐ NOUVEAU !  
+- Setup serveur réel + client tRPC (singleton pattern)
+- Authentification Better-Auth intégrée
+- Setups réutilisables (game, quiz)
+- Cleanup automatique
+- **13 tests E2E l'utilisent !**
+
 ---
 
 ## 📊 Types de Tests
@@ -340,7 +347,88 @@ it("calcule les intérêts pour un holding avec taux annuel", async () => {
 - ✅ `game-event-flow` (9 tests) - Cycle complet événement → pause → notification → reprise
 - ✅ `end-game.service` (16 tests) - Liquidation + calcul intérêts + validation objectifs ⭐ NOUVEAU !
 
-### 5️⃣ Tests End-to-End (19 tests, ~250ms)
+### 5️⃣ Tests End-to-End (13 tests, ~1s) ⭐ NOUVEAU !
+
+**Quoi** : Scénarios utilisateur complets de bout en bout  
+**Comment** : Serveur réel + tRPC client + DB + Better-Auth
+
+**1. User Journey (7 tests, ~600ms)**
+```typescript
+it("scénario complet : inscription → partie → investissement → fin", async () => {
+  // 1. Créer setup complet
+  const setup = await createGameE2ESetup(factory);
+  
+  // 2. Acheter asset via API
+  await setup.client.investment.buy.mutate({
+    walletId: setup.wallet.id,
+    assetId: setup.asset.id,
+    amount: 2000,
+  });
+  
+  // 3. Vérifier wallet débité
+  const wallet = await prisma.wallet.findUnique({ where: { id: setup.wallet.id } });
+  expect(Number(wallet.amount)).toBe(8000);
+  
+  // 4. Terminer partie
+  const endResult = await endGameService.endGame(setup.gameInstance.id);
+  expect(endResult.success).toBeTrue();
+});
+```
+
+**2. Quiz Journey (6 tests, ~400ms)**
+```typescript
+it("scénario complet : récupération → démarrage → réponses → validation", async () => {
+  // 1. Créer setup quiz
+  const setup = await createQuizE2ESetup(factory, {
+    quizType: "MCQ",
+    questionCount: 5,
+  });
+  
+  // 2. Démarrer quiz
+  const userQuiz = await setup.client.userQuiz.create.mutate({
+    userId: setup.user.id,
+    quizId: setup.quiz.id,
+  });
+  
+  // 3. Répondre à toutes les questions
+  for (const question of setup.questions) {
+    const correctAnswer = setup.answers.find(a => a.isCorrect);
+    await setup.client.userAnswer.create.mutate({
+      userId: setup.user.id,
+      questionId: question.id,
+      answerId: correctAnswer.id,
+    });
+  }
+  
+  // 4. Compléter quiz
+  const completed = await setup.client.userQuiz.complete.mutate({ id: userQuiz.id });
+  expect(completed.isCorrect).toBeTrue();
+});
+```
+
+**Services testés** :
+- ✅ `auth.router` (inscription/connexion)
+- ✅ `gameInstance.router` (création partie)
+- ✅ `investment.router` (achat/vente)
+- ✅ `endGame.service` (fin partie)
+- ✅ `quiz.router` (récupération quiz)
+- ✅ `userQuiz.router` (démarrage/complétion)
+- ✅ `userAnswer.router` (réponses)
+
+**Helper E2E** (`e2e-test-factory.ts`) :
+- `createE2ESetup()` - Serveur + client + factory (singleton)
+- `createAuthenticatedUser()` - Inscription Better-Auth + client authentifié
+- `createGameE2ESetup()` - Setup complet jeu (user + level + partie + wallet + asset)
+- `createQuizE2ESetup()` - Setup complet quiz (user + quiz + questions + réponses)
+
+**Optimisations** :
+- Singleton pattern pour serveur (un seul serveur par suite)
+- Factory pattern pour setups réutilisables
+- Batch creation pour questions/réponses
+- Transactions optimisées pour cleanup
+- Level 1 auto-créé (gère FK User.levelId)
+
+### 6️⃣ Tests tRPC Routes (12 tests, ~250ms)
 
 **Quoi** : Serveur HTTP complet + tRPC + DB  
 **Comment** : Serveur réel, requêtes HTTP
