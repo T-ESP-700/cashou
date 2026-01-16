@@ -9,7 +9,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterAll } from "bun:test";
-import { prisma, Prisma } from "@cashou/db-app";
+import { Prisma } from "@cashou/db-app";
+import prisma from "../../src/database";
 import { EndGameService } from "../../src/trpc/services/end-game.service";
 import { IntegrationTestFactory } from "../helpers/integration-test-factory";
 import { setupTestDatabase } from "../helpers/integration-test-setup";

@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterAll, mock } from "bun:test";
-import { prisma } from "@cashou/db-app";
+import prisma from "../../src/database";
 import { GameInstanceEventService } from "../../src/trpc/services/game-instance-event.service";
 import { GameEventProcessorService } from "../../src/trpc/services/game-event-processor.service";
 import { GameEventTriggerService } from "../../src/trpc/services/game-event-trigger.service";

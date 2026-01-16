@@ -19,7 +19,7 @@
  */
 
 import { beforeAll, afterAll } from "bun:test";
-import { prisma } from "@cashou/db-app";
+import prisma from "../../src/database";
 
 /**
  * Configure la base de données pour les tests d'intégration

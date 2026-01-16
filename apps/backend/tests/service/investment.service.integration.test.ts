@@ -9,8 +9,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterAll } from "bun:test";
-import { prisma } from "@cashou/db-app";
 import { Prisma } from "@cashou/db-app";
+import prisma from "../../src/database";
 import { InvestmentService } from "../../src/trpc/services/investment.service";
 import { IntegrationTestFactory } from "../helpers/integration-test-factory";
 import { setupTestDatabase } from "../helpers/integration-test-setup";
