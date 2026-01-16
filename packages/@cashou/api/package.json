@@ -8,6 +8,6 @@
     "test": "echo 'No tests for API package'"
   },
   "dependencies": {
-    "@trpc/client": "^11.5.0"
+    "@trpc/client": "11.5.0"
   }
 }
