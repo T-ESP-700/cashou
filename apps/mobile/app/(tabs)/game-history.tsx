@@ -33,7 +33,7 @@ export default function GameHistoryScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
 
-  useHeaderOptions({ showBackButton: true });
+  useHeaderOptions({ showBackButton: false });
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

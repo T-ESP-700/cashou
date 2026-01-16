@@ -1,12 +1,14 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, useColorScheme as useRNColorScheme, Alert, Modal } from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useAuth } from '@/hooks/use-auth';
-import { useHeader } from '@/hooks/use-header';
+import { useHeaderOptions } from '@/hooks/use-header';
 import { useNotifications } from '@/hooks/use-notifications';
+import { LevelInfoModal } from '@/components/level-info-modal';
 import FastForwardIcon from '@/assets/images/fast-forward.svg';
 import PauseIcon from '@/assets/images/pause.svg';
 import StopIcon from '@/assets/images/stop.svg';
@@ -33,15 +35,23 @@ interface HoldingData {
   asset: AssetData | null;
 }
 
+interface GoalData {
+  id: number;
+  title: string | null;
+  description: string | null;
+}
+
 interface LevelData {
   level: {
     id: number;
     title: string | null;
     number: number | null;
+    description: string | null;
     startBalance: number | null;
     duration: number | null;
     speed: number | null;
   } | null;
+  goals?: GoalData[];
 }
 
 interface GameTimeState {
@@ -70,17 +80,8 @@ export default function GameCurrentScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { pendingEventCompletion, setPendingEventCompletion, isOnAssetsScreen, setActiveGameInstanceId, eventNotification } = useNotifications();
-  const { setOptions } = useHeader();
-
-  // Ensure back button is always visible when this screen is focused
-  useFocusEffect(
-    useCallback(() => {
-      setOptions({ showBackButton: true });
-      return () => {
-        // Optionally reset on unmount, but we keep it visible
-      };
-    }, [setOptions])
-  );
+  // Configure header for this screen
+  useHeaderOptions({ showBackButton: true });
 
   const [levelData, setLevelData] = useState<LevelData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -94,6 +95,8 @@ export default function GameCurrentScreen() {
   const [holdings, setHoldings] = useState<HoldingData[]>([]);
   const [showNoInvestmentModal, setShowNoInvestmentModal] = useState(false);
   const [isEndingGame, setIsEndingGame] = useState(false);
+  const [showLevelInfoModal, setShowLevelInfoModal] = useState(false);
+  const hasShownLevelInfoRef = useRef(false);
 
   // Mode dev (a configurer selon l'environnement)
   const __DEV__ = process.env.NODE_ENV === 'development' || true; // Force true pour le dev
@@ -290,24 +293,38 @@ export default function GameCurrentScreen() {
               setIsPaused(gameInstance.isPaused ?? true);
               setIsGameEnded(gameInstance.isEnded ?? false);
 
-              // If we have level data from the gameInstance, use it
+              // If we have level data from the gameInstance, fetch full level summary (includes goals)
               if (gameInstance.level) {
-                const levelFromGame = {
-                  level: {
-                    id: gameInstance.level.id,
-                    title: gameInstance.level.title ?? null,
-                    number: gameInstance.level.number ?? null,
-                    startBalance: gameInstance.level.startBalance ?? null,
-                    duration: gameInstance.level.duration ?? null,
-                    speed: gameInstance.level.speed ?? null,
-                  },
-                };
-                setLevelData(levelFromGame);
-                setStats(prev => ({
-                  ...prev,
-                  level: gameInstance.level?.number || 1,
-                  cash: gameInstance.level?.startBalance || 1000,
-                }));
+                try {
+                  const fullLevelData = await trpcClient.level.getSummary.query({ id: gameInstance.level.id });
+                  setLevelData(fullLevelData as LevelData);
+                  setStats(prev => ({
+                    ...prev,
+                    level: fullLevelData.level?.number || 1,
+                    cash: fullLevelData.level?.startBalance || 1000,
+                  }));
+                } catch (levelErr) {
+                  console.error('Error fetching full level data:', levelErr);
+                  // Fallback to basic level data from gameInstance
+                  const levelFromGame = {
+                    level: {
+                      id: gameInstance.level.id,
+                      title: gameInstance.level.title ?? null,
+                      number: gameInstance.level.number ?? null,
+                      description: null,
+                      startBalance: gameInstance.level.startBalance ?? null,
+                      duration: gameInstance.level.duration ?? null,
+                      speed: gameInstance.level.speed ?? null,
+                    },
+                    goals: [],
+                  };
+                  setLevelData(levelFromGame);
+                  setStats(prev => ({
+                    ...prev,
+                    level: gameInstance.level?.number || 1,
+                    cash: gameInstance.level?.startBalance || 1000,
+                  }));
+                }
               }
 
               // Load the wallet associated with this instance
@@ -615,6 +632,15 @@ export default function GameCurrentScreen() {
     }
   }, [isGameEnded, gameInstanceId, router]);
 
+  // Auto-show level info modal for new games (when no gameId is passed)
+  useEffect(() => {
+    // Only show once per session, only for new games, and only after level data is loaded
+    if (!gameId && levelData?.level && !isLoading && !hasShownLevelInfoRef.current) {
+      hasShownLevelInfoRef.current = true;
+      setShowLevelInfoModal(true);
+    }
+  }, [gameId, levelData, isLoading]);
+
   const handleAddAsset = () => {
     if (!gameInstanceId || !walletId) {
       Alert.alert('Erreur', 'Initialisation en cours, veuillez patienter...');
@@ -782,9 +808,18 @@ export default function GameCurrentScreen() {
       <ScrollView style={styles.scrollView} contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}>
         <View style={styles.card}>
           {/* Header */}
-          <Text style={[styles.title, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
-            Niveau {stats.level}
-          </Text>
+          <View style={styles.titleRow}>
+            <Text style={[styles.title, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
+              Niveau {stats.level}
+            </Text>
+            <TouchableOpacity
+              style={[styles.infoButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+              onPress={() => setShowLevelInfoModal(true)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="information-circle-outline" size={24} color={theme.text} />
+            </TouchableOpacity>
+          </View>
 
           <View style={[styles.separator, { backgroundColor: theme.text }]} />
 
@@ -1003,6 +1038,17 @@ export default function GameCurrentScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Modal d'informations du niveau */}
+      <LevelInfoModal
+        visible={showLevelInfoModal}
+        onClose={() => setShowLevelInfoModal(false)}
+        level={levelData?.level ? {
+          ...levelData.level,
+          description: levelData.level.description ?? null,
+        } : null}
+        goals={levelData?.goals ?? []}
+      />
     </View>
   );
 }
@@ -1038,9 +1084,22 @@ const styles = StyleSheet.create({
     flex: 1,
     marginBottom: 32,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
   title: {
     fontSize: 24,
-    marginBottom: 12,
+  },
+  infoButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   separator: {
     height: 2,

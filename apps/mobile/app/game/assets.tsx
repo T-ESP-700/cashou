@@ -15,6 +15,7 @@ import { trpcClient } from '@/lib/trpc';
 import { API_URL } from '@/lib/api-config';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useAuth } from '@/hooks/use-auth';
+import { useHeaderOptions } from '@/hooks/use-header';
 
 // UI representation of an asset for display purposes
 type AssetItem = {
@@ -33,6 +34,10 @@ export default function AssetsScreen() {
   const params = useLocalSearchParams();
   const { setIsOnAssetsScreen, activeGameInstanceId, pendingEventCompletion, setPendingEventCompletion, assetsScreenDepth, setAssetsScreenDepth, assetsScreenDepthRef, setPausedByAssets, pausedByAssets } = useNotifications();
   const { user } = useAuth();
+
+  // Configure header for this screen
+  useHeaderOptions({ showBackButton: true });
+
   const [query, setQuery] = useState('');
   const [assets, setAssets] = useState<AssetItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);

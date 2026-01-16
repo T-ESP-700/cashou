@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
+import { useFocusEffect } from 'expo-router';
 
 interface HeaderOptions {
   showBackButton: boolean;
@@ -46,12 +47,17 @@ export function useHeader() {
   return context;
 }
 
-// Hook pour configurer le header au montage d'un écran
+// Hook pour configurer le header à chaque focus d'un écran
 export function useHeaderOptions(options: Partial<HeaderOptions>) {
-  const { setOptions, resetOptions } = useHeader();
+  const { setOptions } = useHeader();
 
-  React.useEffect(() => {
-    setOptions(options);
-    return () => resetOptions();
-  }, []);
+  // Utiliser une ref pour éviter les boucles infinies avec les fonctions callback
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+
+  useFocusEffect(
+    useCallback(() => {
+      setOptions(optionsRef.current);
+    }, [setOptions])
+  );
 }
