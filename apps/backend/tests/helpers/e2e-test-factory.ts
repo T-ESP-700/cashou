@@ -216,27 +216,13 @@ export async function createGameE2ESetup(
 
   // 2. Créer ou récupérer niveau pour le jeu
   // Note: createAuthenticatedUser crée déjà le Level 1 si nécessaire
-  // Si des options personnalisées sont fournies, créer un nouveau niveau
-  // Sinon, utiliser le Level 1 existant
-  const startBalance = options?.startBalance ?? 10000;
-  let level: Level;
-  
-  if (options?.levelDuration || options?.levelSpeed || options?.startBalance) {
-    // Créer un nouveau niveau avec les paramètres personnalisés
-    // (sans ID spécifique pour éviter les conflits - Prisma gère l'auto-increment)
-    level = await factory.createLevel({
-      duration: options?.levelDuration ?? 365,
-      speed: options?.levelSpeed ?? 1,
-      startBalance: typeof startBalance === 'number' ? startBalance : Number(startBalance),
-    });
-  } else {
-    // Utiliser le Level 1 existant (créé par createAuthenticatedUser)
-    const defaultLevel = await prisma.level.findUnique({ where: { id: 1 } });
-    if (!defaultLevel) {
-      throw new Error("Level 1 devrait exister (créé par createAuthenticatedUser)");
-    }
-    level = defaultLevel;
+  // On utilise toujours le Level 1 par défaut pour éviter les conflits
+  // Si des paramètres vraiment différents sont nécessaires, ils peuvent être passés via levelId
+  const defaultLevel = await prisma.level.findUnique({ where: { id: 1 } });
+  if (!defaultLevel) {
+    throw new Error("Level 1 devrait exister (créé par createAuthenticatedUser)");
   }
+  const level = defaultLevel;
 
   // 4. Créer partie (crée automatiquement gameUser + wallet)
   const gameInstance = await factory.createGameInstance({
