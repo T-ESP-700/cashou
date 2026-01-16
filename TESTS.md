@@ -2,7 +2,7 @@
 
 ## 📊 État Actuel
 
-**495 tests** | **0 échecs** | **100% router coverage** | **100% service coverage** | **~1.1 secondes**
+**535 tests** | **0 échecs** | **100% router coverage** | **100% service coverage** | **~4.7 secondes**
 
 ---
 
@@ -55,7 +55,7 @@ bun run test:integration     # Intégration uniquement
 
 ## 🏗️ Ce qu'on Teste
 
-### 📁 Structure (495 tests)
+### 📁 Structure (535 tests)
 
 ```
 apps/backend/tests/
@@ -88,9 +88,9 @@ apps/backend/tests/
 │   ├── user-quiz.router.test.ts      ✅ Nouveau
 │   └── wallet.router.test.ts
 │
-├── service/          (172 tests) - Tests des services ✅ 100% coverage!
+├── service/          (212 tests) - Tests des services ✅ 100% coverage!
 │   ├── *.unit.test.ts           # Tests unitaires (mocks) - 19 services
-│   ├── *.integration.test.ts    # Tests avec DB - 5 services
+│   ├── *.integration.test.ts    # Tests avec DB - 8 services ⭐ NOUVEAU
 │   └── *.regression.test.ts     # Tests de régression - 9 services
 │
 ├── trpc.test.ts      (12 tests) - Tests E2E tRPC
@@ -244,7 +244,103 @@ it('level.getAll → appelle service.findAll', async () => {
 });
 ```
 
-### 4️⃣ Tests End-to-End (19 tests, ~250ms)
+### 4️⃣ Tests d'Intégration (40 tests, ~3.5s) ⭐ NOUVEAU !
+
+**Quoi** : Services métier avec DB réelle + workflow complexes  
+**Comment** : Transactions Prisma + événements temporisés + validations métier
+
+**1. Investment Service (15 tests, ~500ms)**
+```typescript
+it("buy → achète un asset et met à jour wallet + holding + transaction", async () => {
+  const { wallet, asset } = await factory.createInvestmentTestSetup();
+  
+  await investmentService.buy({
+    walletId: wallet.id,
+    assetId: asset.id,
+    amount: 2000,
+  });
+  
+  // Vérifier wallet débité
+  const updatedWallet = await prisma.wallet.findUnique({ where: { id: wallet.id } });
+  expect(Number(updatedWallet.amount)).toBe(8000);
+  
+  // Vérifier holding créé + transaction enregistrée
+  const holding = await prisma.holding.findFirst({ where: { walletId: wallet.id } });
+  expect(Number(holding.quantity)).toBe(2000);
+});
+```
+
+**2. Game Event Flow (9 tests, ~3s)** ⭐ NOUVEAU !
+```typescript
+it("cycle complet : scheduling → trigger → pause → resume", async () => {
+  // 1. Créer partie avec événements
+  const { gameInstance } = await factory.createGameEventSetup();
+  
+  // 2. Scheduler les événements
+  await gameInstanceEventService.scheduleEventsForGameInstance(gameInstance.id);
+  
+  // 3. Déclencher événement
+  const event = await prisma.gameInstanceEvent.findFirst({ where: { gameInstanceId } });
+  await gameEventProcessorService.processEvent(event.id);
+  
+  // Vérifier : partie mise en pause + notification créée
+  const pausedGame = await prisma.gameInstance.findUnique({ where: { id: gameInstance.id } });
+  expect(pausedGame.isPaused).toBeTrue();
+  
+  const notification = await prisma.notification.findFirst({ where: { type: "EVENT" } });
+  expect(notification).toBeDefined();
+  
+  // 4. Reprendre la partie
+  await gameEventTriggerService.completeEvent(gameInstance.id);
+  
+  // Vérifier : pause levée + temps de pause enregistré + événements futurs décalés
+  const resumedGame = await prisma.gameInstance.findUnique({ where: { id: gameInstance.id } });
+  expect(resumedGame.isPaused).toBeFalse();
+  expect(resumedGame.totalPausedDuration).toBeGreaterThan(0);
+});
+```
+
+**3. End Game Service (16 tests, ~0.5s)** ⭐ NOUVEAU !
+```typescript
+it("calcule les intérêts pour un holding avec taux annuel", async () => {
+  // Setup : Partie commencée il y a 100 secondes (= 100 jours de jeu avec speed 86400)
+  const gameStartedAt = new Date(Date.now() - 100 * 1000);
+  const { gameInstance, wallet, asset } = await factory.createEndGameSetup({
+    assetRate: 5.0, // 5% par an
+    gameStartedAt,
+  });
+
+  // Créer un holding acquis au début
+  await prisma.holding.create({
+    data: {
+      walletId: wallet.id,
+      assetId: asset.id,
+      gameInstanceId: gameInstance.id,
+      quantity: 1000,
+      acquiredAt: gameStartedAt,
+    },
+  });
+
+  // Terminer la partie
+  const result = await endGameService.endGame(gameInstance.id);
+
+  // Vérifier : intérêts calculés
+  // Temps écoulé : 100 secondes réelles = 100 jours de jeu
+  // Intérêts = 1000 * (5/100/365) * 100 jours ≈ 13.70 EUR
+  expect(result.assetsValue).toBeGreaterThan(1000); // 1000 + intérêts
+  expect(result.assetsValue).toBeLessThan(1020);
+  
+  // Vérifier totalValue = wallet + assets + intérêts
+  expect(result.totalValue).toBe(result.walletBalance + result.assetsValue);
+});
+```
+
+**Services testés** :
+- ✅ `investment.service` (15 tests) - Achat/vente avec transactions atomiques
+- ✅ `game-event-flow` (9 tests) - Cycle complet événement → pause → notification → reprise
+- ✅ `end-game.service` (16 tests) - Liquidation + calcul intérêts + validation objectifs ⭐ NOUVEAU !
+
+### 5️⃣ Tests End-to-End (19 tests, ~250ms)
 
 **Quoi** : Serveur HTTP complet + tRPC + DB  
 **Comment** : Serveur réel, requêtes HTTP
