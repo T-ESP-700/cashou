@@ -362,10 +362,10 @@ export default function HomeScreen() {
     };
   }, [homeData, levelCardStatus]);
 
-  // Handler pour naviguer vers la description du niveau
+  // Handler pour naviguer vers l'écran de jeu
   const handleLevelPress = () => {
     if (levelCardData.levelId) {
-      // Si une partie est en cours, aller directement à l'écran de jeu
+      // Si une partie est en cours, inclure le gameId pour éviter la popup d'info
       if (levelCardData.hasGame && levelCardData.gameId) {
         router.push({
           pathname: '/game/current',
@@ -375,9 +375,9 @@ export default function HomeScreen() {
           }
         });
       } else {
-        // Sinon, aller à la description du niveau
+        // Nouvelle partie: aller directement à l'écran de jeu (la popup d'info s'affichera automatiquement)
         router.push({
-          pathname: '/game/description',
+          pathname: '/game/current',
           params: { levelId: levelCardData.levelId.toString() }
         });
       }

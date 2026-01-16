@@ -18,6 +18,7 @@ import BottomSheet, { BottomSheetBackdrop, BottomSheetView, BottomSheetBackdropP
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
+import { useHeaderOptions } from '@/hooks/use-header';
 
 // Dictionary entry type (matches API response)
 interface DicoEntry {
@@ -45,6 +46,9 @@ export default function DicoScreen() {
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const insets = useSafeAreaInsets();
+
+  // Configure header for this screen (no back button for main tab screens)
+  useHeaderOptions({ showBackButton: false });
 
   // Bottom sheet ref
   const bottomSheetRef = useRef<BottomSheet>(null);

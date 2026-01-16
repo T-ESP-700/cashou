@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
-import { useHeader } from '@/hooks/use-header';
+import { useHeaderOptions } from '@/hooks/use-header';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -46,17 +46,9 @@ export default function TransactionScreen() {
   const params = useLocalSearchParams();
   const { activeGameInstanceId, pendingEventCompletion, setPendingEventCompletion, setAssetsScreenDepth, assetsScreenDepthRef, setIsOnAssetsScreen, setPausedByAssets } = useNotifications();
   const { user } = useAuth();
-  const { setOptions } = useHeader();
 
-  // Ensure back button is always visible when this screen is focused
-  useFocusEffect(
-    useCallback(() => {
-      setOptions({ showBackButton: true });
-      return () => {
-        // Optionally reset on unmount, but we keep it visible
-      };
-    }, [setOptions])
-  );
+  // Configure header for this screen
+  useHeaderOptions({ showBackButton: true });
 
   // Use refs to track values needed during cleanup to avoid stale closure issues
   const activeGameInstanceIdRef = useRef(activeGameInstanceId);

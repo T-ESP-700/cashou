@@ -46,7 +46,7 @@ export default function GameSummaryScreen() {
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const insets = useSafeAreaInsets();
 
-  useHeaderOptions({ showBackButton: false });
+  useHeaderOptions({ showBackButton: true });
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
