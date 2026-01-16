@@ -23,30 +23,39 @@ export const notificationUserIdSchema = z.object({
   userId: z.string().min(1, "User ID is required"),
 });
 
-export const notificationCreateSchema = notificationDataSchema
-  .omit({
-    id: true,
-    created_at: true,
-    updated_at: true,
-  })
-  .refine(
-    (data) => {
-      // Si les deux IDs sont fournis, c'est invalide
-      if (data.game_instance_id && data.quiz_id) {
-        return false;
-      }
-      // Si le type est QUIZ, quiz_id devrait être fourni (mais on le laisse optionnel pour flexibilité)
-      // Si le type nécessite une game instance, game_instance_id devrait être fourni
-      return true;
-    },
-    {
-      message: "game_instance_id and quiz_id cannot both be provided. Only one relation is allowed.",
-    }
-  );
+// Schéma de base pour la création (sans refinement, pour permettre .partial())
+const notificationCreateBaseSchema = notificationDataSchema.omit({
+  id: true,
+  created_at: true,
+  updated_at: true,
+});
 
+// Refinement pour valider les relations mutuellement exclusives
+const notificationRelationRefinement = (data: { game_instance_id?: number; quiz_id?: number }) => {
+  // Si les deux IDs sont fournis, c'est invalide
+  if (data.game_instance_id && data.quiz_id) {
+    return false;
+  }
+  return true;
+};
+
+const notificationRelationRefinementMessage = {
+  message: "game_instance_id and quiz_id cannot both be provided. Only one relation is allowed.",
+};
+
+// Schéma de création avec refinement
+export const notificationCreateSchema = notificationCreateBaseSchema.refine(
+  notificationRelationRefinement,
+  notificationRelationRefinementMessage
+);
+
+// Schéma de mise à jour: partial() sur le schéma de base, puis refinement
 export const notificationUpdateSchema = z.object({
   id: z.number().int().positive(),
-  data: notificationCreateSchema.partial(),
+  data: notificationCreateBaseSchema.partial().refine(
+    notificationRelationRefinement,
+    notificationRelationRefinementMessage
+  ),
 });
 
 export type NotificationSchema = z.infer<typeof notificationDataSchema>;
