@@ -81,10 +81,11 @@ export const userQuizStatusSchema = z.object({
 export type UserQuizStatusSchema = z.infer<typeof userQuizStatusSchema>;
 
 // Schéma pour l'historique avec pagination
+// En Zod v4, .default() rend implicitement le champ optionnel à l'input
 export const userQuizHistorySchema = z.object({
     userId: z.string().min(1, "L'ID de l'utilisateur doit être une chaîne non vide"),
-    limit: z.number().min(1).max(100).optional().default(20),
-    offset: z.number().min(0).optional().default(0)
+    limit: z.number().min(1).max(100).default(20),
+    offset: z.number().min(0).default(0)
 });
 export type UserQuizHistorySchema = z.infer<typeof userQuizHistorySchema>;
 
@@ -96,15 +97,17 @@ export const userQuizDetailedStatsSchema = z.object({
 export type UserQuizDetailedStatsSchema = z.infer<typeof userQuizDetailedStatsSchema>;
 
 // Schéma pour le leaderboard
+// En Zod v4, .default() rend implicitement le champ optionnel à l'input
 export const userQuizLeaderboardSchema = z.object({
-    limit: z.number().min(1).max(100).optional().default(10),
+    limit: z.number().min(1).max(100).default(10),
     period: z.enum(['daily', 'weekly', 'monthly']).optional()
 });
 export type UserQuizLeaderboardSchema = z.infer<typeof userQuizLeaderboardSchema>;
 
 // Schéma pour l'historique des daily quiz
+// En Zod v4, .default() rend implicitement le champ optionnel à l'input
 export const userQuizDailyHistorySchema = z.object({
     userId: z.string().min(1, "L'ID de l'utilisateur doit être une chaîne non vide"),
-    days: z.number().min(1).max(365).optional().default(30)
+    days: z.number().min(1).max(365).default(30)
 });
 export type UserQuizDailyHistorySchema = z.infer<typeof userQuizDailyHistorySchema>;

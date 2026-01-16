@@ -57,8 +57,9 @@ export const quizDateCheckSchema = z.object({
 export type QuizDateCheckSchema = z.infer<typeof quizDateCheckSchema>;
 
 // Schéma pour récupérer l'historique des Daily Quiz
+// En Zod v4, .default() rend implicitement le champ optionnel à l'input
 export const quizHistorySchema = z.object({
-    limit: z.number().min(1).max(100).optional().default(30)
+    limit: z.number().min(1).max(100).default(30)
 });
 export type QuizHistorySchema = z.infer<typeof quizHistorySchema>;
 

@@ -3,7 +3,7 @@ import { z } from "zod";
 export const userDataSchema = z.object({
     username: z.string().min(1, "Le nom d'utilisateur est requis").max(50, "Le nom d'utilisateur ne peut pas dépasser 50 caractères").nullish(),
     discriminator: z.string().max(10, "Le discriminateur ne peut pas dépasser 10 caractères").nullish(),
-    email: z.string().email("Format d'email invalide").nullish(),
+    email: z.email({ error: "Format d'email invalide" }).nullish(),
     lastActivity: z.string().refine(
         (dateStr) => {
             // Accepte les formats: YYYY-MM-DD ou ISO 8601 complet
@@ -48,6 +48,6 @@ export type UserLevelSchema = z.infer<typeof userLevelSchema>;
 
 // Schéma pour rechercher des utilisateurs par email
 export const userEmailSchema = z.object({
-    email: z.string().email("Format d'email invalide")
+    email: z.email({ error: "Format d'email invalide" })
 });
 export type UserEmailSchema = z.infer<typeof userEmailSchema>;

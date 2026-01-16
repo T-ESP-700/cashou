@@ -16,7 +16,7 @@ export const backofficeAuthRouter = router({
   signIn: publicProcedure
     .input(
       z.object({
-        email: z.string().email(),
+        email: z.email(),
         password: z.string().min(6),
       })
     )

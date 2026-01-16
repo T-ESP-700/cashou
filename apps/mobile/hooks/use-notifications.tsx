@@ -136,7 +136,13 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
 
     return tokenData.data;
   } catch (error) {
-    console.error('[Notifications] Error getting push token:', error);
+    // Firebase not configured - this is expected in development without google-services.json
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('FirebaseApp is not initialized')) {
+      console.warn('[Notifications] Firebase not configured - push notifications disabled on Android. See: https://docs.expo.dev/push-notifications/fcm-credentials/');
+    } else {
+      console.error('[Notifications] Error getting push token:', error);
+    }
     return null;
   }
 }

@@ -12,7 +12,7 @@ export const authRouter = router({
   register: publicProcedure
     .input(
       z.object({
-        email: z.string().email(),
+        email: z.email(),
         password: z.string().min(8),
         name: z.string().optional(),
       })
@@ -46,7 +46,7 @@ export const authRouter = router({
   login: publicProcedure
     .input(
       z.object({
-        email: z.string().email(),
+        email: z.email(),
         password: z.string(),
       })
     )
@@ -142,7 +142,7 @@ export const authRouter = router({
   forgotPassword: publicProcedure
     .input(
       z.object({
-        email: z.string().email(),
+        email: z.email(),
       })
     )
     .mutation(async ({ input: _input }) => {

@@ -35,8 +35,9 @@ export const dicoEntrySearchSchema = z.object({
 export type DicoEntrySearchSchema = z.infer<typeof dicoEntrySearchSchema>;
 
 // Schéma pour la pagination
+// En Zod v4, .default() rend implicitement le champ optionnel à l'input
 export const dicoEntryPaginationSchema = z.object({
-    page: z.number().min(1).optional().default(1),
-    limit: z.number().min(1).max(100).optional().default(50),
+    page: z.number().min(1).default(1),
+    limit: z.number().min(1).max(100).default(50),
 });
 export type DicoEntryPaginationSchema = z.infer<typeof dicoEntryPaginationSchema>;

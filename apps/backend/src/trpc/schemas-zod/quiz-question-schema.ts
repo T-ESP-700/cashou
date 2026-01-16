@@ -71,8 +71,9 @@ export const validateQuizStructureSchema = z.object({
 export type ValidateQuizStructureSchema = z.infer<typeof validateQuizStructureSchema>;
 
 // Schéma pour sélectionner aléatoirement des questions d'un quiz MCQ
+// En Zod v4, .default() rend implicitement le champ optionnel à l'input
 export const getRandomQuestionsSchema = z.object({
     quizId: z.number().min(1, "L'ID du quiz doit être un nombre > 0"),
-    count: z.number().min(1).max(20).optional().default(3)
+    count: z.number().min(1).max(20).default(3)
 });
 export type GetRandomQuestionsSchema = z.infer<typeof getRandomQuestionsSchema>;
