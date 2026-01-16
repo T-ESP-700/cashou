@@ -294,7 +294,6 @@ export async function createGameE2ESetup(
  * Ultra-optimisé : batch creation
  */
 export async function createQuizE2ESetup(
-  factory: IntegrationTestFactory | null,
   options?: {
     levelId?: number | null;
     quizType?: "DAILY" | "MCQ";
@@ -306,13 +305,16 @@ export async function createQuizE2ESetup(
   const { user, token, client } = await createAuthenticatedUser();
 
   // 2. Créer niveau si nécessaire
+  // Note: createAuthenticatedUser crée déjà le Level 1 si nécessaire
+  // Pour les quiz MCQ, on utilise le Level 1 par défaut (déjà créé)
   let levelId: number | undefined = options?.levelId ?? undefined;
   if (levelId === undefined && options?.quizType === "MCQ") {
-    if (!factory) {
-      throw new Error("Factory requise pour créer un niveau MCQ");
+    // Utiliser le Level 1 qui existe toujours (créé par createAuthenticatedUser)
+    const defaultLevel = await prisma.level.findUnique({ where: { id: 1 } });
+    if (!defaultLevel) {
+      throw new Error("Level 1 devrait exister (créé par createAuthenticatedUser)");
     }
-    const level = await factory.createLevel({});
-    levelId = level.id;
+    levelId = defaultLevel.id;
   }
 
   // 3. Créer quiz

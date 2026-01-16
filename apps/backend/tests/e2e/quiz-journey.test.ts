@@ -21,7 +21,7 @@ describe("E2E — Scénario quiz complet", () => {
 
   beforeAll(async () => {
     // Créer setup complet de quiz
-    quizSetup = await createQuizE2ESetup(factory, {
+    quizSetup = await createQuizE2ESetup({
       quizType: "MCQ",
       questionCount: 5,
       answersPerQuestion: 4,
@@ -102,7 +102,7 @@ describe("E2E — Scénario quiz complet", () => {
 
     it("peut répondre à toutes les questions", async () => {
       // Créer un nouveau setup pour ce test (éviter les conflits avec autres tests)
-      const newQuizSetup = await createQuizE2ESetup(factory, {
+      const newQuizSetup = await createQuizE2ESetup( {
         quizType: "MCQ",
         questionCount: 5,
         answersPerQuestion: 4,
@@ -195,7 +195,7 @@ describe("E2E — Scénario quiz complet", () => {
 
     it("peut récupérer les réponses d'un utilisateur pour les questions d'un quiz", async () => {
       // Créer un nouveau setup pour ce test (éviter les conflits avec autres tests)
-      const newQuizSetup = await createQuizE2ESetup(factory, {
+      const newQuizSetup = await createQuizE2ESetup( {
         quizType: "MCQ",
         questionCount: 5,
         answersPerQuestion: 4,
@@ -240,7 +240,7 @@ describe("E2E — Scénario quiz complet", () => {
   describe("5. Attribution de points", () => {
     it("points attribués après complétion réussie", async () => {
       // Créer un nouveau setup pour ce test
-      const newQuizSetup = await createQuizE2ESetup(factory, {
+      const newQuizSetup = await createQuizE2ESetup( {
         quizType: "DAILY",
         questionCount: 3,
         answersPerQuestion: 4,
@@ -288,7 +288,7 @@ describe("E2E — Scénario quiz complet", () => {
   describe("6. Workflow complet — Quiz de bout en bout", () => {
     it("scénario complet : récupération → démarrage → réponses → validation", async () => {
       // 1. Créer nouveau setup (utiliser levelId 1 qui existe toujours)
-      const newSetup = await createQuizE2ESetup(factory, {
+      const newSetup = await createQuizE2ESetup({
         levelId: 1, // Level 1 existe toujours (créé par createAuthenticatedUser)
         quizType: "MCQ",
         questionCount: 3,
