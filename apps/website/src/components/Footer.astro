@@ -1,0 +1,42 @@
+---
+import Logo from '../assets/Frame 93.png';
+---
+
+<footer class="bg-cashou-text-light text-white py-12">
+  <div class="container mx-auto px-6">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+      <div class="col-span-1 md:col-span-2">
+        <div class="flex items-center gap-3 mb-4">
+          <img src={Logo.src} alt="Cashou Logo" class="h-8 w-auto" />
+          <span class="text-2xl font-heading font-bold">Cashou</span>
+        </div>
+        <p class="text-white/70 mb-4 max-w-md">
+          L'app qui vous apprend à gérer votre argent en toute sécurité ! 
+          Transformez l'apprentissage de la finance en une expérience ludique.
+        </p>
+      </div>
+
+      <div>
+        <h3 class="font-heading font-bold text-lg mb-4">Navigation</h3>
+        <ul class="space-y-2">
+          <li><a href="#features" class="text-white/70 hover:text-white transition-colors">Fonctionnalités</a></li>
+          <li><a href="#how-it-works" class="text-white/70 hover:text-white transition-colors">Comment ça marche</a></li>
+          <li><a href="#download" class="text-white/70 hover:text-white transition-colors">Télécharger</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h3 class="font-heading font-bold text-lg mb-4">Contact</h3>
+        <ul class="space-y-2">
+          <li><a href="#" class="text-white/70 hover:text-white transition-colors">Support</a></li>
+          <li><a href="#" class="text-white/70 hover:text-white transition-colors">À propos</a></li>
+          <li><a href="#" class="text-white/70 hover:text-white transition-colors">Mentions légales</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="border-t border-white/20 pt-8 text-center text-white/70">
+      <p>&copy; {new Date().getFullYear()} Cashou. Tous droits réservés.</p>
+    </div>
+  </div>
+</footer>

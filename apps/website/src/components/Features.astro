@@ -1,0 +1,64 @@
+---
+const features = [
+  {
+    icon: '🎮',
+    title: 'Apprentissage par le jeu',
+    description: 'Transformez l\'apprentissage de la finance en une expérience ludique avec des niveaux progressifs et des défis captivants.',
+  },
+  {
+    icon: '📊',
+    title: 'Portefeuille virtuel',
+    description: 'Gérez un portefeuille virtuel et apprenez à prendre des décisions d\'investissement en toute sécurité, sans risque financier.',
+  },
+  {
+    icon: '🧠',
+    title: 'Quiz quotidiens',
+    description: 'Testez vos connaissances chaque jour avec des quiz interactifs et maintenez votre série de jours consécutifs pour gagner des points.',
+  },
+  {
+    icon: '📈',
+    title: 'Progression par niveaux',
+    description: 'Débloquez de nouveaux niveaux en progressant et découvrez des concepts financiers de plus en plus avancés.',
+  },
+  {
+    icon: '🏆',
+    title: 'Système de points',
+    description: 'Gagnez des points en complétant des défis, en répondant aux quiz et en prenant de bonnes décisions d\'investissement.',
+  },
+  {
+    icon: '🔒',
+    title: '100% sécurisé',
+    description: 'Apprenez sans risque avec un environnement virtuel sécurisé. Aucun argent réel n\'est impliqué dans votre apprentissage.',
+  },
+];
+---
+
+<section id="features" class="py-24 bg-white">
+  <div class="container mx-auto px-6">
+    <div class="text-center mb-16">
+      <h2 class="text-4xl md:text-5xl font-heading font-bold text-cashou-text-light mb-4">
+        Fonctionnalités
+      </h2>
+      <p class="text-xl text-cashou-text-light/70 max-w-2xl mx-auto">
+        Découvrez tout ce qui fait de Cashou l'app idéale pour apprendre la finance en s'amusant
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      {features.map((feature, index) => (
+        <div 
+          class="bg-cashou-background-light p-8 rounded-2xl hover:shadow-xl transition-all transform hover:-translate-y-2 border border-cashou-secondary animate-fade-in"
+          style={`animation-delay: ${index * 0.1}s`}
+        >
+          <div class="text-5xl mb-4 transform hover:scale-110 transition-transform">{feature.icon}</div>
+          <h3 class="text-2xl font-heading font-bold text-cashou-text-light mb-3">
+            {feature.title}
+          </h3>
+          <p class="text-cashou-text-light/70 leading-relaxed">
+            {feature.description}
+          </p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

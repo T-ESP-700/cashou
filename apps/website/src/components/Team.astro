@@ -1,0 +1,78 @@
+---
+const teamMembers = [
+  {
+    name: 'Flavie',
+    role: 'Développeuse Full-Stack',
+    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.',
+  },
+  {
+    name: 'Nafissatou',
+    role: 'Designer UX/UI',
+    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.',
+  },
+  {
+    name: 'Chloé',
+    role: 'Product Manager',
+    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.',
+  },
+  {
+    name: 'Yohan',
+    role: 'Développeur Backend',
+    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.',
+  },
+  {
+    name: 'Clément',
+    role: 'Développeur Frontend',
+    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.',
+  },
+  {
+    name: 'Tom',
+    role: 'DevOps Engineer',
+    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.',
+  },
+  {
+    name: 'François',
+    role: 'Lead Developer',
+    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.',
+  },
+];
+---
+
+<section id="team" class="py-24 bg-white">
+  <div class="container mx-auto px-6">
+    <div class="text-center mb-16">
+      <h2 class="text-4xl md:text-5xl font-heading font-bold text-cashou-text-light mb-4">
+        Notre équipe
+      </h2>
+      <p class="text-xl text-cashou-text-light/70 max-w-2xl mx-auto">
+        Découvrez les talents qui font vivre Cashou au quotidien
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 max-w-7xl mx-auto">
+      {teamMembers.map((member, index) => (
+        <div 
+          class="bg-cashou-background-light p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-2 text-center animate-fade-in"
+          style={`animation-delay: ${index * 0.1}s`}
+        >
+          <div class="mb-4 flex justify-center">
+            <div class="w-24 h-24 bg-cashou-secondary rounded-full flex items-center justify-center overflow-hidden">
+              <svg class="w-12 h-12 text-cashou-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+          </div>
+          <h3 class="text-xl font-heading font-bold text-cashou-text-light mb-2">
+            {member.name}
+          </h3>
+          <p class="text-cashou-primary font-medium mb-4">
+            {member.role}
+          </p>
+          <p class="text-cashou-text-light/70 text-sm leading-relaxed">
+            {member.description}
+          </p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

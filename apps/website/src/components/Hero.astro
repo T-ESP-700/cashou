@@ -1,0 +1,56 @@
+---
+import Logo from '../assets/Frame 93.png';
+---
+
+<section class="relative min-h-screen flex items-center justify-center pt-20 pb-32 overflow-hidden">
+  <!-- Background gradient -->
+  <div class="absolute inset-0 bg-gradient-to-br from-cashou-secondary via-cashou-background-light to-white"></div>
+  
+  <!-- Decorative elements -->
+  <div class="absolute top-20 right-10 w-72 h-72 bg-cashou-primary/20 rounded-full blur-3xl"></div>
+  <div class="absolute bottom-20 left-10 w-96 h-96 bg-cashou-accent/10 rounded-full blur-3xl"></div>
+
+  <div class="container mx-auto px-6 relative z-10">
+    <div class="max-w-4xl mx-auto text-center">
+      <div class="mb-8 flex justify-center">
+        <img src={Logo.src} alt="Cashou Logo" class="h-32 w-auto" />
+      </div>
+      
+      <h1 class="text-6xl md:text-8xl font-heading font-bold text-cashou-text-light mb-6 leading-tight">
+        Cashou
+      </h1>
+      
+      <p class="text-2xl md:text-3xl text-cashou-text-light/80 mb-8 font-medium">
+        L'app qui vous apprend à gérer votre argent en toute sécurité !
+      </p>
+      
+      <p class="text-lg md:text-xl text-cashou-text-light/70 mb-12 max-w-2xl mx-auto leading-relaxed">
+        Transformez l'apprentissage de la finance en une expérience ludique et interactive. 
+        Relevez des défis, prenez des décisions éclairées et progressez dans votre compréhension 
+        des principes financiers et des stratégies d'investissement.
+      </p>
+
+      <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+        <a 
+          href="#download" 
+          class="bg-cashou-primary text-white px-8 py-4 rounded-full text-lg font-medium hover:bg-cashou-primary/90 transition-all transform hover:scale-105 shadow-lg hover:shadow-xl"
+        >
+          Télécharger maintenant
+        </a>
+        <a 
+          href="#how-it-works" 
+          class="bg-white text-cashou-text-light px-8 py-4 rounded-full text-lg font-medium hover:bg-cashou-secondary transition-all border-2 border-cashou-primary"
+        >
+          Découvrir comment ça marche
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scroll indicator -->
+  <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
+    <svg class="w-6 h-6 text-cashou-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+    </svg>
+  </div>
+</section>

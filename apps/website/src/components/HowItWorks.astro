@@ -1,0 +1,63 @@
+---
+const steps = [
+  {
+    number: '01',
+    title: 'Créez votre compte',
+    description: 'Inscrivez-vous en quelques secondes et commencez votre parcours d\'apprentissage financier.',
+  },
+  {
+    number: '02',
+    title: 'Choisissez un niveau',
+    description: 'Sélectionnez un niveau adapté à vos connaissances et recevez votre portefeuille virtuel de départ.',
+  },
+  {
+    number: '03',
+    title: 'Prenez des décisions',
+    description: 'Analysez les marchés, investissez dans des actifs virtuels et apprenez de vos choix en temps réel.',
+  },
+  {
+    number: '04',
+    title: 'Progressez et apprenez',
+    description: 'Complétez les quiz quotidiens, débloquez de nouveaux niveaux et devenez un expert en finance.',
+  },
+];
+---
+
+<section id="how-it-works" class="py-24 bg-cashou-background-light">
+  <div class="container mx-auto px-6">
+    <div class="text-center mb-16">
+      <h2 class="text-4xl md:text-5xl font-heading font-bold text-cashou-text-light mb-4">
+        Comment ça marche
+      </h2>
+      <p class="text-xl text-cashou-text-light/70 max-w-2xl mx-auto">
+        Un processus simple et intuitif pour commencer votre apprentissage
+      </p>
+    </div>
+
+    <div class="max-w-5xl mx-auto">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {steps.map((step, index) => (
+          <div class="relative animate-fade-in" style={`animation-delay: ${index * 0.15}s`}>
+            <div class="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 relative z-10">
+              <div class="flex items-start gap-6">
+                <div class="flex-shrink-0">
+                  <div class="w-16 h-16 bg-cashou-primary rounded-full flex items-center justify-center transform hover:scale-110 transition-transform">
+                    <span class="text-2xl font-heading font-bold text-white">{step.number}</span>
+                  </div>
+                </div>
+                <div class="flex-1">
+                  <h3 class="text-2xl font-heading font-bold text-cashou-text-light mb-3">
+                    {step.title}
+                  </h3>
+                  <p class="text-cashou-text-light/70 leading-relaxed">
+                    {step.description}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
