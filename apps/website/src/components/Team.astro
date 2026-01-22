@@ -1,32 +1,45 @@
 ---
+// Import des photos de l'équipe
+import FlaviePhoto from '../assets/flavie.png';
+import ChloePhoto from '../assets/chloe.jpeg';
+import YohanPhoto from '../assets/yohan.jpeg';
+import TomPhoto from '../assets/tom.png';
+
 const teamMembers = [
   {
     name: 'Flavie',
     role: 'Développeuse Full-Stack',
+    photo: FlaviePhoto,
   },
   {
     name: 'Nafissatou',
     role: 'Designer UX/UI',
+    photo: null,
   },
   {
     name: 'Chloé',
     role: 'Product Manager',
+    photo: ChloePhoto,
   },
   {
     name: 'Yohan',
     role: 'Développeur Backend',
+    photo: YohanPhoto,
   },
   {
     name: 'Clément',
     role: 'Développeur Frontend',
+    photo: null,
   },
   {
     name: 'Tom',
     role: 'DevOps Engineer',
+    photo: TomPhoto,
   },
   {
     name: 'François',
     role: 'Lead Developer',
+    photo: null,
   },
 ];
 ---
@@ -51,11 +64,19 @@ const teamMembers = [
               class="group relative flex flex-col items-center"
             >
               <!-- Avatar -->
-              <div class="relative z-10 bg-white rounded-2xl p-2 md:p-3 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-110 cursor-pointer border-2 border-transparent hover:border-cashou-primary mb-3">
-                <div class="w-20 h-20 md:w-24 md:h-24 bg-gradient-to-br from-cashou-primary to-cashou-accent rounded-xl flex items-center justify-center overflow-hidden">
-                  <svg class="w-10 h-10 md:w-12 md:h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
+              <div class="relative z-10 mb-3">
+                <div class="w-20 h-20 md:w-24 md:h-24 bg-gradient-to-br from-cashou-primary to-cashou-accent rounded-full flex items-center justify-center overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-110 cursor-pointer border-2 border-transparent hover:border-cashou-primary">
+                  {member.photo ? (
+                    <img 
+                      src={member.photo.src} 
+                      alt={`Photo de ${member.name}`}
+                      class="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <svg class="w-10 h-10 md:w-12 md:h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  )}
                 </div>
               </div>
 
