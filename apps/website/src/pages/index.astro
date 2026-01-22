@@ -7,16 +7,25 @@ import HowItWorks from '../components/HowItWorks.astro';
 import Team from '../components/Team.astro';
 import Download from '../components/Download.astro';
 import Footer from '../components/Footer.astro';
+import ComingSoon from '../components/ComingSoon.astro';
+
+// Détecter si on doit afficher la page "coming soon"
+// La variable d'environnement PUBLIC_SHOW_COMING_SOON doit être définie à 'true' dans Vercel
+const showComingSoon = import.meta.env.PUBLIC_SHOW_COMING_SOON === 'true';
 ---
 
-<Layout title="Cashou - Apprendre la finance en s'amusant" description="L'app qui vous apprend à gérer votre argent en toute sécurité !">
-  <Header />
-  <main>
-    <Hero />
-    <Features />
-    <HowItWorks />
-    <Team />
-    <Download />
-  </main>
-  <Footer />
-</Layout>
+{showComingSoon ? (
+  <ComingSoon />
+) : (
+  <Layout title="Cashou - Apprendre la finance en s'amusant" description="L'app qui vous apprend à gérer votre argent en toute sécurité !">
+    <Header />
+    <main>
+      <Hero />
+      <Features />
+      <HowItWorks />
+      <Team />
+      <Download />
+    </main>
+    <Footer />
+  </Layout>
+)}

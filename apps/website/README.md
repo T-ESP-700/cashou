@@ -78,9 +78,53 @@ Le site utilise les couleurs de l'application Cashou :
 
 ## 🚀 Déploiement
 
-Le site peut être déployé sur n'importe quelle plateforme de hosting statique :
+### Déploiement sur Vercel
 
-- **Vercel** : `vercel deploy`
+Le site est configuré pour être déployé sur Vercel.
+
+#### Première configuration (une seule fois)
+
+1. Installer Vercel CLI globalement (si ce n'est pas déjà fait) :
+```bash
+bun add -g vercel
+# ou
+npm install -g vercel
+```
+
+2. Se connecter à Vercel depuis le dossier `apps/website` :
+```bash
+cd apps/website
+vercel login
+```
+
+3. Lier le projet à Vercel (première fois seulement) :
+```bash
+cd apps/website
+vercel
+```
+Suivez les instructions pour lier votre projet à un projet Vercel existant ou créer un nouveau projet.
+
+#### Déploiement en production
+
+Une fois configuré, vous pouvez déployer à tout moment avec :
+
+```bash
+# Depuis la racine du projet
+bun run deploy:website
+
+# Ou depuis le dossier website
+cd apps/website
+bun run deploy
+```
+
+Cette commande va :
+1. Builder le site Astro
+2. Déployer sur Vercel en production
+3. Vous donner l'URL de déploiement
+
+#### Autres plateformes
+
+Le site peut également être déployé sur :
 - **Netlify** : `netlify deploy`
 - **GitHub Pages** : Configurer dans les GitHub Actions
 

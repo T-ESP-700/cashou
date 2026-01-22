@@ -76,7 +76,8 @@
     "logs:backoffice": "cd apps/backoffice && bun run dev",
     "ci:setup": "bun install --frozen-lockfile && bun run db:generate",
     "ci:test": "TEST_PORT=3001 bun run typecheck && TEST_PORT=3001 bun test",
-    "ci:build": "bun run build"
+    "ci:build": "bun run build",
+    "deploy:website": "cd apps/website && bun run deploy"
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.1",
