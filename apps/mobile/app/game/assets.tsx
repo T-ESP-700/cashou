@@ -17,17 +17,6 @@ import { useNotifications } from '@/hooks/use-notifications';
 import { useAuth } from '@/hooks/use-auth';
 import { useHeaderOptions } from '@/hooks/use-header';
 
-// Backend Asset type from API
-interface ApiAsset {
-  id: number;
-  title: string | null;
-  symbol: string | null;
-  taux: number | null;
-  market?: {
-    title: string | null;
-  } | null;
-}
-
 // UI representation of an asset for display purposes
 type AssetItem = {
   id: string;

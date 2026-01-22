@@ -17,30 +17,6 @@ import { useNotifications } from '@/hooks/use-notifications';
 import { useAuth } from '@/hooks/use-auth';
 import { useHeaderOptions } from '@/hooks/use-header';
 
-interface Asset {
-  id: number;
-  title: string | null;
-  name: string | null;
-  symbol: string | null;
-  type: string | null;
-  description: string | null;
-  lastPrice: number | null;
-  taux: number | null;
-  field: { name: string | null } | null;
-  market: { title: string | null; description: string | null } | null;
-  submarket: { title: string | null; description: string | null } | null;
-  createdAt: string | null;
-  updatedAt: string | null;
-  assetHistories: unknown[];
-  transactions: unknown[];
-  eventAssets: unknown[];
-}
-
-interface Holding {
-  assetId: number;
-  quantity: number | string | null;
-}
-
 export default function AssetDetailScreen() {
   const colorScheme = useRNColorScheme();
   const isDark = colorScheme === 'dark';
