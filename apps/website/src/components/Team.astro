@@ -3,76 +3,75 @@ const teamMembers = [
   {
     name: 'Flavie',
     role: 'Développeuse Full-Stack',
-    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.',
   },
   {
     name: 'Nafissatou',
     role: 'Designer UX/UI',
-    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.',
   },
   {
     name: 'Chloé',
     role: 'Product Manager',
-    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.',
   },
   {
     name: 'Yohan',
     role: 'Développeur Backend',
-    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.',
   },
   {
     name: 'Clément',
     role: 'Développeur Frontend',
-    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.',
   },
   {
     name: 'Tom',
     role: 'DevOps Engineer',
-    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.',
   },
   {
     name: 'François',
     role: 'Lead Developer',
-    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.',
   },
 ];
 ---
 
-<section id="team" class="py-24 bg-white">
-  <div class="container mx-auto px-6">
-    <div class="text-center mb-16">
-      <h2 class="text-4xl md:text-5xl font-heading font-bold text-cashou-text-light mb-4">
+<section id="team" class="min-h-screen flex items-center bg-gradient-to-br from-cashou-background-light via-white to-cashou-secondary/10">
+  <div class="container mx-auto px-6 w-full py-16">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl md:text-4xl font-heading font-bold text-cashou-text-light mb-2">
         Notre équipe
       </h2>
-      <p class="text-xl text-cashou-text-light/70 max-w-2xl mx-auto">
+      <p class="text-lg text-cashou-text-light/70 max-w-2xl mx-auto">
         Découvrez les talents qui font vivre Cashou au quotidien
       </p>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 max-w-7xl mx-auto">
-      {teamMembers.map((member, index) => (
-        <div 
-          class="bg-cashou-background-light p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-2 text-center animate-fade-in"
-          style={`animation-delay: ${index * 0.1}s`}
-        >
-          <div class="mb-4 flex justify-center">
-            <div class="w-24 h-24 bg-cashou-secondary rounded-full flex items-center justify-center overflow-hidden">
-              <svg class="w-12 h-12 text-cashou-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
+    <div class="max-w-7xl mx-auto">
+      <div class="relative">
+        <!-- Membres en ligne horizontale -->
+        <div class="flex flex-wrap items-center justify-center gap-6 md:gap-8 lg:gap-10">
+          {teamMembers.map((member, index) => (
+            <div 
+              class="group relative flex flex-col items-center"
+            >
+              <!-- Avatar -->
+              <div class="relative z-10 bg-white rounded-2xl p-2 md:p-3 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-110 cursor-pointer border-2 border-transparent hover:border-cashou-primary mb-3">
+                <div class="w-20 h-20 md:w-24 md:h-24 bg-gradient-to-br from-cashou-primary to-cashou-accent rounded-xl flex items-center justify-center overflow-hidden">
+                  <svg class="w-10 h-10 md:w-12 md:h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Nom et fonction -->
+              <div class="text-center">
+                <h3 class="text-base md:text-lg font-heading font-bold text-cashou-text-light mb-1">
+                  {member.name}
+                </h3>
+                <p class="text-sm md:text-base text-cashou-primary font-medium">
+                  {member.role}
+                </p>
+              </div>
             </div>
-          </div>
-          <h3 class="text-xl font-heading font-bold text-cashou-text-light mb-2">
-            {member.name}
-          </h3>
-          <p class="text-cashou-primary font-medium mb-4">
-            {member.role}
-          </p>
-          <p class="text-cashou-text-light/70 text-sm leading-relaxed">
-            {member.description}
-          </p>
+          ))}
         </div>
-      ))}
+      </div>
     </div>
   </div>
 </section>
