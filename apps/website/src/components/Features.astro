@@ -1,36 +1,66 @@
 ---
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+const assetsPath = join(process.cwd(), 'assets');
+const GameController = readFileSync(join(assetsPath, 'game-controller-fill-svgrepo-com.svg'), 'utf-8');
+const Chart = readFileSync(join(assetsPath, 'chart-2-svgrepo-com.svg'), 'utf-8');
+const Trophy = readFileSync(join(assetsPath, 'trophy-svgrepo-com.svg'), 'utf-8');
+const Calendar = readFileSync(join(assetsPath, 'calendar-svgrepo-com.svg'), 'utf-8');
+const Book = readFileSync(join(assetsPath, 'open-book-book-guide-publication-svgrepo-com.svg'), 'utf-8');
+const Lock = readFileSync(join(assetsPath, 'lock-svgrepo-com.svg'), 'utf-8');
+
 const features = [
   {
-    icon: '🎮',
+    icon: GameController,
     title: 'Apprentissage par le jeu',
-    description: 'Transformez l\'apprentissage de la finance en une expérience ludique avec des niveaux progressifs et des défis captivants.',
+    description: 'Transformez l\'apprentissage de la finance en une expérience ludique avec des niveaux progressifs qui vous feront découvrir des concepts financiers de plus en plus avancés.',
   },
   {
-    icon: '📊',
+    icon: Chart,
     title: 'Portefeuille virtuel',
-    description: 'Gérez un portefeuille virtuel et apprenez à prendre des décisions d\'investissement en toute sécurité, sans risque financier.',
+    description: 'Gérez un portefeuille virtuel vous permettant de placer dans des livrets d\'épargne ou encore d\'investir en bourse. Apprenez à prendre des décisions d\'investissement en toute confiance.',
   },
   {
-    icon: '🧠',
-    title: 'Quiz quotidiens',
-    description: 'Testez vos connaissances chaque jour avec des quiz interactifs et maintenez votre série de jours consécutifs pour gagner des points.',
-  },
-  {
-    icon: '📈',
-    title: 'Progression par niveaux',
-    description: 'Débloquez de nouveaux niveaux en progressant et découvrez des concepts financiers de plus en plus avancés.',
-  },
-  {
-    icon: '🏆',
+    icon: Trophy,
     title: 'Système de points',
-    description: 'Gagnez des points en complétant des défis, en répondant aux quiz et en prenant de bonnes décisions d\'investissement.',
+    description: 'Gagnez des étoiles en complétant des objectifs grâce à vos bonnes decisions d\'investissement et en répondant aux quiz.',
   },
   {
-    icon: '🔒',
+    icon: Calendar,
+    title: 'Quiz quotidiens',
+    description: 'Testez vos connaissances chaque jour avec des quiz interactifs et maintenez votre série de victoires chaque jour pour battre des records.',
+  },
+  {
+    icon: Book,
+    title: 'Dictionnaire financier',
+    description: 'Consultez un dictionnaire financier toujours disponible pour vous accompagner et vous aider à comprendre les termes que vous rencontrez au fil de votre apprentissage.',
+  },
+  {
+    icon: Lock,
     title: '100% sécurisé',
     description: 'Apprenez sans risque avec un environnement virtuel sécurisé. Aucun argent réel n\'est impliqué dans votre apprentissage.',
   },
 ];
+
+// Fonction pour remplacer les couleurs dans les SVG
+function setSvgColor(svg: string, color: string): string {
+  let result = svg;
+  // Remplacer tous les attributs fill avec des couleurs hex
+  result = result.replace(/fill="#[0-9A-Fa-f]{3,8}"/g, `fill="${color}"`);
+  // Remplacer les couleurs spécifiques communes
+  result = result.replace(/fill="#000000"/g, `fill="${color}"`);
+  result = result.replace(/fill="#231F20"/g, `fill="${color}"`);
+  result = result.replace(/fill="#1C274C"/g, `fill="${color}"`);
+  result = result.replace(/fill="currentColor"/g, `fill="${color}"`);
+  // Remplacer les attributs fill avec guillemets simples
+  result = result.replace(/fill='#[0-9A-Fa-f]{3,8}'/g, `fill="${color}"`);
+  // Remplacer ou ajouter les attributs width et height pour une taille cohérente (48px = text-5xl)
+  result = result.replace(/width="[^"]*"/g, '');
+  result = result.replace(/height="[^"]*"/g, '');
+  result = result.replace(/<svg([^>]*)>/g, `<svg$1 class="w-12 h-12">`);
+  return result;
+}
 ---
 
 <section id="features" class="py-24 bg-white">
@@ -50,7 +80,9 @@ const features = [
           class="bg-cashou-background-light p-8 rounded-2xl hover:shadow-xl transition-all transform hover:-translate-y-2 border border-cashou-secondary animate-fade-in"
           style={`animation-delay: ${index * 0.1}s`}
         >
-          <div class="text-5xl mb-4 transform hover:scale-110 transition-transform">{feature.icon}</div>
+          <div class="mb-4 flex items-center justify-center text-cashou-primary" style="width: 3rem; height: 3rem;">
+            <span set:html={setSvgColor(feature.icon, '#FFB472')} />
+          </div>
           <h3 class="text-2xl font-heading font-bold text-cashou-text-light mb-3">
             {feature.title}
           </h3>
