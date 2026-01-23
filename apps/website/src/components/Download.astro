@@ -75,6 +75,19 @@ import Logo from '../assets/Frame 93.png';
               autocomplete="email"
               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cashou-primary text-gray-900"
             />
+            <div class="flex items-start gap-2">
+              <input
+                type="checkbox"
+                id="ios-consent"
+                name="consent"
+                required
+                class="mt-1 w-4 h-4 text-cashou-primary border-gray-300 rounded focus:ring-cashou-primary"
+              />
+              <label for="ios-consent" class="text-sm text-gray-600">
+                J'accepte que mon adresse email soit utilisée pour me notifier de la disponibilité de l'application sur iOS. 
+                <a href="/politique-confidentialite" target="_blank" class="text-cashou-primary hover:underline">En savoir plus</a>
+              </label>
+            </div>
             <button
               type="submit"
               id="ios-submit-btn"
@@ -112,6 +125,19 @@ import Logo from '../assets/Frame 93.png';
               autocomplete="email"
               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cashou-primary text-gray-900"
             />
+            <div class="flex items-start gap-2">
+              <input
+                type="checkbox"
+                id="android-consent"
+                name="consent"
+                required
+                class="mt-1 w-4 h-4 text-cashou-primary border-gray-300 rounded focus:ring-cashou-primary"
+              />
+              <label for="android-consent" class="text-sm text-gray-600">
+                J'accepte que mon adresse email soit utilisée pour me notifier de la disponibilité de l'application sur Android. 
+                <a href="/politique-confidentialite" target="_blank" class="text-cashou-primary hover:underline">En savoir plus</a>
+              </label>
+            </div>
             <button
               type="submit"
               id="android-submit-btn"
@@ -161,6 +187,7 @@ import Logo from '../assets/Frame 93.png';
     const iosMessageDiv = document.getElementById('ios-message');
     const iosEmailInput = document.getElementById('ios-email');
     const iosSubmitBtn = document.getElementById('ios-submit-btn');
+    const iosConsentCheckbox = document.getElementById('ios-consent');
 
     // Éléments Android
     const androidBtn = document.getElementById('android-download-btn');
@@ -170,6 +197,7 @@ import Logo from '../assets/Frame 93.png';
     const androidMessageDiv = document.getElementById('android-message');
     const androidEmailInput = document.getElementById('android-email');
     const androidSubmitBtn = document.getElementById('android-submit-btn');
+    const androidConsentCheckbox = document.getElementById('android-consent');
 
     // Fonction pour fermer un modal
     function closeModal(modal, messageDiv, form) {
@@ -216,12 +244,19 @@ import Logo from '../assets/Frame 93.png';
       messageDiv,
       modal,
       apiEndpoint,
-      platform
+      platform,
+      consentCheckbox
     ) {
       const email = emailInput.value.trim();
       
       if (!email) {
         showMessage(messageDiv, 'Veuillez entrer une adresse email', 'error');
+        return;
+      }
+
+      // Vérifier le consentement RGPD
+      if (!consentCheckbox || !consentCheckbox.checked) {
+        showMessage(messageDiv, 'Veuillez accepter les conditions d\'utilisation de vos données', 'error');
         return;
       }
 
@@ -297,10 +332,10 @@ import Logo from '../assets/Frame 93.png';
       });
     }
 
-    if (iosForm && iosEmailInput && iosSubmitBtn && iosMessageDiv && iosModal) {
+    if (iosForm && iosEmailInput && iosSubmitBtn && iosMessageDiv && iosModal && iosConsentCheckbox) {
       iosForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        handleSubmit(iosForm, iosEmailInput, iosSubmitBtn, iosMessageDiv, iosModal, '/api/subscribe-ios', 'iOS');
+        handleSubmit(iosForm, iosEmailInput, iosSubmitBtn, iosMessageDiv, iosModal, '/api/subscribe-ios', 'iOS', iosConsentCheckbox);
       });
     }
 
@@ -326,10 +361,10 @@ import Logo from '../assets/Frame 93.png';
       });
     }
 
-    if (androidForm && androidEmailInput && androidSubmitBtn && androidMessageDiv && androidModal) {
+    if (androidForm && androidEmailInput && androidSubmitBtn && androidMessageDiv && androidModal && androidConsentCheckbox) {
       androidForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        handleSubmit(androidForm, androidEmailInput, androidSubmitBtn, androidMessageDiv, androidModal, '/api/subscribe-android', 'Android');
+        handleSubmit(androidForm, androidEmailInput, androidSubmitBtn, androidMessageDiv, androidModal, '/api/subscribe-android', 'Android', androidConsentCheckbox);
       });
     }
 

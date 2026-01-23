@@ -51,22 +51,63 @@ const showComingSoon = import.meta.env.PUBLIC_SHOW_COMING_SOON === 'true';
             <h2 class="text-2xl font-heading font-bold text-cashou-primary mb-4">
               Collecte de données personnelles
             </h2>
-            <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg mb-4">
-              <p class="text-base md:text-lg leading-relaxed font-medium text-green-800">
-                <strong>✅ Aucune donnée personnelle n'est collectée sur ce site web.</strong>
+            <p class="text-base md:text-lg leading-relaxed mb-4">
+              Le site web Cashou collecte certaines données personnelles dans le cadre de son fonctionnement. Voici les données que nous collectons et comment nous les utilisons :
+            </p>
+
+            <!-- Collecte d'emails -->
+            <div class="bg-cashou-secondary/30 border-l-4 border-cashou-primary p-4 rounded-r-lg mb-4">
+              <h3 class="text-xl font-heading font-bold text-cashou-primary mb-3">
+                📧 Inscription aux listes d'attente
+              </h3>
+              <p class="text-base md:text-lg leading-relaxed mb-3">
+                Lorsque vous vous inscrivez pour être notifié de la disponibilité de l'application Cashou sur iOS ou Android, nous collectons votre <strong>adresse email</strong>.
+              </p>
+              <ul class="list-disc list-inside space-y-2 ml-4 text-base md:text-lg mb-3">
+                <li><strong>Données collectées :</strong> Adresse email</li>
+                <li><strong>Finalité :</strong> Vous envoyer une notification lorsque l'application sera disponible sur la plateforme choisie (iOS ou Android)</li>
+                <li><strong>Base légale :</strong> Consentement explicite (case à cocher obligatoire)</li>
+                <li><strong>Durée de conservation :</strong> Jusqu'à ce que vous vous désinscriviez ou jusqu'à la disponibilité de l'application</li>
+                <li><strong>Sous-traitant :</strong> Brevo (Sendinblue) - Service d'email marketing</li>
+              </ul>
+              <p class="text-base md:text-lg leading-relaxed">
+                <strong>Votre consentement est obligatoire</strong> pour vous inscrire à ces listes. Vous pouvez vous désinscrire à tout moment en nous contactant à <a href="mailto:contact@cashou.app" class="text-cashou-primary hover:underline">contact@cashou.app</a> ou en utilisant le lien de désinscription présent dans les emails que vous recevrez.
               </p>
             </div>
-            <p class="text-base md:text-lg leading-relaxed mb-4">
-              Le site web Cashou est un site statique d'information qui ne collecte, ne stocke ni ne traite aucune donnée personnelle. Concrètement :
+
+            <!-- Autres données -->
+            <p class="text-base md:text-lg leading-relaxed mb-4 mt-6">
+              En dehors de l'inscription aux listes d'attente, le site ne collecte pas d'autres données personnelles :
             </p>
             <ul class="list-disc list-inside space-y-2 ml-4 text-base md:text-lg">
-              <li><strong>Aucun formulaire de contact :</strong> Le site ne contient pas de formulaire qui pourrait collecter vos données</li>
               <li><strong>Aucun compte utilisateur :</strong> Il n'est pas possible de créer un compte sur ce site</li>
               <li><strong>Aucun cookie de suivi :</strong> Aucun cookie n'est utilisé pour vous suivre ou vous identifier</li>
               <li><strong>Aucun service d'analyse :</strong> Aucun outil d'analyse (comme Google Analytics) n'est intégré</li>
             </ul>
-            <p class="text-base md:text-lg leading-relaxed mt-4">
-              Vous pouvez naviguer librement sur ce site sans que nous collections la moindre information vous concernant.
+          </section>
+
+          <!-- Sous-traitants -->
+          <section>
+            <h2 class="text-2xl font-heading font-bold text-cashou-primary mb-4">
+              Sous-traitants et transferts de données
+            </h2>
+            <p class="text-base md:text-lg leading-relaxed mb-4">
+              Pour gérer les inscriptions aux listes d'attente, nous utilisons le service <strong>Brevo</strong> (anciennement Sendinblue) comme sous-traitant.
+            </p>
+            <div class="bg-cashou-secondary/30 border-l-4 border-cashou-primary p-4 rounded-r-lg mb-4">
+              <h3 class="text-xl font-heading font-bold text-cashou-primary mb-3">
+                Brevo (Sendinblue)
+              </h3>
+              <ul class="list-disc list-inside space-y-2 ml-4 text-base md:text-lg">
+                <li><strong>Service :</strong> Plateforme d'email marketing et de gestion de contacts</li>
+                <li><strong>Données traitées :</strong> Adresses email des personnes inscrites aux listes d'attente</li>
+                <li><strong>Finalité :</strong> Stockage des emails et envoi des notifications de disponibilité</li>
+                <li><strong>Localisation :</strong> Données hébergées dans l'Union Européenne (conformité RGPD)</li>
+                <li><strong>Politique de confidentialité :</strong> <a href="https://www.brevo.com/legal/privacypolicy/" target="_blank" rel="noopener noreferrer" class="text-cashou-primary hover:underline">https://www.brevo.com/legal/privacypolicy/</a></li>
+              </ul>
+            </div>
+            <p class="text-base md:text-lg leading-relaxed">
+              Brevo est conforme au RGPD et s'engage à protéger vos données personnelles. Nous avons conclu un contrat de sous-traitance avec Brevo qui garantit la protection de vos données.
             </p>
           </section>
 
@@ -119,18 +160,36 @@ const showComingSoon = import.meta.env.PUBLIC_SHOW_COMING_SOON === 'true';
               Vos droits
             </h2>
             <p class="text-base md:text-lg leading-relaxed mb-4">
-              Conformément au RGPD, vous disposez de droits concernant vos données personnelles. Cependant, comme ce site ne collecte aucune donnée personnelle, ces droits ne s'appliquent pas dans le cadre de votre navigation sur ce site web.
+              Conformément au Règlement Général sur la Protection des Données (RGPD), vous disposez des droits suivants concernant vos données personnelles :
             </p>
-            <p class="text-base md:text-lg leading-relaxed mb-4">
-              Si vous avez des questions ou des préoccupations concernant cette politique de confidentialité, vous pouvez nous contacter à :
-            </p>
-            <p class="text-base md:text-lg mt-2">
-              <a href="mailto:contact@cashou.app" class="text-cashou-primary hover:text-cashou-primary/80 underline font-medium">
-                contact@cashou.app
-              </a>
-            </p>
+            <ul class="list-disc list-inside space-y-2 ml-4 text-base md:text-lg mb-4">
+              <li><strong>Droit d'accès :</strong> Vous pouvez demander à connaître les données personnelles que nous détenons sur vous</li>
+              <li><strong>Droit de rectification :</strong> Vous pouvez demander la correction de vos données si elles sont inexactes</li>
+              <li><strong>Droit à l'effacement :</strong> Vous pouvez demander la suppression de vos données personnelles</li>
+              <li><strong>Droit d'opposition :</strong> Vous pouvez vous opposer au traitement de vos données personnelles</li>
+              <li><strong>Droit à la portabilité :</strong> Vous pouvez demander à recevoir vos données dans un format structuré</li>
+              <li><strong>Droit de retirer votre consentement :</strong> Vous pouvez retirer votre consentement à tout moment pour l'inscription aux listes d'attente</li>
+            </ul>
+            <div class="bg-cashou-secondary/30 border-l-4 border-cashou-primary p-4 rounded-r-lg mb-4">
+              <p class="text-base md:text-lg leading-relaxed font-medium mb-2">
+                <strong>Comment exercer vos droits ?</strong>
+              </p>
+              <p class="text-base md:text-lg leading-relaxed mb-2">
+                Pour exercer l'un de ces droits ou pour vous désinscrire des listes d'attente, vous pouvez :
+              </p>
+              <ul class="list-disc list-inside space-y-2 ml-4 text-base md:text-lg">
+                <li>Nous contacter par email à <a href="mailto:contact@cashou.app" class="text-cashou-primary hover:underline">contact@cashou.app</a></li>
+                <li>Utiliser le lien de désinscription présent dans les emails que vous recevez de Brevo</li>
+              </ul>
+              <p class="text-base md:text-lg leading-relaxed mt-2">
+                Nous nous engageons à répondre à votre demande dans un délai d'un mois maximum.
+              </p>
+            </div>
             <p class="text-base md:text-lg leading-relaxed mt-4">
               Vous avez également le droit d'introduire une réclamation auprès de la Commission Nationale de l'Informatique et des Libertés (CNIL) si vous estimez que le traitement de vos données personnelles constitue une violation du RGPD.
+            </p>
+            <p class="text-base md:text-lg leading-relaxed mt-4">
+              <strong>Contact CNIL :</strong> <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer" class="text-cashou-primary hover:underline">www.cnil.fr</a>
             </p>
           </section>
 
