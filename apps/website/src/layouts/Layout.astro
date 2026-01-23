@@ -24,7 +24,7 @@ const { title, description = "L'app qui vous apprend à gérer votre argent en t
     <link rel="preconnect" href="https://fonts.bunny.net" />
     <link href="https://fonts.bunny.net/css?family=Rowdies:300,400,700|Roboto:300,400,500,700&display=swap" rel="stylesheet" />
   </head>
-  <body class="bg-cashou-background-light text-cashou-text-light font-body antialiased">
+  <body class="bg-cashou-background-light text-cashou-text-light font-body antialiased fonts-loading">
     <slot />
     <UnsubscribeModal />
   </body>
@@ -44,4 +44,45 @@ const { title, description = "L'app qui vous apprend à gérer votre argent en t
   body {
     overflow-x: hidden;
   }
+
+  /* Masquer le contenu tant que les polices ne sont pas chargées */
+  body.fonts-loading {
+    visibility: hidden;
+  }
+
+  body.fonts-loaded {
+    visibility: visible;
+  }
 </style>
+
+<script>
+  // Attendre que les polices soient chargées avant d'afficher le contenu
+  (function() {
+    function showContent() {
+      document.body.classList.remove('fonts-loading');
+      document.body.classList.add('fonts-loaded');
+    }
+
+    if ('fonts' in document) {
+      // Utiliser document.fonts.ready qui attend que toutes les polices soient chargées
+      document.fonts.ready.then(() => {
+        showContent();
+      }).catch(() => {
+        // En cas d'erreur, afficher quand même le contenu après un délai
+        setTimeout(showContent, 1000);
+      });
+
+      // Timeout de sécurité : afficher le contenu après 3 secondes maximum
+      setTimeout(showContent, 3000);
+    } else {
+      // Fallback pour les navigateurs qui ne supportent pas l'API Font Loading
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+          setTimeout(showContent, 500);
+        });
+      } else {
+        setTimeout(showContent, 500);
+      }
+    }
+  })();
+</script>
