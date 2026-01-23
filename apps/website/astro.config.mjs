@@ -5,7 +5,7 @@ import tailwind from '@astrojs/tailwind';
 // https://astro.build/config
 export default defineConfig({
   integrations: [tailwind()],
-  output: 'static',
+  output: 'static', // Mode static (supporte les API routes dans Astro 5+)
   site: 'https://cashou.app', // À remplacer par votre domaine
   compressHTML: true,
 });
