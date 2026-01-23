@@ -1,5 +1,5 @@
 import { View, Text, useColorScheme as useRNColorScheme, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
@@ -179,17 +179,23 @@ export default function HistoryScreen() {
       }
     }, [user, currentYear, currentMonth, daysInMonth]);
 
-  // Rafraîchir les données quand on revient sur la page
-  useFocusEffect(
-    useCallback(() => {
-      fetchDaysStatus();
-    }, [fetchDaysStatus])
-  );
+  // Track if initial fetch has happened
+  const hasFetchedRef = useRef(false);
 
-  // Rafraîchir aussi quand le mois change
+  // Fetch on mount and when month changes
   useEffect(() => {
     fetchDaysStatus();
+    hasFetchedRef.current = true;
   }, [fetchDaysStatus]);
+
+  // Refetch only on re-focus (not initial mount)
+  useFocusEffect(
+    useCallback(() => {
+      if (hasFetchedRef.current) {
+        fetchDaysStatus();
+      }
+    }, [fetchDaysStatus])
+  );
 
   const goToPreviousMonth = () => {
     if (!isAtMinDate) {

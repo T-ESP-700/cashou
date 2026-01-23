@@ -11,7 +11,7 @@ import {
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
-import { trpcClient } from '@/lib/trpc';
+import { trpc, trpcClient } from '@/lib/trpc';
 import { API_URL } from '@/lib/api-config';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useAuth } from '@/hooks/use-auth';
@@ -39,10 +39,32 @@ export default function AssetsScreen() {
   useHeaderOptions({ showBackButton: true });
 
   const [query, setQuery] = useState('');
-  const [assets, setAssets] = useState<AssetItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
   const isSearching = useMemo(() => query.trim().length > 0, [query]);
+
+  // Fetch assets using React Query
+  const {
+    data: rawAssets = [],
+    isLoading: loading,
+    error: queryError,
+    refetch: refetchAssets,
+  } = trpc.asset.getAll.useQuery(undefined, {
+    staleTime: 1000 * 60 * 5, // 5 minutes - assets don't change often
+  });
+
+  // Map backend Asset to UI AssetItem
+  const assets: AssetItem[] = useMemo(() => {
+    return (rawAssets || []).map((a: any) => ({
+      id: String(a.id ?? a.symbol ?? a.title ?? Math.random()),
+      name: String(a.title ?? a.symbol ?? 'Asset'),
+      tags: [
+        a?.symbol ? String(a.symbol) : null,
+        a?.market?.title ? String(a.market.title) : null,
+      ].filter(Boolean) as string[],
+      changePct: typeof a?.taux === 'number' ? a.taux : 0,
+    }));
+  }, [rawAssets]);
+
+  const error = queryError?.message ?? null;
 
   // Get params for trading
   const gameInstanceId = params?.gameInstanceId as string;
@@ -195,38 +217,6 @@ export default function AssetsScreen() {
     }, [setIsOnAssetsScreen, setPendingEventCompletion, setAssetsScreenDepth, setPausedByAssets, assetsScreenDepthRef])
   );
 
-  const fetchAssets = useCallback(async () => {
-    let localError: unknown = null;
-    try {
-      setLoading(true);
-      setError(null);
-      const data: any[] = await trpcClient.asset.getAll.query();
-      // Map backend Asset to UI AssetItem
-      const mapped: AssetItem[] = (data || []).map((a: any) => ({
-        id: String(a.id ?? a.symbol ?? a.title ?? Math.random()),
-        name: String(a.title ?? a.symbol ?? 'Asset'),
-        // Basic tags mapping (extend later if backend exposes richer fields)
-        tags: [
-          a?.symbol ? String(a.symbol) : null,
-          a?.market?.title ? String(a.market.title) : null,
-        ].filter(Boolean) as string[],
-        // Map 'taux' field from database to 'changePct' for UI display
-        changePct: typeof a?.taux === 'number' ? a.taux : 0,
-      }));
-      setAssets(mapped);
-    } catch (e: any) {
-      localError = e;
-      console.error('[AssetsScreen] Failed to load assets from', API_URL, e);
-      setError(e?.message ? String(e.message) : 'Impossible de charger les assets');
-    } finally {
-      setLoading(false);
-    }
-    return localError;
-  }, []);
-
-  useEffect(() => {
-    fetchAssets();
-  }, [fetchAssets]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -275,7 +265,7 @@ export default function AssetsScreen() {
                 </Text>
               )}
               <TouchableOpacity
-                onPress={fetchAssets}
+                onPress={() => refetchAssets()}
                 style={{ marginTop: 8, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#FFB472' }}
               >
                 <Text style={{ color: '#1C1E33', fontFamily: CashouTheme.fonts.subheading }}>Réessayer</Text>

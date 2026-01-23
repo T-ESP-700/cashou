@@ -1,11 +1,12 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, useColorScheme as useRNColorScheme } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
-import { trpcClient } from '@/lib/trpc';
+import { trpc } from '@/lib/trpc';
 import { useHeaderOptions } from '@/hooks/use-header';
+import { useEndGame } from '@/hooks/use-game';
 
 interface GoalResult {
   id: number;
@@ -48,54 +49,67 @@ export default function GameSummaryScreen() {
 
   useHeaderOptions({ showBackButton: true });
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [endGameResult, setEndGameResult] = useState<EndGameResult | null>(null);
-  const [gameInstance, setGameInstance] = useState<GameInstanceData | null>(null);
-  const [levelQuizId, setLevelQuizId] = useState<number | null>(null);
+  const parsedGameId = gameId ? parseInt(gameId, 10) : null;
 
+  // Fetch game instance data using React Query
+  const {
+    data: gameInstance,
+    isLoading: instanceLoading,
+  } = trpc.gameInstance.getById.useQuery(
+    { id: parsedGameId! },
+    {
+      enabled: parsedGameId !== null,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+    }
+  );
+
+  // Fetch quiz for this level
+  const levelId = gameInstance?.level?.id ?? null;
+  const { data: quizzes } = trpc.quiz.getByLevel.useQuery(
+    { levelId: levelId! },
+    {
+      enabled: levelId !== null,
+      staleTime: 1000 * 60 * 10, // 10 minutes
+    }
+  );
+
+  const levelQuizId = useMemo(() => {
+    return quizzes && quizzes.length > 0 ? quizzes[0].id : null;
+  }, [quizzes]);
+
+  // End game mutation with cache invalidation
+  const endGameMutation = useEndGame();
+
+  // State for end game result (mutation result)
+  const [endGameResult, setEndGameResult] = useState<EndGameResult | null>(null);
+  const [endGameLoading, setEndGameLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Trigger end game mutation once
   useEffect(() => {
-    const fetchData = async () => {
-      if (!gameId) {
+    const endGame = async () => {
+      if (!parsedGameId) {
         setError('ID de la partie manquant');
-        setIsLoading(false);
+        setEndGameLoading(false);
         return;
       }
 
       try {
-        setIsLoading(true);
-
-        // Fetch game instance data
-        const instance = await trpcClient.gameInstance.getById.query({ id: parseInt(gameId, 10) });
-        if (instance) {
-          setGameInstance(instance as GameInstanceData);
-
-          // Fetch quiz for this level
-          if (instance.level?.id) {
-            try {
-              const quizzes = await trpcClient.quiz.getByLevel.query({ levelId: instance.level.id });
-              if (quizzes && quizzes.length > 0) {
-                setLevelQuizId(quizzes[0].id);
-              }
-            } catch (quizErr) {
-              console.error('Error fetching level quiz:', quizErr);
-            }
-          }
-        }
-
-        // Fetch end game results
-        const result = await trpcClient.gameInstance.endGame.mutate({ id: parseInt(gameId, 10) });
+        const result = await endGameMutation.mutateAsync({ id: parsedGameId });
         setEndGameResult(result as EndGameResult);
       } catch (err) {
-        console.error('Error fetching game summary:', err);
+        console.error('Error ending game:', err);
         setError('Erreur lors du chargement des resultats');
       } finally {
-        setIsLoading(false);
+        setEndGameLoading(false);
       }
     };
 
-    fetchData();
-  }, [gameId]);
+    endGame();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parsedGameId]); // endGameMutation is stable
+
+  const isLoading = instanceLoading || endGameLoading;
 
   const handleGoHome = () => {
     router.replace('/(tabs)');

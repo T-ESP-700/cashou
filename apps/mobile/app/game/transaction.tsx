@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,10 +16,11 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
-import { trpcClient } from '@/lib/trpc';
+import { trpc, trpcClient } from '@/lib/trpc';
 import { useHeaderOptions } from '@/hooks/use-header';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useAuth } from '@/hooks/use-auth';
+import { useBuyInvestment, useSellInvestment } from '@/hooks/use-game';
 
 type TransactionType = 'buy' | 'sell';
 
@@ -151,61 +152,64 @@ export default function TransactionScreen() {
   const gameInstanceId = params.gameInstanceId ? parseInt(params.gameInstanceId as string, 10) : null;
   const walletId = params.walletId ? parseInt(params.walletId as string, 10) : null;
 
-  // State
-  const [asset, setAsset] = useState<AssetData | null>(null);
+  // Fetch asset data using React Query
+  const {
+    data: asset,
+    isLoading: assetLoading,
+    error: assetError,
+  } = trpc.asset.getById.useQuery(
+    { id: assetId! },
+    {
+      enabled: assetId !== null,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+    }
+  );
+
+  // Fetch wallet data using React Query
+  const {
+    data: wallet,
+    isLoading: walletLoading,
+  } = trpc.wallet.getById.useQuery(
+    { id: walletId! },
+    {
+      enabled: walletId !== null,
+      staleTime: 1000 * 30, // 30 seconds - wallet balance changes frequently
+    }
+  );
+
+  // Fetch holdings using React Query
+  const { data: holdings } = trpc.holding.getByWallet.useQuery(
+    { walletId: walletId! },
+    {
+      enabled: walletId !== null && type === 'sell',
+      staleTime: 1000 * 30, // 30 seconds
+    }
+  );
+
+  // Derived state from queries
+  const walletBalance = useMemo(() => {
+    return wallet ? Number(wallet.amount) || 0 : 0;
+  }, [wallet]);
+
+  const currentHolding = useMemo(() => {
+    if (!holdings || !assetId) return 0;
+    const holding = holdings.find((h: any) => h.assetId === assetId);
+    return holding ? Number(holding.quantity) || 0 : 0;
+  }, [holdings, assetId]);
+
+  const isLoading = assetLoading || walletLoading;
+  const error = (!assetId || !walletId) ? 'Parametres manquants' : assetError?.message ?? null;
+
+  // State for form
   const [amount, setAmount] = useState('');
-  const [walletBalance, setWalletBalance] = useState(0);
-  const [currentHolding, setCurrentHolding] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  // Investment mutations with cache invalidation
+  const buyMutation = useBuyInvestment();
+  const sellMutation = useSellInvestment();
 
   // Quick amount buttons
   const quickAmounts = [10, 50, 100, 500, 1000];
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!assetId || !walletId) {
-        setError('Parametres manquants');
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-
-        // Fetch asset
-        const assetData = await trpcClient.asset.getById.query({ id: assetId });
-        setAsset(assetData as AssetData);
-
-        // Fetch wallet balance
-        const wallet = await trpcClient.wallet.getById.query({ id: walletId });
-        if (wallet) {
-          setWalletBalance(Number(wallet.amount) || 0);
-        }
-
-        // Fetch current holding for this asset (for sell)
-        if (type === 'sell') {
-          try {
-            const holdings = await trpcClient.holding.getByWallet.query({ walletId });
-            const holding = holdings.find((h: any) => h.assetId === assetId);
-            if (holding) {
-              setCurrentHolding(Number(holding.quantity) || 0);
-            }
-          } catch (e) {
-            console.error('Error fetching holdings:', e);
-          }
-        }
-      } catch (e: any) {
-        console.error('Error fetching data:', e);
-        setError('Erreur lors du chargement des donnees');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [assetId, walletId, type]);
 
   const handleQuickAmount = (value: number) => {
     setAmount(value.toString());
@@ -273,7 +277,8 @@ export default function TransactionScreen() {
       setIsSubmitting(true);
 
       if (type === 'buy') {
-        await trpcClient.investment.buy.mutate({
+        // Use mutation hook with cache invalidation
+        await buyMutation.mutateAsync({
           walletId,
           assetId,
           amount: numAmount,
@@ -285,7 +290,8 @@ export default function TransactionScreen() {
           [{ text: 'OK', onPress: () => router.back() }]
         );
       } else {
-        const result = await trpcClient.investment.sell.mutate({
+        // Use mutation hook with cache invalidation
+        const result = await sellMutation.mutateAsync({
           walletId,
           assetId,
           amount: numAmount,

@@ -14,7 +14,8 @@ export interface EventNotificationData {
   body?: string;
 }
 
-// Global setters to allow the handler (outside component) to update state
+// Global setters to allow the notification handler (outside component) to update state
+// This is necessary because Notifications.setNotificationHandler runs at module initialization
 let globalSetEventNotification: ((data: EventNotificationData | null) => void) | null = null;
 let globalSetNotification: ((notification: Notifications.Notification | null) => void) | null = null;
 
@@ -35,7 +36,7 @@ Notifications.setNotificationHandler({
       data,
     });
 
-    // Directly set the notification state
+    // Directly set the notification state via global setter
     if (globalSetNotification) {
       globalSetNotification(notification);
     }
@@ -148,9 +149,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [pendingEventCompletion, setPendingEventCompletion] = useState<number | null>(null);
   const [isOnAssetsScreen, setIsOnAssetsScreen] = useState<boolean>(false);
   const [activeGameInstanceId, setActiveGameInstanceId] = useState<number | null>(null);
-  const [assetsScreenDepth, setAssetsScreenDepthState] = useState<number>(0); // Track nested navigation (assets -> asset-detail)
-  const assetsScreenDepthRef = useRef<number>(0); // Shared ref for immediate depth access
-  const [pausedByAssets, setPausedByAssets] = useState<boolean>(false); // Track if we paused the game from assets screen
+  const [assetsScreenDepth, setAssetsScreenDepthState] = useState<number>(0);
+  const assetsScreenDepthRef = useRef<number>(0);
+  const [pausedByAssets, setPausedByAssets] = useState<boolean>(false);
   const { user, isAuthenticated } = useAuth();
 
   // Wrapper that updates both state and ref
@@ -164,6 +165,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   const notificationListener = useRef<Notifications.Subscription | null>(null);
   const responseListener = useRef<Notifications.Subscription | null>(null);
+  const tokenSentRef = useRef<string | null>(null); // Track last sent token to prevent duplicates
 
   // Configure channel for Android
   useEffect(() => {
@@ -184,9 +186,15 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     if (token) {
       setExpoPushToken(token);
 
-      if (isAuthenticated && user) {
+      // Only send to backend if:
+      // - User is authenticated
+      // - Token hasn't been sent yet OR token changed
+      if (isAuthenticated && user && tokenSentRef.current !== token) {
         try {
+          // Use vanilla client to avoid mutation reference issues
           await trpcClient.user.updateExpoPushToken.mutate({ expoPushToken: token });
+          tokenSentRef.current = token; // Mark as sent
+          console.log('[Notifications] Push token saved to backend');
         } catch (error) {
           console.error('[Notifications] Failed to save token to backend:', error);
         }
@@ -194,7 +202,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
 
     return token;
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user]); // Removed updatePushTokenMutation - uses vanilla client instead
+
+  // Reset token sent ref when user logs out
+  useEffect(() => {
+    if (!isAuthenticated) {
+      tokenSentRef.current = null;
+    }
+  }, [isAuthenticated]);
 
   // Register on mount when authenticated
   useEffect(() => {
@@ -217,12 +232,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   }, [expoPushToken, isAuthenticated, registerForPushNotifications]);
 
   // Check for pending events on app launch and when returning to foreground
-  // This is a fallback for when push notification didn't trigger properly (e.g., Expo Go redirect issue)
+  // This is a fallback for when push notification didn't trigger properly
   const checkPendingEvent = useCallback(async () => {
     // Don't check if:
     // - Not authenticated
     // - Already showing an event notification
-    // - Already have a pending event completion (user clicked "Plus tard" or "Voir mes assets")
+    // - Already have a pending event completion
     // - Currently on assets screen
     if (!isAuthenticated || eventNotification || pendingEventCompletion || assetsScreenDepthRef.current > 0) {
       console.log('[Notifications] Skipping pending event check:', {
@@ -235,6 +250,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      // Use vanilla client for this check since it's called from effects
       const pendingEvent = await trpcClient.auth.getPendingEvent.query();
       if (pendingEvent) {
         console.log('[Notifications] Found pending event via fallback check:', pendingEvent);
@@ -254,7 +270,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   // Check for pending events on initial mount when authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      // Small delay to let the app fully initialize
       const timeoutId = setTimeout(() => {
         checkPendingEvent();
       }, 1000);
@@ -266,7 +281,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active' && isAuthenticated) {
-        // Small delay to ensure app state is stable
         setTimeout(() => {
           checkPendingEvent();
         }, 500);
@@ -278,13 +292,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     };
   }, [isAuthenticated, checkPendingEvent]);
 
-  // Register global setters so the handler can update state directly
+  // Register global setters so the notification handler can update state directly
   useEffect(() => {
     setGlobalNotificationSetters(setEventNotification, setNotification);
     return () => {
       setGlobalNotificationSetters(() => {}, () => {});
     };
-  }, [setEventNotification, setNotification]);
+  }, []);
 
   // Handle incoming notifications from listeners
   const handleIncomingNotification = useCallback((notification: Notifications.Notification) => {
@@ -317,7 +331,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         body: notification.request.content.body ?? undefined,
       });
     }
-  }, [setNotification, setEventNotification]);
+  }, []);
 
   // Handle incoming notifications
   useEffect(() => {

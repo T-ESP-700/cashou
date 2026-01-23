@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
-import { trpcClient } from '@/lib/trpc';
+import { trpc, trpcClient } from '@/lib/trpc';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useAuth } from '@/hooks/use-auth';
 import { useHeaderOptions } from '@/hooks/use-header';
@@ -30,16 +30,47 @@ export default function AssetDetailScreen() {
   // Configure header for this screen
   useHeaderOptions({ showBackButton: true });
 
-  const [asset, setAsset] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [currentHolding, setCurrentHolding] = useState(0);
-
   // Get params from URL
   const assetIdParam = params?.id;
   const assetId = Array.isArray(assetIdParam) ? assetIdParam[0] : assetIdParam;
   const gameInstanceId = params?.gameInstanceId as string;
   const walletId = params?.walletId as string;
+
+  // Parse IDs for queries
+  const parsedAssetId = assetId ? parseInt(assetId) : null;
+  const parsedWalletId = walletId ? parseInt(walletId) : null;
+
+  // Fetch asset data using React Query
+  const {
+    data: asset,
+    isLoading: assetLoading,
+    error: assetError,
+  } = trpc.asset.getById.useQuery(
+    { id: parsedAssetId! },
+    {
+      enabled: parsedAssetId !== null,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+    }
+  );
+
+  // Fetch holdings using React Query
+  const { data: holdings } = trpc.holding.getByWallet.useQuery(
+    { walletId: parsedWalletId! },
+    {
+      enabled: parsedWalletId !== null,
+      staleTime: 1000 * 30, // 30 seconds - holdings change more frequently
+    }
+  );
+
+  // Calculate current holding from holdings data
+  const currentHolding = useMemo(() => {
+    if (!holdings || !parsedAssetId) return 0;
+    const holding = holdings.find((h: any) => h.assetId === parsedAssetId);
+    return holding ? Number(holding.quantity) || 0 : 0;
+  }, [holdings, parsedAssetId]);
+
+  const loading = assetLoading;
+  const error = assetError?.message ?? (!assetId ? 'ID de l\'asset manquant' : null);
 
   // Use refs to track values needed during cleanup to avoid stale closure issues
   const activeGameInstanceIdRef = useRef(activeGameInstanceId);
@@ -140,43 +171,6 @@ export default function AssetDetailScreen() {
       };
     }, [setAssetsScreenDepth, setPendingEventCompletion, setIsOnAssetsScreen, setPausedByAssets, assetsScreenDepthRef])
   );
-
-  useEffect(() => {
-    const fetchAsset = async () => {
-      if (!assetId) {
-        setError('ID de l\'asset manquant');
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await trpcClient.asset.getById.query({ id: parseInt(assetId) });
-        setAsset(data);
-
-        // Fetch current holding if walletId is provided
-        if (walletId) {
-          try {
-            const holdings = await trpcClient.holding.getByWallet.query({ walletId: parseInt(walletId) });
-            const holding = holdings.find((h: any) => h.assetId === parseInt(assetId));
-            if (holding) {
-              setCurrentHolding(Number(holding.quantity) || 0);
-            }
-          } catch (e) {
-            console.error('[AssetDetail] Failed to load holding:', e);
-          }
-        }
-      } catch (e: any) {
-        console.error('[AssetDetail] Failed to load asset:', e);
-        setError(e?.message ? String(e.message) : 'Impossible de charger l\'asset');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAsset();
-  }, [assetId, walletId]);
 
   const handleBuy = () => {
     router.push({

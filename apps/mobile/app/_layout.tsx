@@ -15,8 +15,9 @@ import {
   Roboto_700Bold,
 } from '@expo-google-fonts/roboto';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/hooks/use-auth';
@@ -25,6 +26,8 @@ import { NotificationProvider } from '@/hooks/use-notifications';
 import { CashouHeader } from '@/components/cashou-header';
 import { EventNotificationModal } from '@/components/event-notification-modal';
 import { CashouTheme } from '@/constants/cashou-theme';
+import { trpc, createTRPCClientForProvider } from '@/lib/trpc';
+import { createQueryClient, persistOptions } from '@/lib/query-client';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -100,6 +103,10 @@ function RootNavigator() {
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
+  // Create QueryClient and tRPC client once on mount
+  const [queryClient] = useState(() => createQueryClient());
+  const [trpcClient] = useState(() => createTRPCClientForProvider());
+
   const [fontsLoaded] = useFonts({
     Rowdies: Rowdies_400Regular,
     'Rowdies-Light': Rowdies_300Light,
@@ -120,15 +127,19 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <NotificationProvider>
-          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <RootNavigator />
-            <EventNotificationModal />
-            <StatusBar style="auto" />
-          </ThemeProvider>
-        </NotificationProvider>
-      </AuthProvider>
+      <trpc.Provider client={trpcClient} queryClient={queryClient}>
+        <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
+          <AuthProvider>
+            <NotificationProvider>
+              <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+                <RootNavigator />
+                <EventNotificationModal />
+                <StatusBar style="auto" />
+              </ThemeProvider>
+            </NotificationProvider>
+          </AuthProvider>
+        </PersistQueryClientProvider>
+      </trpc.Provider>
     </GestureHandlerRootView>
   );
 }

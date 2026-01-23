@@ -1,14 +1,14 @@
 import { ScrollView, View, Text, ActivityIndicator } from 'react-native';
 import React, { useState, useEffect, useMemo } from 'react';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { LevelCard } from '@/components/level-card';
 import { DailyQuizCard } from '@/components/daily-quiz-card';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { useAuth } from '@/hooks/use-auth';
 import { useHeaderOptions } from '@/hooks/use-header';
-import { trpcClient } from '@/lib/trpc';
+import { trpc } from '@/lib/trpc';
 
-// Types pour les données de la home
+// Types for home data
 interface HomeData {
   user: {
     id: string;
@@ -44,7 +44,7 @@ interface HomeData {
   } | null;
 }
 
-// Messages de bienvenue créatifs selon l'heure et le contexte
+// Creative greeting messages based on time and context
 const getGreeting = (name: string | null, hour: number): string => {
   const displayName = name || 'Investisseur';
 
@@ -75,7 +75,7 @@ const getGreeting = (name: string | null, hour: number): string => {
   }
 };
 
-// Messages contextuels selon l'état du jeu
+// Contextual messages based on game state
 const getContextualMessage = (
   homeData: HomeData | null,
   dailyQuizDone: boolean
@@ -88,7 +88,7 @@ const getContextualMessage = (
 
   const { activeGame, user } = homeData;
 
-  // Message sur la partie en cours
+  // Message about current game
   if (activeGame) {
     if (activeGame.actionRequired) {
       messages.push('Une action de ta part est en attente sur ta partie en cours !');
@@ -105,7 +105,7 @@ const getContextualMessage = (
     messages.push('Pas de partie en cours. Lance-toi dans un nouveau niveau !');
   }
 
-  // Message sur le daily quiz
+  // Message about daily quiz
   if (!dailyQuizDone) {
     if (user.currentStreak > 0) {
       messages.push(`Tu as une série de ${user.currentStreak} jours ! Fais le quiz pour la maintenir.`);
@@ -123,31 +123,48 @@ const getContextualMessage = (
 
 export default function HomeScreen() {
   const { colors, fonts, spacing } = useCashouTheme();
-  const { user, isAuthenticated, refreshUser } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const router = useRouter();
 
   // Configure header for this screen
   useHeaderOptions({ showBackButton: false });
-  const [dailyQuizStatus, setDailyQuizStatus] = useState<'todo' | 'done'>('todo');
-  const [isLoadingDailyQuiz, setIsLoadingDailyQuiz] = useState(false);
+
   const [timeRemaining, setTimeRemaining] = useState<string>('0h0m');
-  const [homeData, setHomeData] = useState<HomeData | null>(null);
-  const [isLoadingHomeData, setIsLoadingHomeData] = useState(true);
   const [levelCardStatus, setLevelCardStatus] = useState<'not_started' | 'in_progress' | 'completed' | 'quiz_pending'>('not_started');
 
-  // Générer le greeting une seule fois au montage (pour éviter les changements aléatoires)
+  // React Query: Fetch home data
+  const {
+    data: homeData,
+    isLoading: isLoadingHomeData,
+  } = trpc.auth.getHomeData.useQuery(undefined, {
+    enabled: isAuthenticated,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+
+  // React Query: Fetch daily quiz status
+  const {
+    data: dailyQuizResult,
+    isLoading: isLoadingDailyQuiz,
+  } = trpc.userQuiz.hasDoneDailyTodayForCurrentUser.useQuery(undefined, {
+    enabled: isAuthenticated,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+
+  const dailyQuizStatus = dailyQuizResult?.hasDone ? 'done' : 'todo';
+
+  // Generate greeting only once on mount (to avoid random changes)
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
-    const displayName = homeData?.user?.name || homeData?.user?.username || user?.name || null;
+    const displayName = (homeData as HomeData)?.user?.name || (homeData as HomeData)?.user?.username || user?.name || null;
     return getGreeting(displayName, hour);
-  }, [homeData?.user?.name, homeData?.user?.username, user?.name]);
+  }, [(homeData as HomeData)?.user?.name, (homeData as HomeData)?.user?.username, user?.name]);
 
-  // Messages contextuels
+  // Contextual messages
   const contextualMessages = useMemo(() => {
-    return getContextualMessage(homeData, dailyQuizStatus === 'done');
+    return getContextualMessage(homeData as HomeData | null, dailyQuizStatus === 'done');
   }, [homeData, dailyQuizStatus]);
 
-  // Calculer le temps restant avant minuit
+  // Calculate time until midnight
   const calculateTimeUntilMidnight = () => {
     const now = new Date();
     const midnight = new Date();
@@ -160,164 +177,92 @@ export default function HomeScreen() {
     return `${hours}h${minutes}m`;
   };
 
-  // Mettre à jour le temps restant toutes les minutes
+  // Update time remaining every minute
   useEffect(() => {
     const updateTime = () => {
       setTimeRemaining(calculateTimeUntilMidnight());
     };
 
-    updateTime(); // Mise à jour immédiate
-    const interval = setInterval(updateTime, 60000); // Mise à jour toutes les minutes
+    updateTime(); // Immediate update
+    const interval = setInterval(updateTime, 60000); // Update every minute
 
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch home data
-  useEffect(() => {
-    const fetchHomeData = async () => {
-      if (!isAuthenticated) {
-        setHomeData(null);
-        setIsLoadingHomeData(false);
-        return;
-      }
+  // Check if level quiz is completed for last completed level
+  // React Query for level quiz check
+  const lastCompletedLevelId = (homeData as HomeData)?.lastCompletedGame?.levelId;
+  const hasCurrentLevel = !!(homeData as HomeData)?.level;
 
-      try {
-        setIsLoadingHomeData(true);
-        const result = await trpcClient.auth.getHomeData.query();
-        setHomeData(result as HomeData);
-      } catch (error) {
-        console.error('Error fetching home data:', error);
-        setHomeData(null);
-      } finally {
-        setIsLoadingHomeData(false);
-      }
-    };
-
-    fetchHomeData();
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    const fetchDailyQuizStatus = async () => {
-      if (!isAuthenticated) {
-        setDailyQuizStatus('todo');
-        return;
-      }
-
-      try {
-        setIsLoadingDailyQuiz(true);
-        const result = await trpcClient.userQuiz.hasDoneDailyTodayForCurrentUser.query();
-        setDailyQuizStatus(result.hasDone ? 'done' : 'todo');
-      } catch (error) {
-        console.error('Error fetching daily quiz status:', error);
-        setDailyQuizStatus('todo');
-      } finally {
-        setIsLoadingDailyQuiz(false);
-      }
-    };
-
-    fetchDailyQuizStatus();
-  }, [isAuthenticated]);
-
-  // Rafraîchir les données utilisateur et le statut du quiz quand la page revient au focus
-  useFocusEffect(
-    React.useCallback(() => {
-      if (isAuthenticated) {
-        // Rafraîchir les données utilisateur
-        refreshUser();
-
-        // Rafraîchir les données de la home
-        const fetchHomeData = async () => {
-          try {
-            const result = await trpcClient.auth.getHomeData.query();
-            setHomeData(result as HomeData);
-          } catch (error) {
-            console.error('Error fetching home data:', error);
-          }
-        };
-
-        fetchHomeData();
-
-        // Rafraîchir aussi le statut du quiz
-        const fetchDailyQuizStatus = async () => {
-          try {
-            const result = await trpcClient.userQuiz.hasDoneDailyTodayForCurrentUser.query();
-            setDailyQuizStatus(result.hasDone ? 'done' : 'todo');
-          } catch (error) {
-            console.error('Error fetching daily quiz status:', error);
-            setDailyQuizStatus('todo');
-          }
-        };
-
-        fetchDailyQuizStatus();
-      }
-    }, [isAuthenticated, refreshUser])
+  const { data: quizzesForLevel } = trpc.quiz.getByLevel.useQuery(
+    { levelId: lastCompletedLevelId! },
+    {
+      enabled: !!lastCompletedLevelId && !hasCurrentLevel && !!user,
+      staleTime: 1000 * 60 * 5,
+    }
   );
 
-  // Vérifier si le quiz du niveau est complété pour le dernier niveau complété
+  const quizIdToCheck = quizzesForLevel?.[0]?.id;
+
+  const { data: quizParticipations } = trpc.userQuiz.getByQuiz.useQuery(
+    { quizId: quizIdToCheck! },
+    {
+      enabled: !!quizIdToCheck && !!user,
+      staleTime: 1000 * 60 * 5,
+    }
+  );
+
+  // Update level card status based on quiz completion
   useEffect(() => {
-    const checkQuizCompletion = async () => {
-      if (!user || !homeData?.lastCompletedGame?.levelId) {
+    if (!user || !(homeData as HomeData)?.lastCompletedGame?.levelId) {
+      return;
+    }
+
+    const lastCompleted = (homeData as HomeData)?.lastCompletedGame;
+    const currentLevel = (homeData as HomeData)?.level;
+
+    if (lastCompleted && !currentLevel) {
+      // No quiz = considered completed
+      if (!quizzesForLevel || quizzesForLevel.length === 0) {
+        setLevelCardStatus('completed');
         return;
       }
 
-      const lastCompleted = homeData.lastCompletedGame;
-      const currentLevel = homeData.level;
+      // Check if user completed the quiz
+      const userParticipation = (quizParticipations as any[] | undefined)?.find(
+        (p: any) => p.userId === user.id && p.completedAt !== null
+      );
 
-      // Si on a terminé un niveau mais pas de niveau suivant, vérifier le quiz
-      if (lastCompleted && !currentLevel) {
-        try {
-          // Récupérer le quiz du niveau
-          const quizzes = await trpcClient.quiz.getByLevel.query({ levelId: lastCompleted.levelId });
-          if (!quizzes || quizzes.length === 0) {
-            // Pas de quiz = considéré comme complété
-            setLevelCardStatus('completed');
-            return;
-          }
+      setLevelCardStatus(userParticipation ? 'completed' : 'quiz_pending');
+    } else {
+      setLevelCardStatus('not_started');
+    }
+  }, [user, homeData, quizzesForLevel, quizParticipations]);
 
-          const quizId = quizzes[0].id;
-
-          // Vérifier si l'utilisateur a complété ce quiz
-          const participations = await trpcClient.userQuiz.getByQuiz.query({ quizId });
-          const userParticipation = (participations as any[]).find(
-            (p: any) => p.userId === user.id && p.completedAt !== null
-          );
-
-          setLevelCardStatus(userParticipation ? 'completed' : 'quiz_pending');
-        } catch (err) {
-          console.error('Error checking quiz completion:', err);
-          setLevelCardStatus('quiz_pending'); // Par défaut quiz_pending en cas d'erreur
-        }
-      } else {
-        // Pas de niveau complété ou niveau suivant disponible
-        setLevelCardStatus('not_started');
-      }
-    };
-
-    checkQuizCompletion();
-  }, [user, homeData]);
-
-  // Données pour le LevelCard
+  // Data for LevelCard
   const levelCardData = useMemo(() => {
-    // Si une partie est en cours (non terminée)
-    if (homeData?.activeGame) {
+    const typedHomeData = homeData as HomeData | undefined;
+
+    // If a game is in progress (not ended)
+    if (typedHomeData?.activeGame) {
       return {
-        level: homeData.activeGame.levelNumber,
-        levelId: homeData.level?.id,
-        title: homeData.activeGame.levelTitle,
-        progression: homeData.activeGame.progression,
-        currentReturn: homeData.activeGame.currentReturn,
+        level: typedHomeData.activeGame.levelNumber,
+        levelId: typedHomeData.level?.id,
+        title: typedHomeData.activeGame.levelTitle,
+        progression: typedHomeData.activeGame.progression,
+        currentReturn: typedHomeData.activeGame.currentReturn,
         status: 'in_progress' as const,
         hasGame: true,
-        gameId: homeData.activeGame.id,
+        gameId: typedHomeData.activeGame.id,
       };
     }
 
-    // Pas de partie en cours
-    const lastCompleted = homeData?.lastCompletedGame;
-    const currentLevel = homeData?.level;
+    // No game in progress
+    const lastCompleted = typedHomeData?.lastCompletedGame;
+    const currentLevel = typedHomeData?.level;
 
     if (lastCompleted && currentLevel) {
-      // L'utilisateur a un niveau suivant à faire
+      // User has a next level to play
       return {
         level: currentLevel.number || 1,
         levelId: currentLevel.id,
@@ -330,7 +275,7 @@ export default function HomeScreen() {
       };
     }
 
-    // Si on a terminé un niveau mais pas de niveau suivant (tous les niveaux complétés)
+    // Completed a level but no next level (all levels completed)
     if (lastCompleted && !currentLevel) {
       return {
         level: lastCompleted.levelNumber || 1,
@@ -344,11 +289,11 @@ export default function HomeScreen() {
       };
     }
 
-    // Pas de partie en cours et aucune partie terminée → niveau prêt à commencer
+    // No game in progress and no completed game -> level ready to start
     return {
-      level: homeData?.level?.number || 1,
-      levelId: homeData?.level?.id,
-      title: homeData?.level?.title,
+      level: typedHomeData?.level?.number || 1,
+      levelId: typedHomeData?.level?.id,
+      title: typedHomeData?.level?.title,
       progression: 0,
       currentReturn: 0,
       status: 'not_started' as const,
@@ -357,10 +302,10 @@ export default function HomeScreen() {
     };
   }, [homeData, levelCardStatus]);
 
-  // Handler pour naviguer vers l'écran de jeu
+  // Handler to navigate to game screen
   const handleLevelPress = () => {
     if (levelCardData.levelId) {
-      // Si une partie est en cours, inclure le gameId pour éviter la popup d'info
+      // If a game is in progress, include gameId to skip info popup
       if (levelCardData.hasGame && levelCardData.gameId) {
         router.push({
           pathname: '/game/current',
@@ -370,7 +315,7 @@ export default function HomeScreen() {
           }
         });
       } else {
-        // Nouvelle partie: aller directement à l'écran de jeu (la popup d'info s'affichera automatiquement)
+        // New game: go directly to game screen (info popup will show automatically)
         router.push({
           pathname: '/game/current',
           params: { levelId: levelCardData.levelId.toString() }
@@ -420,7 +365,7 @@ export default function HomeScreen() {
             </View>
 
             {/* Level Card - only show if user has a game or level */}
-            {levelCardData.hasGame || homeData?.level ? (
+            {levelCardData.hasGame || (homeData as HomeData)?.level ? (
               <LevelCard
                 level={levelCardData.level}
                 levelId={levelCardData.levelId}
@@ -434,7 +379,7 @@ export default function HomeScreen() {
 
             {/* Daily Quiz Card */}
             {(() => {
-              const streakValue = homeData?.user?.currentStreak ?? user?.currentStreak ?? 0;
+              const streakValue = (homeData as HomeData)?.user?.currentStreak ?? user?.currentStreak ?? 0;
               return (
                 <DailyQuizCard
                   winStreak={streakValue}

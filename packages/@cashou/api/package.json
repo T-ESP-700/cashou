@@ -3,11 +3,21 @@
   "version": "1.0.0",
   "main": "./src/client.ts",
   "types": "./src/client.ts",
+  "exports": {
+    ".": {
+      "types": "./src/client.ts",
+      "default": "./src/client.ts"
+    },
+    "./types": {
+      "types": "./src/types.ts",
+      "default": "./src/types.ts"
+    }
+  },
   "scripts": {
     "build": "echo 'API package built successfully'",
     "test": "echo 'No tests for API package'"
   },
   "dependencies": {
-    "@trpc/client": "11.5.0"
+    "@trpc/client": "11.8.1"
   }
 }

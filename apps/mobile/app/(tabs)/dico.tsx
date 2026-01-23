@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,11 +13,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
 import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { CashouTheme } from '@/constants/cashou-theme';
-import { trpcClient } from '@/lib/trpc';
+import { trpc } from '@/lib/trpc';
 import { useHeaderOptions } from '@/hooks/use-header';
 
 // Dictionary entry type (matches API response)
@@ -53,54 +52,25 @@ export default function DicoScreen() {
   // Bottom sheet ref
   const bottomSheetRef = useRef<BottomSheet>(null);
 
-  // State for data fetching
-  const [entries, setEntries] = useState<DicoEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Fetch all entries from API using React Query
+  const {
+    data: entries = [],
+    isLoading,
+    error,
+    refetch,
+    isRefetching,
+  } = trpc.dicoEntry.getAll.useQuery(undefined, {
+    staleTime: 1000 * 60 * 10, // 10 minutes - dictionary data doesn't change often
+  });
 
   // State for UI
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEntry, setSelectedEntry] = useState<DicoEntry | null>(null);
 
-  // Fetch all entries from API
-  const fetchEntries = useCallback(async (showRefreshing = false) => {
-    try {
-      if (showRefreshing) {
-        setIsRefreshing(true);
-      } else {
-        setIsLoading(true);
-      }
-      setError(null);
-
-      const data = await trpcClient.dicoEntry.getAll.query();
-      setEntries(data as DicoEntry[]);
-    } catch (err) {
-      console.error('Error fetching dico entries:', err);
-      setError('Impossible de charger le dictionnaire. Vérifie ta connexion.');
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, []);
-
-  // Initial fetch
-  useEffect(() => {
-    fetchEntries();
-  }, [fetchEntries]);
-
-  // Refresh when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      // Don't show loading indicator on focus refresh
-      fetchEntries(true);
-    }, [fetchEntries])
-  );
-
   // Handle pull to refresh
   const handleRefresh = useCallback(() => {
-    fetchEntries(true);
-  }, [fetchEntries]);
+    refetch();
+  }, [refetch]);
 
   // Filter entries based on search query (local filtering for responsiveness)
   const filteredEntries = useMemo(() => {
@@ -191,11 +161,11 @@ export default function DicoScreen() {
                 { color: theme.text, fontFamily: CashouTheme.fonts.body },
               ]}
             >
-              {error}
+              Impossible de charger le dictionnaire. Vérifie ta connexion.
             </Text>
             <Pressable
               style={[styles.retryButton, { backgroundColor: theme.accent }]}
-              onPress={() => fetchEntries()}
+              onPress={() => refetch()}
             >
               <Text
                 style={[
@@ -275,7 +245,7 @@ export default function DicoScreen() {
             contentContainerStyle={styles.scrollContent}
             refreshControl={
               <RefreshControl
-                refreshing={isRefreshing}
+                refreshing={isRefetching}
                 onRefresh={handleRefresh}
                 tintColor={theme.accent}
                 colors={[theme.accent]}

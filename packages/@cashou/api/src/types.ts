@@ -1,6 +1,6 @@
 // Re-export AppRouter type from backend
-// This is a placeholder that will be overridden by the actual AppRouter type at build time
-export type AppRouter = any;
+// Import the actual type from the backend router
+export type { AppRouter } from '../../../apps/backend/src/trpc/router';
 
 export interface ApiResponse<T> {
   success: boolean;

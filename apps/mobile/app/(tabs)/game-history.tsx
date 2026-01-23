@@ -1,10 +1,10 @@
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, useColorScheme as useRNColorScheme } from 'react-native';
 import { router } from 'expo-router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
-import { trpcClient } from '@/lib/trpc';
+import { trpc, trpcClient } from '@/lib/trpc';
 import { useAuth } from '@/hooks/use-auth';
 import { useHeaderOptions } from '@/hooks/use-header';
 
@@ -35,43 +35,54 @@ export default function GameHistoryScreen() {
 
   useHeaderOptions({ showBackButton: false });
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [gameHistory, setGameHistory] = useState<GameHistoryItem[]>([]);
+  // Fetch game instances using React Query
+  const {
+    data: instances,
+    isLoading: instancesLoading,
+    error: instancesError,
+  } = trpc.gameInstance.getByUser.useQuery(
+    { userId: user?.id! },
+    {
+      enabled: !!user?.id,
+      staleTime: 1000 * 60 * 2, // 2 minutes
+    }
+  );
 
+  // Sort instances by creation date (most recent first)
+  const sortedInstances = useMemo(() => {
+    if (!instances) return [];
+    return [...instances].sort((a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [instances]);
+
+  // State for quiz completion status (enriched data)
+  const [gameHistory, setGameHistory] = useState<GameHistoryItem[]>([]);
+  const [quizStatusLoading, setQuizStatusLoading] = useState(false);
+
+  // Enrich game instances with quiz completion status
   useEffect(() => {
-    const fetchHistory = async () => {
-      if (!user) {
-        setError('Vous devez etre connecte');
-        setIsLoading(false);
+    const enrichWithQuizStatus = async () => {
+      if (!sortedInstances.length || !user) {
+        setGameHistory(sortedInstances as GameHistoryItem[]);
         return;
       }
 
+      setQuizStatusLoading(true);
       try {
-        setIsLoading(true);
-        const instances = await trpcClient.gameInstance.getByUser.query({ userId: user.id });
-        // Trier par date de creation decroissante
-        const sorted = [...instances].sort((a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-        
-        // Pour chaque partie terminée, vérifier si le quiz du niveau est complété
         const gamesWithQuizStatus = await Promise.all(
-          sorted.map(async (game: any) => {
+          sortedInstances.map(async (game: any) => {
             if (!game.isEnded || !game.level?.id) {
               return { ...game, levelQuizCompleted: false };
             }
 
             try {
-              // Récupérer le quiz du niveau
               const quizzes = await trpcClient.quiz.getByLevel.query({ levelId: game.level.id });
               if (!quizzes || quizzes.length === 0) {
-                return { ...game, levelQuizCompleted: true }; // Pas de quiz = considéré comme complété
+                return { ...game, levelQuizCompleted: true };
               }
 
               const quizId = quizzes[0].id;
-              
-              // Vérifier si l'utilisateur a complété ce quiz
               const participations = await trpcClient.userQuiz.getByQuiz.query({ quizId });
               const userParticipation = (participations as any[]).find(
                 (p: any) => p.userId === user.id && p.completedAt !== null
@@ -87,15 +98,18 @@ export default function GameHistoryScreen() {
 
         setGameHistory(gamesWithQuizStatus as GameHistoryItem[]);
       } catch (err) {
-        console.error('Error fetching game history:', err);
-        setError('Erreur lors du chargement de l\'historique');
+        console.error('Error enriching game history:', err);
+        setGameHistory(sortedInstances as GameHistoryItem[]);
       } finally {
-        setIsLoading(false);
+        setQuizStatusLoading(false);
       }
     };
 
-    fetchHistory();
-  }, [user]);
+    enrichWithQuizStatus();
+  }, [sortedInstances, user]);
+
+  const isLoading = instancesLoading || quizStatusLoading;
+  const error = !user ? 'Vous devez etre connecte' : instancesError?.message ?? null;
 
   const formatDate = (dateStr: string): string => {
     const date = new Date(dateStr);
