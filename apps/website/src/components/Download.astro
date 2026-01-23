@@ -190,6 +190,24 @@ import Logo from '../assets/Frame 93.png';
       }`;
     }
 
+    // Fonction pour vérifier si l'email existe déjà
+    async function checkEmailExists(apiEndpoint, email) {
+      try {
+        const response = await fetch(`${apiEndpoint}?email=${encodeURIComponent(email)}`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          },
+        });
+
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error(`Erreur lors de la vérification de l'email:`, error);
+        return { success: false, error: 'Erreur lors de la vérification' };
+      }
+    }
+
     // Fonction pour gérer la soumission d'un formulaire
     async function handleSubmit(
       form,
@@ -210,9 +228,23 @@ import Logo from '../assets/Frame 93.png';
       // Désactiver le bouton pendant la requête
       submitBtn.disabled = true;
       const originalText = submitBtn.textContent;
-      submitBtn.textContent = 'Inscription...';
+      submitBtn.textContent = 'Vérification...';
 
       try {
+        // Vérifier d'abord si l'email existe déjà dans la liste
+        const checkData = await checkEmailExists(apiEndpoint, email);
+        
+        if (checkData.success && checkData.exists) {
+          // L'email existe déjà dans la liste
+          showMessage(messageDiv, checkData.message || 'Vous êtes déjà inscrit !', 'success');
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText || 'M\'inscrire';
+          return;
+        }
+
+        // Si l'email n'existe pas, procéder à l'ajout
+        submitBtn.textContent = 'Inscription...';
+        
         const response = await fetch(apiEndpoint, {
           method: 'POST',
           headers: {
