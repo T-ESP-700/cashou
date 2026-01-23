@@ -1,0 +1,154 @@
+---
+---
+
+<!-- Modal pour la désinscription -->
+<div id="unsubscribe-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl p-8 max-w-md w-full relative">
+    <button id="close-unsubscribe-modal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600" aria-label="Fermer">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+    
+    <h3 class="text-2xl font-bold text-cashou-primary mb-4">Désinscription</h3>
+    <p class="text-gray-600 mb-6">
+      Entrez votre adresse email pour être retiré de toutes nos listes d'attente.
+    </p>
+    
+    <form id="unsubscribe-form" class="space-y-4" novalidate>
+      <input
+        type="email"
+        id="unsubscribe-email"
+        name="email"
+        placeholder="Votre adresse email"
+        required
+        autocomplete="email"
+        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cashou-primary text-gray-900"
+      />
+      <button
+        type="submit"
+        id="unsubscribe-submit-btn"
+        class="w-full bg-cashou-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-cashou-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Me désinscrire
+      </button>
+    </form>
+    
+    <div id="unsubscribe-message" class="mt-4 hidden" role="alert"></div>
+  </div>
+</div>
+
+<script is:inline>
+  document.addEventListener('DOMContentLoaded', function() {
+    const unsubscribeModal = document.getElementById('unsubscribe-modal');
+    const closeUnsubscribeBtn = document.getElementById('close-unsubscribe-modal');
+    const unsubscribeForm = document.getElementById('unsubscribe-form');
+    const unsubscribeMessageDiv = document.getElementById('unsubscribe-message');
+    const unsubscribeEmailInput = document.getElementById('unsubscribe-email');
+    const unsubscribeSubmitBtn = document.getElementById('unsubscribe-submit-btn');
+
+    if (!unsubscribeModal || !unsubscribeForm || !unsubscribeEmailInput || !unsubscribeSubmitBtn || !unsubscribeMessageDiv) return;
+
+    // Fonction pour fermer la modal
+    function closeModal() {
+      unsubscribeModal.classList.add('hidden');
+      unsubscribeMessageDiv.classList.add('hidden');
+      unsubscribeForm.reset();
+    }
+
+    // Fonction pour afficher un message
+    function showMessage(text, type) {
+      unsubscribeMessageDiv.classList.remove('hidden');
+      unsubscribeMessageDiv.textContent = text;
+      unsubscribeMessageDiv.className = `mt-4 p-4 rounded-lg ${
+        type === 'success' 
+          ? 'bg-green-100 text-green-700' 
+          : 'bg-red-100 text-red-700'
+      }`;
+    }
+
+    // Fonction pour ouvrir la modal
+    function openModal() {
+      unsubscribeModal.classList.remove('hidden');
+      unsubscribeEmailInput.focus();
+    }
+
+    // Gestion de la fermeture
+    if (closeUnsubscribeBtn) {
+      closeUnsubscribeBtn.addEventListener('click', closeModal);
+    }
+
+    unsubscribeModal.addEventListener('click', (e) => {
+      if (e.target === unsubscribeModal) {
+        closeModal();
+      }
+    });
+
+    // Fonction pour gérer la désinscription
+    async function handleUnsubscribe() {
+      const email = unsubscribeEmailInput.value.trim();
+      
+      if (!email) {
+        showMessage('Veuillez entrer une adresse email', 'error');
+        return;
+      }
+
+      // Désactiver le bouton pendant la requête
+      unsubscribeSubmitBtn.disabled = true;
+      const originalText = unsubscribeSubmitBtn.textContent;
+      unsubscribeSubmitBtn.textContent = 'Désinscription...';
+
+      try {
+        const response = await fetch('/api/unsubscribe', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({ email }),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showMessage(data.message || 'Vous avez été désinscrit avec succès.', 'success');
+          unsubscribeForm.reset();
+        } else {
+          // Gérer les différents cas d'erreur
+          if (response.status === 404) {
+            showMessage(data.error || 'Cette adresse email n\'est pas inscrite dans nos listes.', 'error');
+          } else {
+            const errorMessage = data.error || 'Une erreur est survenue. Veuillez contacter contact@cashou.app pour obtenir de l\'aide.';
+            showMessage(errorMessage, 'error');
+          }
+        }
+      } catch (error) {
+        console.error('Erreur lors de la désinscription:', error);
+        showMessage('Une erreur est survenue. Veuillez contacter contact@cashou.app pour obtenir de l\'aide.', 'error');
+      } finally {
+        unsubscribeSubmitBtn.disabled = false;
+        unsubscribeSubmitBtn.textContent = originalText || 'Me désinscrire';
+      }
+    }
+
+    unsubscribeForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      handleUnsubscribe();
+    });
+
+    // Fermer avec Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !unsubscribeModal.classList.contains('hidden')) {
+        closeModal();
+      }
+    });
+
+    // Exposer la fonction pour ouvrir la modal globalement
+    window.openUnsubscribeModal = openModal;
+
+    // Si on est sur la page /desinscription, ouvrir automatiquement la modal
+    if (window.location.pathname === '/desinscription') {
+      openModal();
+    }
+  });
+</script>

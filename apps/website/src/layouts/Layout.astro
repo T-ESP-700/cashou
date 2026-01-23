@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import Logo from '../assets/Frame 93.png';
+import UnsubscribeModal from '../components/UnsubscribeModal.astro';
 
 interface Props {
   title: string;
@@ -25,6 +26,7 @@ const { title, description = "L'app qui vous apprend à gérer votre argent en t
   </head>
   <body class="bg-cashou-background-light text-cashou-text-light font-body antialiased">
     <slot />
+    <UnsubscribeModal />
   </body>
 </html>
 

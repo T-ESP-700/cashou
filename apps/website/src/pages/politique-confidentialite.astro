@@ -71,7 +71,7 @@ const showComingSoon = import.meta.env.PUBLIC_SHOW_COMING_SOON === 'true';
                 <li><strong>Sous-traitant :</strong> Brevo (Sendinblue) - Service d'email marketing</li>
               </ul>
               <p class="text-base md:text-lg leading-relaxed">
-                <strong>Votre consentement est obligatoire</strong> pour vous inscrire à ces listes. Vous pouvez vous désinscrire à tout moment en nous contactant à <a href="mailto:contact@cashou.app" class="text-cashou-primary hover:underline">contact@cashou.app</a> ou en utilisant le lien de désinscription présent dans les emails que vous recevrez.
+                <strong>Votre consentement est obligatoire</strong> pour vous inscrire à ces listes. Vous pouvez vous désinscrire à tout moment en utilisant notre <a href="#" onclick="if(typeof window.openUnsubscribeModal === 'function') { event.preventDefault(); window.openUnsubscribeModal(); } return false;" class="text-cashou-primary hover:underline font-medium">formulaire de désinscription</a>, en nous contactant à <a href="mailto:contact@cashou.app" class="text-cashou-primary hover:underline">contact@cashou.app</a> ou en utilisant le lien de désinscription présent dans les emails que vous recevrez.
               </p>
             </div>
 
@@ -178,6 +178,7 @@ const showComingSoon = import.meta.env.PUBLIC_SHOW_COMING_SOON === 'true';
                 Pour exercer l'un de ces droits ou pour vous désinscrire des listes d'attente, vous pouvez :
               </p>
               <ul class="list-disc list-inside space-y-2 ml-4 text-base md:text-lg">
+                <li>Utiliser notre <a href="#" onclick="if(typeof window.openUnsubscribeModal === 'function') { event.preventDefault(); window.openUnsubscribeModal(); } return false;" class="text-cashou-primary hover:underline font-medium">formulaire de désinscription en ligne</a></li>
                 <li>Nous contacter par email à <a href="mailto:contact@cashou.app" class="text-cashou-primary hover:underline">contact@cashou.app</a></li>
                 <li>Utiliser le lien de désinscription présent dans les emails que vous recevez de Brevo</li>
               </ul>
