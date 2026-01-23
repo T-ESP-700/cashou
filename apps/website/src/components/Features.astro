@@ -55,17 +55,17 @@ function setSvgColor(svg: string, color: string): string {
   result = result.replace(/fill="currentColor"/g, `fill="${color}"`);
   // Remplacer les attributs fill avec guillemets simples
   result = result.replace(/fill='#[0-9A-Fa-f]{3,8}'/g, `fill="${color}"`);
-  // Remplacer ou ajouter les attributs width et height pour une taille cohérente (48px = text-5xl)
+  // Remplacer ou ajouter les attributs width et height pour une taille cohérente (40px = w-10 h-10)
   result = result.replace(/width="[^"]*"/g, '');
   result = result.replace(/height="[^"]*"/g, '');
-  result = result.replace(/<svg([^>]*)>/g, `<svg$1 class="w-12 h-12">`);
+  result = result.replace(/<svg([^>]*)>/g, `<svg$1 class="w-10 h-10">`);
   return result;
 }
 ---
 
-<section id="features" class="py-24 bg-white">
+<section id="features" class="min-h-screen bg-white py-16 pb-32 relative z-10">
   <div class="container mx-auto px-6">
-    <div class="text-center mb-16">
+    <div class="text-center mb-8">
       <h2 class="text-4xl md:text-5xl font-heading font-bold text-cashou-text-light mb-4">
         Fonctionnalités
       </h2>
@@ -74,19 +74,19 @@ function setSvgColor(svg: string, color: string): string {
       </p>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {features.map((feature, index) => (
         <div 
-          class="bg-cashou-background-light p-8 rounded-2xl hover:shadow-xl transition-all transform hover:-translate-y-2 border border-cashou-secondary animate-fade-in"
+          class="bg-cashou-background-light p-6 rounded-xl hover:shadow-xl transition-all transform hover:-translate-y-2 border border-cashou-secondary animate-fade-in"
           style={`animation-delay: ${index * 0.1}s`}
         >
-          <div class="mb-4 flex items-center justify-center text-cashou-primary" style="width: 3rem; height: 3rem;">
+          <div class="mb-3 flex items-center justify-center text-cashou-primary" style="width: 2.5rem; height: 2.5rem;">
             <span set:html={setSvgColor(feature.icon, '#FFB472')} />
           </div>
-          <h3 class="text-2xl font-heading font-bold text-cashou-text-light mb-3">
+          <h3 class="text-xl font-heading font-bold text-cashou-text-light mb-2">
             {feature.title}
           </h3>
-          <p class="text-cashou-text-light/70 leading-relaxed">
+          <p class="text-sm text-cashou-text-light/70 leading-relaxed">
             {feature.description}
           </p>
         </div>
