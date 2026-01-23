@@ -10,6 +10,7 @@
     "deploy": "vercel --prod"
   },
   "dependencies": {
+    "@astrojs/vercel": "^9.0.4",
     "astro": "^5.16.13"
   },
   "devDependencies": {
