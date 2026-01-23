@@ -11,7 +11,7 @@ const showComingSoon = import.meta.env.PUBLIC_SHOW_COMING_SOON === 'true';
 <Layout title="Mentions légales - Cashou" description="Mentions légales du site Cashou">
   {showComingSoon ? (
     <!-- Header simplifié pour mode Coming Soon -->
-    <header class="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-sm border-b border-cashou-border-light/10">
+    <header class="fixed top-0 left-0 right-0 z-50 bg-white border-b border-cashou-border-light/10">
       <nav class="container mx-auto px-6 py-4 flex items-center justify-between">
         <a href="/" class="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <img src={Logo.src} alt="Cashou Logo" class="h-10 w-auto" />
