@@ -1,0 +1,199 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import Logo from '../assets/Frame 93.png';
+
+// Détecter si on est en mode "coming soon"
+const showComingSoon = import.meta.env.PUBLIC_SHOW_COMING_SOON === 'true';
+---
+
+<Layout title="Politique de confidentialité - Cashou" description="Politique de confidentialité et protection des données personnelles du site Cashou">
+  {showComingSoon ? (
+    <!-- Header simplifié pour mode Coming Soon -->
+    <header class="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-sm border-b border-cashou-border-light/10">
+      <nav class="container mx-auto px-6 py-4 flex items-center justify-between">
+        <a href="/" class="flex items-center gap-3 hover:opacity-80 transition-opacity">
+          <img src={Logo.src} alt="Cashou Logo" class="h-10 w-auto" />
+          <span class="text-2xl font-heading font-bold text-cashou-text-light">Cashou</span>
+        </a>
+      </nav>
+    </header>
+  ) : (
+    <Header />
+  )}
+
+  <main class="pt-24 pb-16 min-h-screen bg-gradient-to-br from-cashou-background-light via-white to-cashou-secondary/10">
+    <div class="container mx-auto px-6 max-w-4xl">
+      <div class="bg-white rounded-2xl shadow-lg p-8 md:p-12 animate-fade-in">
+        <h1 class="text-3xl md:text-4xl font-heading font-bold text-cashou-text-light mb-8">
+          Politique de confidentialité
+        </h1>
+
+        <div class="space-y-8 text-cashou-text-light">
+          <!-- Introduction -->
+          <section>
+            <p class="text-base md:text-lg leading-relaxed mb-4">
+              La présente politique de confidentialité décrit la manière dont Cashou traite vos données personnelles lorsque vous visitez notre site web.
+            </p>
+            <p class="text-base md:text-lg leading-relaxed">
+              Cette politique s'applique uniquement au site web <strong>cashou.app</strong> dans le cadre d'un projet éducatif réalisé par des étudiants d'Epitech. Nous nous engageons à respecter votre vie privée et à protéger vos données personnelles conformément au Règlement Général sur la Protection des Données (RGPD).
+            </p>
+            <div class="bg-cashou-secondary/30 border-l-4 border-cashou-primary p-4 rounded-r-lg mt-4">
+              <p class="text-base md:text-lg leading-relaxed font-medium">
+                <strong>Note importante :</strong> Cette politique concerne uniquement le site web. Pour la politique de confidentialité de l'application mobile Cashou, veuillez consulter les informations disponibles directement dans l'application.
+              </p>
+            </div>
+          </section>
+
+          <!-- Données collectées -->
+          <section>
+            <h2 class="text-2xl font-heading font-bold text-cashou-primary mb-4">
+              Collecte de données personnelles
+            </h2>
+            <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg mb-4">
+              <p class="text-base md:text-lg leading-relaxed font-medium text-green-800">
+                <strong>✅ Aucune donnée personnelle n'est collectée sur ce site web.</strong>
+              </p>
+            </div>
+            <p class="text-base md:text-lg leading-relaxed mb-4">
+              Le site web Cashou est un site statique d'information qui ne collecte, ne stocke ni ne traite aucune donnée personnelle. Concrètement :
+            </p>
+            <ul class="list-disc list-inside space-y-2 ml-4 text-base md:text-lg">
+              <li><strong>Aucun formulaire de contact :</strong> Le site ne contient pas de formulaire qui pourrait collecter vos données</li>
+              <li><strong>Aucun compte utilisateur :</strong> Il n'est pas possible de créer un compte sur ce site</li>
+              <li><strong>Aucun cookie de suivi :</strong> Aucun cookie n'est utilisé pour vous suivre ou vous identifier</li>
+              <li><strong>Aucun service d'analyse :</strong> Aucun outil d'analyse (comme Google Analytics) n'est intégré</li>
+            </ul>
+            <p class="text-base md:text-lg leading-relaxed mt-4">
+              Vous pouvez naviguer librement sur ce site sans que nous collections la moindre information vous concernant.
+            </p>
+          </section>
+
+          <!-- Données techniques -->
+          <section>
+            <h2 class="text-2xl font-heading font-bold text-cashou-primary mb-4">
+              Données techniques et hébergement
+            </h2>
+            <p class="text-base md:text-lg leading-relaxed mb-4">
+              Bien que nous ne collections pas de données personnelles, certaines données techniques peuvent être générées automatiquement par votre navigateur et notre hébergeur :
+            </p>
+            <ul class="list-disc list-inside space-y-2 ml-4 text-base md:text-lg">
+              <li><strong>Logs du serveur :</strong> Notre hébergeur (Vercel Inc.) peut enregistrer automatiquement votre adresse IP, la date et l'heure de votre visite, et les pages consultées dans des logs techniques. Ces données sont utilisées uniquement pour le bon fonctionnement technique du site et ne sont pas associées à votre identité.</li>
+              <li><strong>Données de navigation :</strong> Votre navigateur envoie automatiquement certaines informations (type de navigateur, système d'exploitation) pour afficher correctement le site. Ces données ne sont pas stockées par nos soins.</li>
+            </ul>
+            <p class="text-base md:text-lg leading-relaxed mt-4">
+              Ces données techniques sont nécessaires au fonctionnement du site et ne permettent pas de vous identifier personnellement.
+            </p>
+          </section>
+
+          <!-- Cookies -->
+          <section>
+            <h2 class="text-2xl font-heading font-bold text-cashou-primary mb-4">
+              Cookies et technologies similaires
+            </h2>
+            <p class="text-base md:text-lg leading-relaxed mb-4">
+              <strong>Ce site n'utilise aucun cookie.</strong>
+            </p>
+            <p class="text-base md:text-lg leading-relaxed">
+              Aucun cookie n'est déposé sur votre appareil lorsque vous visitez ce site web. Vous pouvez naviguer en toute tranquillité sans avoir à gérer de préférences de cookies.
+            </p>
+          </section>
+
+          <!-- Liens externes -->
+          <section>
+            <h2 class="text-2xl font-heading font-bold text-cashou-primary mb-4">
+              Liens vers des sites tiers
+            </h2>
+            <p class="text-base md:text-lg leading-relaxed mb-4">
+              Ce site peut contenir des liens vers des sites externes (par exemple, notre page LinkedIn). Lorsque vous cliquez sur ces liens, vous quittez notre site et vous êtes soumis à la politique de confidentialité du site tiers.
+            </p>
+            <p class="text-base md:text-lg leading-relaxed">
+              Nous ne sommes pas responsables des pratiques de collecte de données des sites tiers. Nous vous encourageons à consulter leur politique de confidentialité avant de leur fournir des informations personnelles.
+            </p>
+          </section>
+
+          <!-- Vos droits -->
+          <section>
+            <h2 class="text-2xl font-heading font-bold text-cashou-primary mb-4">
+              Vos droits
+            </h2>
+            <p class="text-base md:text-lg leading-relaxed mb-4">
+              Conformément au RGPD, vous disposez de droits concernant vos données personnelles. Cependant, comme ce site ne collecte aucune donnée personnelle, ces droits ne s'appliquent pas dans le cadre de votre navigation sur ce site web.
+            </p>
+            <p class="text-base md:text-lg leading-relaxed mb-4">
+              Si vous avez des questions ou des préoccupations concernant cette politique de confidentialité, vous pouvez nous contacter à :
+            </p>
+            <p class="text-base md:text-lg mt-2">
+              <a href="mailto:contact@cashou.app" class="text-cashou-primary hover:text-cashou-primary/80 underline font-medium">
+                contact@cashou.app
+              </a>
+            </p>
+            <p class="text-base md:text-lg leading-relaxed mt-4">
+              Vous avez également le droit d'introduire une réclamation auprès de la Commission Nationale de l'Informatique et des Libertés (CNIL) si vous estimez que le traitement de vos données personnelles constitue une violation du RGPD.
+            </p>
+          </section>
+
+          <!-- Modifications -->
+          <section>
+            <h2 class="text-2xl font-heading font-bold text-cashou-primary mb-4">
+              Modifications de la politique
+            </h2>
+            <p class="text-base md:text-lg leading-relaxed">
+              Nous nous réservons le droit de modifier cette politique de confidentialité à tout moment. Toute modification sera publiée sur cette page avec une mise à jour de la date de dernière modification. Nous vous encourageons à consulter régulièrement cette page pour rester informé de la manière dont nous protégeons vos données.
+            </p>
+          </section>
+
+          <!-- Contact -->
+          <section>
+            <h2 class="text-2xl font-heading font-bold text-cashou-primary mb-4">
+              Contact
+            </h2>
+            <p class="text-base md:text-lg leading-relaxed">
+              Pour toute question concernant cette politique de confidentialité ou le site web, vous pouvez nous contacter à :
+            </p>
+            <p class="text-base md:text-lg mt-2">
+              <a href="mailto:contact@cashou.app" class="text-cashou-primary hover:text-cashou-primary/80 underline font-medium">
+                contact@cashou.app
+              </a>
+            </p>
+            <p class="text-base md:text-lg leading-relaxed mt-4">
+              <strong>Note :</strong> Pour toute question concernant l'application mobile Cashou et la collecte de données dans l'application, veuillez consulter la politique de confidentialité disponible directement dans l'application.
+            </p>
+          </section>
+
+          <!-- Date de mise à jour -->
+          <section class="pt-4 border-t border-cashou-border-light/20">
+            <p class="text-base md:text-lg text-cashou-text-light/70">
+              <strong>Dernière mise à jour :</strong> {new Date().toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  {showComingSoon ? (
+    <!-- Footer simplifié pour mode Coming Soon -->
+    <footer class="bg-white/50 backdrop-blur-sm border-t border-cashou-border-light/10 py-6">
+      <div class="container mx-auto px-6">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-cashou-text-light/70">
+          <p>&copy; {new Date().getFullYear()} Cashou - Projet scolaire Epitech. Tous droits réservés.</p>
+          <div class="flex items-center gap-4">
+            <a href="/" class="hover:text-cashou-primary transition-colors">
+              Accueil
+            </a>
+            <a href="/mentions-legales" class="hover:text-cashou-primary transition-colors">
+              Mentions légales
+            </a>
+            <a href="mailto:contact@cashou.app" class="hover:text-cashou-primary transition-colors">
+              Contact
+            </a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  ) : (
+    <Footer />
+  )}
+</Layout>
