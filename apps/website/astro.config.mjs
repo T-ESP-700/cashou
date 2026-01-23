@@ -7,7 +7,9 @@ import vercel from '@astrojs/vercel/serverless';
 export default defineConfig({
   integrations: [tailwind()],
   output: 'server', // Mode serveur pour les API routes
-  adapter: vercel(),
+  adapter: vercel(
+    {webAnalytics: {enabled: true}}
+  ),
   site: 'https://cashou.app', // À remplacer par votre domaine
   compressHTML: true,
 });

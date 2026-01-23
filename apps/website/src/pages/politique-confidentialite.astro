@@ -75,14 +75,34 @@ const showComingSoon = import.meta.env.PUBLIC_SHOW_COMING_SOON === 'true';
               </p>
             </div>
 
+            <!-- Analytics Vercel -->
+            <div class="bg-cashou-secondary/30 border-l-4 border-cashou-primary p-4 rounded-r-lg mb-4 mt-6">
+              <h3 class="text-xl font-heading font-bold text-cashou-primary mb-3">
+                📊 Analyse du trafic (Vercel Web Analytics)
+              </h3>
+              <p class="text-base md:text-lg leading-relaxed mb-3">
+                Nous utilisons <strong>Vercel Web Analytics</strong> pour analyser le trafic de notre site et comprendre comment les visiteurs utilisent notre site web.
+              </p>
+              <ul class="list-disc list-inside space-y-2 ml-4 text-base md:text-lg mb-3">
+                <li><strong>Données collectées :</strong> Données anonymisées sur le trafic (nombre de visiteurs, pages consultées, durée de visite, provenance géographique approximative)</li>
+                <li><strong>Finalité :</strong> Comprendre l'utilisation du site, améliorer l'expérience utilisateur et mesurer la performance du site</li>
+                <li><strong>Base légale :</strong> Intérêt légitime (amélioration du service)</li>
+                <li><strong>Anonymisation :</strong> Les données sont automatiquement anonymisées et ne permettent pas de vous identifier personnellement</li>
+                <li><strong>Cookies :</strong> Vercel Web Analytics n'utilise pas de cookies</li>
+                <li><strong>Sous-traitant :</strong> Vercel Inc. (hébergeur du site)</li>
+              </ul>
+              <p class="text-base md:text-lg leading-relaxed">
+                Ces données sont collectées de manière anonyme et agrégée. Elles ne contiennent aucune information permettant de vous identifier personnellement (pas de nom, email, adresse IP complète, etc.).
+              </p>
+            </div>
+
             <!-- Autres données -->
             <p class="text-base md:text-lg leading-relaxed mb-4 mt-6">
-              En dehors de l'inscription aux listes d'attente, le site ne collecte pas d'autres données personnelles :
+              En dehors de l'inscription aux listes d'attente et de l'analyse du trafic, le site ne collecte pas d'autres données personnelles :
             </p>
             <ul class="list-disc list-inside space-y-2 ml-4 text-base md:text-lg">
               <li><strong>Aucun compte utilisateur :</strong> Il n'est pas possible de créer un compte sur ce site</li>
               <li><strong>Aucun cookie de suivi :</strong> Aucun cookie n'est utilisé pour vous suivre ou vous identifier</li>
-              <li><strong>Aucun service d'analyse :</strong> Aucun outil d'analyse (comme Google Analytics) n'est intégré</li>
             </ul>
           </section>
 
@@ -92,8 +112,9 @@ const showComingSoon = import.meta.env.PUBLIC_SHOW_COMING_SOON === 'true';
               Sous-traitants et transferts de données
             </h2>
             <p class="text-base md:text-lg leading-relaxed mb-4">
-              Pour gérer les inscriptions aux listes d'attente, nous utilisons le service <strong>Brevo</strong> (anciennement Sendinblue) comme sous-traitant.
+              Nous utilisons plusieurs services tiers pour faire fonctionner notre site web. Voici les sous-traitants que nous utilisons :
             </p>
+            
             <div class="bg-cashou-secondary/30 border-l-4 border-cashou-primary p-4 rounded-r-lg mb-4">
               <h3 class="text-xl font-heading font-bold text-cashou-primary mb-3">
                 Brevo (Sendinblue)
@@ -106,8 +127,23 @@ const showComingSoon = import.meta.env.PUBLIC_SHOW_COMING_SOON === 'true';
                 <li><strong>Politique de confidentialité :</strong> <a href="https://www.brevo.com/legal/privacypolicy/" target="_blank" rel="noopener noreferrer" class="text-cashou-primary hover:underline">https://www.brevo.com/legal/privacypolicy/</a></li>
               </ul>
             </div>
+
+            <div class="bg-cashou-secondary/30 border-l-4 border-cashou-primary p-4 rounded-r-lg mb-4">
+              <h3 class="text-xl font-heading font-bold text-cashou-primary mb-3">
+                Vercel Inc.
+              </h3>
+              <ul class="list-disc list-inside space-y-2 ml-4 text-base md:text-lg">
+                <li><strong>Service :</strong> Hébergement du site web et analyse du trafic (Vercel Web Analytics)</li>
+                <li><strong>Données traitées :</strong> Données anonymisées sur le trafic du site (nombre de visiteurs, pages consultées, etc.)</li>
+                <li><strong>Finalité :</strong> Hébergement du site et analyse statistique du trafic</li>
+                <li><strong>Localisation :</strong> États-Unis (transfert de données vers un pays tiers)</li>
+                <li><strong>Garanties :</strong> Vercel s'engage à respecter les standards de protection des données et dispose de garanties appropriées pour les transferts de données vers les États-Unis</li>
+                <li><strong>Politique de confidentialité :</strong> <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer" class="text-cashou-primary hover:underline">https://vercel.com/legal/privacy-policy</a></li>
+              </ul>
+            </div>
+
             <p class="text-base md:text-lg leading-relaxed">
-              Brevo est conforme au RGPD et s'engage à protéger vos données personnelles. Nous avons conclu un contrat de sous-traitance avec Brevo qui garantit la protection de vos données.
+              Brevo est conforme au RGPD et s'engage à protéger vos données personnelles. Nous avons conclu un contrat de sous-traitance avec Brevo qui garantit la protection de vos données. Vercel Inc., en tant qu'hébergeur et fournisseur d'analytics, traite uniquement des données anonymisées qui ne permettent pas de vous identifier personnellement.
             </p>
           </section>
 
@@ -117,14 +153,14 @@ const showComingSoon = import.meta.env.PUBLIC_SHOW_COMING_SOON === 'true';
               Données techniques et hébergement
             </h2>
             <p class="text-base md:text-lg leading-relaxed mb-4">
-              Bien que nous ne collections pas de données personnelles, certaines données techniques peuvent être générées automatiquement par votre navigateur et notre hébergeur :
+              En plus des données collectées par Vercel Web Analytics (mentionnées ci-dessus), certaines données techniques peuvent être générées automatiquement par votre navigateur et notre hébergeur :
             </p>
             <ul class="list-disc list-inside space-y-2 ml-4 text-base md:text-lg">
               <li><strong>Logs du serveur :</strong> Notre hébergeur (Vercel Inc.) peut enregistrer automatiquement votre adresse IP, la date et l'heure de votre visite, et les pages consultées dans des logs techniques. Ces données sont utilisées uniquement pour le bon fonctionnement technique du site et ne sont pas associées à votre identité.</li>
               <li><strong>Données de navigation :</strong> Votre navigateur envoie automatiquement certaines informations (type de navigateur, système d'exploitation) pour afficher correctement le site. Ces données ne sont pas stockées par nos soins.</li>
             </ul>
             <p class="text-base md:text-lg leading-relaxed mt-4">
-              Ces données techniques sont nécessaires au fonctionnement du site et ne permettent pas de vous identifier personnellement.
+              Ces données techniques sont nécessaires au fonctionnement du site et ne permettent pas de vous identifier personnellement. Les données collectées par Vercel Web Analytics sont automatiquement anonymisées.
             </p>
           </section>
 
@@ -136,8 +172,11 @@ const showComingSoon = import.meta.env.PUBLIC_SHOW_COMING_SOON === 'true';
             <p class="text-base md:text-lg leading-relaxed mb-4">
               <strong>Ce site n'utilise aucun cookie.</strong>
             </p>
+            <p class="text-base md:text-lg leading-relaxed mb-4">
+              Aucun cookie n'est déposé sur votre appareil lorsque vous visitez ce site web. Vercel Web Analytics, que nous utilisons pour analyser le trafic, fonctionne sans cookies et collecte uniquement des données anonymisées via des événements JavaScript.
+            </p>
             <p class="text-base md:text-lg leading-relaxed">
-              Aucun cookie n'est déposé sur votre appareil lorsque vous visitez ce site web. Vous pouvez naviguer en toute tranquillité sans avoir à gérer de préférences de cookies.
+              Vous pouvez naviguer en toute tranquillité sans avoir à gérer de préférences de cookies.
             </p>
           </section>
 
