@@ -2,10 +2,27 @@
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import Logo from '../assets/Frame 93.png';
+
+// Détecter si on est en mode "coming soon"
+const showComingSoon = import.meta.env.PUBLIC_SHOW_COMING_SOON === 'true';
 ---
 
 <Layout title="Mentions légales - Cashou" description="Mentions légales du site Cashou">
-  <Header />
+  {showComingSoon ? (
+    <!-- Header simplifié pour mode Coming Soon -->
+    <header class="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-sm border-b border-cashou-border-light/10">
+      <nav class="container mx-auto px-6 py-4 flex items-center justify-between">
+        <a href="/" class="flex items-center gap-3 hover:opacity-80 transition-opacity">
+          <img src={Logo.src} alt="Cashou Logo" class="h-10 w-auto" />
+          <span class="text-2xl font-heading font-bold text-cashou-text-light">Cashou</span>
+        </a>
+      </nav>
+    </header>
+  ) : (
+    <Header />
+  )}
+
   <main class="pt-24 pb-16 min-h-screen bg-gradient-to-br from-cashou-background-light via-white to-cashou-secondary/10">
     <div class="container mx-auto px-6 max-w-4xl">
       <div class="bg-white rounded-2xl shadow-lg p-8 md:p-12 animate-fade-in">
@@ -142,5 +159,25 @@ import Footer from '../components/Footer.astro';
       </div>
     </div>
   </main>
-  <Footer />
+
+  {showComingSoon ? (
+    <!-- Footer simplifié pour mode Coming Soon -->
+    <footer class="bg-white/50 backdrop-blur-sm border-t border-cashou-border-light/10 py-6">
+      <div class="container mx-auto px-6">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-cashou-text-light/70">
+          <p>&copy; {new Date().getFullYear()} Cashou - Projet scolaire Epitech. Tous droits réservés.</p>
+          <div class="flex items-center gap-4">
+            <a href="/" class="hover:text-cashou-primary transition-colors">
+              Accueil
+            </a>
+            <a href="mailto:contact@cashou.app" class="hover:text-cashou-primary transition-colors">
+              Contact
+            </a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  ) : (
+    <Footer />
+  )}
 </Layout>
