@@ -140,6 +140,59 @@
     position: relative;
     z-index: 10;
   }
+  
+  /* Animations pour les transitions de page */
+  #app-content {
+    transition: opacity 0.25s ease-out, transform 0.25s ease-out;
+  }
+  
+  /* Animation pour le retour en arrière - sortie */
+  #app-content.slide-back {
+    animation: fadeOutSlideBack 0.25s ease-out forwards;
+  }
+  
+  @keyframes fadeOutSlideBack {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+  }
+  
+  /* Animation pour l'ouverture d'un quiz - entrée */
+  #app-content.slide-quiz {
+    animation: fadeInSlideUp 0.3s ease-out forwards;
+  }
+  
+  @keyframes fadeInSlideUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Animation d'entrée standard */
+  #app-content.slide-in {
+    animation: fadeInSlide 0.3s ease-out forwards;
+  }
+  
+  @keyframes fadeInSlide {
+    from {
+      opacity: 0;
+      transform: translateX(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
 </style>
 
 <script is:inline>
@@ -247,6 +300,7 @@
 
   // État de l'application
   let currentPage = 'home';
+  let pageHistory = []; // Historique de navigation pour le bouton précédent
   let currentQuizData = null; // Quiz actuellement sélectionné (todayQuiz ou yesterdayQuiz)
   let quizState = {
     currentQuiz: null,
@@ -470,67 +524,127 @@
         // Gérer le retour selon la page actuelle
         if (currentPage === 'quiz') {
           if (quizState.showDescription) {
-            quizState = {
-              currentQuiz: null,
-              currentQuestionIndex: 0,
-              selectedAnswer: null,
-              answers: [],
-              showExplanation: false,
-              completed: false,
-              showDescription: false,
-              showResults: false
-            };
-            showPage('home');
+            // Retour à la page précédente ou à l'accueil
+            goBack();
           } else if (quizState.showResults) {
-            quizState = {
-              currentQuiz: null,
-              currentQuestionIndex: 0,
-              selectedAnswer: null,
-              answers: [],
-              showExplanation: false,
-              completed: false,
-              showDescription: false,
-              showResults: false
-            };
-            showPage('home');
+            // Retour à la page précédente ou à l'accueil
+            goBack();
           } else {
-            // Retour depuis une question
-            quizState = {
-              currentQuiz: null,
-              currentQuestionIndex: 0,
-              selectedAnswer: null,
-              answers: [],
-              showExplanation: false,
-              completed: false,
-              showDescription: false,
-              showResults: false
-            };
-            showPage('home');
+            // Retour depuis une question vers la question précédente ou la description
+            if (quizState.currentQuestionIndex > 0) {
+              quizState.currentQuestionIndex--;
+              quizState.selectedAnswer = null;
+              quizState.showExplanation = false;
+              // Récupérer la réponse précédente si elle existe
+              const quiz = currentQuizData || todayQuiz;
+              const prevQuestion = quiz.questions[quizState.currentQuestionIndex];
+              const userData = getUserData();
+              const savedAnswer = userData.quizAnswers?.[quiz.id]?.[prevQuestion.id];
+              if (savedAnswer) {
+                quizState.selectedAnswer = savedAnswer.answerId;
+                quizState.showExplanation = true;
+              }
+              showPage('quiz', true);
+            } else {
+              // Retour à la description
+              quizState.showDescription = true;
+              showPage('quiz', true);
+            }
           }
         } else if (currentPage === 'quiz-correction') {
           quizState.showResults = true;
-          showPage('quiz');
+          showPage('quiz', true);
+        } else if (currentPage === 'dico' && dicoState.selectedTerm) {
+          // Fermer la définition et revenir à la liste
+          dicoState.selectedTerm = null;
+          showPage('dico', true);
         } else {
-          // Pour toutes les autres pages, retour à l'accueil
-          showPage('home');
+          // Retour à la page précédente
+          goBack();
         }
       });
     }
   }
 
+  // Fonction pour revenir à la page précédente
+  function goBack() {
+    if (pageHistory.length > 0) {
+      const previousPage = pageHistory.pop();
+      showPage(previousPage, true); // skipHistory = true pour ne pas ajouter à l'historique
+    } else {
+      // Si pas d'historique, retour à l'accueil
+      showPage('home', true);
+    }
+  }
+
   // Afficher une page
-  function showPage(page) {
+  function showPage(page, skipHistory = false) {
     console.log('showPage appelé avec:', page);
-    currentPage = page;
+    
     const content = document.getElementById('app-content');
     const header = document.getElementById('app-header');
     
     if (!content || !header) {
       console.error('Élément app-content ou app-header introuvable');
       // Réessayer après un court délai
-      setTimeout(() => showPage(page), 100);
+      setTimeout(() => showPage(page, skipHistory), 100);
       return;
     }
+    
+    // Déterminer le type d'animation
+    const isQuizPage = page === 'quiz';
+    const isBackNavigation = skipHistory;
+    
+    // Ajouter la page actuelle à l'historique (sauf si on saute l'historique ou si c'est la même page)
+    if (!skipHistory && currentPage !== page && currentPage !== 'home' && page !== 'home') {
+      // Ne pas ajouter si la page actuelle est déjà la dernière dans l'historique
+      if (pageHistory.length === 0 || pageHistory[pageHistory.length - 1] !== currentPage) {
+        pageHistory.push(currentPage);
+        // Limiter l'historique à 10 pages pour éviter l'accumulation
+        if (pageHistory.length > 10) {
+          pageHistory.shift();
+        }
+      }
+    }
+    
+    currentPage = page;
+    
+    // Attendre la fin de l'animation de sortie avant de changer le contenu
+    if (isBackNavigation) {
+      // Animation de sortie vers la gauche
+      content.classList.add('slide-back');
+      setTimeout(() => {
+        renderPageContent(page, content, header);
+        // Retirer la classe d'animation de sortie et ajouter celle d'entrée
+        content.classList.remove('slide-back');
+        // Forcer un reflow pour que l'animation d'entrée démarre
+        void content.offsetWidth;
+        content.classList.add('slide-quiz');
+        setTimeout(() => {
+          content.classList.remove('slide-quiz');
+        }, 300);
+      }, 250);
+    } else {
+      // Pour les autres navigations, ajouter l'animation d'entrée
+      renderPageContent(page, content, header);
+      // Forcer un reflow pour que l'animation démarre
+      void content.offsetWidth;
+      if (isQuizPage) {
+        content.classList.add('slide-quiz');
+        setTimeout(() => {
+          content.classList.remove('slide-quiz');
+        }, 300);
+      } else {
+        content.classList.add('slide-in');
+        setTimeout(() => {
+          content.classList.remove('slide-in');
+        }, 300);
+      }
+    }
+  }
+  
+  // Fonction pour mettre à jour le contenu de la page
+  function renderPageContent(page, content, header) {
     
     // Déterminer le titre à afficher selon la page
     let pageTitle = 'Cashou';
@@ -1188,7 +1302,7 @@
         bgColor = 'bg-[#ABEDB0]';
         textColor = 'text-black';
       } else if (state === 'not-completed') {
-        bgColor = 'bg-red-200';
+        bgColor = 'bg-[#FFB472]';
         textColor = 'text-black';
       }
       
