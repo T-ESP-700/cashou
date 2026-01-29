@@ -1607,6 +1607,24 @@
   // Page Profil
   function getProfilePage() {
     const userData = getUserData();
+    
+    // Calculer le record : 1 si le quiz du jour a été réussi (au moins 2/3 bonnes réponses), 0 sinon
+    let record = 0;
+    if (userData.quizAnswers?.[todayQuiz.id]) {
+      const answers = userData.quizAnswers[todayQuiz.id];
+      let correctCount = 0;
+      todayQuiz.questions.forEach(q => {
+        const answer = answers[q.id];
+        if (answer && answer.isCorrect) {
+          correctCount++;
+        }
+      });
+      // Au moins 2/3 des questions doivent être correctes
+      if (correctCount >= 2) {
+        record = 1;
+      }
+    }
+    
     return `
       <div class="h-full bg-[#F2F2F2] px-4 py-4 flex flex-col justify-start pt-4 pb-8">
         <div class="bg-white rounded-[22px] p-3 mb-3 text-center shadow-sm">
@@ -1622,11 +1640,17 @@
           <div class="space-y-2">
             <div class="flex justify-between items-center">
               <span class="text-gray-600 text-sm">Série de victoires</span>
-              <span class="font-bold text-black text-sm">${userData.winstreak || 0} jour${userData.winstreak !== 1 ? 's' : ''}</span>
+              <div class="flex items-center gap-1">
+                <span class="font-bold text-black text-sm">${userData.winstreak || 0}</span>
+                <span class="text-lg">🔥</span>
+              </div>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-gray-600 text-sm">Quiz complétés</span>
-              <span class="font-bold text-black text-sm">${Object.keys(userData.quizAnswers || {}).length}</span>
+              <span class="text-gray-600 text-sm">Record</span>
+              <div class="flex items-center gap-1">
+                <span class="font-bold text-black text-sm">${record}</span>
+                <span class="text-lg">🏆</span>
+              </div>
             </div>
           </div>
         </div>
