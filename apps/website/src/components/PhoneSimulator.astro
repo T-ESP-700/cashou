@@ -442,6 +442,7 @@
   // Fonction globale pour toggle un terme du dico
   window.toggleDicoTerm = function(term) {
     console.log('toggleDicoTerm appelé avec:', term);
+    
     // Si le terme est déjà sélectionné, le désélectionner (fermer)
     if (dicoState.selectedTerm === term) {
       dicoState.selectedTerm = null;
@@ -449,8 +450,46 @@
       // Sinon, sélectionner ce terme (ouvrir)
       dicoState.selectedTerm = term;
     }
-    // Réafficher la page pour mettre à jour l'affichage
-    showPage('dico');
+    
+    // Mettre à jour le DOM directement sans recharger la page
+    const entries = document.querySelectorAll('[data-term]');
+    entries.forEach(entryBtn => {
+      const entryTerm = entryBtn.getAttribute('data-term');
+      const itemContainer = entryBtn.closest('.bg-white');
+      if (!itemContainer) return;
+      
+      const definitionContainer = itemContainer.querySelector('.dico-definition-container');
+      const svg = entryBtn.querySelector('svg');
+      
+      if (entryTerm === term) {
+        // Mettre à jour l'état de cet élément
+        if (dicoState.selectedTerm === term) {
+          // Ouvrir : étendre vers le bas
+          if (definitionContainer) {
+            definitionContainer.style.maxHeight = '500px';
+          }
+          if (svg) {
+            svg.classList.add('rotate-180');
+          }
+        } else {
+          // Fermer : réduire
+          if (definitionContainer) {
+            definitionContainer.style.maxHeight = '0px';
+          }
+          if (svg) {
+            svg.classList.remove('rotate-180');
+          }
+        }
+      } else if (dicoState.selectedTerm && dicoState.selectedTerm !== entryTerm) {
+        // Fermer les autres éléments ouverts
+        if (definitionContainer) {
+          definitionContainer.style.maxHeight = '0px';
+        }
+        if (svg) {
+          svg.classList.remove('rotate-180');
+        }
+      }
+    });
   };
 
   // Exécuter l'initialisation
@@ -1531,7 +1570,7 @@
   // Page Dictionnaire
   function getDicoPage() {
     return `
-      <div class="h-full bg-[#F2F2F2] px-4 py-6 overflow-y-auto">
+      <div class="h-full bg-[#F2F2F2] px-4 py-6 overflow-y-auto relative" id="dico-scroll-container">
         <div class="mb-4">
           <input 
             type="text" 
@@ -1547,7 +1586,7 @@
             // Échapper les guillemets simples dans le terme pour l'attribut onclick
             const escapedTerm = entry.term.replace(/'/g, "\\'");
             return `
-              <div class="bg-white rounded-[22px] shadow-sm overflow-hidden transition-all" id="dico-item-${index}">
+              <div class="bg-white rounded-[22px] shadow-sm overflow-hidden" id="dico-item-${index}">
                 <button 
                   class="w-full py-2.5 px-4 dico-entry text-left cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-between"
                   data-term="${entry.term}"
@@ -1556,7 +1595,7 @@
                 >
                   <h3 class="font-bold text-black text-base">${entry.term}</h3>
                   <svg 
-                    class="w-4 h-4 text-black transition-transform ${isSelected ? 'rotate-180' : ''}" 
+                    class="w-4 h-4 text-black transition-transform duration-300 ${isSelected ? 'rotate-180' : ''}" 
                     fill="none" 
                     stroke="currentColor" 
                     viewBox="0 0 24 24"
@@ -1565,11 +1604,11 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-                ${isSelected ? `
+                <div class="dico-definition-container overflow-hidden transition-all duration-300 ease-out" style="max-height: ${isSelected ? '500px' : '0px'};">
                   <div class="px-4 pb-3">
                     <p class="text-gray-700 text-sm leading-relaxed">${entry.definition}</p>
                   </div>
-                ` : ''}
+                </div>
               </div>
             `;
           }).join('')}
@@ -1580,6 +1619,75 @@
 
   function attachDicoListeners() {
     // Le bouton retour dans le header fixe gère déjà le retour
+    
+    // Initialiser l'état des définitions
+    setTimeout(() => {
+      const entries = document.querySelectorAll('[data-term]');
+      entries.forEach(entryBtn => {
+        const entryTerm = entryBtn.getAttribute('data-term');
+        const itemContainer = entryBtn.closest('.bg-white');
+        if (!itemContainer) return;
+        
+        const definitionContainer = itemContainer.querySelector('.dico-definition-container');
+        const svg = entryBtn.querySelector('svg');
+        const isSelected = dicoState.selectedTerm === entryTerm;
+        
+        if (definitionContainer) {
+          definitionContainer.style.maxHeight = isSelected ? '500px' : '0px';
+        }
+        if (svg) {
+          if (isSelected) {
+            svg.classList.add('rotate-180');
+          } else {
+            svg.classList.remove('rotate-180');
+          }
+        }
+      });
+    }, 10);
+    
+    // Gérer l'effet de fade lors du scroll
+    setTimeout(() => {
+      const scrollContainer = document.getElementById('dico-scroll-container');
+      const appContent = document.getElementById('app-content');
+      
+      if (scrollContainer && appContent) {
+        // Créer l'overlay de fade s'il n'existe pas
+        let fadeOverlay = document.getElementById('dico-fade-overlay');
+        if (!fadeOverlay) {
+          fadeOverlay = document.createElement('div');
+          fadeOverlay.id = 'dico-fade-overlay';
+          fadeOverlay.className = 'absolute left-0 right-0 pointer-events-none z-30';
+          fadeOverlay.style.cssText = 'top: 60px; height: 50px; background: linear-gradient(to bottom, rgba(242, 242, 242, 1) 0%, rgba(242, 242, 242, 0.8) 30%, rgba(242, 242, 242, 0.4) 60%, rgba(242, 242, 242, 0) 100%); opacity: 0; transition: opacity 0.3s ease;';
+          appContent.appendChild(fadeOverlay);
+        }
+        
+        let ticking = false;
+        
+        const handleScroll = () => {
+          if (!ticking) {
+            window.requestAnimationFrame(() => {
+              const scrollTop = scrollContainer.scrollTop;
+              // Calculer l'opacité de manière progressive et smooth
+              const fadeStart = 0;
+              const fadeEnd = 40; // Distance de scroll pour atteindre l'opacité maximale
+              let opacity = 0;
+              
+              if (scrollTop > fadeStart) {
+                opacity = Math.min((scrollTop - fadeStart) / (fadeEnd - fadeStart), 1);
+              }
+              
+              fadeOverlay.style.opacity = opacity.toString();
+              ticking = false;
+            });
+            ticking = true;
+          }
+        };
+        
+        scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+        // Vérifier l'état initial
+        handleScroll();
+      }
+    }, 50);
     
     // Recherche
     setTimeout(() => {
