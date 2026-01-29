@@ -622,16 +622,18 @@
   function goBack() {
     if (pageHistory.length > 0) {
       const previousPage = pageHistory.pop();
+      console.log('Retour vers:', previousPage, 'Historique restant:', pageHistory);
       showPage(previousPage, true); // skipHistory = true pour ne pas ajouter à l'historique
     } else {
       // Si pas d'historique, retour à l'accueil
+      console.log('Pas d\'historique, retour à l\'accueil');
       showPage('home', true);
     }
   }
 
   // Afficher une page
   function showPage(page, skipHistory = false) {
-    console.log('showPage appelé avec:', page);
+    console.log('showPage appelé avec:', page, 'skipHistory:', skipHistory, 'currentPage:', currentPage);
     
     const content = document.getElementById('app-content');
     const header = document.getElementById('app-header');
@@ -647,14 +649,19 @@
     const isQuizPage = page === 'quiz';
     const isBackNavigation = skipHistory;
     
-    // Ajouter la page actuelle à l'historique (sauf si on saute l'historique ou si c'est la même page)
-    if (!skipHistory && currentPage !== page && currentPage !== 'home' && page !== 'home') {
-      // Ne pas ajouter si la page actuelle est déjà la dernière dans l'historique
-      if (pageHistory.length === 0 || pageHistory[pageHistory.length - 1] !== currentPage) {
-        pageHistory.push(currentPage);
-        // Limiter l'historique à 10 pages pour éviter l'accumulation
-        if (pageHistory.length > 10) {
-          pageHistory.shift();
+    // Ajouter la page actuelle à l'historique AVANT de changer de page
+    // (sauf si on saute l'historique, si c'est la même page, ou si on est sur la page d'accueil)
+    if (!skipHistory && currentPage !== page) {
+      // Ne pas ajouter la page d'accueil à l'historique
+      if (currentPage !== 'home') {
+        // Ne pas ajouter si la page actuelle est déjà la dernière dans l'historique (éviter les doublons)
+        if (pageHistory.length === 0 || pageHistory[pageHistory.length - 1] !== currentPage) {
+          pageHistory.push(currentPage);
+          console.log('Page ajoutée à l\'historique:', currentPage, 'Historique:', pageHistory);
+          // Limiter l'historique à 10 pages pour éviter l'accumulation
+          if (pageHistory.length > 10) {
+            pageHistory.shift();
+          }
         }
       }
     }
