@@ -1314,6 +1314,24 @@
         
         <div class="bg-white rounded-[22px] p-4 shadow-sm">
           ${calendarCells}
+          
+          <!-- Légende -->
+          <div class="mt-4 pt-4 border-t border-gray-200">
+            <div class="flex flex-col gap-2">
+              <div class="flex items-center gap-2">
+                <div class="w-4 h-4 bg-[#FFB472] rounded"></div>
+                <span class="text-xs text-gray-700">À faire</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-4 h-4 bg-[#ABEDB0] rounded"></div>
+                <span class="text-xs text-gray-700">Terminé</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-4 h-4 bg-gray-200 rounded"></div>
+                <span class="text-xs text-gray-700">Verrouillé</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     `;
