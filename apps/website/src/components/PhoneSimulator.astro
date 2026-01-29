@@ -1,0 +1,1313 @@
+---
+// Composant de simulateur de téléphone avec démo interactive de l'app Cashou
+// Design basé exactement sur Progress.svg
+---
+
+<section id="phone-demo" class="bg-cashou-background-light py-16 scroll-mt-16">
+  <div class="container mx-auto px-6">
+    <div class="text-center mb-12">
+      <h2 class="text-4xl md:text-5xl font-heading font-bold text-cashou-text-light mb-4">
+        Essayez l'application
+      </h2>
+      <p class="text-xl text-cashou-text-light/70 max-w-2xl mx-auto">
+        Découvrez Cashou en action avec cette démo interactive
+      </p>
+    </div>
+
+    <div class="flex justify-center items-start">
+      <!-- Cadre du téléphone -->
+      <div class="relative">
+        <!-- Téléphone -->
+        <div class="relative w-[300px] h-[600px] bg-[#F2F2F2] rounded-[30px] p-4 shadow-2xl overflow-hidden">
+          <!-- Barre de statut avec Dynamic Island au centre -->
+          <div class="relative flex justify-between items-center mb-3 px-2 pt-1 z-10" style="height: 30px;">
+            <!-- Heure à gauche - alignée verticalement avec le Dynamic Island -->
+            <div class="text-black text-xs font-medium flex items-center justify-center" style="height: 30px;">9:41</div>
+            
+            <!-- Dynamic Island iPhone 15 - centré entre l'heure et la batterie, aligné verticalement -->
+            <div class="absolute left-1/2 transform -translate-x-1/2 top-0 w-[105px] h-[30px] bg-black rounded-full z-50 flex items-center justify-center gap-2 px-3">
+              <!-- Caméra -->
+              <div class="w-[6px] h-[6px] bg-white rounded-full opacity-60"></div>
+              <!-- Haut-parleur -->
+              <div class="w-[28px] h-[4px] bg-white rounded-full opacity-20"></div>
+            </div>
+            
+            <!-- Batterie et réseau à droite - alignés verticalement avec le Dynamic Island -->
+            <div class="flex items-center justify-center gap-1" style="height: 30px;">
+              <div class="w-4 h-2 border border-black rounded-sm opacity-35"></div>
+              <div class="w-0.5 h-0.5 bg-black rounded-full opacity-40"></div>
+            </div>
+          </div>
+
+          <!-- Zone de contenu avec header fixe -->
+          <div class="relative h-[500px] bg-[#F2F2F2] rounded-2xl overflow-hidden">
+            <!-- Header fixe au-dessus du contenu -->
+            <div id="app-header" class="absolute top-0 left-0 right-0 z-30 bg-[#F2F2F2] px-3 py-3 rounded-t-2xl">
+              <!-- Le header sera injecté ici par JavaScript -->
+            </div>
+            <!-- Contenu de l'app avec padding-top pour le header -->
+            <div id="app-content" class="h-full overflow-y-auto bg-[#F2F2F2] rounded-2xl pt-[60px]">
+              <!-- Les différentes vues seront injectées ici par JavaScript -->
+            </div>
+            <!-- Overlay pour les bulles (dico, etc.) -->
+            <div id="app-overlay"></div>
+          </div>
+
+          <!-- Barre de navigation en bas (exactement comme dans Progress.svg - design iPhone) -->
+          <div class="absolute bottom-0 left-0 right-0 px-2 pb-2" style="filter: drop-shadow(0px 2px 2px rgba(0, 0, 0, 0.25));">
+            <!-- Rectangle orange principal avec coins arrondis en bas -->
+            <div class="bg-[#FFB472] rounded-[20px] h-[40px] relative" style="border-radius: 20px 20px 20px 20px;">
+              <!-- Rectangle blanc pour l'élément actif -->
+              <div id="active-nav-indicator" class="absolute bg-white rounded-[18px] h-[37px] transition-all duration-300" style="width: 57px; top: 1.5px; left: 1px;"></div>
+              
+              <!-- Conteneur des icônes -->
+              <div class="relative flex justify-around items-center h-full">
+                <!-- Accueil -->
+                <button 
+                  type="button"
+                  class="nav-btn flex items-center justify-center flex-1 h-full transition-all relative z-10 cursor-pointer"
+                  data-page="home"
+                  data-index="0"
+                  aria-label="Accueil"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" pointer-events="none">
+                    <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                  </svg>
+                </button>
+                <!-- Dico -->
+                <button 
+                  type="button"
+                  class="nav-btn flex items-center justify-center flex-1 h-full transition-all relative z-10 cursor-pointer"
+                  data-page="dico"
+                  data-index="1"
+                  aria-label="Dictionnaire"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" pointer-events="none">
+                    <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                </button>
+                <!-- Profil -->
+                <button 
+                  type="button"
+                  class="nav-btn flex items-center justify-center flex-1 h-full transition-all relative z-10 cursor-pointer"
+                  data-page="profile"
+                  data-index="2"
+                  aria-label="Profil"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" pointer-events="none">
+                    <circle cx="12" cy="8" r="4"/>
+                    <path d="M12 14a6 6 0 00-6 6h12a6 6 0 00-6-6z"/>
+                  </svg>
+                </button>
+                <!-- Calendrier (Historique) -->
+                <button 
+                  type="button"
+                  class="nav-btn flex items-center justify-center flex-1 h-full transition-all relative z-10 cursor-pointer"
+                  data-page="history"
+                  data-index="3"
+                  aria-label="Historique"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" pointer-events="none">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <path d="M16 2v4M8 2v4M3 10h18M9 16h6"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .nav-btn {
+    color: black;
+  }
+  .nav-btn svg {
+    color: black;
+  }
+  
+  /* Animation fluide pour l'indicateur actif qui glisse */
+  #active-nav-indicator {
+    transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1), width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: left, width;
+    z-index: 1;
+  }
+  
+  .nav-btn {
+    position: relative;
+    z-index: 10;
+  }
+</style>
+
+<script is:inline>
+  // Données du quiz du jour (Livret A)
+  const todayQuiz = {
+    id: 'today',
+    title: 'Quiz du jour',
+    topic: 'Livret A',
+    questions: [
+      {
+        id: 1,
+        text: 'Quel est le plafond maximum du Livret A en 2024 ?',
+        answers: [
+          { id: 1, text: '15 000 €', isCorrect: false },
+          { id: 2, text: '22 950 €', isCorrect: true },
+          { id: 3, text: '30 000 €', isCorrect: false },
+          { id: 4, text: '50 000 €', isCorrect: false }
+        ],
+        explanation: 'Le plafond du Livret A est de 22 950 € (hors intérêts capitalisés) depuis le 1er janvier 2024.'
+      },
+      {
+        id: 2,
+        text: 'Quel est le taux d\'intérêt actuel du Livret A ?',
+        answers: [
+          { id: 1, text: '2%', isCorrect: false },
+          { id: 2, text: '3%', isCorrect: true },
+          { id: 3, text: '4%', isCorrect: false },
+          { id: 4, text: '5%', isCorrect: false }
+        ],
+        explanation: 'Le taux du Livret A est actuellement de 3% net d\'impôts. Ce taux est révisé deux fois par an.'
+      },
+      {
+        id: 3,
+        text: 'Le Livret A est-il soumis à l\'impôt sur le revenu ?',
+        answers: [
+          { id: 1, text: 'Oui, les intérêts sont imposables', isCorrect: false },
+          { id: 2, text: 'Non, les intérêts sont exonérés d\'impôt', isCorrect: true },
+          { id: 3, text: 'Seulement au-delà de 10 000 €', isCorrect: false },
+          { id: 4, text: 'Uniquement pour les revenus élevés', isCorrect: false }
+        ],
+        explanation: 'Les intérêts du Livret A sont totalement exonérés d\'impôt sur le revenu et de prélèvements sociaux.'
+      }
+    ]
+  };
+
+  // Données du quiz de la veille (PEL)
+  const yesterdayQuiz = {
+    id: 'yesterday',
+    title: 'Quiz d\'hier',
+    topic: 'PEL',
+    questions: [
+      {
+        id: 1,
+        text: 'Quelle est la durée minimale d\'un Plan d\'Épargne Logement (PEL) ?',
+        answers: [
+          { id: 1, text: '2 ans', isCorrect: false },
+          { id: 2, text: '4 ans', isCorrect: true },
+          { id: 3, text: '6 ans', isCorrect: false },
+          { id: 4, text: '8 ans', isCorrect: false }
+        ],
+        explanation: 'Un PEL doit être conservé au minimum 4 ans pour bénéficier des avantages fiscaux et du prêt associé.'
+      },
+      {
+        id: 2,
+        text: 'Quel est le montant maximum que l\'on peut verser sur un PEL par mois ?',
+        answers: [
+          { id: 1, text: '300 €', isCorrect: false },
+          { id: 2, text: '450 €', isCorrect: false },
+          { id: 3, text: '540 €', isCorrect: false },
+          { id: 4, text: 'Il n\'y a pas de limite mensuelle', isCorrect: true }
+        ],
+        explanation: 'Il n\'y a pas de limite mensuelle pour les versements sur un PEL, mais le plafond total est de 61 200 €.'
+      },
+      {
+        id: 3,
+        text: 'Le PEL permet-il d\'obtenir un prêt immobilier ?',
+        answers: [
+          { id: 1, text: 'Oui, après 4 ans d\'épargne', isCorrect: true },
+          { id: 2, text: 'Non, c\'est uniquement un compte d\'épargne', isCorrect: false },
+          { id: 3, text: 'Seulement pour les primo-accédants', isCorrect: false },
+          { id: 4, text: 'Uniquement si le PEL est supérieur à 10 000 €', isCorrect: false }
+        ],
+        explanation: 'Après 4 ans d\'épargne, le PEL permet d\'obtenir un prêt immobilier à un taux préférentiel.'
+      }
+    ]
+  };
+
+  // Données du dictionnaire (triées par ordre alphabétique)
+  const dicoEntries = [
+    { term: 'Action', definition: 'Titre de propriété d\'une partie du capital d\'une entreprise, donnant droit à des dividendes et à une participation aux décisions.' },
+    { term: 'Bourse', definition: 'Marché où s\'échangent des valeurs mobilières (actions, obligations) entre acheteurs et vendeurs.' },
+    { term: 'Capitalisation', definition: 'Processus par lequel les intérêts générés s\'ajoutent au capital initial pour produire de nouveaux intérêts.' },
+    { term: 'Dividende', definition: 'Part des bénéfices d\'une entreprise distribuée aux actionnaires en fonction du nombre d\'actions détenues.' },
+    { term: 'Épargne', definition: 'Part du revenu non consommée immédiatement, mise de côté pour un usage futur.' },
+    { term: 'Inflation', definition: 'Augmentation générale et durable des prix, réduisant le pouvoir d\'achat de la monnaie.' },
+    { term: 'Livret A', definition: 'Compte d\'épargne réglementé français, défiscalisé et garanti par l\'État, avec un plafond de 22 950 €.' },
+    { term: 'Obligation', definition: 'Titre de créance représentant une dette émise par une entreprise ou un État, rapportant des intérêts fixes.' },
+    { term: 'PEL', definition: 'Plan d\'Épargne Logement : compte d\'épargne permettant d\'obtenir un prêt immobilier après 4 ans d\'épargne.' },
+    { term: 'Plafond', definition: 'Montant maximum autorisé sur un compte d\'épargne réglementé.' },
+    { term: 'Portefeuille', definition: 'Ensemble des placements financiers (actions, obligations, etc.) détenus par un investisseur.' },
+    { term: 'Rendement', definition: 'Rapport entre le revenu généré par un placement et le capital investi, exprimé en pourcentage.' },
+    { term: 'Taux d\'intérêt', definition: 'Pourcentage appliqué au capital placé, représentant la rémunération de l\'épargne.' },
+    { term: 'Volatilité', definition: 'Mesure de l\'amplitude des variations de prix d\'un actif financier sur une période donnée.' }
+  ].sort((a, b) => a.term.localeCompare(b.term, 'fr', { sensitivity: 'base' }));
+
+  // État de l'application
+  let currentPage = 'home';
+  let quizState = {
+    currentQuiz: null,
+    currentQuestionIndex: 0,
+    selectedAnswer: null,
+    answers: [],
+    showExplanation: false,
+    completed: false,
+    showDescription: false,
+    showResults: false
+  };
+  let dicoState = {
+    selectedTerm: null // null = liste, sinon = terme sélectionné
+  };
+
+  // Calculer le temps restant (toujours un quiz du jour disponible)
+  function getTimeRemaining() {
+    // Pour la démo, on simule un temps restant fixe
+    return '6h34m';
+  }
+
+  // Calculer le pourcentage de progression du jour
+  function calculateProgress() {
+    const parts = getTimeRemaining().match(/(\d+)h(\d+)m/);
+    if (!parts) return 0;
+    const hours = parseInt(parts[1]);
+    const minutes = parseInt(parts[2]);
+    const totalMinutesRemaining = hours * 60 + minutes;
+    const totalMinutesInDay = 24 * 60;
+    const progress = ((totalMinutesInDay - totalMinutesRemaining) / totalMinutesInDay) * 100;
+    return Math.max(0, Math.min(100, progress));
+  }
+
+  // Initialiser la position de l'indicateur au chargement
+  function initNavIndicator() {
+    const activeBtn = document.querySelector('.nav-btn[data-page="home"]');
+    const activeIndicator = document.getElementById('active-nav-indicator');
+    
+    if (activeBtn && activeIndicator) {
+      // Attendre que le DOM soit complètement rendu
+      setTimeout(() => {
+        const buttonRect = activeBtn.getBoundingClientRect();
+        const container = activeBtn.closest('.bg-\\[\\#FFB472\\]');
+        if (container) {
+          const containerRect = container.getBoundingClientRect();
+          const leftOffset = buttonRect.left - containerRect.left;
+          const buttonWidth = buttonRect.width;
+          
+          activeIndicator.style.left = `${leftOffset + 1}px`;
+          activeIndicator.style.width = `${buttonWidth - 2}px`;
+        }
+      }, 100);
+    }
+  }
+
+
+  // Attacher les listeners de navigation
+  function attachNavListeners() {
+    const navButtons = document.querySelectorAll('.nav-btn');
+    navButtons.forEach(btn => {
+      const page = btn.getAttribute('data-page');
+      if (page) {
+        // Retirer les anciens listeners en clonant le bouton
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode?.replaceChild(newBtn, btn);
+        
+        // Attacher le nouveau listener
+        newBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Clic sur navigation:', page);
+          if (window.navigateToPage) {
+            window.navigateToPage(page);
+          } else {
+            showPage(page);
+          }
+        });
+      }
+    });
+  }
+
+  // Initialisation - s'exécute immédiatement si le DOM est déjà chargé
+  function init() {
+    console.log('Initialisation du simulateur'); // Debug
+    
+    const content = document.getElementById('app-content');
+    if (!content) {
+      console.error('Élément app-content introuvable, réessai dans 200ms');
+      setTimeout(init, 200);
+      return;
+    }
+    
+    // Charger les données depuis localStorage
+    loadUserData();
+    
+    // Attacher les listeners de navigation
+    attachNavListeners();
+    
+    // Afficher la page d'accueil immédiatement
+    showPage('home');
+    
+    // Initialiser la position de l'indicateur
+    setTimeout(() => {
+      initNavIndicator();
+      // Réattacher les listeners après le rendu initial
+      attachNavListeners();
+    }, 200);
+  }
+
+  // Exposer navigateToPage avant l'initialisation
+  window.navigateToPage = function(page) {
+    console.log('Navigation vers:', page);
+    try {
+      // Réinitialiser l'état du quiz si on retourne à l'accueil
+      if (page === 'home') {
+        quizState = {
+          currentQuiz: null,
+          currentQuestionIndex: 0,
+          selectedAnswer: null,
+          answers: [],
+          showExplanation: false,
+          completed: false,
+          showDescription: false,
+          showResults: false
+        };
+      }
+      showPage(page);
+      // Réattacher les listeners après le changement de page
+      setTimeout(() => {
+        attachNavListeners();
+      }, 50);
+    } catch (error) {
+      console.error('Erreur lors de la navigation:', error);
+    }
+  };
+
+  // Fonction globale pour toggle un terme du dico
+  window.toggleDicoTerm = function(term) {
+    console.log('toggleDicoTerm appelé avec:', term);
+    // Si le terme est déjà sélectionné, le désélectionner (fermer)
+    if (dicoState.selectedTerm === term) {
+      dicoState.selectedTerm = null;
+    } else {
+      // Sinon, sélectionner ce terme (ouvrir)
+      dicoState.selectedTerm = term;
+    }
+    // Réafficher la page pour mettre à jour l'affichage
+    showPage('dico');
+  };
+
+  // Exécuter l'initialisation
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    // Le DOM est déjà chargé
+    setTimeout(init, 100);
+  }
+
+  // Charger les données utilisateur depuis localStorage
+  function loadUserData() {
+    const saved = localStorage.getItem('cashouDemoData');
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+      } catch (e) {
+        console.error('Erreur lors du chargement des données:', e);
+      }
+    }
+  }
+
+  // Sauvegarder les données utilisateur dans localStorage
+  function saveUserData(data) {
+    localStorage.setItem('cashouDemoData', JSON.stringify(data));
+  }
+
+  // Obtenir les données utilisateur
+  function getUserData() {
+    const saved = localStorage.getItem('cashouDemoData');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return { winstreak: 0, quizAnswers: {} };
+      }
+    }
+    return { winstreak: 0, quizAnswers: {} };
+  }
+
+  // Fonction pour générer le header (Cashou + flèche)
+  function getHeaderHTML(title = 'Cashou') {
+    const isHomePage = title === 'Cashou';
+    return `
+      <div class="flex items-center justify-between">
+        <!-- Bouton retour (cercle blanc) -->
+        <button class="back-btn w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm">
+          <svg class="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <!-- Titre centré, aligné verticalement avec la flèche -->
+        <h1 class="text-xl font-bold text-black flex items-center justify-center" style="${isHomePage ? "font-family: 'Rowdies', sans-serif;" : ""} flex: 1; text-align: center; height: 32px; line-height: 1;">${title}</h1>
+        <div class="w-8"></div>
+      </div>
+    `;
+  }
+
+  // Fonction pour attacher les listeners du header
+  function attachHeaderListeners() {
+    // Bouton retour dans le header fixe
+    const headerBackBtn = document.querySelector('#app-header .back-btn');
+    if (headerBackBtn) {
+      // Retirer les anciens listeners
+      const newBtn = headerBackBtn.cloneNode(true);
+      headerBackBtn.parentNode?.replaceChild(newBtn, headerBackBtn);
+      
+      newBtn.addEventListener('click', () => {
+        if (currentPage === 'home') {
+          return; // Ne rien faire si on est déjà sur la page d'accueil
+        }
+        
+        // Gérer le retour selon la page actuelle
+        if (currentPage === 'quiz') {
+          if (quizState.showDescription) {
+            quizState = {
+              currentQuiz: null,
+              currentQuestionIndex: 0,
+              selectedAnswer: null,
+              answers: [],
+              showExplanation: false,
+              completed: false,
+              showDescription: false,
+              showResults: false
+            };
+            showPage('home');
+          } else if (quizState.showResults) {
+            quizState = {
+              currentQuiz: null,
+              currentQuestionIndex: 0,
+              selectedAnswer: null,
+              answers: [],
+              showExplanation: false,
+              completed: false,
+              showDescription: false,
+              showResults: false
+            };
+            showPage('home');
+          } else {
+            // Retour depuis une question
+            quizState = {
+              currentQuiz: null,
+              currentQuestionIndex: 0,
+              selectedAnswer: null,
+              answers: [],
+              showExplanation: false,
+              completed: false,
+              showDescription: false,
+              showResults: false
+            };
+            showPage('home');
+          }
+        } else if (currentPage === 'quiz-correction') {
+          quizState.showResults = true;
+          showPage('quiz');
+        } else {
+          // Pour toutes les autres pages, retour à l'accueil
+          showPage('home');
+        }
+      });
+    }
+  }
+
+  // Afficher une page
+  function showPage(page) {
+    console.log('showPage appelé avec:', page);
+    currentPage = page;
+    const content = document.getElementById('app-content');
+    const header = document.getElementById('app-header');
+    
+    if (!content || !header) {
+      console.error('Élément app-content ou app-header introuvable');
+      // Réessayer après un court délai
+      setTimeout(() => showPage(page), 100);
+      return;
+    }
+    
+    // Déterminer le titre à afficher selon la page
+    let pageTitle = 'Cashou';
+    switch(page) {
+      case 'home':
+        pageTitle = 'Cashou';
+        break;
+      case 'quiz':
+        pageTitle = 'Daily Quiz';
+        break;
+      case 'quiz-correction':
+        pageTitle = 'Correction';
+        break;
+      case 'history':
+        pageTitle = 'Historique';
+        break;
+      case 'dico':
+        pageTitle = 'Dictionnaire';
+        break;
+      case 'profile':
+        pageTitle = 'Profil';
+        break;
+    }
+    
+    // Injecter le header fixe avec le bon titre
+    header.innerHTML = getHeaderHTML(pageTitle);
+    
+    // Vider l'overlay si on change de page (mais pas si on reste sur dico)
+    const overlay = document.getElementById('app-overlay');
+    if (overlay && page !== 'dico') {
+      overlay.innerHTML = '';
+      dicoState.selectedTerm = null;
+    }
+    
+    // Attacher les listeners du header
+    setTimeout(() => {
+      attachHeaderListeners();
+    }, 10);
+    
+    // Mettre à jour la navigation active et l'indicateur blanc
+    const buttons = document.querySelectorAll('.nav-btn');
+    const activeIndicator = document.getElementById('active-nav-indicator');
+    
+    buttons.forEach((btn) => {
+      btn.classList.remove('active');
+      if (btn.getAttribute('data-page') === page) {
+        btn.classList.add('active');
+        // Déplacer l'indicateur blanc sous le bouton actif avec animation fluide
+        if (activeIndicator) {
+          // Petit délai pour s'assurer que le DOM est mis à jour
+          setTimeout(() => {
+            const buttonRect = btn.getBoundingClientRect();
+            const container = btn.closest('.bg-\\[\\#FFB472\\]');
+            if (container) {
+              const containerRect = container.getBoundingClientRect();
+              const leftOffset = buttonRect.left - containerRect.left;
+              const buttonWidth = buttonRect.width;
+              
+              // Appliquer la nouvelle position avec transition CSS (animation fluide)
+              activeIndicator.style.left = `${leftOffset + 1}px`;
+              activeIndicator.style.width = `${buttonWidth - 2}px`;
+            }
+          }, 10);
+        }
+      }
+    });
+
+    // Afficher le contenu de la page (sans le header)
+    try {
+      let html = '';
+      switch(page) {
+        case 'home':
+          html = getHomePage();
+          break;
+        case 'quiz':
+          html = getQuizPage();
+          break;
+        case 'quiz-correction':
+          html = getQuizCorrectionPage();
+          break;
+        case 'history':
+          html = getHistoryPage();
+          break;
+        case 'dico':
+          html = getDicoPage();
+          break;
+        case 'profile':
+          html = getProfilePage();
+          break;
+        default:
+          console.error('Page inconnue:', page);
+          html = getHomePage();
+      }
+      
+      if (html) {
+        content.innerHTML = html;
+        console.log('Contenu injecté pour la page:', page);
+        
+        // Attacher les listeners spécifiques à la page
+        setTimeout(() => {
+          switch(page) {
+            case 'home':
+              attachHomeListeners();
+              break;
+            case 'quiz':
+              attachQuizListeners();
+              break;
+            case 'quiz-correction':
+              attachQuizCorrectionListeners();
+              break;
+            case 'history':
+              attachHistoryListeners();
+              break;
+            case 'dico':
+              attachDicoListeners();
+              break;
+            case 'profile':
+              attachProfileListeners();
+              break;
+          }
+        }, 10);
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'affichage de la page:', error);
+      // En cas d'erreur, afficher la page d'accueil
+      content.innerHTML = getHomePage();
+      setTimeout(() => attachHomeListeners(), 10);
+    }
+    
+    // Mettre à jour l'indicateur après chaque changement de page
+    setTimeout(() => {
+      updateNavIndicator(page);
+    }, 50);
+  }
+  
+  // Fonction pour mettre à jour l'indicateur de navigation
+  function updateNavIndicator(page) {
+    const activeBtn = document.querySelector(`.nav-btn[data-page="${page}"]`);
+    const activeIndicator = document.getElementById('active-nav-indicator');
+    
+    if (activeBtn && activeIndicator) {
+      setTimeout(() => {
+        const buttonRect = activeBtn.getBoundingClientRect();
+        const container = activeBtn.closest('.bg-\\[\\#FFB472\\]');
+        if (container) {
+          const containerRect = container.getBoundingClientRect();
+          const leftOffset = buttonRect.left - containerRect.left;
+          const buttonWidth = buttonRect.width;
+          
+          activeIndicator.style.left = `${leftOffset + 1}px`;
+          activeIndicator.style.width = `${buttonWidth - 2}px`;
+        }
+      }, 10);
+    }
+  }
+
+  // Page d'accueil - juste le daily quiz card
+  function getHomePage() {
+    const userData = getUserData();
+    const timeRemaining = getTimeRemaining();
+    const progress = calculateProgress();
+    const quizStatus = userData.quizAnswers?.[todayQuiz.id] ? 'done' : 'todo';
+    const radius = 20;
+    const circumference = 2 * Math.PI * radius;
+
+    return `
+      <div class="bg-[#F2F2F2] px-3 py-4" style="min-height: 100%;">
+        <!-- Daily Quiz Card (design comme Progress.svg) -->
+        <div class="bg-white rounded-[18px] p-4 cursor-pointer active:scale-95 transition-all shadow-sm" id="daily-quiz-card" style="touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none;">
+          <!-- Header avec titre et badge -->
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-bold text-black">Daily Quiz</h2>
+            <div class="bg-[#FFB472] text-black px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1">
+              <span>ℹ️</span>
+              <span>${quizStatus === 'done' ? 'Terminé' : 'À faire'}</span>
+            </div>
+          </div>
+
+          <!-- Win Streak et Time Remaining -->
+          <div class="flex justify-between items-start">
+            <!-- Win Streak -->
+            <div>
+              <p class="text-xs text-gray-600 mb-0.5">win streak</p>
+              <div class="flex items-center gap-0.5">
+                <span class="text-3xl font-bold text-black">${userData.winstreak || 0}</span>
+                <span class="text-2xl">🔥</span>
+              </div>
+            </div>
+
+            <!-- Time Remaining avec cercle de progression -->
+            <div class="flex flex-col items-end">
+              <p class="text-xs text-gray-600 mb-0.5">${quizStatus === 'done' ? 'Prochain quiz dans :' : 'Temps restant'}</p>
+              <div class="relative w-[50px] h-[50px]">
+                <!-- SVG pour le cercle de progression -->
+                <svg width="50" height="50" class="absolute top-0 left-0 transform -rotate-90">
+                  <!-- Cercle de fond -->
+                  <circle
+                    cx="25"
+                    cy="25"
+                    r="20"
+                    stroke="#E0E0E0"
+                    stroke-width="4"
+                    fill="none"
+                  />
+                  <!-- Cercle de progression -->
+                  <circle
+                    cx="25"
+                    cy="25"
+                    r="20"
+                    stroke="#FFB472"
+                    stroke-width="4"
+                    fill="none"
+                    stroke-dasharray="${2 * Math.PI * 20}"
+                    stroke-dashoffset="${2 * Math.PI * 20 - (progress / 100) * 2 * Math.PI * 20}"
+                    stroke-linecap="round"
+                  />
+                </svg>
+                <!-- Texte au centre -->
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <p class="text-[10px] font-bold text-black text-center">${timeRemaining}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function attachHomeListeners() {
+    // Utiliser setTimeout pour s'assurer que le DOM est prêt
+    setTimeout(() => {
+      const dailyQuizCard = document.getElementById('daily-quiz-card');
+      if (dailyQuizCard) {
+        // Utiliser onclick directement pour plus de fiabilité
+        dailyQuizCard.onclick = function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Clic sur daily quiz card');
+          
+          const userData = getUserData();
+          const quizStatus = userData.quizAnswers?.[todayQuiz.id] ? 'done' : 'todo';
+          if (quizStatus === 'done') {
+            // Afficher les résultats directement
+            quizState = {
+              currentQuiz: todayQuiz.id,
+              currentQuestionIndex: 0,
+              selectedAnswer: null,
+              answers: [],
+              showExplanation: false,
+              completed: true,
+              showDescription: false,
+              showResults: true
+            };
+            // Récupérer les réponses sauvegardées
+            const savedAnswers = userData.quizAnswers[todayQuiz.id];
+            todayQuiz.questions.forEach(q => {
+              const saved = savedAnswers[q.id];
+              if (saved) {
+                quizState.answers.push({
+                  questionId: q.id,
+                  answerId: saved.answerId,
+                  isCorrect: saved.isCorrect
+                });
+              }
+            });
+            showPage('quiz');
+          } else {
+            // Afficher la description du quiz
+            quizState = {
+              currentQuiz: todayQuiz.id,
+              currentQuestionIndex: 0,
+              selectedAnswer: null,
+              answers: [],
+              showExplanation: false,
+              completed: false,
+              showDescription: true,
+              showResults: false
+            };
+            showPage('quiz');
+          }
+        };
+      }
+    }, 50);
+  }
+
+  // Page Quiz
+  function getQuizPage() {
+    const userData = getUserData();
+    const quiz = todayQuiz;
+    
+    // Page de description du quiz
+    if (quizState.showDescription && !quizState.completed) {
+      return `
+        <div class="h-full overflow-y-auto bg-[#F2F2F2] px-3 py-4">
+          <!-- Description du quiz (design comme dans Progress.svg) -->
+          <div class="bg-white rounded-[18px] p-4 mb-3 shadow-sm">
+            <h2 class="text-xl font-bold text-black mb-2">${quiz.title}</h2>
+            <p class="text-sm text-gray-600 mb-3">${quiz.topic}</p>
+            <p class="text-xs text-gray-500 mb-4">Testez vos connaissances sur le ${quiz.topic} avec ${quiz.questions.length} questions.</p>
+            <div class="flex items-center gap-2 text-xs text-gray-500">
+              <span>⏱️ ~5 min</span>
+              <span>•</span>
+              <span>📝 ${quiz.questions.length} questions</span>
+            </div>
+          </div>
+
+          <!-- Bouton pour commencer -->
+          <button 
+            class="w-full bg-[#FFB472] text-white rounded-[18px] py-3 font-bold shadow-sm"
+            id="start-quiz-btn"
+          >
+            Commencer le quiz
+          </button>
+        </div>
+      `;
+    }
+
+    const question = quiz.questions[quizState.currentQuestionIndex];
+    const isAnswered = quizState.selectedAnswer !== null;
+
+    // Écran de résultats finaux
+    if (quizState.completed && quizState.showResults) {
+      // Afficher les résultats finaux
+      const correctAnswers = quizState.answers.filter(a => a.isCorrect).length;
+      const passed = correctAnswers >= 2;
+      
+      if (passed && userData.winstreak === 0) {
+        userData.winstreak = 1;
+        saveUserData(userData);
+      }
+
+      return `
+        <div class="h-full overflow-y-auto bg-[#F2F2F2] px-3 py-4">
+          <!-- Résultats (design comme Progress.svg) -->
+          <div class="bg-white rounded-[18px] p-4 mb-3 shadow-sm text-center">
+            <div class="text-5xl mb-3">${passed ? '🎉' : '📚'}</div>
+            <h2 class="text-xl font-bold text-black mb-2">${passed ? 'Félicitations !' : 'Continuez !'}</h2>
+            <p class="text-base text-gray-600 mb-3">Vous avez obtenu</p>
+            <p class="text-3xl font-bold text-black mb-3">${correctAnswers}/3</p>
+            <p class="text-sm text-gray-500 mb-4">bonnes réponses</p>
+            ${passed ? '<p class="text-sm text-green-600 font-medium">Votre série de victoires est maintenant de 1 jour ! 🔥</p>' : ''}
+          </div>
+
+          <!-- Boutons d'action -->
+          <div class="space-y-2 mb-3">
+            <button 
+              class="w-full bg-[#9CD6FF] text-black rounded-[18px] py-3 font-bold shadow-sm"
+              id="view-correction-btn"
+            >
+              Voir la correction
+            </button>
+            <button 
+              class="w-full bg-[#DCA7DF] text-black rounded-[18px] py-3 font-bold shadow-sm"
+              id="view-history-btn"
+            >
+              Voir l'historique
+            </button>
+          </div>
+
+          <button 
+            class="w-full bg-[#FFB472] text-white rounded-[18px] py-3 font-bold shadow-sm"
+            id="restart-quiz"
+          >
+            Recommencer le quiz
+          </button>
+        </div>
+      `;
+    }
+
+    // Affichage d'une question (design comme Progress.svg)
+    return `
+      <div class="h-full overflow-y-auto bg-[#F2F2F2] px-3 py-4">
+        <!-- Barre de progression -->
+        <div class="mb-3">
+          <div class="flex justify-between text-xs text-gray-600 mb-1">
+            <span>Question ${quizState.currentQuestionIndex + 1}/${quiz.questions.length}</span>
+            <span>${Math.round(((quizState.currentQuestionIndex + 1) / quiz.questions.length) * 100)}%</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-1.5">
+            <div class="bg-[#FFB472] h-1.5 rounded-full transition-all" style="width: ${((quizState.currentQuestionIndex + 1) / quiz.questions.length) * 100}%"></div>
+          </div>
+        </div>
+
+        <!-- Question (design comme Progress.svg - rectangle blanc arrondi) -->
+        <div class="bg-white rounded-[18px] p-4 mb-3 shadow-sm">
+          <h2 class="text-base font-bold text-black mb-4">${question.text}</h2>
+          <div class="space-y-2">
+            ${question.answers.map(answer => {
+              const isSelected = quizState.selectedAnswer === answer.id;
+              const showResult = isAnswered;
+              const isCorrect = answer.isCorrect;
+              const bgColor = showResult 
+                ? (isCorrect ? 'bg-[#ABEDB0]' : (isSelected ? 'bg-red-100' : 'bg-gray-50'))
+                : (isSelected ? 'bg-[#FFB472]' : 'bg-gray-50');
+              
+              return `
+                <button 
+                  class="answer-btn w-full ${bgColor} rounded-[12px] p-3 text-left transition-all ${!isAnswered ? 'hover:bg-gray-100 cursor-pointer' : 'cursor-default'}"
+                  data-answer-id="${answer.id}"
+                  data-is-correct="${answer.isCorrect}"
+                  ${isAnswered ? 'disabled' : ''}
+                >
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-black font-medium">${answer.text}</span>
+                    ${showResult ? (isCorrect ? '<span class="text-xl">✅</span>' : (isSelected ? '<span class="text-xl">❌</span>' : '')) : ''}
+                  </div>
+                </button>
+              `;
+            }).join('')}
+          </div>
+        </div>
+
+        ${quizState.showExplanation ? `
+          <div class="bg-blue-50 border border-blue-200 rounded-[18px] p-3 mb-3">
+            <h3 class="font-bold text-black text-sm mb-1">💡 Explication</h3>
+            <p class="text-gray-700 text-xs">${question.explanation}</p>
+          </div>
+        ` : ''}
+
+        ${isAnswered ? `
+          <button 
+            class="w-full bg-[#FFB472] text-white rounded-[18px] py-3 font-bold shadow-sm"
+            id="next-question"
+          >
+            ${quizState.currentQuestionIndex < quiz.questions.length - 1 ? 'Question suivante' : 'Voir les résultats'}
+          </button>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  function attachQuizListeners() {
+    // Bouton pour commencer le quiz (depuis la description)
+    document.getElementById('start-quiz-btn')?.addEventListener('click', function() {
+      quizState.showDescription = false;
+      quizState.currentQuestionIndex = 0;
+      showPage('quiz');
+    });
+
+    // Le bouton retour est maintenant géré par le header fixe via attachHeaderListeners()
+
+    // Bouton voir la correction
+    document.getElementById('view-correction-btn')?.addEventListener('click', function() {
+      quizState.showResults = false;
+      quizState.showDescription = false;
+      quizState.completed = true;
+      quizState.currentQuestionIndex = 0;
+      showPage('quiz-correction');
+    });
+
+    // Bouton voir l'historique
+    document.getElementById('view-history-btn')?.addEventListener('click', function() {
+      showPage('history');
+    });
+
+    // Réinitialiser l'état du quiz si nécessaire (pour les questions)
+    if (currentPage === 'quiz' && !quizState.showDescription && !quizState.showResults) {
+      if (quizState.currentQuiz !== todayQuiz.id) {
+        quizState = {
+          currentQuiz: todayQuiz.id,
+          currentQuestionIndex: 0,
+          selectedAnswer: null,
+          answers: [],
+          showExplanation: false,
+          completed: false,
+          showDescription: false,
+          showResults: false
+        };
+      }
+    }
+
+
+    // Réponses
+    document.querySelectorAll('.answer-btn').forEach(btn => {
+      if (!btn.disabled) {
+        btn.addEventListener('click', function() {
+          if (quizState.selectedAnswer !== null) return;
+          
+          const answerId = parseInt(this.getAttribute('data-answer-id'));
+          const isCorrect = this.getAttribute('data-is-correct') === 'true';
+          const question = todayQuiz.questions[quizState.currentQuestionIndex];
+          
+          quizState.selectedAnswer = answerId;
+          quizState.answers.push({
+            questionId: question.id,
+            answerId: answerId,
+            isCorrect: isCorrect
+          });
+          quizState.showExplanation = true;
+
+          // Sauvegarder la réponse
+          const userData = getUserData();
+          if (!userData.quizAnswers) userData.quizAnswers = {};
+          if (!userData.quizAnswers[todayQuiz.id]) userData.quizAnswers[todayQuiz.id] = {};
+          userData.quizAnswers[todayQuiz.id][question.id] = { answerId, isCorrect };
+          saveUserData(userData);
+
+          // Réafficher la page
+          showPage('quiz');
+        });
+      }
+    });
+
+    // Question suivante
+    document.getElementById('next-question')?.addEventListener('click', function() {
+      if (quizState.currentQuestionIndex < todayQuiz.questions.length - 1) {
+        quizState.currentQuestionIndex++;
+        quizState.selectedAnswer = null;
+        quizState.showExplanation = false;
+        showPage('quiz');
+      } else {
+        // Quiz terminé - afficher les résultats
+        quizState.completed = true;
+        quizState.showResults = true;
+        showPage('quiz');
+      }
+    });
+
+    // Recommencer le quiz
+    document.getElementById('restart-quiz')?.addEventListener('click', function() {
+      const userData = getUserData();
+      delete userData.quizAnswers[todayQuiz.id];
+      saveUserData(userData);
+      
+      quizState = {
+        currentQuiz: todayQuiz.id,
+        currentQuestionIndex: 0,
+        selectedAnswer: null,
+        answers: [],
+        showExplanation: false,
+        completed: false,
+        showDescription: true,
+        showResults: false
+      };
+      showPage('quiz');
+    });
+  }
+
+  // Page Historique (via calendrier)
+  function getHistoryPage() {
+    const userData = getUserData();
+    const quiz = yesterdayQuiz;
+    const userAnswers = userData.quizAnswers?.[quiz.id] || {};
+    const correctCount = Object.values(userAnswers).filter(a => a.isCorrect).length;
+
+    return `
+      <div class="h-full overflow-y-auto bg-[#F2F2F2] px-4 py-6">
+        <div class="bg-white rounded-[22px] p-6 mb-4 shadow-sm">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-12 h-12 bg-[#9CD6FF] rounded-full flex items-center justify-center">
+              <span class="text-xl font-bold text-black">Q</span>
+            </div>
+            <div>
+              <h2 class="text-lg font-bold text-black">${quiz.title}</h2>
+              <p class="text-sm text-gray-600">${quiz.topic}</p>
+            </div>
+          </div>
+          <div class="bg-gray-50 rounded-[15px] p-4 mb-4">
+            <p class="text-sm text-gray-600 mb-2">Résultat</p>
+            <p class="text-2xl font-bold text-black">${correctCount}/3 bonnes réponses</p>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          ${quiz.questions.map((q, idx) => {
+            const userAnswer = userAnswers[q.id];
+            const isCorrect = userAnswer?.isCorrect;
+            const selectedAnswer = q.answers.find(a => a.id === userAnswer?.answerId);
+            
+            return `
+              <div class="bg-white rounded-[22px] p-4 shadow-sm">
+                <div class="flex items-center gap-2 mb-3">
+                  <span class="text-2xl">${isCorrect ? '✅' : '❌'}</span>
+                  <h3 class="font-bold text-black">Question ${idx + 1}</h3>
+                </div>
+                <p class="text-gray-700 mb-3">${q.text}</p>
+                ${selectedAnswer ? `
+                  <div class="bg-gray-50 rounded-[15px] p-3 mb-2">
+                    <p class="text-sm text-gray-600 mb-1">Votre réponse :</p>
+                    <p class="text-black font-medium">${selectedAnswer.text}</p>
+                  </div>
+                ` : ''}
+                <div class="bg-blue-50 rounded-[15px] p-3">
+                  <p class="text-sm text-gray-600 mb-1">💡 Explication :</p>
+                  <p class="text-gray-700 text-sm">${q.explanation}</p>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // Page de correction du quiz
+  function getQuizCorrectionPage() {
+    const quiz = todayQuiz;
+    
+    return `
+      <div class="h-full overflow-y-auto bg-[#F2F2F2] px-3 py-4">
+        <!-- Questions avec corrections (design comme Progress.svg) -->
+        <div class="space-y-3">
+          ${quiz.questions.map((q, idx) => {
+            const userAnswer = quizState.answers.find(a => a.questionId === q.id);
+            const isCorrect = userAnswer?.isCorrect;
+            const selectedAnswer = q.answers.find(a => a.id === userAnswer?.answerId);
+            const correctAnswer = q.answers.find(a => a.isCorrect);
+            
+            return `
+              <div class="bg-white rounded-[18px] p-4 shadow-sm">
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="text-xl">${isCorrect ? '✅' : '❌'}</span>
+                  <h3 class="font-bold text-black text-sm">Question ${idx + 1}</h3>
+                </div>
+                <p class="text-sm text-black mb-3">${q.text}</p>
+                
+                ${selectedAnswer ? `
+                  <div class="bg-gray-50 rounded-[12px] p-2 mb-2">
+                    <p class="text-xs text-gray-600 mb-1">Votre réponse :</p>
+                    <p class="text-xs text-black font-medium ${!isCorrect ? 'text-red-600' : ''}">${selectedAnswer.text}</p>
+                  </div>
+                ` : ''}
+                
+                ${!isCorrect && correctAnswer ? `
+                  <div class="bg-[#ABEDB0] rounded-[12px] p-2 mb-2">
+                    <p class="text-xs text-gray-600 mb-1">Bonne réponse :</p>
+                    <p class="text-xs text-black font-medium">${correctAnswer.text}</p>
+                  </div>
+                ` : ''}
+                
+                <div class="bg-blue-50 rounded-[12px] p-2">
+                  <p class="text-xs text-gray-600 mb-1">💡 Explication :</p>
+                  <p class="text-xs text-gray-700">${q.explanation}</p>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+
+        <button 
+          class="w-full bg-[#FFB472] text-white rounded-[18px] py-3 mt-4 font-bold shadow-sm"
+          id="back-to-results"
+        >
+          Retour aux résultats
+        </button>
+      </div>
+    `;
+  }
+
+  function attachQuizCorrectionListeners() {
+    // Le bouton retour dans le header fixe gère déjà le retour
+    // Mais on peut aussi gérer le bouton spécifique de cette page
+    document.getElementById('back-to-results')?.addEventListener('click', () => {
+      quizState.showResults = true;
+      showPage('quiz');
+    });
+  }
+
+  function attachHistoryListeners() {
+    // Le bouton retour dans le header fixe gère déjà le retour
+  }
+
+  // Page Dictionnaire
+  function getDicoPage() {
+    return `
+      <div class="h-full bg-[#F2F2F2] px-4 py-6">
+        <div class="mb-4">
+          <input 
+            type="text" 
+            placeholder="Rechercher un terme..." 
+            class="w-full bg-white rounded-[22px] px-4 py-3 text-black placeholder-gray-400 shadow-sm"
+            id="dico-search"
+          />
+        </div>
+
+        <div class="space-y-3" id="dico-entries">
+          ${dicoEntries.map((entry, index) => {
+            const isSelected = dicoState.selectedTerm === entry.term;
+            // Échapper les guillemets simples dans le terme pour l'attribut onclick
+            const escapedTerm = entry.term.replace(/'/g, "\\'");
+            return `
+              <div class="bg-white rounded-[22px] shadow-sm overflow-hidden transition-all" id="dico-item-${index}">
+                <button 
+                  class="w-full py-2.5 px-4 dico-entry text-left cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-between"
+                  data-term="${entry.term}"
+                  data-index="${index}"
+                  onclick="if(window.toggleDicoTerm) window.toggleDicoTerm('${escapedTerm}'); return false;"
+                >
+                  <h3 class="font-bold text-black text-base">${entry.term}</h3>
+                  <svg 
+                    class="w-4 h-4 text-black transition-transform ${isSelected ? 'rotate-180' : ''}" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                    pointer-events="none"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                ${isSelected ? `
+                  <div class="px-4 pb-3">
+                    <p class="text-gray-700 text-sm leading-relaxed">${entry.definition}</p>
+                  </div>
+                ` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  function attachDicoListeners() {
+    // Le bouton retour dans le header fixe gère déjà le retour
+    
+    // Recherche
+    setTimeout(() => {
+      const searchInput = document.getElementById('dico-search');
+      if (searchInput) {
+        searchInput.oninput = function(e) {
+          const searchTerm = e.target.value.toLowerCase();
+          const entries = document.querySelectorAll('.dico-entry');
+          
+          entries.forEach(entry => {
+            const term = entry.getAttribute('data-term')?.toLowerCase() || '';
+            const parentDiv = entry.closest('.bg-white');
+            
+            if (term.includes(searchTerm)) {
+              if (parentDiv) parentDiv.style.display = 'block';
+            } else {
+              if (parentDiv) parentDiv.style.display = 'none';
+            }
+          });
+        };
+      }
+    }, 50);
+  }
+
+  // Page Profil
+  function getProfilePage() {
+    const userData = getUserData();
+    return `
+      <div class="h-full overflow-y-auto bg-[#F2F2F2] px-4 py-6">
+        <div class="bg-white rounded-[22px] p-6 mb-4 text-center shadow-sm">
+          <div class="w-24 h-24 bg-[#FFB472] rounded-full mx-auto mb-4 flex items-center justify-center">
+            <span class="text-4xl">👤</span>
+          </div>
+          <h2 class="text-xl font-bold text-black mb-2">Visiteur</h2>
+          <p class="text-gray-600">Mode démo</p>
+        </div>
+
+        <div class="bg-white rounded-[22px] p-4 mb-4 shadow-sm">
+          <h3 class="font-bold text-black mb-3">Statistiques</h3>
+          <div class="space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-gray-600">Série de victoires</span>
+              <span class="font-bold text-black">${userData.winstreak || 0} jour${userData.winstreak !== 1 ? 's' : ''}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-600">Quiz complétés</span>
+              <span class="font-bold text-black">${Object.keys(userData.quizAnswers || {}).length}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-[22px] p-4 shadow-sm">
+          <h3 class="font-bold text-black mb-3">À propos</h3>
+          <p class="text-gray-600 text-sm">
+            Ceci est une démo interactive de l'application Cashou. 
+            Vos réponses sont sauvegardées localement dans votre navigateur.
+          </p>
+        </div>
+      </div>
+    `;
+  }
+
+  function attachProfileListeners() {
+    // Le bouton retour dans le header fixe gère déjà le retour
+  }
+</script>

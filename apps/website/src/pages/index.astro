@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import Hero from '../components/Hero.astro';
 import Features from '../components/Features.astro';
+import PhoneSimulator from '../components/PhoneSimulator.astro';
 import HowItWorks from '../components/HowItWorks.astro';
 import Team from '../components/Team.astro';
 import Download from '../components/Download.astro';
@@ -22,7 +23,8 @@ const showComingSoon = import.meta.env.PUBLIC_SHOW_COMING_SOON === 'true';
     <main>
       <Hero />
       <Features />
-      <HowItWorks />
+      <PhoneSimulator />
+      {/* <HowItWorks /> */}
       <Team />
       <Download />
     </main>
