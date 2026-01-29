@@ -54,7 +54,7 @@
           </div>
 
           <!-- Barre de navigation en bas (exactement comme dans Progress.svg - design iPhone) -->
-          <div class="absolute bottom-0 left-0 right-0 px-2 pb-2" style="filter: drop-shadow(0px 2px 2px rgba(0, 0, 0, 0.25));">
+          <div class="absolute bottom-0 left-0 right-0 px-2 pb-2 z-40" style="filter: drop-shadow(0px 2px 2px rgba(0, 0, 0, 0.25));">
             <!-- Rectangle orange principal avec coins arrondis en bas -->
             <div class="bg-[#FFB472] rounded-[20px] h-[40px] relative" style="border-radius: 20px 20px 20px 20px;">
               <!-- Rectangle blanc pour l'élément actif -->
@@ -794,6 +794,24 @@
       if (html) {
         content.innerHTML = html;
         console.log('Contenu injecté pour la page:', page);
+        
+        // Ajuster le style du conteneur pour la page dico pour permettre le scroll sous le menu
+        const contentContainer = content.parentElement;
+        if (page === 'dico') {
+          content.style.height = 'calc(100% + 60px)';
+          content.style.overflow = 'visible';
+          if (contentContainer) {
+            contentContainer.style.overflow = 'visible';
+            contentContainer.style.height = 'calc(500px + 60px)';
+          }
+        } else {
+          content.style.height = '100%';
+          content.style.overflow = '';
+          if (contentContainer) {
+            contentContainer.style.overflow = 'hidden';
+            contentContainer.style.height = '500px';
+          }
+        }
         
         // Attacher les listeners spécifiques à la page
         setTimeout(() => {
@@ -1570,7 +1588,7 @@
   // Page Dictionnaire
   function getDicoPage() {
     return `
-      <div class="h-full bg-[#F2F2F2] px-4 py-6 overflow-y-auto relative" id="dico-scroll-container">
+      <div class="bg-[#F2F2F2] px-4 py-6 overflow-y-auto relative" id="dico-scroll-container" style="height: calc(100% + 60px); padding-bottom: 60px;">
         <div class="mb-4">
           <input 
             type="text" 
