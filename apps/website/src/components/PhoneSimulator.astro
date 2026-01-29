@@ -146,7 +146,7 @@
   // Données du quiz du jour (Livret A)
   const todayQuiz = {
     id: 'today',
-    title: 'Quiz du jour',
+    title: '', // Le titre sera généré dynamiquement avec la date
     topic: 'Livret A',
     questions: [
       {
@@ -188,7 +188,7 @@
   // Données du quiz de la veille (PEL)
   const yesterdayQuiz = {
     id: 'yesterday',
-    title: 'Quiz d\'hier',
+    title: '', // Le titre sera généré dynamiquement avec la date
     topic: 'PEL',
     questions: [
       {
@@ -247,6 +247,7 @@
 
   // État de l'application
   let currentPage = 'home';
+  let currentQuizData = null; // Quiz actuellement sélectionné (todayQuiz ou yesterdayQuiz)
   let quizState = {
     currentQuiz: null,
     currentQuestionIndex: 0,
@@ -771,6 +772,8 @@
           console.log('Clic sur daily quiz card');
           
           const userData = getUserData();
+          // Réinitialiser le quiz actuel pour utiliser todayQuiz
+          currentQuizData = todayQuiz;
           const quizStatus = userData.quizAnswers?.[todayQuiz.id] ? 'done' : 'todo';
           if (quizStatus === 'done') {
             // Afficher les résultats directement
@@ -816,10 +819,37 @@
     }, 50);
   }
 
+  // Fonction pour obtenir le titre du quiz avec la date
+  function getQuizTitle(quiz) {
+    const now = new Date();
+    const today = now.getDate();
+    
+    // Déterminer la date du quiz
+    let quizDate;
+    if (quiz.id === 'today') {
+      quizDate = now;
+    } else if (quiz.id === 'yesterday') {
+      quizDate = new Date(now);
+      quizDate.setDate(today - 1);
+    } else {
+      quizDate = now;
+    }
+    
+    // Formater la date
+    const day = quizDate.getDate();
+    const monthNames = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 
+                        'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+    const month = monthNames[quizDate.getMonth()];
+    
+    return `Quiz du ${day} ${month}`;
+  }
+
   // Page Quiz
   function getQuizPage() {
     const userData = getUserData();
-    const quiz = todayQuiz;
+    // Utiliser le quiz sélectionné ou todayQuiz par défaut
+    const quiz = currentQuizData || todayQuiz;
+    const quizTitle = getQuizTitle(quiz);
     
     // Page de description du quiz
     if (quizState.showDescription && !quizState.completed) {
@@ -827,7 +857,7 @@
         <div class="h-full overflow-y-auto bg-[#F2F2F2] px-3 py-4">
           <!-- Description du quiz (design comme dans Progress.svg) -->
           <div class="bg-white rounded-[18px] p-4 mb-3 shadow-sm">
-            <h2 class="text-xl font-bold text-black mb-2">${quiz.title}</h2>
+            <h2 class="text-xl font-bold text-black mb-2">${quizTitle}</h2>
             <p class="text-sm text-gray-600 mb-3">${quiz.topic}</p>
             <p class="text-xs text-gray-500 mb-4">Testez vos connaissances sur le ${quiz.topic} avec ${quiz.questions.length} questions.</p>
             <div class="flex items-center gap-2 text-xs text-gray-500">
@@ -986,11 +1016,14 @@
       showPage('history');
     });
 
+    // Obtenir le quiz actuel
+    const quiz = currentQuizData || todayQuiz;
+    
     // Réinitialiser l'état du quiz si nécessaire (pour les questions)
     if (currentPage === 'quiz' && !quizState.showDescription && !quizState.showResults) {
-      if (quizState.currentQuiz !== todayQuiz.id) {
+      if (quizState.currentQuiz !== quiz.id) {
         quizState = {
-          currentQuiz: todayQuiz.id,
+          currentQuiz: quiz.id,
           currentQuestionIndex: 0,
           selectedAnswer: null,
           answers: [],
@@ -1011,7 +1044,7 @@
           
           const answerId = parseInt(this.getAttribute('data-answer-id'));
           const isCorrect = this.getAttribute('data-is-correct') === 'true';
-          const question = todayQuiz.questions[quizState.currentQuestionIndex];
+          const question = quiz.questions[quizState.currentQuestionIndex];
           
           quizState.selectedAnswer = answerId;
           quizState.answers.push({
@@ -1024,8 +1057,8 @@
           // Sauvegarder la réponse
           const userData = getUserData();
           if (!userData.quizAnswers) userData.quizAnswers = {};
-          if (!userData.quizAnswers[todayQuiz.id]) userData.quizAnswers[todayQuiz.id] = {};
-          userData.quizAnswers[todayQuiz.id][question.id] = { answerId, isCorrect };
+          if (!userData.quizAnswers[quiz.id]) userData.quizAnswers[quiz.id] = {};
+          userData.quizAnswers[quiz.id][question.id] = { answerId, isCorrect };
           saveUserData(userData);
 
           // Réafficher la page
@@ -1036,7 +1069,7 @@
 
     // Question suivante
     document.getElementById('next-question')?.addEventListener('click', function() {
-      if (quizState.currentQuestionIndex < todayQuiz.questions.length - 1) {
+      if (quizState.currentQuestionIndex < quiz.questions.length - 1) {
         quizState.currentQuestionIndex++;
         quizState.selectedAnswer = null;
         quizState.showExplanation = false;
@@ -1052,11 +1085,11 @@
     // Recommencer le quiz
     document.getElementById('restart-quiz')?.addEventListener('click', function() {
       const userData = getUserData();
-      delete userData.quizAnswers[todayQuiz.id];
+      delete userData.quizAnswers[quiz.id];
       saveUserData(userData);
       
       quizState = {
-        currentQuiz: todayQuiz.id,
+        currentQuiz: quiz.id,
         currentQuestionIndex: 0,
         selectedAnswer: null,
         answers: [],
@@ -1185,7 +1218,7 @@
 
   // Page de correction du quiz
   function getQuizCorrectionPage() {
-    const quiz = todayQuiz;
+    const quiz = currentQuizData || todayQuiz;
     
     return `
       <div class="h-full overflow-y-auto bg-[#F2F2F2] px-3 py-4">
@@ -1249,6 +1282,80 @@
 
   function attachHistoryListeners() {
     // Le bouton retour dans le header fixe gère déjà le retour
+    
+    // Clic sur un jour du calendrier
+    setTimeout(() => {
+      document.querySelectorAll('[data-day]').forEach(dayCell => {
+        const day = parseInt(dayCell.getAttribute('data-day'));
+        const state = dayCell.getAttribute('data-state');
+        
+        // Ne permettre le clic que sur les jours avec quiz (complété ou non complété)
+        if (state === 'completed' || state === 'not-completed') {
+          dayCell.onclick = function() {
+            const now = new Date();
+            const today = now.getDate();
+            
+            // Déterminer quel quiz ouvrir
+            let quizToOpen;
+            if (day === today) {
+              quizToOpen = todayQuiz;
+            } else if (day === today - 1) {
+              quizToOpen = yesterdayQuiz;
+            } else {
+              // Pour les autres jours, utiliser todayQuiz par défaut
+              quizToOpen = todayQuiz;
+            }
+            
+            // Définir le quiz actuel
+            currentQuizData = quizToOpen;
+            
+            // Charger les réponses si le quiz est complété
+            const userData = getUserData();
+            const quizStatus = userData.quizAnswers?.[quizToOpen.id] ? 'done' : 'todo';
+            
+            if (quizStatus === 'done') {
+              // Afficher les résultats directement
+              quizState = {
+                currentQuiz: quizToOpen.id,
+                currentQuestionIndex: 0,
+                selectedAnswer: null,
+                answers: [],
+                showExplanation: false,
+                completed: true,
+                showDescription: false,
+                showResults: true
+              };
+              // Récupérer les réponses sauvegardées
+              const savedAnswers = userData.quizAnswers[quizToOpen.id];
+              quizToOpen.questions.forEach(q => {
+                const saved = savedAnswers[q.id];
+                if (saved) {
+                  quizState.answers.push({
+                    questionId: q.id,
+                    answerId: saved.answerId,
+                    isCorrect: saved.isCorrect
+                  });
+                }
+              });
+            } else {
+              // Afficher la description du quiz
+              quizState = {
+                currentQuiz: quizToOpen.id,
+                currentQuestionIndex: 0,
+                selectedAnswer: null,
+                answers: [],
+                showExplanation: false,
+                completed: false,
+                showDescription: true,
+                showResults: false
+              };
+            }
+            
+            showPage('quiz');
+          };
+        }
+      });
+    }, 50);
   }
 
   // Page Dictionnaire
