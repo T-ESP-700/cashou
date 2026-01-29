@@ -883,7 +883,12 @@
     const userData = getUserData();
     const timeRemaining = getTimeRemaining();
     const progress = calculateProgress();
-    const quizStatus = userData.quizAnswers?.[todayQuiz.id] ? 'done' : 'todo';
+    
+    // Vérifier si le quiz est vraiment terminé (toutes les questions ont des réponses)
+    const savedAnswers = userData.quizAnswers?.[todayQuiz.id];
+    const isQuizCompleted = savedAnswers && todayQuiz.questions.every(q => savedAnswers[q.id]);
+    const quizStatus = isQuizCompleted ? 'done' : 'todo';
+    
     const radius = 20;
     const circumference = 2 * Math.PI * radius;
 
@@ -894,7 +899,7 @@
           <!-- Header avec titre et badge -->
           <div class="flex items-center justify-between mb-3">
             <h2 class="text-lg font-bold text-black">Daily Quiz</h2>
-            <div class="bg-[#FFB472] text-black px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1">
+            <div class="${quizStatus === 'done' ? 'bg-[#ABEDB0]' : 'bg-[#FFB472]'} text-black px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1">
               <span>ℹ️</span>
               <span>${quizStatus === 'done' ? 'Terminé' : 'À faire'}</span>
             </div>
@@ -965,8 +970,12 @@
           const userData = getUserData();
           // Réinitialiser le quiz actuel pour utiliser todayQuiz
           currentQuizData = todayQuiz;
-          const quizStatus = userData.quizAnswers?.[todayQuiz.id] ? 'done' : 'todo';
-          if (quizStatus === 'done') {
+          
+          // Vérifier si le quiz est vraiment terminé (toutes les questions ont des réponses)
+          const savedAnswers = userData.quizAnswers?.[todayQuiz.id];
+          const isQuizCompleted = savedAnswers && todayQuiz.questions.every(q => savedAnswers[q.id]);
+          
+          if (isQuizCompleted) {
             // Afficher les résultats directement
             quizState = {
               currentQuiz: todayQuiz.id,
@@ -1237,12 +1246,7 @@
           quizState.answers.push(answerData);
         }
 
-        // Sauvegarder la réponse
-        const userData = getUserData();
-        if (!userData.quizAnswers) userData.quizAnswers = {};
-        if (!userData.quizAnswers[quiz.id]) userData.quizAnswers[quiz.id] = {};
-        userData.quizAnswers[quiz.id][question.id] = { answerId, isCorrect };
-        saveUserData(userData);
+        // Ne pas sauvegarder maintenant - on sauvegardera uniquement à la fin du quiz
 
         // Mettre à jour l'affichage sans animation
         const content = document.getElementById('app-content');
@@ -1260,7 +1264,25 @@
         quizState.selectedAnswer = null;
         showPage('quiz');
       } else {
-        // Quiz terminé - afficher les résultats
+        // Quiz terminé - sauvegarder toutes les réponses maintenant
+        const userData = getUserData();
+        if (!userData.quizAnswers) userData.quizAnswers = {};
+        if (!userData.quizAnswers[quiz.id]) userData.quizAnswers[quiz.id] = {};
+        
+        // Sauvegarder toutes les réponses du quiz
+        quizState.answers.forEach(answer => {
+          const question = quiz.questions.find(q => q.id === answer.questionId);
+          if (question) {
+            userData.quizAnswers[quiz.id][question.id] = {
+              answerId: answer.answerId,
+              isCorrect: answer.isCorrect
+            };
+          }
+        });
+        
+        saveUserData(userData);
+        
+        // Afficher les résultats
         quizState.completed = true;
         quizState.showResults = true;
         showPage('quiz');
@@ -1316,9 +1338,25 @@
       }
       
       if (quizId && userData.quizAnswers?.[quizId]) {
-        return 'completed'; // Quiz complété (vert)
-      } else if (hasQuiz) {
-        return 'not-completed'; // Quiz existant non complété (rouge)
+        // Vérifier que toutes les questions ont des réponses (quiz vraiment terminé)
+        let quizToCheck;
+        if (quizId === todayQuiz.id) {
+          quizToCheck = todayQuiz;
+        } else if (quizId === yesterdayQuiz.id) {
+          quizToCheck = yesterdayQuiz;
+        }
+        
+        if (quizToCheck) {
+          const savedAnswers = userData.quizAnswers[quizId];
+          const allQuestionsAnswered = quizToCheck.questions.every(q => savedAnswers[q.id]);
+          if (allQuestionsAnswered) {
+            return 'completed'; // Quiz complété (vert)
+          }
+        }
+      }
+      
+      if (hasQuiz) {
+        return 'not-completed'; // Quiz existant non complété (orange)
       }
       
       return 'normal';
@@ -1605,9 +1643,12 @@
             
             // Charger les réponses si le quiz est complété
             const userData = getUserData();
-            const quizStatus = userData.quizAnswers?.[quizToOpen.id] ? 'done' : 'todo';
             
-            if (quizStatus === 'done') {
+            // Vérifier si le quiz est vraiment terminé (toutes les questions ont des réponses)
+            const savedAnswers = userData.quizAnswers?.[quizToOpen.id];
+            const isQuizCompleted = savedAnswers && quizToOpen.questions.every(q => savedAnswers[q.id]);
+            
+            if (isQuizCompleted) {
               // Afficher les résultats directement
               quizState = {
                 currentQuiz: quizToOpen.id,
