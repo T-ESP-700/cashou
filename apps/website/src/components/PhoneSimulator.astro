@@ -1410,7 +1410,7 @@
             const showExplanation = quizState.showExplanation && quizState.explanationQuestionId === q.id;
             
             return `
-              <div class="bg-white rounded-[18px] p-4 shadow-sm">
+              <div class="bg-white rounded-[18px] p-4 shadow-sm overflow-hidden">
                 <div class="flex items-center gap-2 mb-2">
                   <span class="text-xl">${isCorrect ? '✅' : '❌'}</span>
                   <h3 class="font-bold text-black text-sm">Question ${idx + 1}</h3>
@@ -1436,29 +1436,29 @@
                     return `
                       <div class="${bgColor} ${borderColor} rounded-[12px] p-2">
                         <div class="flex items-center justify-between">
-                          <p class="text-xs text-black font-medium">${answer.text}</p>
-                          ${isUserAnswer && !isCorrect ? '<span class="text-xl">❌</span>' : ''}
-                          ${isCorrectAnswer ? '<span class="text-xl">✅</span>' : ''}
+                          <p class="text-xs text-black font-medium flex-1 min-w-0">${answer.text}</p>
+                          ${isUserAnswer && !isCorrect ? '<span class="text-xl flex-shrink-0">❌</span>' : ''}
+                          ${isCorrectAnswer ? `
+                            <button 
+                              class="correction-explanation-btn w-6 h-6 bg-white rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors shadow-sm flex-shrink-0"
+                              data-question-id="${q.id}"
+                            >
+                              <span class="text-xs text-gray-700 font-bold">i</span>
+                            </button>
+                          ` : ''}
                         </div>
-                        ${isCorrectAnswer ? `
-                          <button 
-                            class="mt-2 text-xs text-blue-600 font-medium hover:underline correction-explanation-btn"
-                            data-question-id="${q.id}"
-                          >
-                            ${showExplanation ? 'Masquer l\'explication' : 'Voir l\'explication'}
-                          </button>
-                        ` : ''}
                       </div>
                     `;
                   }).join('')}
                 </div>
                 
-                ${showExplanation ? `
+                <!-- Explication avec animation comme le dictionnaire -->
+                <div class="correction-explanation-container overflow-hidden transition-all duration-300 ease-out" style="max-height: ${showExplanation ? '500px' : '0px'};">
                   <div class="bg-blue-50 border border-blue-200 rounded-[12px] p-3 mt-2">
                     <h4 class="font-bold text-black text-xs mb-1">💡 Explication</h4>
                     <p class="text-xs text-gray-700">${q.explanation}</p>
                   </div>
-                ` : ''}
+                </div>
               </div>
             `;
           }).join('')}
@@ -1474,6 +1474,43 @@
     `;
   }
 
+  // Fonction globale pour toggle l'explication du quiz (comme toggleDicoTerm)
+  window.toggleQuizExplanation = function(questionId) {
+    console.log('toggleQuizExplanation appelé avec:', questionId);
+    
+    // Trouver le conteneur de la question
+    const buttons = document.querySelectorAll(`.correction-explanation-btn[data-question-id="${questionId}"]`);
+    if (buttons.length === 0) return;
+    
+    const btn = buttons[0];
+    const questionContainer = btn.closest('.bg-white');
+    if (!questionContainer) return;
+    
+    const explanationContainer = questionContainer.querySelector('.correction-explanation-container');
+    
+    // Toggle l'explication pour cette question
+    if (quizState.explanationQuestionId === questionId) {
+      quizState.showExplanation = false;
+      quizState.explanationQuestionId = null;
+      // Fermer l'explication
+      if (explanationContainer) {
+        explanationContainer.style.maxHeight = '0px';
+      }
+    } else {
+      // Fermer les autres explications ouvertes
+      document.querySelectorAll('.correction-explanation-container').forEach(container => {
+        container.style.maxHeight = '0px';
+      });
+      
+      quizState.showExplanation = true;
+      quizState.explanationQuestionId = questionId;
+      // Ouvrir cette explication
+      if (explanationContainer) {
+        explanationContainer.style.maxHeight = '500px';
+      }
+    }
+  };
+
   function attachQuizCorrectionListeners() {
     // Le bouton retour dans le header fixe gère déjà le retour
     // Mais on peut aussi gérer le bouton spécifique de cette page
@@ -1484,25 +1521,50 @@
       showPage('quiz');
     });
     
-    // Clic sur "Voir l'explication" pour chaque question
+    // Initialiser l'état des explications et attacher les listeners
     setTimeout(() => {
-      document.querySelectorAll('.correction-explanation-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-          const questionId = parseInt(this.getAttribute('data-question-id'));
+      const buttons = document.querySelectorAll('.correction-explanation-btn');
+      buttons.forEach(btn => {
+        const questionId = parseInt(btn.getAttribute('data-question-id'));
+        const questionContainer = btn.closest('.bg-white');
+        if (!questionContainer) return;
+        
+        const explanationContainer = questionContainer.querySelector('.correction-explanation-container');
+        const isSelected = quizState.explanationQuestionId === questionId;
+        
+        if (explanationContainer) {
+          explanationContainer.style.maxHeight = isSelected ? '500px' : '0px';
+        }
+        
+        // Attacher le listener directement
+        btn.onclick = function(e) {
+          e.preventDefault();
+          e.stopPropagation();
           
           // Toggle l'explication pour cette question
           if (quizState.explanationQuestionId === questionId) {
             quizState.showExplanation = false;
             quizState.explanationQuestionId = null;
+            // Fermer l'explication
+            if (explanationContainer) {
+              explanationContainer.style.maxHeight = '0px';
+            }
           } else {
+            // Fermer les autres explications ouvertes
+            document.querySelectorAll('.correction-explanation-container').forEach(container => {
+              container.style.maxHeight = '0px';
+            });
+            
             quizState.showExplanation = true;
             quizState.explanationQuestionId = questionId;
+            // Ouvrir cette explication
+            if (explanationContainer) {
+              explanationContainer.style.maxHeight = '500px';
+            }
           }
-          
-          showPage('quiz-correction');
-        });
+        };
       });
-    }, 50);
+    }, 10);
   }
 
   function attachHistoryListeners() {
