@@ -1069,57 +1069,115 @@
     });
   }
 
-  // Page Historique (via calendrier)
+  // Page Historique (calendrier)
   function getHistoryPage() {
     const userData = getUserData();
-    const quiz = yesterdayQuiz;
-    const userAnswers = userData.quizAnswers?.[quiz.id] || {};
-    const correctCount = Object.values(userAnswers).filter(a => a.isCorrect).length;
-
-    return `
-      <div class="h-full overflow-y-auto bg-[#F2F2F2] px-4 py-6">
-        <div class="bg-white rounded-[22px] p-6 mb-4 shadow-sm">
-          <div class="flex items-center gap-3 mb-4">
-            <div class="w-12 h-12 bg-[#9CD6FF] rounded-full flex items-center justify-center">
-              <span class="text-xl font-bold text-black">Q</span>
-            </div>
-            <div>
-              <h2 class="text-lg font-bold text-black">${quiz.title}</h2>
-              <p class="text-sm text-gray-600">${quiz.topic}</p>
-            </div>
-          </div>
-          <div class="bg-gray-50 rounded-[15px] p-4 mb-4">
-            <p class="text-sm text-gray-600 mb-2">Résultat</p>
-            <p class="text-2xl font-bold text-black">${correctCount}/3 bonnes réponses</p>
-          </div>
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const today = now.getDate();
+    
+    // Obtenir le premier jour du mois et le nombre de jours
+    const firstDay = new Date(currentYear, currentMonth, 1);
+    const lastDay = new Date(currentYear, currentMonth + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay(); // 0 = dimanche, 1 = lundi, etc.
+    
+    // Noms des jours de la semaine
+    const dayNames = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+    const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 
+                        'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    
+    // Fonction pour obtenir l'état d'un jour
+    function getDayState(day) {
+      const date = new Date(currentYear, currentMonth, day);
+      const dateStr = date.toISOString().split('T')[0];
+      
+      // Jours futurs (après aujourd'hui)
+      if (day > today) {
+        return 'future';
+      }
+      
+      // Vérifier si un quiz existe pour ce jour (pour la démo, on simule)
+      // Aujourd'hui et hier ont toujours un quiz
+      const hasQuiz = day === today || day === today - 1;
+      
+      if (!hasQuiz) {
+        return 'normal'; // Jour passé sans quiz
+      }
+      
+      // Vérifier si le quiz a été complété
+      // Pour la démo, on utilise todayQuiz.id pour aujourd'hui et yesterdayQuiz.id pour hier
+      let quizId;
+      if (day === today) {
+        quizId = todayQuiz.id;
+      } else if (day === today - 1) {
+        quizId = yesterdayQuiz.id;
+      }
+      
+      if (quizId && userData.quizAnswers?.[quizId]) {
+        return 'completed'; // Quiz complété (vert)
+      } else if (hasQuiz) {
+        return 'not-completed'; // Quiz existant non complété (rouge)
+      }
+      
+      return 'normal';
+    }
+    
+    // Générer les cellules du calendrier
+    let calendarCells = '';
+    
+    // Jours de la semaine en en-tête
+    calendarCells += '<div class="grid grid-cols-7 gap-1 mb-2">';
+    dayNames.forEach(day => {
+      calendarCells += `<div class="text-center text-xs font-medium text-gray-600 py-1">${day}</div>`;
+    });
+    calendarCells += '</div>';
+    
+    // Cellules du calendrier
+    calendarCells += '<div class="grid grid-cols-7 gap-1">';
+    
+    // Cellules vides pour les jours avant le premier du mois
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      calendarCells += '<div class="aspect-square"></div>';
+    }
+    
+    // Jours du mois
+    for (let day = 1; day <= daysInMonth; day++) {
+      const state = getDayState(day);
+      let bgColor = 'bg-white';
+      let textColor = 'text-black';
+      
+      if (state === 'future') {
+        bgColor = 'bg-gray-200';
+        textColor = 'text-gray-400';
+      } else if (state === 'completed') {
+        bgColor = 'bg-[#ABEDB0]';
+        textColor = 'text-black';
+      } else if (state === 'not-completed') {
+        bgColor = 'bg-red-200';
+        textColor = 'text-black';
+      }
+      
+      calendarCells += `
+        <div class="aspect-square ${bgColor} ${textColor} rounded-lg flex items-center justify-center text-sm font-medium cursor-pointer hover:opacity-80 transition-opacity" 
+             data-day="${day}" 
+             data-state="${state}">
+          ${day}
         </div>
-
-        <div class="space-y-4">
-          ${quiz.questions.map((q, idx) => {
-            const userAnswer = userAnswers[q.id];
-            const isCorrect = userAnswer?.isCorrect;
-            const selectedAnswer = q.answers.find(a => a.id === userAnswer?.answerId);
-            
-            return `
-              <div class="bg-white rounded-[22px] p-4 shadow-sm">
-                <div class="flex items-center gap-2 mb-3">
-                  <span class="text-2xl">${isCorrect ? '✅' : '❌'}</span>
-                  <h3 class="font-bold text-black">Question ${idx + 1}</h3>
-                </div>
-                <p class="text-gray-700 mb-3">${q.text}</p>
-                ${selectedAnswer ? `
-                  <div class="bg-gray-50 rounded-[15px] p-3 mb-2">
-                    <p class="text-sm text-gray-600 mb-1">Votre réponse :</p>
-                    <p class="text-black font-medium">${selectedAnswer.text}</p>
-                  </div>
-                ` : ''}
-                <div class="bg-blue-50 rounded-[15px] p-3">
-                  <p class="text-sm text-gray-600 mb-1">💡 Explication :</p>
-                  <p class="text-gray-700 text-sm">${q.explanation}</p>
-                </div>
-              </div>
-            `;
-          }).join('')}
+      `;
+    }
+    
+    calendarCells += '</div>';
+    
+    return `
+      <div class="h-full overflow-y-auto bg-[#F2F2F2] px-4 py-4">
+        <div class="mb-3">
+          <h2 class="text-xl font-bold text-black">${monthNames[currentMonth]} ${currentYear}</h2>
+        </div>
+        
+        <div class="bg-white rounded-[22px] p-4 shadow-sm">
+          ${calendarCells}
         </div>
       </div>
     `;
