@@ -900,11 +900,13 @@
           // Fermer la définition et revenir à la liste
           dicoState.selectedTerm = null;
           showPage('dico', true);
-        } else if (currentPage === 'simulation' && simulationState.selectedAssetId) {
-          simulationState.selectedAssetId = null;
-          showPage('simulation', true);
         } else if (currentPage === 'simulation' && simulationState.screen === 'allocation') {
+          // Retour depuis Investir : vers l'actif si on venait d'un actif, sinon vers le niveau
           simulationState.screen = 'level';
+          showPage('simulation', true);
+        } else if (currentPage === 'simulation' && simulationState.selectedAssetId) {
+          // Retour depuis la page détail d'un actif vers la liste du niveau
+          simulationState.selectedAssetId = null;
           showPage('simulation', true);
         } else if (currentPage === 'simulation' && simulationState.screen === 'level' && simulationState.showLevelDescription) {
           closeLevelDescriptionPopup();
@@ -2319,11 +2321,11 @@
   }
 
   function getSimulationPage() {
-    if (simulationState.selectedAssetId) {
-      return getSimulationAssetDetailPage(simulationState.selectedAssetId);
-    }
     if (simulationState.screen === 'allocation') {
       return getSimulationAllocationPage();
+    }
+    if (simulationState.selectedAssetId) {
+      return getSimulationAssetDetailPage(simulationState.selectedAssetId);
     }
     return getSimulationLevelPage();
   }
@@ -2378,6 +2380,11 @@
           </div>
           <div class="w-full h-0.5 bg-black rounded-full mb-3 opacity-20"></div>
 
+          <div class="bg-white rounded-[22px] h-[44px] px-2 flex items-center justify-between shadow-sm mb-1.5">
+            <span class="font-bold text-black text-sm">Portefeuille</span>
+            <span class="rounded-[15.5px] px-2.5 py-0.5 text-xs font-medium text-black bg-[#9CD6FF]">${portefeuilleAmount} €</span>
+          </div>
+
           <div class="space-y-1.5">
             ${simulationAssets.map(a => {
               const value = byAsset[a.id] || 0;
@@ -2405,6 +2412,11 @@
             <span class="text-sm font-bold text-black">${Math.round(totalAvoirs)} €</span>
           </div>
           <div class="w-full h-0.5 bg-black rounded-full mb-2 opacity-20"></div>
+
+          <div class="bg-white rounded-[22px] h-[44px] px-2 flex items-center justify-between shadow-sm mb-1.5">
+            <span class="font-bold text-black text-sm">Portefeuille</span>
+            <span class="rounded-[15.5px] px-2.5 py-0.5 text-xs font-medium text-black bg-[#9CD6FF]">${portefeuilleAmount} €</span>
+          </div>
 
           <div class="space-y-1.5 mb-4">
             ${simulationAssets.map(a => {
@@ -2710,11 +2722,13 @@
         else openLevelDescriptionPopup();
       });
 
-      // Ouvrir écran Investir (bouton + dans le footer) — toujours dispo ; met la simulation en pause en arrière-plan
+      // Ouvrir écran Investir (bouton +) : par défaut Depuis = Portefeuille ; si on vient d'un actif, Vers = cet actif
       document.getElementById('simulation-open-allocation-btn')?.addEventListener('click', () => {
         simulationState.screen = 'allocation';
         simulationState.allocationFromId = 'portefeuille';
-        simulationState.allocationToId = 'livret';
+        simulationState.allocationToId = simulationState.selectedAssetId && simulationAssets.some(a => a.id === simulationState.selectedAssetId)
+          ? simulationState.selectedAssetId
+          : 'livret';
         simulationState.allocationFromOpen = false;
         simulationState.allocationToOpen = false;
         showPage('simulation', true);
