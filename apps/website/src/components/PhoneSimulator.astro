@@ -430,7 +430,8 @@
     { id: 'ndiva', name: 'Ndiva', type: 'stock', domain: 'IA & semi-conducteurs', description: 'Spécialiste des processeurs pour l\'intelligence artificielle et le calcul haute performance. Très exposé à la croissance de l\'IA.' }
   ];
 
-  // Indice mensuel (base 100 au mois 0). News au mois 3 ; Ndiva/CapJumeaux ne descendent jamais après la news (que hausse ou plat).
+  // Indice mensuel (base 100 au mois 0). News au mois 3 ; Ndiva/CapJumeaux ne descendent jamais après la news.
+  // LVMH et ArcelOrbital finissent en baisse (94 et 90) : impossible d'atteindre +10 % en misant uniquement dessus ; il faut Ndiva et/ou CapJumeaux.
   function getStockPricesForYear(assetId) {
     if (assetId === 'ndiva') {
       return [100, 100, 99, 100.5, 101, 108, 120, 120, 140, 165, 180, 188, 195];
@@ -2549,7 +2550,7 @@
     const pathArea = n === 1
       ? 'M ' + points[0].x + ' ' + points[0].y + ' L ' + points[0].x + ' ' + (padding.top + h) + ' Z'
       : 'M ' + points[0].x + ' ' + points[0].y + ' L ' + points.slice(1).map(p => p.x + ' ' + p.y).join(' L ') + ' L ' + points[points.length - 1].x + ' ' + (padding.top + h) + ' L ' + points[0].x + ' ' + (padding.top + h) + ' Z';
-    return { pathLine, pathArea, minP, maxP };
+    return { pathLine, pathArea, minP, maxP, points };
   }
 
   function getSimulationAssetDetailPage(assetId) {
@@ -2568,7 +2569,13 @@
       const n = pricesEur.length;
       const w = chartWidth - padding.left - padding.right;
       const h = chartHeight - padding.top - padding.bottom;
-      const { pathLine, pathArea, minP, maxP } = buildSmoothChartPath(pricesEur, chartWidth, chartHeight, padding);
+      const { pathLine, pathArea, minP, maxP, points } = buildSmoothChartPath(pricesEur, chartWidth, chartHeight, padding);
+      const tooltipLabels = pricesEur.map((val, i) => {
+        const monthIdx = startMonth + i;
+        const { year, abbrev3 } = getMonthLabelForSimulationMonth(monthIdx);
+        const showYear = i === 0 || i === n - 1;
+        return (abbrev3 || 'Jan') + '.' + (showYear ? ' ' + year : '') + ' — ' + val.toFixed(1) + ' €';
+      });
       const stepY = (maxP - minP) / 4;
       const yTicks = [minP, minP + stepY, minP + stepY * 2, minP + stepY * 3, maxP].map(v => Math.round(v * 10) / 10);
       const yLabels = yTicks.map((v, i) => {
@@ -2596,14 +2603,22 @@
         }
         return '<text x="' + x + '" y="' + (xLabelY - 3) + '" text-anchor="middle" font-size="' + xLabelFontSize + '" fill="#666">' + monthShort + '</text>';
       }).join('');
-      chartSvg = '<div class="bg-white rounded-[22px] p-4 shadow-sm">' +
+      const chartDataPoints = JSON.stringify(points.map(p => [p.x, p.y]));
+      const chartDataLabels = JSON.stringify(tooltipLabels);
+      chartSvg = '<div class="bg-white rounded-[22px] p-4 shadow-sm simulation-chart-wrap" data-chart-points="' + chartDataPoints.replace(/"/g, '&quot;') + '" data-chart-labels="' + chartDataLabels.replace(/"/g, '&quot;') + '">' +
         '<h3 class="text-sm font-bold text-black mb-2">Cours - 6 derniers mois (€)</h3>' +
-        '<svg viewBox="0 0 ' + chartWidth + ' ' + chartHeight + '" class="w-full" style="max-height: 160px;" preserveAspectRatio="xMidYMid meet">' +
+        '<svg id="chart-svg-' + assetId + '" viewBox="0 0 ' + chartWidth + ' ' + chartHeight + '" class="w-full simulation-chart-svg" style="max-height: 160px;" preserveAspectRatio="xMidYMid meet">' +
         '<defs><linearGradient id="chartFill-' + assetId + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FFB472" stop-opacity="0.35"/><stop offset="100%" stop-color="#FFB472" stop-opacity="0"/></linearGradient></defs>' +
         '<rect x="' + padding.left + '" y="' + padding.top + '" width="' + w + '" height="' + h + '" fill="#fafafa" rx="4"/>' +
         monthVerticals +
         '<path d="' + pathArea + '" fill="url(#chartFill-' + assetId + ')"/>' +
         '<path d="' + pathLine + '" fill="none" stroke="#FFB472" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '<rect x="' + padding.left + '" y="' + padding.top + '" width="' + w + '" height="' + h + '" fill="transparent" class="chart-hover-zone" style="cursor: crosshair"/>' +
+        '<g id="chart-tooltip-' + assetId + '" class="chart-tooltip" visibility="hidden">' +
+        '<circle r="4" fill="#FFB472" stroke="#fff" stroke-width="1.5"/>' +
+        '<rect class="chart-tooltip-bubble" x="-36" y="-22" width="72" height="20" rx="6" fill="#333" fill-opacity="0.9"/>' +
+        '<text class="chart-tooltip-text" y="-8" text-anchor="middle" font-size="10" fill="#fff"/>' +
+        '</g>' +
         yLabels + xLabels +
         '</svg></div>';
     }
@@ -2623,8 +2638,56 @@
     `;
   }
 
+  function initChartTooltips() {
+    const wrap = document.querySelector('.simulation-chart-wrap');
+    if (!wrap) return;
+    const svg = wrap.querySelector('.simulation-chart-svg');
+    const hoverZone = wrap.querySelector('.chart-hover-zone');
+    const tooltipG = wrap.querySelector('.chart-tooltip');
+    const tooltipText = wrap.querySelector('.chart-tooltip-text');
+    const tooltipBubble = wrap.querySelector('.chart-tooltip-bubble');
+    if (!svg || !hoverZone || !tooltipG || !tooltipText) return;
+    let points = [];
+    let labels = [];
+    try {
+      points = JSON.parse(wrap.getAttribute('data-chart-points') || '[]');
+      labels = JSON.parse(wrap.getAttribute('data-chart-labels') || '[]');
+    } catch (_) { return; }
+    if (points.length === 0) return;
+    const n = points.length;
+    const segLeft = points.map((p, i) => i === 0 ? 0 : (p[0] + points[i - 1][0]) / 2);
+    const segRight = points.map((p, i) => i === n - 1 ? 260 : (p[0] + points[i + 1][0]) / 2);
+    function onMove(e) {
+      const rect = svg.getBoundingClientRect();
+      const vbW = 260;
+      const x = (e.clientX - rect.left) / rect.width * vbW;
+      let idx = 0;
+      for (let i = 0; i < n; i++) {
+        if (x >= segLeft[i] && x < segRight[i]) { idx = i; break; }
+        if (i === n - 1) idx = i;
+      }
+      const px = points[idx][0], py = points[idx][1];
+      tooltipG.setAttribute('transform', 'translate(' + px + ',' + py + ')');
+      tooltipText.textContent = labels[idx] || '';
+      const bw = Math.max(72, (labels[idx] || '').length * 6);
+      if (tooltipBubble) {
+        tooltipBubble.setAttribute('x', -bw / 2);
+        tooltipBubble.setAttribute('width', bw);
+      }
+      tooltipG.setAttribute('visibility', 'visible');
+    }
+    function onLeave() {
+      tooltipG.setAttribute('visibility', 'hidden');
+    }
+    hoverZone.removeEventListener('mousemove', onMove);
+    hoverZone.removeEventListener('mouseleave', onLeave);
+    hoverZone.addEventListener('mousemove', onMove);
+    hoverZone.addEventListener('mouseleave', onLeave);
+  }
+
   function attachSimulationListeners() {
     setTimeout(() => {
+      initChartTooltips();
       // Bouton "Niveau" : ouvrir la popup description PAR-DESSUS la page, sans recharger le contenu
       function openLevelDescriptionPopup() {
         simulationState.showLevelDescription = true;
