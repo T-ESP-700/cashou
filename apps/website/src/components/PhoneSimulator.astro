@@ -651,7 +651,7 @@
           }
         } else if (currentPage === 'quiz-correction') {
           quizState.showResults = true;
-          showPage('quiz', true);
+          goBack(); // utiliser l'historique pour revenir à l'écran de résultats (et dépiler)
         } else if (currentPage === 'dico' && dicoState.selectedTerm) {
           // Fermer la définition et revenir à la liste
           dicoState.selectedTerm = null;
