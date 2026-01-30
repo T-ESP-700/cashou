@@ -430,19 +430,54 @@
     { id: 'ndiva', name: 'Ndiva', type: 'stock', domain: 'IA & semi-conducteurs', description: 'Spécialiste des processeurs pour l\'intelligence artificielle et le calcul haute performance. Très exposé à la croissance de l\'IA.' }
   ];
 
-  // Évolution mensuelle du cours (base 100 au mois 0). Mois 3 = annonce IA → Ndiva et CapJumeaux montent.
+  // Indice mensuel (base 100 au mois 0). News au mois 3 ; Ndiva/CapJumeaux ne descendent jamais après la news (que hausse ou plat).
   function getStockPricesForYear(assetId) {
-    const monthly = [100];
     if (assetId === 'ndiva') {
-      for (let m = 1; m <= 12; m++) monthly.push(m <= 3 ? 100 : 100 + (m - 3) * (35 / 9)); // ~+35% sur 9 mois
-    } else if (assetId === 'capjumeaux') {
-      for (let m = 1; m <= 12; m++) monthly.push(m <= 3 ? 100 : 100 + (m - 3) * (25 / 9)); // ~+25%
-    } else if (assetId === 'lvmhash') {
-      for (let m = 1; m <= 12; m++) monthly.push(100 - m * 0.5); // léger recul
-    } else if (assetId === 'arcelorbital') {
-      for (let m = 1; m <= 12; m++) monthly.push(100 - m * 0.8); // recul
-    } else return null;
-    return monthly;
+      return [100, 100, 99, 100.5, 101, 108, 120, 120, 140, 165, 180, 188, 195];
+    }
+    if (assetId === 'capjumeaux') {
+      return [100, 99.5, 99.5, 100.5, 101, 105, 115, 128, 142, 154, 162, 168, 173];
+    }
+    if (assetId === 'lvmhash') {
+      return [100, 101.5, 102, 102, 101, 100, 99, 98, 98, 97, 96, 95, 94];
+    }
+    if (assetId === 'arcelorbital') {
+      return [100, 101, 100.5, 101.5, 100, 99, 98.5, 98, 97, 96, 95, 93, 90];
+    }
+    return null;
+  }
+
+  // Prix d'affichage en € pour les graphiques (montants réalistes par actif).
+  const STOCK_DISPLAY_BASE_EUR = { ndiva: 100, capjumeaux: 52, lvmhash: 780, arcelorbital: 24 };
+  function getStockPricesEurForYear(assetId) {
+    const indices = getStockPricesForYear(assetId);
+    const base = STOCK_DISPLAY_BASE_EUR[assetId];
+    if (!indices || base == null) return null;
+    return indices.map(idx => Math.round((base * idx) / 100 * 10) / 10);
+  }
+
+  // Faux cours (mois -5 à -1) : paliers différents par actif. Ndiva/CapJumeaux en baisse ; LVMH/ArcelOrbital en hausse ; aboutit à 100 au mois 0.
+  function getFakePastIndices(assetId) {
+    if (assetId === 'ndiva') return [102, 101.5, 101.5, 101, 100];
+    if (assetId === 'capjumeaux') return [102, 102, 101, 100.5, 100];
+    if (assetId === 'lvmhash') return [97.5, 98.5, 99, 99.5, 100];
+    if (assetId === 'arcelorbital') return [99, 100.5, 99.5, 100, 100];
+    return [101, 100.5, 100, 99.5, 100];
+  }
+
+  // Indices pour le graphique : mois -5 à 12 (18 valeurs). Mois -5..-1 = faux passé, 0..12 = série réelle.
+  function getStockPricesForChart(assetId) {
+    const future = getStockPricesForYear(assetId);
+    const past = getFakePastIndices(assetId);
+    if (!future || !past) return null;
+    return past.concat(future);
+  }
+
+  function getStockPricesEurForChart(assetId) {
+    const indices = getStockPricesForChart(assetId);
+    const base = STOCK_DISPLAY_BASE_EUR[assetId];
+    if (!indices || base == null) return null;
+    return indices.map(idx => Math.round((base * idx) / 100 * 10) / 10);
   }
 
   // Description et objectif du niveau simulation (affichés au clic sur "Niveau 1" dans le header)
@@ -2486,20 +2521,92 @@
     `;
   }
 
+  // Libellé mois pour un mois de simulation (0 = début, utilise startDate si dispo). Abréviations 3 lettres : Fév pour février.
+  const MONTH_ABBREV_3 = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jui', 'Jui', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+  function getMonthLabelForSimulationMonth(monthIndex) {
+    const d = simulationState.startDate ? new Date(simulationState.startDate.getTime()) : new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + monthIndex);
+    const monthNamesShort = ['Janv.', 'Févr.', 'Mars', 'Avr.', 'Mai', 'Juin', 'Juill.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.'];
+    const m = d.getMonth();
+    const abbrev3 = MONTH_ABBREV_3[m];
+    return { name: monthNamesShort[m], year: d.getFullYear(), abbrev3 };
+  }
+
+  // Génère path SVG (polyline + zone sous la courbe) pour le graphique cours
+  function buildSmoothChartPath(pricesEur, width, height, padding) {
+    const w = width - padding.left - padding.right;
+    const h = height - padding.top - padding.bottom;
+    const minP = Math.min(...pricesEur);
+    const maxP = Math.max(...pricesEur);
+    const range = maxP - minP || 1;
+    const n = pricesEur.length;
+    const points = pricesEur.map((p, i) => ({
+      x: padding.left + (n === 1 ? w / 2 : (i / (n - 1)) * w),
+      y: padding.top + h - ((p - minP) / range) * h
+    }));
+    const pathLine = 'M ' + points.map(p => p.x + ' ' + p.y).join(' L ');
+    const pathArea = n === 1
+      ? 'M ' + points[0].x + ' ' + points[0].y + ' L ' + points[0].x + ' ' + (padding.top + h) + ' Z'
+      : 'M ' + points[0].x + ' ' + points[0].y + ' L ' + points.slice(1).map(p => p.x + ' ' + p.y).join(' L ') + ' L ' + points[points.length - 1].x + ' ' + (padding.top + h) + ' L ' + points[0].x + ' ' + (padding.top + h) + ' Z';
+    return { pathLine, pathArea, minP, maxP };
+  }
+
   function getSimulationAssetDetailPage(assetId) {
     const asset = simulationAssets.find(a => a.id === assetId);
     if (!asset) return '<div class="p-4">Actif inconnu</div>';
     const hasChart = asset.type === 'stock';
-    const prices = hasChart ? getStockPricesForYear(assetId) : null;
-    const maxP = prices ? Math.max(...prices) : 100;
-    const minP = prices ? Math.min(...prices) : 0;
-    const chartHeight = 120;
-    const pad = 5;
-    const points = prices && prices.length > 1 ? prices.map((p, i) => {
-      const x = pad + (i / (prices.length - 1)) * (100 - 2 * pad);
-      const y = maxP === minP ? 50 : pad + ((p - minP) / (maxP - minP)) * (100 - 2 * pad);
-      return `${x},${100 - y}`;
-    }).join(' ') : '';
+    const fullPricesEur = hasChart ? getStockPricesEurForChart(assetId) : null;
+    const currentMonth = simulationState.currentMonth ?? 0;
+    const startMonth = currentMonth - 5;
+    const pricesEur = fullPricesEur ? fullPricesEur.slice(startMonth + 5, currentMonth + 6) : null;
+    const chartWidth = 260;
+    const chartHeight = 140;
+    const padding = { top: 12, right: 12, bottom: 24, left: 40 };
+    let chartSvg = '';
+    if (hasChart && pricesEur && pricesEur.length > 0) {
+      const n = pricesEur.length;
+      const w = chartWidth - padding.left - padding.right;
+      const h = chartHeight - padding.top - padding.bottom;
+      const { pathLine, pathArea, minP, maxP } = buildSmoothChartPath(pricesEur, chartWidth, chartHeight, padding);
+      const stepY = (maxP - minP) / 4;
+      const yTicks = [minP, minP + stepY, minP + stepY * 2, minP + stepY * 3, maxP].map(v => Math.round(v * 10) / 10);
+      const yLabels = yTicks.map((v, i) => {
+        const y = padding.top + h * (1 - i / 4);
+        return '<text x="' + (padding.left - 6) + '" y="' + (y + 4) + '" text-anchor="end" font-size="10" fill="#666">' + v + ' €</text>';
+      }).join('');
+      const numMonths = n;
+      const xToMonth = (i) => padding.left + (n === 1 ? w / 2 : (i / (n - 1)) * w);
+      const monthVerticals = n > 1 ? Array.from({ length: n }, (_, i) => {
+        const x = xToMonth(i);
+        return '<line x1="' + x + '" y1="' + padding.top + '" x2="' + x + '" y2="' + (padding.top + h) + '" stroke="#e5e7eb" stroke-width="0.5"/>';
+      }).join('') : '';
+      const xTickIndices = numMonths === 1 ? [0] : Array.from({ length: numMonths }, (_, i) => i);
+      const xLabelFontSize = 8;
+      const xLabelY = chartHeight - 4;
+      const xLabels = xTickIndices.map((localIdx) => {
+        const monthIdx = startMonth + localIdx;
+        const { year, abbrev3 } = getMonthLabelForSimulationMonth(monthIdx);
+        const monthShort = (abbrev3 || 'Jan') + '.';
+        const showYear = localIdx === 0 || localIdx === numMonths - 1;
+        const x = padding.left + (numMonths === 1 ? w / 2 : (localIdx / (numMonths - 1)) * w);
+        if (showYear) {
+          return '<text x="' + x + '" y="' + (xLabelY - 6) + '" text-anchor="middle" font-size="' + xLabelFontSize + '" fill="#666">' + monthShort + '</text>' +
+            '<text x="' + x + '" y="' + xLabelY + '" text-anchor="middle" font-size="' + (xLabelFontSize - 1) + '" fill="#888">' + year + '</text>';
+        }
+        return '<text x="' + x + '" y="' + (xLabelY - 3) + '" text-anchor="middle" font-size="' + xLabelFontSize + '" fill="#666">' + monthShort + '</text>';
+      }).join('');
+      chartSvg = '<div class="bg-white rounded-[22px] p-4 shadow-sm">' +
+        '<h3 class="text-sm font-bold text-black mb-2">Cours - 6 derniers mois (€)</h3>' +
+        '<svg viewBox="0 0 ' + chartWidth + ' ' + chartHeight + '" class="w-full" style="max-height: 160px;" preserveAspectRatio="xMidYMid meet">' +
+        '<defs><linearGradient id="chartFill-' + assetId + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FFB472" stop-opacity="0.35"/><stop offset="100%" stop-color="#FFB472" stop-opacity="0"/></linearGradient></defs>' +
+        '<rect x="' + padding.left + '" y="' + padding.top + '" width="' + w + '" height="' + h + '" fill="#fafafa" rx="4"/>' +
+        monthVerticals +
+        '<path d="' + pathArea + '" fill="url(#chartFill-' + assetId + ')"/>' +
+        '<path d="' + pathLine + '" fill="none" stroke="#FFB472" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+        yLabels + xLabels +
+        '</svg></div>';
+    }
     return `
       <div class="h-full bg-[#F2F2F2] px-1 py-4 overflow-y-auto">
         <div class="bg-white rounded-[22px] p-4 mb-3 shadow-sm">
@@ -2507,18 +2614,7 @@
           <p class="text-xs text-gray-600 mb-3">${asset.domain}</p>
           <p class="text-sm text-gray-700">${asset.description}</p>
         </div>
-        ${hasChart ? `
-          <div class="bg-white rounded-[22px] p-4 shadow-sm">
-            <h3 class="text-sm font-bold text-black mb-2">Cours (base 100 au mois 0)</h3>
-            <svg viewBox="0 0 100 100" preserveAspectRatio="none" class="w-full" style="height: ${chartHeight}px;">
-              <polyline fill="none" stroke="#FFB472" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" points="${points}" />
-            </svg>
-            <div class="flex justify-between text-xs text-gray-500 mt-1">
-              <span>Mois 0</span>
-              <span>Mois 12</span>
-            </div>
-          </div>
-        ` : `
+        ${hasChart ? chartSvg : `
           <div class="bg-white rounded-[22px] p-3 shadow-sm">
             <p class="text-xs text-gray-500">Ce placement n'a pas de cours boursier. Les intérêts sont calculés au taux réglementaire (1,5 % net/an).</p>
           </div>
@@ -2709,7 +2805,7 @@
         });
       });
 
-      // Fermer popup mois 3
+      // Fermer popup news (mois 3)
       document.getElementById('simulation-close-popup-btn')?.addEventListener('click', () => {
         simulationState.popupMonth3Dismissed = true;
         document.getElementById('app-overlay').innerHTML = '';
@@ -2768,7 +2864,7 @@
     });
   }
 
-  // Avance d'un jour ; tous les 30 jours on passe au mois suivant (pause mois 3, fin mois 12)
+  // Avance d'un jour ; tous les 30 jours on passe au mois suivant (pause mois 3 pour la news, fin mois 12)
   const SIMULATION_DAYS_PER_MONTH = 30;
   const SIMULATION_TICK_MS = Math.round((2500 / SIMULATION_DAYS_PER_MONTH));
 
