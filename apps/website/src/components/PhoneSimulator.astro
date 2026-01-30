@@ -113,8 +113,8 @@
               </div>
             </div>
           </div>
-          <!-- Footer simulation : Démarrer / Reprendre + Investir (visible uniquement sur page simulation) -->
-          <div id="app-simulation-footer" class="absolute bottom-0 left-0 right-0 px-1 pb-2 z-40 flex justify-center" style="display: none; filter: drop-shadow(0px 2px 2px rgba(0, 0, 0, 0.25));">
+          <!-- Footer simulation : hauteur fixe pour que le cadre portefeuille ne redimensionne jamais (Démarrer/Reprendre/Accueil+Rejouer) -->
+          <div id="app-simulation-footer" class="absolute bottom-0 left-0 right-0 h-[52px] px-1 pb-2 z-40 flex justify-center items-center" style="display: none; filter: drop-shadow(0px 2px 2px rgba(0, 0, 0, 0.25));">
             <!-- Contenu injecté par getSimulationFooterHTML() -->
           </div>
 
@@ -2341,19 +2341,20 @@
       return `
         <div class="h-full bg-[#F2F2F2] px-1 py-3 overflow-y-auto flex flex-col pb-16">
           <!-- Total des avoirs (ligne comme dans Progress : au-dessus des cartes) -->
-          <div class="flex justify-between items-center mb-2 px-1">
+          <div class="flex justify-between items-center mb-2 px-1 flex-shrink-0">
             <span class="text-sm font-bold text-black">Total des avoirs</span>
             <span class="text-sm font-bold text-black">${totalAvoirs} €</span>
           </div>
-          <div class="w-full h-0.5 bg-black rounded-full mb-3 opacity-20"></div>
+          <div class="w-full h-0.5 bg-black rounded-full mb-3 opacity-20 flex-shrink-0"></div>
 
-          <!-- Portefeuille (argent non placé) -->
-          <div class="bg-white rounded-[22px] h-[44px] px-2 flex items-center justify-between shadow-sm mb-1.5">
+          <!-- Portefeuille (argent non placé) — hauteur fixe, ne jamais rétrécir -->
+          <div class="bg-white rounded-[22px] h-[44px] min-h-[44px] flex-shrink-0 px-2 flex items-center justify-between shadow-sm mb-1.5">
             <span class="font-bold text-black text-sm">Portefeuille</span>
             <span class="rounded-[15.5px] px-2.5 py-0.5 text-xs font-medium text-black bg-[#9CD6FF]">${portefeuilleAmount} €</span>
           </div>
 
-          <!-- Cartes actifs (livret, LDDS, entreprises) — même hauteur réduite -->
+          <!-- Cartes actifs (livret, LDDS, entreprises) — même structure que running/paused -->
+          <div class="space-y-1.5 flex-1 min-h-0">
           ${simulationAssets.map(a => {
             const val = simulationState.allocations[a.id] || 0;
             const badgeColor = getAssetBadgeColor(a.id);
@@ -2364,6 +2365,7 @@
               </div>
             `;
           }).join('')}
+          </div>
         </div>
       `;
     }
@@ -2373,19 +2375,19 @@
       const { total, byAsset } = getPortfolioValueAtMonth(simulationState.allocations, month);
       const totalAvoirs = total + portefeuilleAmount;
       return `
-        <div class="h-full bg-[#F2F2F2] px-1 py-3 overflow-y-auto">
-          <div class="flex justify-between items-center mb-2 px-1">
+        <div class="h-full bg-[#F2F2F2] px-1 py-3 overflow-y-auto flex flex-col pb-16">
+          <div class="flex justify-between items-center mb-2 px-1 flex-shrink-0">
             <span class="text-sm font-bold text-black">Total des avoirs</span>
             <span id="simulation-total-value" class="text-sm font-bold text-black">${Math.round(totalAvoirs)} €</span>
           </div>
-          <div class="w-full h-0.5 bg-black rounded-full mb-3 opacity-20"></div>
+          <div class="w-full h-0.5 bg-black rounded-full mb-3 opacity-20 flex-shrink-0"></div>
 
-          <div class="bg-white rounded-[22px] h-[44px] px-2 flex items-center justify-between shadow-sm mb-1.5">
+          <div class="bg-white rounded-[22px] h-[44px] min-h-[44px] flex-shrink-0 px-2 flex items-center justify-between shadow-sm mb-1.5">
             <span class="font-bold text-black text-sm">Portefeuille</span>
             <span class="rounded-[15.5px] px-2.5 py-0.5 text-xs font-medium text-black bg-[#9CD6FF]">${portefeuilleAmount} €</span>
           </div>
 
-          <div class="space-y-1.5">
+          <div class="space-y-1.5 flex-1 min-h-0">
             ${simulationAssets.map(a => {
               const value = byAsset[a.id] || 0;
               const badgeColor = getAssetBadgeColor(a.id);
@@ -2407,18 +2409,18 @@
       const totalAvoirs = total + portefeuilleAmount;
       return `
         <div class="h-full bg-[#F2F2F2] px-1 py-3 overflow-y-auto flex flex-col pb-16">
-          <div class="flex justify-between items-center mb-2 px-1">
+          <div class="flex justify-between items-center mb-2 px-1 flex-shrink-0">
             <span class="text-sm font-bold text-black">Total des avoirs</span>
             <span class="text-sm font-bold text-black">${Math.round(totalAvoirs)} €</span>
           </div>
-          <div class="w-full h-0.5 bg-black rounded-full mb-2 opacity-20"></div>
+          <div class="w-full h-0.5 bg-black rounded-full mb-3 opacity-20 flex-shrink-0"></div>
 
-          <div class="bg-white rounded-[22px] h-[44px] px-2 flex items-center justify-between shadow-sm mb-1.5">
+          <div class="bg-white rounded-[22px] h-[44px] min-h-[44px] flex-shrink-0 px-2 flex items-center justify-between shadow-sm mb-1.5">
             <span class="font-bold text-black text-sm">Portefeuille</span>
             <span class="rounded-[15.5px] px-2.5 py-0.5 text-xs font-medium text-black bg-[#9CD6FF]">${portefeuilleAmount} €</span>
           </div>
 
-          <div class="space-y-1.5 mb-4">
+          <div class="space-y-1.5 flex-1 min-h-0">
             ${simulationAssets.map(a => {
               const value = byAsset[a.id] || 0;
               const badgeColor = getAssetBadgeColor(a.id);
@@ -2489,21 +2491,29 @@
     `;
   }
 
-  // Footer simulation : Démarrer / Reprendre et + sont deux boutons distincts ; quand + seul, il est centré
+  // Footer simulation : Démarrer / Reprendre + bouton + ; en phase finished : Accueil + Rejouer
   function getSimulationFooterHTML() {
     const phase = simulationState.phase;
     const screen = simulationState.screen;
     const selectedAssetId = simulationState.selectedAssetId;
     const isLevelView = screen === 'level' && !selectedAssetId;
+    const showFinished = phase === 'finished';
     const showStart = phase === 'setup' && isLevelView;
     const showResume = phase === 'paused' && isLevelView;
     const hasLeftBtn = showStart || showResume;
-    const leftBtn = showStart
+    let leftBtn = '';
+    let investBtn = '';
+    if (showFinished) {
+      leftBtn = '<button type="button" class="flex-1 h-9 rounded-[18px] bg-[#FFB472] text-black text-xs font-bold shadow-sm flex-shrink-0" id="simulation-accueil-btn">Accueil</button>';
+      investBtn = '<button type="button" class="flex-1 h-9 rounded-[18px] bg-[#FFB472] text-black text-xs font-bold shadow-sm flex-shrink-0" id="simulation-replay-btn">Rejouer</button>';
+      return '<div class="w-full flex flex-row gap-2 items-center">' + leftBtn + investBtn + '</div>';
+    }
+    leftBtn = showStart
       ? '<button type="button" class="w-[100px] h-10 rounded-[20px] bg-[#FFB472] text-black text-sm font-bold shadow-sm flex-shrink-0" id="simulation-start-btn">Démarrer</button>'
       : showResume
         ? '<button type="button" class="w-[100px] h-10 rounded-[20px] bg-[#FFB472] text-black text-sm font-bold shadow-sm flex-shrink-0" id="simulation-resume-btn">Reprendre</button>'
         : '';
-    const investBtn = '<button type="button" class="w-10 h-10 rounded-[20px] bg-[#FFB472] text-black flex items-center justify-center shadow-sm flex-shrink-0" id="simulation-open-allocation-btn" title="Investir" aria-label="Investir"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>';
+    investBtn = '<button type="button" class="w-10 h-10 rounded-[20px] bg-[#FFB472] text-black flex items-center justify-center shadow-sm flex-shrink-0" id="simulation-open-allocation-btn" title="Investir" aria-label="Investir"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>';
     const containerClass = hasLeftBtn ? 'w-fit flex flex-row gap-2 items-center' : 'w-full flex flex-row justify-center items-center';
     return '<div class="' + containerClass + '">' + leftBtn + investBtn + '</div>';
   }
@@ -2511,25 +2521,54 @@
   function getSimulationFinishedPage() {
     const startTotal = SIMULATION_START_CAPITAL;
     const endTotal = simulationState.totalValueEnd;
+    const totalAlloc = Object.values(simulationState.allocations).reduce((s, v) => s + v, 0);
+    const portefeuilleEnd = startTotal - totalAlloc;
+    const { total: valeurActifs } = getPortfolioValueAtMonth(simulationState.allocations, 12);
     const pct = startTotal !== 0 ? (((endTotal - startTotal) / startTotal) * 100) : 0;
     const goalReached = pct >= 10;
+    const frameSuccessClass = goalReached ? 'bg-green-100 border-green-500' : 'bg-red-100 border-red-500';
+    const frameSuccessText = goalReached ? 'Niveau réussi' : 'Niveau raté';
+    const starSvg = goalReached
+      ? '<svg class="w-8 h-8 flex-shrink-0" viewBox="0 0 24 24" fill="#FFB472" stroke="#FFB472" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>'
+      : '<svg class="w-8 h-8 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
     return `
-      <div class="h-full bg-[#F2F2F2] px-1 py-4 flex flex-col justify-center">
-        <div class="bg-white rounded-[22px] p-4 mb-3 shadow-sm text-center">
-          <div class="text-4xl mb-2">${goalReached ? '🎉' : '📊'}</div>
-          <h2 class="text-lg font-bold text-black mb-2">Simulation terminée</h2>
-          <p class="text-sm text-gray-600 mb-1">Patrimoine de départ</p>
-          <p class="text-xl font-bold text-black mb-3">${startTotal} €</p>
-          <p class="text-sm text-gray-600 mb-1">Patrimoine final</p>
-          <p class="text-xl font-bold text-black mb-3">${Math.round(endTotal)} €</p>
-          <p class="text-sm text-gray-600 mb-1">Évolution</p>
-          <p class="text-2xl font-bold ${pct >= 0 ? 'text-green-600' : 'text-red-600'}">${pct >= 0 ? '+' : ''}${pct.toFixed(1)} %</p>
-          <p class="text-xs text-gray-500 mt-3">Objectif : +10 % en 1 an</p>
-          ${goalReached ? '<p class="text-sm font-medium text-green-600 mt-2">Objectif atteint !</p>' : '<p class="text-sm text-gray-600 mt-2">Réessayez en misant sur les entreprises boostées par l\'IA (Ndiva, CapJumeaux).</p>'}
+      <div class="h-full bg-[#F2F2F2] px-1 py-2 overflow-y-auto flex flex-col gap-2 pb-14">
+        <div class="rounded-[18px] p-3 shadow-sm border-2 ${frameSuccessClass}">
+          <h2 class="text-base font-bold text-center ${goalReached ? 'text-green-800' : 'text-red-800'}">${frameSuccessText}</h2>
         </div>
-        <button class="w-full h-14 rounded-[28px] bg-[#FFB472] text-black font-bold shadow-sm" id="simulation-replay-btn">
-          Rejouer
-        </button>
+
+        <div class="bg-white rounded-[18px] p-3 shadow-sm">
+          <h3 class="text-xs font-bold text-black mb-2">Bilan financier</h3>
+          <div class="space-y-1 text-xs">
+            <div class="flex justify-between">
+              <span class="text-gray-600">Capital initial</span>
+              <span class="font-medium text-black">${startTotal} €</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-600">Cash portefeuille final</span>
+              <span class="font-medium text-black">${Math.round(portefeuilleEnd)} €</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-600">Valeur des actifs</span>
+              <span class="font-medium text-black">${Math.round(valeurActifs)} €</span>
+            </div>
+          </div>
+          <div class="w-full h-0.5 bg-gray-200 rounded-full my-2"></div>
+          <div class="flex justify-between items-baseline">
+            <span class="text-xs font-bold text-black">Total</span>
+            <span class="font-bold text-black text-sm">${Math.round(endTotal)} €</span>
+          </div>
+          <p class="text-xs mt-0.5 ${pct >= 0 ? 'text-green-600' : 'text-red-600'} font-medium">${pct >= 0 ? '+' : ''}${pct.toFixed(1)} %</p>
+        </div>
+
+        <div class="bg-white rounded-[18px] p-3 shadow-sm">
+          <h3 class="text-xs font-bold text-black mb-1">Objectif principal</h3>
+          <p class="text-[11px] text-gray-600 mb-2">${SIMULATION_LEVEL_OBJECTIVE}</p>
+          <div class="flex items-center gap-2">
+            ${starSvg.replace('w-8 h-8', 'w-6 h-6')}
+            <span class="text-xs ${goalReached ? 'text-green-600 font-medium' : 'text-gray-500'}">${goalReached ? 'Objectif atteint' : 'Objectif non atteint'}</span>
+          </div>
+        </div>
       </div>
     `;
   }
@@ -2902,7 +2941,12 @@
         showPage('simulation', true);
       });
 
-      // Rejouer
+      // Accueil (phase finished) : retour à l'accueil
+      document.getElementById('simulation-accueil-btn')?.addEventListener('click', () => {
+        showPage('home', true);
+      });
+
+      // Rejouer (phase finished, bouton dans le footer)
       document.getElementById('simulation-replay-btn')?.addEventListener('click', () => {
         if (simulationState.intervalId) {
           clearInterval(simulationState.intervalId);
