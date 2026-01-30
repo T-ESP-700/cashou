@@ -18,7 +18,7 @@
       <!-- Cadre du téléphone -->
       <div class="relative">
         <!-- Téléphone -->
-        <div class="relative w-[300px] h-[600px] bg-[#F2F2F2] rounded-[30px] p-4 shadow-2xl overflow-hidden">
+        <div class="relative isolate w-[300px] h-[600px] bg-[#F2F2F2] rounded-[30px] p-4 shadow-2xl overflow-hidden">
           <!-- Barre de statut avec Dynamic Island au centre -->
           <div class="relative flex justify-between items-center mb-3 px-2 pt-1 z-10" style="height: 30px;">
             <!-- Heure à gauche (fuseau Paris) - alignée verticalement avec le Dynamic Island -->
@@ -49,8 +49,6 @@
             <div id="app-content" class="h-full bg-[#F2F2F2] rounded-2xl pt-[60px]">
               <!-- Les différentes vues seront injectées ici par JavaScript -->
             </div>
-            <!-- Overlay pour les bulles (dico, etc.) -->
-            <div id="app-overlay"></div>
           </div>
 
           <!-- Barre de navigation en bas (masquée sur la page Niveau/Simulation) -->
@@ -119,6 +117,9 @@
           <div id="app-simulation-footer" class="absolute bottom-0 left-0 right-0 px-2 pb-2 z-40 flex justify-center" style="display: none; filter: drop-shadow(0px 2px 2px rgba(0, 0, 0, 0.25));">
             <!-- Contenu injecté par getSimulationFooterHTML() -->
           </div>
+
+          <!-- Overlay popup : grise tout (header + contenu + footer), au-dessus de tout, z-50 -->
+          <div id="app-overlay" class="absolute inset-0 z-50 rounded-[30px] pointer-events-none"></div>
         </div>
       </div>
     </div>
@@ -1034,7 +1035,7 @@
     }
     if (overlay && isSimulationLevel && !simulationState.showLevelDescription) {
       if (simulationState.phase === 'paused' && !simulationState.popupMonth3Dismissed) {
-        overlay.innerHTML = '<div class="absolute inset-0 z-50 flex items-center justify-center p-4" id="simulation-news-overlay" style="background: rgba(0,0,0,0.4);">' +
+        overlay.innerHTML = '<div class="absolute inset-0 z-50 flex items-center justify-center p-4 pointer-events-auto" id="simulation-news-overlay" style="background: rgba(0,0,0,0.4);">' +
           '<div class="bg-white rounded-[22px] p-4 shadow-xl max-w-[260px] w-full" id="simulation-news-overlay-card">' +
           '<h3 class="text-lg font-bold text-black mb-2">📰 Actualité — Début du mois 3</h3>' +
           '<p class="text-sm text-gray-700 mb-3">L\'IA prend de plus en plus de place. <strong>Ndiva</strong> et <strong>CapJumeaux</strong> bénéficient de cette tendance.</p>' +
@@ -2440,7 +2441,7 @@
     `;
   }
 
-  // Footer simulation : Démarrer / Reprendre et + sont deux boutons distincts (pas de barre commune)
+  // Footer simulation : Démarrer / Reprendre et + sont deux boutons distincts ; quand + seul, il est centré
   function getSimulationFooterHTML() {
     const phase = simulationState.phase;
     const screen = simulationState.screen;
@@ -2448,13 +2449,15 @@
     const isLevelView = screen === 'level' && !selectedAssetId;
     const showStart = phase === 'setup' && isLevelView;
     const showResume = phase === 'paused' && isLevelView;
+    const hasLeftBtn = showStart || showResume;
     const leftBtn = showStart
       ? '<button type="button" class="w-[100px] h-10 rounded-[20px] bg-[#FFB472] text-black text-sm font-bold shadow-sm flex-shrink-0" id="simulation-start-btn">Démarrer</button>'
       : showResume
         ? '<button type="button" class="w-[100px] h-10 rounded-[20px] bg-[#FFB472] text-black text-sm font-bold shadow-sm flex-shrink-0" id="simulation-resume-btn">Reprendre</button>'
-        : '<div class="w-[100px] flex-shrink-0" aria-hidden="true"></div>';
+        : '';
     const investBtn = '<button type="button" class="w-10 h-10 rounded-[20px] bg-[#FFB472] text-black flex items-center justify-center shadow-sm flex-shrink-0" id="simulation-open-allocation-btn" title="Investir" aria-label="Investir"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>';
-    return '<div class="w-fit flex flex-row gap-2 items-center">' + leftBtn + investBtn + '</div>';
+    const containerClass = hasLeftBtn ? 'w-fit flex flex-row gap-2 items-center' : 'w-full flex flex-row justify-center items-center';
+    return '<div class="' + containerClass + '">' + leftBtn + investBtn + '</div>';
   }
 
   function getSimulationFinishedPage() {
@@ -2530,7 +2533,7 @@
       function openLevelDescriptionPopup() {
         simulationState.showLevelDescription = true;
         const overlay = document.getElementById('app-overlay');
-        overlay.innerHTML = '<div class="absolute inset-0 z-50 flex items-center justify-center p-4" id="simulation-level-overlay" style="background: rgba(0,0,0,0.4);">' +
+        overlay.innerHTML = '<div class="absolute inset-0 z-50 flex items-center justify-center p-4 pointer-events-auto" id="simulation-level-overlay" style="background: rgba(0,0,0,0.4);">' +
           '<div class="bg-white rounded-[22px] p-4 shadow-xl max-w-[260px] w-full" id="simulation-level-overlay-card">' +
           '<h3 class="text-lg font-bold text-black mb-2">' + SIMULATION_LEVEL_TITLE + '</h3>' +
           '<p class="text-sm text-gray-700 mb-3">' + SIMULATION_LEVEL_DESCRIPTION + '</p>' +
