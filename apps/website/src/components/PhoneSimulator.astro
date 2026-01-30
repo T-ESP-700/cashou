@@ -481,10 +481,11 @@
     return indices.map(idx => Math.round((base * idx) / 100 * 10) / 10);
   }
 
-  // Description et objectif du niveau simulation (affichés au clic sur "Niveau 1" dans le header)
+  // Description et objectif du niveau simulation (page descriptive niveau + header)
   const SIMULATION_LEVEL_NUMBER = 1;
   const SIMULATION_LEVEL_TITLE = 'Niveau ' + SIMULATION_LEVEL_NUMBER;
-  const SIMULATION_LEVEL_DESCRIPTION = 'Simulation sur 1 an. Répartissez votre capital entre les livrets (Livret A, LDDS) et les entreprises. Une actualité au mois 3 vous permettra de réallouer vos fonds.';
+  const SIMULATION_LEVEL_DESCRIPTION = 'Simulation sur 1 an. Répartissez votre capital entre les livrets (Livret A, LDDS) et les entreprises. Adaptez-vous au marché pour maximiser votre performance.';
+  const SIMULATION_LEVEL_DESCRIPTION_INTRO = 'Prenez les commandes de votre épargne sur une année. Avec 2 000 € de départ, répartissez votre capital entre livrets (Livret A, LDDS) et actions d\'entreprises. Adaptez-vous au marché pour maximiser votre performance.';
   const SIMULATION_LEVEL_OBJECTIVE = 'Atteindre +10 % de plus-value en 1 an.';
 
   let simulationState = {
@@ -910,6 +911,12 @@
           showPage('simulation', true);
         } else if (currentPage === 'simulation' && simulationState.screen === 'level' && simulationState.showLevelDescription) {
           closeLevelDescriptionPopup();
+        } else if (currentPage === 'simulation' && simulationState.screen === 'level' && (simulationState.phase === 'running' || simulationState.phase === 'paused')) {
+          // Niveau en cours : retour direct à l'accueil (ne pas repasser par la page de présentation)
+          pageHistory = [];
+          showPage('home', true);
+        } else if (currentPage === 'level-intro') {
+          goBack();
         } else {
           // Retour à la page précédente
           goBack();
@@ -1033,6 +1040,9 @@
       case 'home':
         pageTitle = 'Cashou';
         break;
+      case 'level-intro':
+        pageTitle = 'Niveau 1';
+        break;
       case 'quiz':
         pageTitle = 'Daily Quiz';
         break;
@@ -1074,9 +1084,11 @@
     if (overlay && isSimulationLevel && !simulationState.showLevelDescription) {
       if (simulationState.phase === 'paused' && !simulationState.popupMonth3Dismissed) {
         overlay.innerHTML = '<div class="absolute inset-0 z-50 flex items-center justify-center p-4 pointer-events-auto" id="simulation-news-overlay" style="background: rgba(0,0,0,0.4);">' +
-          '<div class="bg-white rounded-[22px] p-4 shadow-xl max-w-[260px] w-full" id="simulation-news-overlay-card">' +
-          '<h3 class="text-lg font-bold text-black mb-2">📰 Actualité — Début du mois 3</h3>' +
-          '<p class="text-sm text-gray-700 mb-3">L\'IA prend de plus en plus de place. <strong>Ndiva</strong> et <strong>CapJumeaux</strong> bénéficient de cette tendance.</p>' +
+          '<div class="bg-white rounded-[22px] p-4 shadow-xl max-w-[260px] w-full border border-gray-200" id="simulation-news-overlay-card">' +
+          '<p class="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Accès Tech</p>' +
+          '<div class="w-full h-px bg-gray-200 mb-2"></div>' +
+          '<h3 class="text-sm font-bold text-black mb-1.5 leading-tight">Explosion de l\'IA : <strong>Ndiva</strong> et <strong>CapJumeaux</strong> en première ligne</h3>' +
+          '<p class="text-xs text-gray-700 leading-relaxed mb-3">L\'intelligence artificielle s\'impose comme la tendance majeure du secteur. Le géant des puces dédiées à l\'IA <strong>Ndiva</strong> et l\'acteur français du conseil en transformation digitale <strong>CapJumeaux</strong> confirment leur position sur ce marché en forte croissance.</p>' +
           '<button type="button" class="w-full h-10 rounded-[18px] bg-[#FFB472] text-black text-sm font-bold shadow-sm" id="simulation-close-popup-btn">J\'ai compris</button>' +
           '</div></div>';
       }
@@ -1121,6 +1133,9 @@
       switch(page) {
         case 'home':
           html = getHomePage();
+          break;
+        case 'level-intro':
+          html = getLevelIntroPage();
           break;
         case 'quiz':
           html = getQuizPage();
@@ -1172,6 +1187,9 @@
           switch(page) {
             case 'home':
               attachHomeListeners();
+              break;
+            case 'level-intro':
+              attachLevelIntroListeners();
               break;
             case 'quiz':
               attachQuizListeners();
@@ -1245,14 +1263,24 @@
 
     return `
       <div class="h-full bg-[#F2F2F2] px-1 py-4 overflow-y-auto">
+        <!-- Niveau 1 Card : statut À faire (orange) / En cours (bleu) / Terminé (vert) -->
+        <div class="bg-white rounded-[18px] p-4 cursor-pointer active:scale-95 transition-all shadow-sm mb-3" id="simulation-card" style="touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none;">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-bold text-black">Niveau 1</h2>
+            <div class="text-black px-2 py-0.5 rounded-full text-xs font-medium ${simulationState.phase === 'finished' ? 'bg-[#ABEDB0]' : simulationState.phase === 'running' || simulationState.phase === 'paused' ? 'bg-[#9CD6FF]' : 'bg-[#FFB472]'}">
+              ${simulationState.phase === 'finished' ? 'Terminé' : simulationState.phase === 'running' || simulationState.phase === 'paused' ? 'En cours' : 'À faire'}
+            </div>
+          </div>
+          <p class="text-xs text-gray-500 mt-2">Toucher pour jouer</p>
+        </div>
+
         <!-- Daily Quiz Card (design comme Progress.svg) -->
-        <div class="bg-white rounded-[18px] p-4 cursor-pointer active:scale-95 transition-all shadow-sm mb-3" id="daily-quiz-card" style="touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none;">
+        <div class="bg-white rounded-[18px] p-4 cursor-pointer active:scale-95 transition-all shadow-sm" id="daily-quiz-card" style="touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none;">
           <!-- Header avec titre et badge -->
           <div class="flex items-center justify-between mb-3">
             <h2 class="text-lg font-bold text-black">Daily Quiz</h2>
-            <div class="${quizStatus === 'done' ? 'bg-[#ABEDB0]' : 'bg-[#FFB472]'} text-black px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1">
-              <span>ℹ️</span>
-              <span>${quizStatus === 'done' ? 'Terminé' : 'À faire'}</span>
+            <div class="${quizStatus === 'done' ? 'bg-[#ABEDB0]' : 'bg-[#FFB472]'} text-black px-2 py-0.5 rounded-full text-xs font-medium">
+              ${quizStatus === 'done' ? 'Terminé' : 'À faire'}
             </div>
           </div>
 
@@ -1303,20 +1331,36 @@
             </div>
           </div>
         </div>
+      </div>
+    `;
+  }
 
-        <!-- Simulation Card (design comme Progress.svg) -->
-        <div class="bg-white rounded-[18px] p-4 cursor-pointer active:scale-95 transition-all shadow-sm" id="simulation-card" style="touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none;">
-          <div class="flex items-center justify-between mb-2">
-            <h2 class="text-lg font-bold text-black">Simulation</h2>
-            <div class="bg-[#9CD6FF] text-black px-2 py-0.5 rounded-full text-xs font-medium">
-              Investissement 1 an
-            </div>
+  // Page descriptive du niveau (après tap sur Niveau 1) : description engageante + objectif + Commencer
+  function getLevelIntroPage() {
+    return `
+      <div class="h-full bg-[#F2F2F2] px-1 py-4 overflow-y-auto">
+        <div class="bg-white rounded-[22px] p-4 shadow-sm">
+          <h2 class="text-lg font-bold text-black mb-3">${SIMULATION_LEVEL_TITLE}</h2>
+          <p class="text-sm text-gray-700 mb-4 leading-relaxed">${SIMULATION_LEVEL_DESCRIPTION_INTRO}</p>
+          <div class="rounded-[12px] bg-[#F2F2F2] p-3 mb-4">
+            <p class="text-xs font-bold text-black mb-1">Objectif</p>
+            <p class="text-sm text-gray-800">${SIMULATION_LEVEL_OBJECTIVE}</p>
           </div>
-          <p class="text-xs text-gray-600 mb-2">Portefeuille 2 000 €, Livret, LDDS et actions. Objectif : +10 % en 1 an.</p>
-          <p class="text-xs text-gray-500">Toucher pour jouer</p>
+          <button type="button" class="w-full h-12 rounded-[20px] bg-[#FFB472] text-black text-sm font-bold shadow-sm active:scale-[0.98] transition-transform" id="level-intro-commencer-btn">
+            Commencer
+          </button>
         </div>
       </div>
     `;
+  }
+
+  function attachLevelIntroListeners() {
+    setTimeout(() => {
+      document.getElementById('level-intro-commencer-btn')?.addEventListener('click', () => {
+        simulationState.screen = 'level';
+        showPage('simulation');
+      });
+    }, 10);
   }
 
   function attachHomeListeners() {
@@ -1327,7 +1371,13 @@
         simulationCard.onclick = function(e) {
           e.preventDefault();
           e.stopPropagation();
-          showPage('simulation');
+          // Niveau en cours : aller directement à la vue niveau (pas par la page de présentation)
+          if (simulationState.phase === 'running' || simulationState.phase === 'paused') {
+            simulationState.screen = 'level';
+            showPage('simulation');
+          } else {
+            showPage('level-intro');
+          }
         };
       }
       const dailyQuizCard = document.getElementById('daily-quiz-card');
