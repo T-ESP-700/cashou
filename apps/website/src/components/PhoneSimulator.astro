@@ -440,6 +440,12 @@
     return monthly;
   }
 
+  // Description et objectif du niveau simulation (affichés au clic sur "Niveau 1" dans le header)
+  const SIMULATION_LEVEL_NUMBER = 1;
+  const SIMULATION_LEVEL_TITLE = 'Niveau ' + SIMULATION_LEVEL_NUMBER;
+  const SIMULATION_LEVEL_DESCRIPTION = 'Simulation sur 1 an. Répartissez votre capital entre les livrets (Livret A, LDDS) et les entreprises. Une actualité au mois 3 vous permettra de réallouer vos fonds.';
+  const SIMULATION_LEVEL_OBJECTIVE = 'Atteindre +10 % de plus-value en 1 an.';
+
   let simulationState = {
     phase: 'setup',
     screen: 'level',
@@ -449,12 +455,14 @@
     allocationFromOpen: false,
     allocationToOpen: false,
     currentMonth: 0,
+    currentDayInMonth: 1,
     startDate: null,
     popupMonth3Shown: false,
     popupMonth3Dismissed: false,
     totalValueEnd: 0,
     intervalId: null,
-    selectedAssetId: null
+    selectedAssetId: null,
+    showLevelDescription: false
   };
 
   // Couleur badge par actif (style Progress: #ABEDB0 vert, #9CD6FF bleu, #DCA7DF violet)
@@ -752,6 +760,54 @@
     `;
   }
 
+  // Header spécial page niveau simulation : cadre blanc avec Niveau 1, date, roue du jour (J. X) et icône pause/lecture
+  function getSimulationLevelHeaderHTML() {
+    const phase = simulationState.phase;
+    const month = simulationState.currentMonth;
+    const dayInMonth = simulationState.currentDayInMonth ?? 1;
+    const isOpen = simulationState.showLevelDescription;
+    const dateDDMMYYYY = phase === 'setup' ? getSimulationDateDDMMYYYY(0) : getSimulationDateDDMMYYYYFromSimDay(month, dayInMonth);
+    const dateSpanId = 'simulation-header-date';
+    const arrowTransform = isOpen ? '' : ' transform: rotate(-90deg);';
+    const isPaused = phase === 'paused' || phase === 'setup';
+    const playIcon = '<svg class="w-3.5 h-3.5 text-green-600" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+    const pauseIcon = '<svg class="w-3.5 h-3.5 text-amber-600" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>';
+    const statusIcon = isPaused ? pauseIcon : playIcon;
+    return '<div class="flex items-center justify-between w-full gap-1">' +
+      '<button class="back-btn flex-shrink-0 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm" aria-label="Retour">' +
+      '<svg class="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>' +
+      '<div class="flex-1 min-w-0 flex justify-center" style="max-width: 180px;">' +
+      '<div class="bg-white rounded-[14px] shadow-sm border border-gray-200/80 px-2 py-1 w-full">' +
+      '<button type="button" class="simulation-level-header-btn w-full flex items-center justify-center gap-1 py-0 hover:opacity-90 active:opacity-80 transition-opacity leading-tight" id="simulation-level-header-btn" aria-label="' + (isOpen ? 'Fermer' : 'Ouvrir') + ' la description du niveau" aria-expanded="' + isOpen + '">' +
+      '<span class="text-xs font-bold text-black truncate">' + SIMULATION_LEVEL_TITLE + '</span>' +
+      '<svg class="simulation-level-arrow w-3 h-3 text-black flex-shrink-0 opacity-70 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="' + arrowTransform + '"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>' +
+      '</button>' +
+      '<div class="flex items-center justify-center gap-1 mt-0 leading-none flex-wrap">' +
+      '<span id="' + dateSpanId + '" class="text-[10px] font-medium text-gray-600">' + dateDDMMYYYY + '</span>' +
+      (statusIcon ? '<span class="flex items-center justify-center" title="' + (phase === 'setup' ? 'Non démarré' : isPaused ? 'Pause' : 'En cours') + '">' + statusIcon + '</span>' : '') +
+      '</div></div></div>' +
+      '<div class="flex-shrink-0 w-8"></div>' +
+      '</div>';
+  }
+
+  // Mise à jour flèche/aria du bouton Niveau sans recharger la page
+  function updateLevelDescriptionHeaderState(isOpen) {
+    const btn = document.getElementById('simulation-level-header-btn');
+    const arrow = btn?.querySelector('.simulation-level-arrow');
+    if (btn) {
+      btn.setAttribute('aria-expanded', '' + isOpen);
+      btn.setAttribute('aria-label', isOpen ? 'Fermer la description du niveau' : 'Ouvrir la description du niveau');
+    }
+    if (arrow) arrow.style.transform = isOpen ? '' : 'rotate(-90deg)';
+  }
+  // Fermer la popup description (sans recharger le contenu)
+  function closeLevelDescriptionPopup() {
+    simulationState.showLevelDescription = false;
+    const ov = document.getElementById('app-overlay');
+    if (ov) ov.innerHTML = '';
+    updateLevelDescriptionHeaderState(false);
+  }
+
   // Fonction pour attacher les listeners du header
   function attachHeaderListeners() {
     // Bouton retour dans le header fixe
@@ -809,6 +865,8 @@
         } else if (currentPage === 'simulation' && simulationState.screen === 'allocation') {
           simulationState.screen = 'level';
           showPage('simulation', true);
+        } else if (currentPage === 'simulation' && simulationState.screen === 'level' && simulationState.showLevelDescription) {
+          closeLevelDescriptionPopup();
         } else {
           // Retour à la page précédente
           goBack();
@@ -918,8 +976,9 @@
       contentZone.style.height = page === 'simulation' ? '544px' : '500px';
     }
 
-    // Déterminer le titre à afficher selon la page
+    // Déterminer le titre à afficher selon la page (ou header spécial simulation niveau)
     let pageTitle = 'Cashou';
+    const isSimulationLevel = page === 'simulation' && !simulationState.selectedAssetId && simulationState.screen === 'level';
     switch(page) {
       case 'home':
         pageTitle = 'Cashou';
@@ -946,14 +1005,31 @@
         break;
     }
     
-    // Injecter le header fixe avec le bon titre
-    header.innerHTML = getHeaderHTML(pageTitle);
+    // Injecter le header fixe : header spécial pour page niveau simulation, sinon titre classique
+    if (isSimulationLevel) {
+      header.innerHTML = getSimulationLevelHeaderHTML();
+    } else {
+      header.innerHTML = getHeaderHTML(pageTitle);
+    }
     
-    // Vider l'overlay si on change de page (mais pas si on reste sur dico)
+    // Overlay : popup niveau (description), popup news (mois 3), ou vide
     const overlay = document.getElementById('app-overlay');
     if (overlay && page !== 'dico') {
-      overlay.innerHTML = '';
       dicoState.selectedTerm = null;
+      overlay.innerHTML = '';
+    }
+    if (page !== 'simulation' || simulationState.screen !== 'level') {
+      simulationState.showLevelDescription = false;
+    }
+    if (overlay && isSimulationLevel && !simulationState.showLevelDescription) {
+      if (simulationState.phase === 'paused' && !simulationState.popupMonth3Dismissed) {
+        overlay.innerHTML = '<div class="absolute inset-0 z-50 flex items-center justify-center p-4" id="simulation-news-overlay" style="background: rgba(0,0,0,0.4);">' +
+          '<div class="bg-white rounded-[22px] p-4 shadow-xl max-w-[260px] w-full" id="simulation-news-overlay-card">' +
+          '<h3 class="text-lg font-bold text-black mb-2">📰 Actualité — Début du mois 3</h3>' +
+          '<p class="text-sm text-gray-700 mb-3">L\'IA prend de plus en plus de place. <strong>Ndiva</strong> et <strong>CapJumeaux</strong> bénéficient de cette tendance.</p>' +
+          '<button type="button" class="w-full h-10 rounded-[18px] bg-[#FFB472] text-black text-sm font-bold shadow-sm" id="simulation-close-popup-btn">J\'ai compris</button>' +
+          '</div></div>';
+      }
     }
     
     // Attacher les listeners du header
@@ -2179,6 +2255,19 @@
     d.setMonth(d.getMonth() + monthOffset);
     return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
   }
+  // Format jj/mm/aaaa pour le header niveau (mois seul)
+  function getSimulationDateDDMMYYYY(monthOffset) {
+    const d = new Date();
+    d.setMonth(d.getMonth() + monthOffset);
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+  // Date précise jour par jour (mois 0–12, jour 1–30) à partir de startDate
+  function getSimulationDateDDMMYYYYFromSimDay(month, dayInMonth) {
+    if (!simulationState.startDate) return getSimulationDateDDMMYYYY(month);
+    const d = new Date(simulationState.startDate.getTime());
+    d.setDate(d.getDate() + month * 30 + (dayInMonth - 1));
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
 
   function getSimulationPage() {
     if (simulationState.selectedAssetId) {
@@ -2227,7 +2316,7 @@
 
           <!-- Boutons en bas : gauche Démarrer (texte), droite + (investir) -->
           <div class="mt-auto sticky bottom-0 pt-2 pb-1 bg-[#F2F2F2] flex gap-2 justify-center items-center">
-            <button class="flex-1 max-w-[100px] h-10 rounded-[20px] bg-[#FFB472] text-black text-sm font-bold shadow-sm disabled:opacity-50" id="simulation-start-btn" ${totalAlloc <= 0 ? 'disabled' : ''}>Démarrer</button>
+            <button class="flex-1 max-w-[100px] h-10 rounded-[20px] bg-[#FFB472] text-black text-sm font-bold shadow-sm" id="simulation-start-btn">Démarrer</button>
             <button class="flex-shrink-0 w-10 h-10 rounded-[20px] bg-[#FFB472] text-black flex items-center justify-center shadow-sm" id="simulation-open-allocation-btn" title="Investir">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
             </button>
@@ -2239,15 +2328,11 @@
     if (phase === 'running') {
       const month = simulationState.currentMonth;
       const { total, byAsset } = getPortfolioValueAtMonth(simulationState.allocations, month);
-      const dateLabel = getSimulationDateLabel(month);
       return `
         <div class="h-full bg-[#F2F2F2] px-3 py-3 overflow-y-auto">
-          <div class="flex justify-between items-center mb-1 px-1">
-            <span class="text-xs text-gray-600">Mois ${month}/12 — ${dateLabel}</span>
-          </div>
           <div class="flex justify-between items-center mb-2 px-1">
             <span class="text-sm font-bold text-black">Total des avoirs</span>
-            <span class="text-sm font-bold text-black">${Math.round(total)} €</span>
+            <span id="simulation-total-value" class="text-sm font-bold text-black">${Math.round(total)} €</span>
           </div>
           <div class="w-full h-0.5 bg-black rounded-full mb-3 opacity-20"></div>
 
@@ -2258,7 +2343,7 @@
               return `
                 <div class="bg-white rounded-[22px] h-[44px] px-4 flex items-center justify-between shadow-sm simulation-asset-row cursor-pointer active:scale-[0.98]" data-asset-id="${a.id}">
                   <span class="font-bold text-black text-sm">${a.name}</span>
-                  <span class="rounded-[15.5px] px-2.5 py-0.5 text-xs font-medium text-black" style="background-color: ${badgeColor}">${Math.round(value)} €</span>
+                  <span class="simulation-asset-value rounded-[15.5px] px-2.5 py-0.5 text-xs font-medium text-black" style="background-color: ${badgeColor}">${Math.round(value)} €</span>
                 </div>
               `;
             }).join('')}
@@ -2270,23 +2355,8 @@
     if (phase === 'paused') {
       const month = simulationState.currentMonth;
       const { total, byAsset } = getPortfolioValueAtMonth(simulationState.allocations, month);
-      const dateLabel = getSimulationDateLabel(month);
-      const showPopup = !simulationState.popupMonth3Dismissed;
       return `
         <div class="h-full bg-[#F2F2F2] px-3 py-3 overflow-y-auto flex flex-col pb-20">
-          ${showPopup ? `
-          <div class="bg-[#9CD6FF] rounded-[22px] p-3 mb-2 shadow-sm border-2 border-[#7BC8F7]">
-            <h3 class="font-bold text-black text-sm mb-1">📰 Actualité — Début du mois 3</h3>
-            <p class="text-xs text-black mb-2">
-              L'IA prend de plus en plus de place. <strong>Ndiva</strong> et <strong>CapJumeaux</strong> bénéficient de cette tendance.
-            </p>
-            <button class="w-full h-9 rounded-[15.5px] bg-white text-black font-bold text-xs shadow-sm" id="simulation-close-popup-btn">J'ai compris</button>
-          </div>
-          ` : ''}
-
-          <div class="flex justify-between items-center mb-1 px-1">
-            <span class="text-xs text-gray-600">Mois ${month}/12 — ${dateLabel}</span>
-          </div>
           <div class="flex justify-between items-center mb-2 px-1">
             <span class="text-sm font-bold text-black">Total des avoirs</span>
             <span class="text-sm font-bold text-black">${Math.round(total)} €</span>
@@ -2440,6 +2510,28 @@
 
   function attachSimulationListeners() {
     setTimeout(() => {
+      // Bouton "Niveau" : ouvrir la popup description PAR-DESSUS la page, sans recharger le contenu
+      function openLevelDescriptionPopup() {
+        simulationState.showLevelDescription = true;
+        const overlay = document.getElementById('app-overlay');
+        overlay.innerHTML = '<div class="absolute inset-0 z-50 flex items-center justify-center p-4" id="simulation-level-overlay" style="background: rgba(0,0,0,0.4);">' +
+          '<div class="bg-white rounded-[22px] p-4 shadow-xl max-w-[260px] w-full" id="simulation-level-overlay-card">' +
+          '<h3 class="text-lg font-bold text-black mb-2">' + SIMULATION_LEVEL_TITLE + '</h3>' +
+          '<p class="text-sm text-gray-700 mb-3">' + SIMULATION_LEVEL_DESCRIPTION + '</p>' +
+          '<p class="text-sm font-semibold text-black mb-3">Objectif : ' + SIMULATION_LEVEL_OBJECTIVE + '</p>' +
+          '<button type="button" class="w-full h-10 rounded-[18px] bg-[#FFB472] text-black text-sm font-bold shadow-sm" id="simulation-level-overlay-close">Fermer</button>' +
+          '</div></div>';
+        updateLevelDescriptionHeaderState(true);
+        document.getElementById('simulation-level-overlay-close')?.addEventListener('click', closeLevelDescriptionPopup);
+        document.getElementById('simulation-level-overlay')?.addEventListener('click', function(e) {
+          if (e.target.id === 'simulation-level-overlay') closeLevelDescriptionPopup();
+        });
+      }
+      document.getElementById('simulation-level-header-btn')?.addEventListener('click', () => {
+        if (simulationState.showLevelDescription) closeLevelDescriptionPopup();
+        else openLevelDescriptionPopup();
+      });
+
       // Ouvrir écran Investir (bouton +) — par défaut Depuis = Portefeuille, Vers = Livret A
       document.getElementById('simulation-open-allocation-btn')?.addEventListener('click', () => {
         simulationState.screen = 'allocation';
@@ -2584,16 +2676,15 @@
         showPage('simulation', true);
       });
 
-      // Démarrer la simulation (depuis page niveau)
+      // Démarrer la simulation (depuis page niveau), même sans investissement
       document.getElementById('simulation-start-btn')?.addEventListener('click', () => {
-        const totalAlloc = Object.values(simulationState.allocations).reduce((s, v) => s + v, 0);
-        if (totalAlloc <= 0) return;
         simulationState.phase = 'running';
         simulationState.currentMonth = 0;
+        simulationState.currentDayInMonth = 1;
         simulationState.startDate = new Date();
         simulationState.popupMonth3Shown = false;
         simulationState.popupMonth3Dismissed = false;
-        simulationState.intervalId = setInterval(advanceSimulationMonth, 2500);
+        startSimulationDayInterval();
         showPage('simulation', true);
       });
 
@@ -2611,15 +2702,20 @@
       // Fermer popup mois 3
       document.getElementById('simulation-close-popup-btn')?.addEventListener('click', () => {
         simulationState.popupMonth3Dismissed = true;
-        showPage('simulation', true);
+        document.getElementById('app-overlay').innerHTML = '';
+      });
+      document.getElementById('simulation-news-overlay')?.addEventListener('click', function(e) {
+        if (e.target.id === 'simulation-news-overlay') {
+          simulationState.popupMonth3Dismissed = true;
+          document.getElementById('app-overlay').innerHTML = '';
+        }
       });
 
-      // Reprendre après pause (reprend le temps, pas de formulaire sur la page)
+      // Reprendre après pause (reprend le temps)
       document.getElementById('simulation-resume-btn')?.addEventListener('click', () => {
         simulationState.phase = 'running';
         simulationState.popupMonth3Shown = true;
-        if (simulationState.intervalId) clearInterval(simulationState.intervalId);
-        simulationState.intervalId = setInterval(advanceSimulationMonth, 2500);
+        startSimulationDayInterval();
         showPage('simulation', true);
       });
 
@@ -2633,6 +2729,7 @@
         simulationState.screen = 'level';
         simulationState.allocations = { livret: 0, ldds: 0, capjumeaux: 0, lvmhash: 0, arcelorbital: 0, ndiva: 0 };
         simulationState.currentMonth = 0;
+        simulationState.currentDayInMonth = 1;
         simulationState.popupMonth3Shown = false;
         simulationState.popupMonth3Dismissed = false;
         simulationState.selectedAssetId = null;
@@ -2641,29 +2738,63 @@
     }, 10);
   }
 
-  function advanceSimulationMonth() {
+  // Mise à jour du DOM sans recharger la page : date, total, valeurs par actif
+  function updateSimulationRunningDOM() {
+    const month = simulationState.currentMonth;
+    const dayInMonth = simulationState.currentDayInMonth ?? 1;
+    const { total, byAsset } = getPortfolioValueAtMonth(simulationState.allocations, month);
+    const dateEl = document.getElementById('simulation-header-date');
+    if (dateEl) dateEl.textContent = getSimulationDateDDMMYYYYFromSimDay(month, dayInMonth);
+    const totalEl = document.getElementById('simulation-total-value');
+    if (totalEl) totalEl.textContent = Math.round(total) + ' €';
+    document.querySelectorAll('.simulation-asset-row').forEach(function(row) {
+      const id = row.getAttribute('data-asset-id');
+      if (!id) return;
+      const value = byAsset[id] || 0;
+      const valueEl = row.querySelector('.simulation-asset-value');
+      if (valueEl) valueEl.textContent = Math.round(value) + ' €';
+    });
+  }
+
+  // Avance d'un jour ; tous les 30 jours on passe au mois suivant (pause mois 3, fin mois 12)
+  const SIMULATION_DAYS_PER_MONTH = 30;
+  const SIMULATION_TICK_MS = Math.round((2500 / SIMULATION_DAYS_PER_MONTH));
+
+  function advanceSimulationDay() {
     if (simulationState.phase !== 'running') return;
-    simulationState.currentMonth += 1;
-    if (simulationState.currentMonth >= 3 && !simulationState.popupMonth3Shown) {
-      if (simulationState.intervalId) {
-        clearInterval(simulationState.intervalId);
-        simulationState.intervalId = null;
+    simulationState.currentDayInMonth = (simulationState.currentDayInMonth ?? 1) + 1;
+    if (simulationState.currentDayInMonth > SIMULATION_DAYS_PER_MONTH) {
+      simulationState.currentDayInMonth = 1;
+      simulationState.currentMonth += 1;
+      if (simulationState.currentMonth >= 3 && !simulationState.popupMonth3Shown) {
+        if (simulationState.intervalId) {
+          clearInterval(simulationState.intervalId);
+          simulationState.intervalId = null;
+        }
+        simulationState.phase = 'paused';
+        showPage('simulation', true);
+        return;
       }
-      simulationState.phase = 'paused';
-      showPage('simulation', true);
-      return;
-    }
-    if (simulationState.currentMonth >= 12) {
-      if (simulationState.intervalId) {
-        clearInterval(simulationState.intervalId);
-        simulationState.intervalId = null;
+      if (simulationState.currentMonth >= 12) {
+        if (simulationState.intervalId) {
+          clearInterval(simulationState.intervalId);
+          simulationState.intervalId = null;
+        }
+        const { total } = getPortfolioValueAtMonth(simulationState.allocations, 12);
+        simulationState.totalValueEnd = total;
+        simulationState.phase = 'finished';
+        showPage('simulation', true);
+        return;
       }
-      const { total } = getPortfolioValueAtMonth(simulationState.allocations, 12);
-      simulationState.totalValueEnd = total;
-      simulationState.phase = 'finished';
-      showPage('simulation', true);
-      return;
+      updateSimulationRunningDOM();
     }
-    showPage('simulation', true);
+    const day = simulationState.currentDayInMonth;
+    const dateEl = document.getElementById('simulation-header-date');
+    if (dateEl) dateEl.textContent = getSimulationDateDDMMYYYYFromSimDay(simulationState.currentMonth, day);
+  }
+
+  function startSimulationDayInterval() {
+    if (simulationState.intervalId) clearInterval(simulationState.intervalId);
+    simulationState.intervalId = setInterval(advanceSimulationDay, SIMULATION_TICK_MS);
   }
 </script>
