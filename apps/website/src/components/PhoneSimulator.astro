@@ -115,6 +115,10 @@
               </div>
             </div>
           </div>
+          <!-- Footer simulation : Démarrer / Reprendre + Investir (visible uniquement sur page simulation) -->
+          <div id="app-simulation-footer" class="absolute bottom-0 left-0 right-0 px-2 pb-2 z-40 flex justify-center" style="display: none; filter: drop-shadow(0px 2px 2px rgba(0, 0, 0, 0.25));">
+            <!-- Contenu injecté par getSimulationFooterHTML() -->
+          </div>
         </div>
       </div>
     </div>
@@ -966,11 +970,18 @@
   
   // Fonction pour mettre à jour le contenu de la page
   function renderPageContent(page, content, header) {
-    // Masquer la barre de navigation en bas sur la page Niveau/Simulation (design Progress-1/2)
+    // Sur simulation : masquer la nav principale, afficher le footer simulation (Démarrer/Reprendre + Investir)
     const bottomNav = document.getElementById('app-bottom-nav');
+    const simulationFooter = document.getElementById('app-simulation-footer');
     const contentZone = document.getElementById('app-content-zone');
     if (bottomNav) {
       bottomNav.style.display = page === 'simulation' ? 'none' : '';
+    }
+    if (simulationFooter) {
+      simulationFooter.style.display = page === 'simulation' ? '' : 'none';
+      if (page === 'simulation') {
+        simulationFooter.innerHTML = getSimulationFooterHTML();
+      }
     }
     if (contentZone) {
       contentZone.style.height = page === 'simulation' ? '544px' : '500px';
@@ -1142,6 +1153,7 @@
               attachSimulationListeners();
               break;
           }
+          updateSimulationInterval();
         }, 10);
       }
     } catch (error) {
@@ -2288,7 +2300,7 @@
     if (phase === 'setup') {
       const totalAvoirs = SIMULATION_START_CAPITAL;
       return `
-        <div class="h-full bg-[#F2F2F2] px-3 py-3 overflow-y-auto flex flex-col pb-20">
+        <div class="h-full bg-[#F2F2F2] px-3 py-3 overflow-y-auto flex flex-col pb-16">
           <!-- Total des avoirs (ligne comme dans Progress : au-dessus des cartes) -->
           <div class="flex justify-between items-center mb-2 px-1">
             <span class="text-sm font-bold text-black">Total des avoirs</span>
@@ -2313,14 +2325,6 @@
               </div>
             `;
           }).join('')}
-
-          <!-- Boutons en bas : gauche Démarrer (texte), droite + (investir) -->
-          <div class="mt-auto sticky bottom-0 pt-2 pb-1 bg-[#F2F2F2] flex gap-2 justify-center items-center">
-            <button class="flex-1 max-w-[100px] h-10 rounded-[20px] bg-[#FFB472] text-black text-sm font-bold shadow-sm" id="simulation-start-btn">Démarrer</button>
-            <button class="flex-shrink-0 w-10 h-10 rounded-[20px] bg-[#FFB472] text-black flex items-center justify-center shadow-sm" id="simulation-open-allocation-btn" title="Investir">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-            </button>
-          </div>
         </div>
       `;
     }
@@ -2328,11 +2332,12 @@
     if (phase === 'running') {
       const month = simulationState.currentMonth;
       const { total, byAsset } = getPortfolioValueAtMonth(simulationState.allocations, month);
+      const totalAvoirs = total + portefeuilleAmount;
       return `
         <div class="h-full bg-[#F2F2F2] px-3 py-3 overflow-y-auto">
           <div class="flex justify-between items-center mb-2 px-1">
             <span class="text-sm font-bold text-black">Total des avoirs</span>
-            <span id="simulation-total-value" class="text-sm font-bold text-black">${Math.round(total)} €</span>
+            <span id="simulation-total-value" class="text-sm font-bold text-black">${Math.round(totalAvoirs)} €</span>
           </div>
           <div class="w-full h-0.5 bg-black rounded-full mb-3 opacity-20"></div>
 
@@ -2355,11 +2360,12 @@
     if (phase === 'paused') {
       const month = simulationState.currentMonth;
       const { total, byAsset } = getPortfolioValueAtMonth(simulationState.allocations, month);
+      const totalAvoirs = total + portefeuilleAmount;
       return `
-        <div class="h-full bg-[#F2F2F2] px-3 py-3 overflow-y-auto flex flex-col pb-20">
+        <div class="h-full bg-[#F2F2F2] px-3 py-3 overflow-y-auto flex flex-col pb-16">
           <div class="flex justify-between items-center mb-2 px-1">
             <span class="text-sm font-bold text-black">Total des avoirs</span>
-            <span class="text-sm font-bold text-black">${Math.round(total)} €</span>
+            <span class="text-sm font-bold text-black">${Math.round(totalAvoirs)} €</span>
           </div>
           <div class="w-full h-0.5 bg-black rounded-full mb-2 opacity-20"></div>
 
@@ -2374,13 +2380,6 @@
                 </div>
               `;
             }).join('')}
-          </div>
-
-          <div class="mt-auto sticky bottom-0 pt-2 pb-1 bg-[#F2F2F2] flex gap-2 justify-center items-center">
-            <button class="flex-1 max-w-[100px] h-10 rounded-[20px] bg-[#FFB472] text-black text-sm font-bold shadow-sm" id="simulation-resume-btn">Reprendre</button>
-            <button class="flex-shrink-0 w-10 h-10 rounded-[20px] bg-[#FFB472] text-black flex items-center justify-center shadow-sm" id="simulation-open-allocation-paused-btn" title="Investir">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-            </button>
           </div>
         </div>
       `;
@@ -2439,6 +2438,23 @@
         </button>
       </div>
     `;
+  }
+
+  // Footer simulation : Démarrer / Reprendre et + sont deux boutons distincts (pas de barre commune)
+  function getSimulationFooterHTML() {
+    const phase = simulationState.phase;
+    const screen = simulationState.screen;
+    const selectedAssetId = simulationState.selectedAssetId;
+    const isLevelView = screen === 'level' && !selectedAssetId;
+    const showStart = phase === 'setup' && isLevelView;
+    const showResume = phase === 'paused' && isLevelView;
+    const leftBtn = showStart
+      ? '<button type="button" class="w-[100px] h-10 rounded-[20px] bg-[#FFB472] text-black text-sm font-bold shadow-sm flex-shrink-0" id="simulation-start-btn">Démarrer</button>'
+      : showResume
+        ? '<button type="button" class="w-[100px] h-10 rounded-[20px] bg-[#FFB472] text-black text-sm font-bold shadow-sm flex-shrink-0" id="simulation-resume-btn">Reprendre</button>'
+        : '<div class="w-[100px] flex-shrink-0" aria-hidden="true"></div>';
+    const investBtn = '<button type="button" class="w-10 h-10 rounded-[20px] bg-[#FFB472] text-black flex items-center justify-center shadow-sm flex-shrink-0" id="simulation-open-allocation-btn" title="Investir" aria-label="Investir"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>';
+    return '<div class="w-fit flex flex-row gap-2 items-center">' + leftBtn + investBtn + '</div>';
   }
 
   function getSimulationFinishedPage() {
@@ -2532,17 +2548,8 @@
         else openLevelDescriptionPopup();
       });
 
-      // Ouvrir écran Investir (bouton +) — par défaut Depuis = Portefeuille, Vers = Livret A
+      // Ouvrir écran Investir (bouton + dans le footer) — toujours dispo ; met la simulation en pause en arrière-plan
       document.getElementById('simulation-open-allocation-btn')?.addEventListener('click', () => {
-        simulationState.screen = 'allocation';
-        simulationState.allocationFromId = 'portefeuille';
-        simulationState.allocationToId = 'livret';
-        simulationState.allocationFromOpen = false;
-        simulationState.allocationToOpen = false;
-        showPage('simulation', true);
-      });
-
-      document.getElementById('simulation-open-allocation-paused-btn')?.addEventListener('click', () => {
         simulationState.screen = 'allocation';
         simulationState.allocationFromId = 'portefeuille';
         simulationState.allocationToId = 'livret';
@@ -2738,15 +2745,17 @@
     }, 10);
   }
 
-  // Mise à jour du DOM sans recharger la page : date, total, valeurs par actif
+  // Mise à jour du DOM sans recharger la page : date, total (actifs + portefeuille), valeurs par actif
   function updateSimulationRunningDOM() {
     const month = simulationState.currentMonth;
     const dayInMonth = simulationState.currentDayInMonth ?? 1;
     const { total, byAsset } = getPortfolioValueAtMonth(simulationState.allocations, month);
+    const totalAlloc = Object.values(simulationState.allocations).reduce((s, v) => s + v, 0);
+    const totalAvoirs = total + (SIMULATION_START_CAPITAL - totalAlloc);
     const dateEl = document.getElementById('simulation-header-date');
     if (dateEl) dateEl.textContent = getSimulationDateDDMMYYYYFromSimDay(month, dayInMonth);
     const totalEl = document.getElementById('simulation-total-value');
-    if (totalEl) totalEl.textContent = Math.round(total) + ' €';
+    if (totalEl) totalEl.textContent = Math.round(totalAvoirs) + ' €';
     document.querySelectorAll('.simulation-asset-row').forEach(function(row) {
       const id = row.getAttribute('data-asset-id');
       if (!id) return;
@@ -2781,7 +2790,9 @@
           simulationState.intervalId = null;
         }
         const { total } = getPortfolioValueAtMonth(simulationState.allocations, 12);
-        simulationState.totalValueEnd = total;
+        const totalAlloc = Object.values(simulationState.allocations).reduce((s, v) => s + v, 0);
+        const portefeuilleEnd = SIMULATION_START_CAPITAL - totalAlloc;
+        simulationState.totalValueEnd = total + portefeuilleEnd;
         simulationState.phase = 'finished';
         showPage('simulation', true);
         return;
@@ -2796,5 +2807,25 @@
   function startSimulationDayInterval() {
     if (simulationState.intervalId) clearInterval(simulationState.intervalId);
     simulationState.intervalId = setInterval(advanceSimulationDay, SIMULATION_TICK_MS);
+  }
+
+  // Pause = arrêter le temps uniquement quand on est sur Investir ou sur le détail d'un actif ; ailleurs (vue niveau ou autre page app) le temps défile
+  function updateSimulationInterval() {
+    if (simulationState.phase !== 'running') {
+      if (simulationState.intervalId) {
+        clearInterval(simulationState.intervalId);
+        simulationState.intervalId = null;
+      }
+      return;
+    }
+    const onSimulationAllocationOrAsset = currentPage === 'simulation' && (simulationState.screen === 'allocation' || !!simulationState.selectedAssetId);
+    if (onSimulationAllocationOrAsset) {
+      if (simulationState.intervalId) {
+        clearInterval(simulationState.intervalId);
+        simulationState.intervalId = null;
+      }
+      return;
+    }
+    startSimulationDayInterval();
   }
 </script>
