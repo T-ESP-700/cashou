@@ -2,7 +2,8 @@
 // Documentation: https://www.better-auth.com
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "darwin-arm64", "linux-arm64-openssl-1.1.x"]
 }
 
 datasource db {
@@ -46,12 +47,13 @@ model User {
   maxStreak     Int            @default(0) @map("max_streak")
   expoPushToken String?        @map("expo_push_token")
   level         Level          @relation(fields: [levelId], references: [id])
-  gameInstances GameInstance[]
-  gameUsers     GameUser[]
-  userQuiz      UserQuiz[]
-  userAnswers   UserAnswer[]
-  notifications Notification[]
-  wallets       Wallet[]
+  gameInstances        GameInstance[]
+  gameUsers            GameUser[]
+  userQuiz             UserQuiz[]
+  userAnswers          UserAnswer[]
+  userLevelCompletions UserLevelCompletion[]
+  notifications        Notification[]
+  wallets              Wallet[]
 
   // Relations better-auth
   accounts Account[]
@@ -123,10 +125,11 @@ model Level {
 
   // Relations
   users         User[]
-  gameInstances GameInstance[]
-  levelGoals    LevelGoal[]
-  levelEvents   LevelEvent[]
-  quiz          Quiz[]
+  gameInstances        GameInstance[]
+  levelGoals           LevelGoal[]
+  levelEvents          LevelEvent[]
+  quiz                 Quiz[]
+  userLevelCompletions UserLevelCompletion[]
 
   @@map("levels")
 }
@@ -164,11 +167,12 @@ model Goal {
 }
 
 model LevelGoal {
-  id        Int      @id @default(autoincrement())
-  levelId   Int      @map("level_id")
-  goalId    Int      @map("goal_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id          Int      @id @default(autoincrement())
+  levelId     Int      @map("level_id")
+  goalId      Int      @map("goal_id")
+  isMandatory Boolean  @default(true) @map("is_mandatory")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
   level Level @relation(fields: [levelId], references: [id])
@@ -192,6 +196,26 @@ model LevelEvent {
   gameInstanceEvents GameInstanceEvent[]
 
   @@map("level_events")
+}
+
+model UserLevelCompletion {
+  id                  Int       @id @default(autoincrement())
+  userId              String    @map("user_id")
+  levelId             Int       @map("level_id")
+  stars               Int       // 1-3
+  mandatoryGoalsMet   Boolean   @map("mandatory_goals_met")
+  bonusGoalsMet       Boolean   @map("bonus_goals_met")
+  quizPassed          Boolean   @map("quiz_passed")
+  completedAt         DateTime? @map("completed_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  level Level @relation(fields: [levelId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, levelId])
+  @@map("user_level_completions")
 }
 
 model Market {

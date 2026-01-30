@@ -1,4 +1,5 @@
 import { View, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { Card, Badge } from '@/components/ui';
 
@@ -9,6 +10,7 @@ interface LevelCardProps {
   progression: number; // 0-100
   currentReturn: number; // percentage
   status?: 'not_started' | 'in_progress' | 'completed' | 'quiz_pending';
+  stars?: number; // 1-3 from level completion
   onPress?: () => void;
 }
 
@@ -19,9 +21,10 @@ export function LevelCard({
   progression,
   currentReturn,
   status = 'in_progress',
+  stars = 0,
   onPress,
 }: LevelCardProps) {
-  const { colors, status: statusColors, fonts, spacing, borderRadius } = useCashouTheme();
+  const { colors, status: statusColors, special, fonts, spacing, borderRadius } = useCashouTheme();
 
   // Badge config based on status
   const getBadgeConfig = (): { text: string; variant: 'success' | 'accent' | 'neutral' | 'warning' } => {
@@ -94,11 +97,25 @@ export function LevelCard({
         padding="md"
         style={{ marginHorizontal: spacing.md, marginBottom: spacing.md }}
       >
-        {/* Header with Level and Status Badge */}
+        {/* Header with Level, Stars (when completed/quiz_pending), and Status Badge */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm + 4 }}>
-          <Text style={{ fontSize: 24, fontFamily: fonts.subheading, color: colors.text }}>
-            Niveau {level}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ fontSize: 24, fontFamily: fonts.subheading, color: colors.text }}>
+              Niveau {level}
+            </Text>
+            {(status === 'completed' || status === 'quiz_pending') && stars > 0 && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                {[1, 2, 3].map((i) => (
+                  <Ionicons
+                    key={i}
+                    name={i <= stars ? 'star' : 'star-outline'}
+                    size={18}
+                    color={i <= stars ? special.gold : colors.iconMuted}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
           <Badge label={badgeConfig.text} variant={badgeConfig.variant} showDot />
         </View>
 

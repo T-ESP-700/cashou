@@ -136,6 +136,7 @@ export interface LevelGoal {
   id: number
   levelId: number
   goalId: number
+  isMandatory?: boolean
   createdAt?: string | Date | null
   updatedAt?: string | Date | null
   goal?: Goal | null

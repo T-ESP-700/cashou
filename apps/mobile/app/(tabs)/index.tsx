@@ -41,6 +41,10 @@ interface HomeData {
     levelNumber: number | null;
     levelTitle: string | null;
     endedAt: Date | null;
+    stars?: number;
+    mandatoryGoalsMet?: boolean;
+    bonusGoalsMet?: boolean;
+    quizPassed?: boolean;
   } | null;
 }
 
@@ -309,6 +313,7 @@ export default function HomeScreen() {
         status: 'in_progress' as const,
         hasGame: true,
         gameId: homeData.activeGame.id,
+        stars: 0,
       };
     }
 
@@ -327,6 +332,7 @@ export default function HomeScreen() {
         status: 'not_started' as const,
         hasGame: false,
         gameId: null,
+        stars: 0,
       };
     }
 
@@ -341,6 +347,7 @@ export default function HomeScreen() {
         status: levelCardStatus,
         hasGame: true,
         gameId: lastCompleted.id,
+        stars: lastCompleted.stars ?? 0,
       };
     }
 
@@ -354,6 +361,7 @@ export default function HomeScreen() {
       status: 'not_started' as const,
       hasGame: false,
       gameId: null,
+      stars: 0,
     };
   }, [homeData, levelCardStatus]);
 
@@ -428,6 +436,7 @@ export default function HomeScreen() {
                 progression={levelCardData.progression}
                 currentReturn={levelCardData.currentReturn}
                 status={levelCardData.status}
+                stars={levelCardData.stars}
                 onPress={handleLevelPress}
               />
             ) : null}

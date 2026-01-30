@@ -5,6 +5,7 @@
 import type { PrismaClient, Holding, Asset, Level, GameInstance } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import { GameTimeService } from "./game-time.service.ts";
+import { LevelCompletionService } from "./level-completion.service.ts";
 
 type HoldingWithAsset = Holding & {
     asset: Asset;
@@ -35,10 +36,12 @@ export interface EndGameResult {
 export class EndGameService {
     private prisma: PrismaClient;
     private gameTimeService: GameTimeService;
+    private levelCompletionService: LevelCompletionService;
 
     constructor(prismaClient?: PrismaClient) {
         this.prisma = prismaClient || defaultPrisma;
         this.gameTimeService = new GameTimeService();
+        this.levelCompletionService = new LevelCompletionService(prismaClient);
     }
 
     /**
@@ -161,9 +164,25 @@ export class EndGameService {
             },
         });
 
-        // 6. Retourner le resultat
+        // 5b. Record level completion (best stars) when all mandatory goals are validated
         const allGoalsValidated = goalResults.every((g) => g.validated);
+        const userId = gameInstance.userId;
+        const levelId = gameInstance.levelId;
+        if (allGoalsValidated && userId && levelId) {
+            const goalResultsByGoalId = new Map(goalResults.map((g) => [g.id, g.validated]));
+            const levelGoals = gameInstance.level.levelGoals.map((lg) => ({
+                goalId: lg.goalId,
+                isMandatory: lg.isMandatory,
+            }));
+            await this.levelCompletionService.recordFromGameEnd(
+                userId,
+                levelId,
+                goalResultsByGoalId,
+                levelGoals
+            );
+        }
 
+        // 6. Retourner le resultat
         return {
             success: allGoalsValidated,
             gameInstanceId,

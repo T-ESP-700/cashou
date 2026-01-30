@@ -39,6 +39,13 @@ interface GoalData {
   id: number;
   title: string | null;
   description: string | null;
+  isMandatory?: boolean;
+}
+
+interface LevelGoalData {
+  goalId: number;
+  isMandatory: boolean;
+  goal: { id: number; title: string | null; description: string | null };
 }
 
 interface LevelData {
@@ -52,6 +59,7 @@ interface LevelData {
     speed: number | null;
   } | null;
   goals?: GoalData[];
+  levelGoals?: LevelGoalData[];
 }
 
 interface GameTimeState {
@@ -1047,7 +1055,14 @@ export default function GameCurrentScreen() {
           ...levelData.level,
           description: levelData.level.description ?? null,
         } : null}
-        goals={levelData?.goals ?? []}
+        goals={
+          (levelData?.levelGoals?.map((lg) => ({
+            id: lg.goal.id,
+            title: lg.goal.title,
+            description: lg.goal.description,
+            isMandatory: lg.isMandatory,
+          })) ?? levelData?.goals) ?? []
+        }
       />
     </View>
   );

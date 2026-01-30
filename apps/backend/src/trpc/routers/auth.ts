@@ -6,6 +6,7 @@ import { prisma } from '@cashou/db-app';
 import { getUserActivityService } from '../../services/user-activity.service';
 import { GameTimeService } from '../services/game-time.service';
 import { GameEndTriggerService } from '../services/game-end-trigger.service';
+import { LevelCompletionService } from '../services/level-completion.service';
 
 export const authRouter = router({
   // Register a new user
@@ -277,6 +278,12 @@ export const authRouter = router({
       },
     });
 
+    const levelCompletionService = new LevelCompletionService();
+    const lastCompletedStars =
+      lastCompletedGame?.levelId != null
+        ? await levelCompletionService.getCompletion(ctx.session.user.id, lastCompletedGame.levelId)
+        : null;
+
     if (!user) {
       throw new TRPCError({
         code: 'NOT_FOUND',
@@ -364,6 +371,10 @@ export const authRouter = router({
         levelNumber: lastCompletedGame.level?.number,
         levelTitle: lastCompletedGame.level?.title,
         endedAt: lastCompletedGame.endedAt,
+        stars: lastCompletedStars?.stars ?? 0,
+        mandatoryGoalsMet: lastCompletedStars?.mandatoryGoalsMet,
+        bonusGoalsMet: lastCompletedStars?.bonusGoalsMet,
+        quizPassed: lastCompletedStars?.quizPassed,
       } : null,
     };
   }),
