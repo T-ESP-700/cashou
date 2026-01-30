@@ -252,19 +252,19 @@ export default function AssetDetailScreen() {
             )}
 
             {/* Rate Section */}
-            {typeof asset.taux === 'number' && (
+            {typeof asset.rate === 'number' && (
               <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
                 <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
                   Taux
                 </Text>
                 <View style={styles.rateContainer}>
                   <Ionicons
-                    name={asset.taux >= 0 ? 'caret-up' : 'caret-down'}
+                    name={asset.rate >= 0 ? 'caret-up' : 'caret-down'}
                     size={24}
                     color="#FFB472"
                   />
                   <Text style={[styles.rateValue, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>
-                    {Math.abs(asset.taux)}%
+                    {Math.abs(asset.rate)}%
                   </Text>
                 </View>
               </View>

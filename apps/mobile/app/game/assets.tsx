@@ -211,7 +211,7 @@ export default function AssetsScreen() {
           a?.market?.title ? String(a.market.title) : null,
         ].filter(Boolean) as string[],
         // Map 'taux' field from database to 'changePct' for UI display
-        changePct: typeof a?.taux === 'number' ? a.taux : 0,
+        changePct: typeof a?.rate === 'number' ? a.rate : 0,
       }));
       setAssets(mapped);
     } catch (e: any) {
