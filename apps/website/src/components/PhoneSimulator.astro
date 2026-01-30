@@ -3051,7 +3051,33 @@
           simulationState.intervalId = null;
         }
         simulationState.phase = 'paused';
-        showPage('simulation', true);
+        simulationState.popupMonth3Shown = true;
+        if (currentPage === 'simulation') {
+          showPage('simulation', true);
+          return;
+        }
+        // Utilisateur ailleurs dans l'app : proposer d'aller au niveau ou plus tard
+        const overlay = document.getElementById('app-overlay');
+        if (overlay) {
+          overlay.innerHTML = '<div class="absolute inset-0 z-50 flex items-center justify-center p-4 pointer-events-auto" id="simulation-news-pending-overlay" style="background: rgba(0,0,0,0.4);">' +
+            '<div class="bg-white rounded-[22px] p-4 shadow-xl max-w-[260px] w-full border border-gray-200" id="simulation-news-pending-card">' +
+            '<p class="text-sm font-bold text-black mb-2">Notification en attente</p>' +
+            '<p class="text-xs text-gray-700 mb-4">Une actualité vous attend dans le niveau. Souhaitez-vous vous y rendre maintenant ?</p>' +
+            '<div class="flex gap-2">' +
+            '<button type="button" class="flex-1 h-10 rounded-[18px] bg-gray-200 text-black text-xs font-bold shadow-sm" id="simulation-news-pending-later-btn">Plus tard</button>' +
+            '<button type="button" class="flex-1 h-10 rounded-[18px] bg-[#FFB472] text-black text-xs font-bold shadow-sm" id="simulation-news-pending-goto-btn">M\'y rendre</button>' +
+            '</div></div></div>';
+          setTimeout(() => {
+            document.getElementById('simulation-news-pending-later-btn')?.addEventListener('click', () => {
+              document.getElementById('app-overlay').innerHTML = '';
+            });
+            document.getElementById('simulation-news-pending-goto-btn')?.addEventListener('click', () => {
+              document.getElementById('app-overlay').innerHTML = '';
+              simulationState.screen = 'level';
+              showPage('simulation');
+            });
+          }, 10);
+        }
         return;
       }
       if (simulationState.currentMonth >= 12) {
