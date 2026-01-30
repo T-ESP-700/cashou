@@ -714,6 +714,11 @@
     
     currentPage = page;
     
+    // En arrivant sur l'accueil, réinitialiser l'historique pour que "précédent" ne renvoie pas à une ancienne page (ex. historique)
+    if (page === 'home') {
+      pageHistory = [];
+    }
+    
     // Attendre la fin de l'animation de sortie avant de changer le contenu
     if (isBackNavigation) {
       // Animation de sortie vers la gauche
