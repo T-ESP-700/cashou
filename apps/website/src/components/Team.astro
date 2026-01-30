@@ -58,13 +58,11 @@ const teamMembers = [
 
     <div class="max-w-7xl mx-auto">
       <div class="relative">
-        <!-- Membres en ligne horizontale -->
         <div class="flex flex-wrap items-center justify-center gap-6 md:gap-8 lg:gap-10">
           {teamMembers.map((member, index) => (
             <div 
               class="group relative flex flex-col items-center"
             >
-              <!-- Avatar -->
               <div class="relative z-10 mb-3">
                 <div class="w-20 h-20 md:w-24 md:h-24 bg-gradient-to-br from-cashou-primary to-cashou-accent rounded-full flex items-center justify-center overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-110 cursor-pointer border-2 border-transparent hover:border-cashou-primary">
                   {member.photo ? (
@@ -81,14 +79,15 @@ const teamMembers = [
                 </div>
               </div>
 
-              <!-- Nom et fonction -->
               <div class="text-center">
                 <h3 class="text-base md:text-lg font-heading font-bold text-cashou-text-light mb-1">
                   {member.name}
                 </h3>
+                <!-- Fonction masquée temporairement
                 <p class="text-sm md:text-base text-cashou-primary font-medium">
                   {member.role}
                 </p>
+                -->
               </div>
             </div>
           ))}
