@@ -21,8 +21,8 @@
         <div class="relative w-[300px] h-[600px] bg-[#F2F2F2] rounded-[30px] p-4 shadow-2xl overflow-hidden">
           <!-- Barre de statut avec Dynamic Island au centre -->
           <div class="relative flex justify-between items-center mb-3 px-2 pt-1 z-10" style="height: 30px;">
-            <!-- Heure à gauche - alignée verticalement avec le Dynamic Island -->
-            <div class="text-black text-xs font-medium flex items-center justify-center" style="height: 30px;">9:41</div>
+            <!-- Heure à gauche (fuseau Paris) - alignée verticalement avec le Dynamic Island -->
+            <div id="phone-status-time" class="text-black text-xs font-medium flex items-center justify-center" style="height: 30px;">--:--</div>
             
             <!-- Dynamic Island iPhone 15 - centré entre l'heure et la batterie, aligné verticalement -->
             <div class="absolute left-1/2 transform -translate-x-1/2 top-0 w-[105px] h-[30px] bg-black rounded-full z-50 flex items-center justify-center gap-2 px-3">
@@ -317,21 +317,48 @@
     selectedTerm: null // null = liste, sinon = terme sélectionné
   };
 
-  // Calculer le temps restant (toujours un quiz du jour disponible)
-  function getTimeRemaining() {
-    // Pour la démo, on simule un temps restant fixe
-    return '6h34m';
+  // Heure actuelle à Paris (pour les calculs)
+  function getParisDate() {
+    const formatter = new Intl.DateTimeFormat('fr-CA', {
+      timeZone: 'Europe/Paris',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+    const parts = formatter.formatToParts(new Date());
+    const toNum = (key) => parseInt(parts.find(p => p.type === key).value, 10);
+    return {
+      year: toNum('year'),
+      month: toNum('month') - 1,
+      day: toNum('day'),
+      hour: toNum('hour'),
+      minute: toNum('minute'),
+      second: toNum('second')
+    };
   }
 
-  // Calculer le pourcentage de progression du jour
-  function calculateProgress() {
-    const parts = getTimeRemaining().match(/(\d+)h(\d+)m/);
-    if (!parts) return 0;
-    const hours = parseInt(parts[1]);
-    const minutes = parseInt(parts[2]);
-    const totalMinutesRemaining = hours * 60 + minutes;
+  // Calculer le temps restant jusqu'à minuit (fuseau Paris)
+  function getTimeRemaining() {
+    const paris = getParisDate();
+    const minutesElapsed = paris.hour * 60 + paris.minute;
     const totalMinutesInDay = 24 * 60;
-    const progress = ((totalMinutesInDay - totalMinutesRemaining) / totalMinutesInDay) * 100;
+    const minutesRemaining = totalMinutesInDay - minutesElapsed;
+    if (minutesRemaining <= 0) return '0h00m';
+    const hours = Math.floor(minutesRemaining / 60);
+    const mins = minutesRemaining % 60;
+    return `${hours}h${mins.toString().padStart(2, '0')}m`;
+  }
+
+  // Calculer le pourcentage de progression du jour (Paris) pour le cercle
+  function calculateProgress() {
+    const paris = getParisDate();
+    const minutesElapsed = paris.hour * 60 + paris.minute;
+    const totalMinutesInDay = 24 * 60;
+    const progress = (minutesElapsed / totalMinutesInDay) * 100;
     return Math.max(0, Math.min(100, progress));
   }
 
@@ -383,6 +410,21 @@
     });
   }
 
+  // Heure au fuseau Paris pour la barre de statut du téléphone
+  function getParisTimeString() {
+    return new Date().toLocaleTimeString('fr-FR', {
+      timeZone: 'Europe/Paris',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+  }
+
+  function updatePhoneStatusTime() {
+    const el = document.getElementById('phone-status-time');
+    if (el) el.textContent = getParisTimeString();
+  }
+
   // Initialisation - s'exécute immédiatement si le DOM est déjà chargé
   function init() {
     console.log('Initialisation du simulateur'); // Debug
@@ -402,6 +444,10 @@
     
     // Afficher la page d'accueil immédiatement
     showPage('home');
+    
+    // Heure Paris dans la barre de statut
+    updatePhoneStatusTime();
+    setInterval(updatePhoneStatusTime, 60000); // mise à jour chaque minute
     
     // Initialiser la position de l'indicateur
     setTimeout(() => {
