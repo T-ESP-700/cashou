@@ -1,9 +1,10 @@
 ---
 // Composant de simulateur de téléphone avec démo interactive de l'app Cashou
 // Design basé exactement sur Progress.svg
+import Logo from '../assets/Frame 93.png';
 ---
 
-<section id="phone-demo" class="bg-cashou-background-light py-16 scroll-mt-16">
+<section id="phone-demo" class="bg-cashou-background-light py-16 scroll-mt-16" data-logo-src={Logo.src}>
   <div class="container mx-auto px-6">
     <div class="text-center mb-12">
       <h2 class="text-4xl md:text-5xl font-heading font-bold text-cashou-text-light mb-4">
@@ -793,7 +794,7 @@
         <!-- Titre centré, aligné verticalement avec la flèche -->
         ${isHomePage ? `
           <div class="flex items-center justify-center" style="flex: 1; text-align: center; height: 32px;">
-            <img src="/assets/Frame 93.png" alt="Cashou" class="h-12 object-contain" />
+            <img src="${document.getElementById('phone-demo')?.getAttribute('data-logo-src') || '/assets/Frame 93.png'}" alt="Cashou" class="h-12 object-contain" />
           </div>
         ` : `
           <h1 class="text-xl font-bold text-black flex items-center justify-center" style="flex: 1; text-align: center; height: 32px; line-height: 1;">${title}</h1>
