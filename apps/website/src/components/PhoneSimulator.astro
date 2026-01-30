@@ -2680,9 +2680,11 @@
   function getSimulationAssetDetailPage(assetId) {
     const asset = simulationAssets.find(a => a.id === assetId);
     if (!asset) return '<div class="p-4">Actif inconnu</div>';
+    const currentMonth = simulationState.currentMonth ?? 0;
+    const { byAsset } = getPortfolioValueAtMonth(simulationState.allocations, currentMonth);
+    const amountOwned = byAsset[assetId] || 0;
     const hasChart = asset.type === 'stock';
     const fullPricesEur = hasChart ? getStockPricesEurForChart(assetId) : null;
-    const currentMonth = simulationState.currentMonth ?? 0;
     const startMonth = currentMonth - 5;
     const pricesEur = fullPricesEur ? fullPricesEur.slice(startMonth + 5, currentMonth + 6) : null;
     const chartWidth = 260;
@@ -2746,11 +2748,15 @@
         yLabels + xLabels +
         '</svg></div>';
     }
+    const amountOwnedBlock = amountOwned > 0
+      ? `<p class="text-sm font-semibold text-cashou-primary mb-3">Montant détenu : ${Math.round(amountOwned)} €</p>`
+      : '';
     return `
       <div class="h-full bg-[#F2F2F2] px-1 py-4 overflow-y-auto">
         <div class="bg-white rounded-[22px] p-4 mb-3 shadow-sm">
           <h2 class="text-lg font-bold text-black mb-1">${asset.name}</h2>
           <p class="text-xs text-gray-600 mb-3">${asset.domain}</p>
+          ${amountOwnedBlock}
           <p class="text-sm text-gray-700">${asset.description}</p>
         </div>
         ${hasChart ? chartSvg : `
