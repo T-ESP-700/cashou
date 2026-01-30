@@ -39,8 +39,8 @@
             </div>
           </div>
 
-          <!-- Zone de contenu avec header fixe -->
-          <div class="relative h-[500px] bg-[#F2F2F2] rounded-2xl overflow-hidden">
+          <!-- Zone de contenu avec header fixe (hauteur étendue quand nav masquée = simulation) -->
+          <div id="app-content-zone" class="relative h-[500px] bg-[#F2F2F2] rounded-2xl overflow-hidden transition-[height] duration-200">
             <!-- Header fixe au-dessus du contenu -->
             <div id="app-header" class="absolute top-0 left-0 right-0 z-30 bg-[#F2F2F2] px-3 py-3 rounded-t-2xl">
               <!-- Le header sera injecté ici par JavaScript -->
@@ -53,8 +53,8 @@
             <div id="app-overlay"></div>
           </div>
 
-          <!-- Barre de navigation en bas (exactement comme dans Progress.svg - design iPhone) -->
-          <div class="absolute bottom-0 left-0 right-0 px-2 pb-2 z-40" style="filter: drop-shadow(0px 2px 2px rgba(0, 0, 0, 0.25));">
+          <!-- Barre de navigation en bas (masquée sur la page Niveau/Simulation) -->
+          <div id="app-bottom-nav" class="absolute bottom-0 left-0 right-0 px-2 pb-2 z-40" style="filter: drop-shadow(0px 2px 2px rgba(0, 0, 0, 0.25));">
             <!-- Rectangle orange principal avec coins arrondis en bas -->
             <div class="bg-[#FFB472] rounded-[20px] h-[40px] relative" style="border-radius: 20px 20px 20px 20px;">
               <!-- Rectangle blanc pour l'élément actif -->
@@ -193,6 +193,103 @@
       transform: translateX(0);
     }
   }
+
+  /* Masquer les flèches du champ nombre (montant) sur mobile */
+  .simulation-transfer-amount::-webkit-inner-spin-button,
+  .simulation-transfer-amount::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .simulation-transfer-amount {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+
+  /* Listes déroulantes Investir : style mobile (coins arrondis, padding) */
+  .simulation-select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    cursor: pointer;
+  }
+
+  /* Listes déroulantes personnalisées — contenu injecté en JS, donc :global() pour que les styles s'appliquent */
+  :global(.simulation-custom-select) {
+    position: relative;
+  }
+  :global(.simulation-select-trigger) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    padding: 12px 40px 12px 16px;
+    font-size: 0.875rem;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    color: #111;
+    -webkit-tap-highlight-color: transparent;
+  }
+  :global(.simulation-select-trigger:hover) {
+    border-color: #d1d5db;
+  }
+  :global(.simulation-select-trigger::after) {
+    content: '';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724%27 height=%2724%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23333%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27M6 9l6 6 6-6%27/%3E%3C/svg%3E');
+    background-size: 20px;
+    background-repeat: no-repeat;
+    background-position: center;
+    pointer-events: none;
+  }
+  :global(.simulation-select-dropdown) {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 100;
+  }
+  /* Fermée par défaut : seule la valeur sélectionnée est visible ; au clic la liste s'ouvre */
+  :global(.simulation-select-dropdown[aria-hidden="true"]) {
+    display: none !important;
+  }
+  :global(.simulation-select-option) {
+    display: block;
+    width: 100%;
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 0.875rem;
+    color: #111;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  :global(.simulation-select-option:first-child) {
+    border-radius: 17px 17px 0 0;
+  }
+  :global(.simulation-select-option:last-child) {
+    border-radius: 0 0 17px 17px;
+  }
+  :global(.simulation-select-option:hover),
+  :global(.simulation-select-option:focus) {
+    background: #f3f4f6;
+  }
 </style>
 
 <script is:inline>
@@ -316,6 +413,56 @@
   let dicoState = {
     selectedTerm: null // null = liste, sinon = terme sélectionné
   };
+
+  // Actifs de la simulation (Livret, LDDS, entreprises)
+  const SIMULATION_START_CAPITAL = 2000;
+  const simulationAssets = [
+    { id: 'livret', name: 'Livret A', type: 'livret', domain: 'Épargne réglementée', description: 'Compte d\'épargne réglementé français, défiscalisé et garanti par l\'État. Taux actuel : 1,5 % net. Pas de cours boursier.' },
+    { id: 'ldds', name: 'LDDS', type: 'ldds', domain: 'Épargne réglementée', description: 'Livret de Développement Durable et Solidaire. Même régime que le Livret A, plafond 12 000 €. Taux aligné sur le Livret A. Pas de cours boursier.' },
+    { id: 'capjumeaux', name: 'CapJumeaux', type: 'stock', domain: 'Conseil IT & services numériques', description: 'Entreprise de conseil en technologies et services numériques (transformation digitale, cloud, cybersécurité). Sensible à la demande en IA.' },
+    { id: 'lvmhash', name: 'LVMHASH', type: 'stock', domain: 'Luxe & marques', description: 'Groupe mondial du luxe : maroquinerie, mode, parfums, montres et joaillerie. Peu exposé directement à l\'IA.' },
+    { id: 'arcelorbital', name: 'ArcelOrbital', type: 'stock', domain: 'Sidérurgie & matériaux', description: 'Leader mondial de la production d\'acier et d\'alliages. Secteur cyclique, peu lié à l\'IA.' },
+    { id: 'ndiva', name: 'Ndiva', type: 'stock', domain: 'IA & semi-conducteurs', description: 'Spécialiste des processeurs pour l\'intelligence artificielle et le calcul haute performance. Très exposé à la croissance de l\'IA.' }
+  ];
+
+  // Évolution mensuelle du cours (base 100 au mois 0). Mois 3 = annonce IA → Ndiva et CapJumeaux montent.
+  function getStockPricesForYear(assetId) {
+    const monthly = [100];
+    if (assetId === 'ndiva') {
+      for (let m = 1; m <= 12; m++) monthly.push(m <= 3 ? 100 : 100 + (m - 3) * (35 / 9)); // ~+35% sur 9 mois
+    } else if (assetId === 'capjumeaux') {
+      for (let m = 1; m <= 12; m++) monthly.push(m <= 3 ? 100 : 100 + (m - 3) * (25 / 9)); // ~+25%
+    } else if (assetId === 'lvmhash') {
+      for (let m = 1; m <= 12; m++) monthly.push(100 - m * 0.5); // léger recul
+    } else if (assetId === 'arcelorbital') {
+      for (let m = 1; m <= 12; m++) monthly.push(100 - m * 0.8); // recul
+    } else return null;
+    return monthly;
+  }
+
+  let simulationState = {
+    phase: 'setup',
+    screen: 'level',
+    allocations: { livret: 0, ldds: 0, capjumeaux: 0, lvmhash: 0, arcelorbital: 0, ndiva: 0 },
+    allocationFromId: 'portefeuille',
+    allocationToId: 'livret',
+    allocationFromOpen: false,
+    allocationToOpen: false,
+    currentMonth: 0,
+    startDate: null,
+    popupMonth3Shown: false,
+    popupMonth3Dismissed: false,
+    totalValueEnd: 0,
+    intervalId: null,
+    selectedAssetId: null
+  };
+
+  // Couleur badge par actif (style Progress: #ABEDB0 vert, #9CD6FF bleu, #DCA7DF violet)
+  function getAssetBadgeColor(assetId) {
+    if (assetId === 'ndiva' || assetId === 'capjumeaux') return '#ABEDB0';
+    if (assetId === 'livret' || assetId === 'ldds') return '#9CD6FF';
+    return '#DCA7DF';
+  }
 
   // Heure actuelle à Paris (pour les calculs)
   function getParisDate() {
@@ -656,6 +803,12 @@
           // Fermer la définition et revenir à la liste
           dicoState.selectedTerm = null;
           showPage('dico', true);
+        } else if (currentPage === 'simulation' && simulationState.selectedAssetId) {
+          simulationState.selectedAssetId = null;
+          showPage('simulation', true);
+        } else if (currentPage === 'simulation' && simulationState.screen === 'allocation') {
+          simulationState.screen = 'level';
+          showPage('simulation', true);
         } else {
           // Retour à la page précédente
           goBack();
@@ -755,7 +908,16 @@
   
   // Fonction pour mettre à jour le contenu de la page
   function renderPageContent(page, content, header) {
-    
+    // Masquer la barre de navigation en bas sur la page Niveau/Simulation (design Progress-1/2)
+    const bottomNav = document.getElementById('app-bottom-nav');
+    const contentZone = document.getElementById('app-content-zone');
+    if (bottomNav) {
+      bottomNav.style.display = page === 'simulation' ? 'none' : '';
+    }
+    if (contentZone) {
+      contentZone.style.height = page === 'simulation' ? '544px' : '500px';
+    }
+
     // Déterminer le titre à afficher selon la page
     let pageTitle = 'Cashou';
     switch(page) {
@@ -776,6 +938,11 @@
         break;
       case 'profile':
         pageTitle = 'Profil';
+        break;
+      case 'simulation':
+        if (simulationState.selectedAssetId) pageTitle = simulationAssets.find(a => a.id === simulationState.selectedAssetId)?.name || 'Détail';
+        else if (simulationState.screen === 'allocation') pageTitle = 'Investir';
+        else pageTitle = 'Niveau';
         break;
     }
     
@@ -844,6 +1011,9 @@
         case 'profile':
           html = getProfilePage();
           break;
+        case 'simulation':
+          html = getSimulationPage();
+          break;
         default:
           console.error('Page inconnue:', page);
           html = getHomePage();
@@ -891,6 +1061,9 @@
               break;
             case 'profile':
               attachProfileListeners();
+              break;
+            case 'simulation':
+              attachSimulationListeners();
               break;
           }
         }, 10);
@@ -944,9 +1117,9 @@
     const circumference = 2 * Math.PI * radius;
 
     return `
-      <div class="h-full bg-[#F2F2F2] px-3 py-4">
+      <div class="h-full bg-[#F2F2F2] px-3 py-4 overflow-y-auto">
         <!-- Daily Quiz Card (design comme Progress.svg) -->
-        <div class="bg-white rounded-[18px] p-4 cursor-pointer active:scale-95 transition-all shadow-sm" id="daily-quiz-card" style="touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none;">
+        <div class="bg-white rounded-[18px] p-4 cursor-pointer active:scale-95 transition-all shadow-sm mb-3" id="daily-quiz-card" style="touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none;">
           <!-- Header avec titre et badge -->
           <div class="flex items-center justify-between mb-3">
             <h2 class="text-lg font-bold text-black">Daily Quiz</h2>
@@ -1003,6 +1176,18 @@
             </div>
           </div>
         </div>
+
+        <!-- Simulation Card (design comme Progress.svg) -->
+        <div class="bg-white rounded-[18px] p-4 cursor-pointer active:scale-95 transition-all shadow-sm" id="simulation-card" style="touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none;">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-lg font-bold text-black">Simulation</h2>
+            <div class="bg-[#9CD6FF] text-black px-2 py-0.5 rounded-full text-xs font-medium">
+              Investissement 1 an
+            </div>
+          </div>
+          <p class="text-xs text-gray-600 mb-2">Portefeuille 2 000 €, Livret, LDDS et actions. Objectif : +10 % en 1 an.</p>
+          <p class="text-xs text-gray-500">Toucher pour jouer</p>
+        </div>
       </div>
     `;
   }
@@ -1010,6 +1195,14 @@
   function attachHomeListeners() {
     // Utiliser setTimeout pour s'assurer que le DOM est prêt
     setTimeout(() => {
+      const simulationCard = document.getElementById('simulation-card');
+      if (simulationCard) {
+        simulationCard.onclick = function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          showPage('simulation');
+        };
+      }
       const dailyQuizCard = document.getElementById('daily-quiz-card');
       if (dailyQuizCard) {
         // Utiliser onclick directement pour plus de fiabilité
@@ -1955,5 +2148,522 @@
 
   function attachProfileListeners() {
     // Le bouton retour dans le header fixe gère déjà le retour
+  }
+
+  // --- Simulation : calcul valeur portefeuille à un mois donné
+  function getPortfolioValueAtMonth(allocations, month) {
+    let total = 0;
+    const byAsset = {};
+    simulationAssets.forEach(a => {
+      let value = 0;
+      const alloc = allocations[a.id] || 0;
+      if (a.type === 'livret' || a.type === 'ldds') {
+        value = alloc * (1 + 0.015 * month / 12);
+      } else {
+        const prices = getStockPricesForYear(a.id);
+        if (prices && prices[month] != null) {
+          value = alloc * (prices[month] / 100);
+        } else {
+          value = alloc;
+        }
+      }
+      byAsset[a.id] = value;
+      total += value;
+    });
+    return { total, byAsset };
+  }
+
+  // Format date simulation (date du jour + X mois)
+  function getSimulationDateLabel(monthOffset) {
+    const d = new Date();
+    d.setMonth(d.getMonth() + monthOffset);
+    return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  function getSimulationPage() {
+    if (simulationState.selectedAssetId) {
+      return getSimulationAssetDetailPage(simulationState.selectedAssetId);
+    }
+    if (simulationState.screen === 'allocation') {
+      return getSimulationAllocationPage();
+    }
+    return getSimulationLevelPage();
+  }
+
+  // Page niveau (design Progress-1 / Progress-2) : ligne Total des avoirs, cartes basses rx=22, boutons bas avec icônes + et Play
+  function getSimulationLevelPage() {
+    const phase = simulationState.phase;
+    const totalAlloc = Object.values(simulationState.allocations).reduce((s, v) => s + v, 0);
+    const portefeuilleAmount = SIMULATION_START_CAPITAL - totalAlloc;
+
+    if (phase === 'setup') {
+      const totalAvoirs = SIMULATION_START_CAPITAL;
+      return `
+        <div class="h-full bg-[#F2F2F2] px-3 py-3 overflow-y-auto flex flex-col pb-20">
+          <!-- Total des avoirs (ligne comme dans Progress : au-dessus des cartes) -->
+          <div class="flex justify-between items-center mb-2 px-1">
+            <span class="text-sm font-bold text-black">Total des avoirs</span>
+            <span class="text-sm font-bold text-black">${totalAvoirs} €</span>
+          </div>
+          <div class="w-full h-0.5 bg-black rounded-full mb-3 opacity-20"></div>
+
+          <!-- Portefeuille (argent non placé) -->
+          <div class="bg-white rounded-[22px] h-[44px] px-4 flex items-center justify-between shadow-sm mb-1.5">
+            <span class="font-bold text-black text-sm">Portefeuille</span>
+            <span class="rounded-[15.5px] px-2.5 py-0.5 text-xs font-medium text-black bg-[#9CD6FF]">${portefeuilleAmount} €</span>
+          </div>
+
+          <!-- Cartes actifs (livret, LDDS, entreprises) — même hauteur réduite -->
+          ${simulationAssets.map(a => {
+            const val = simulationState.allocations[a.id] || 0;
+            const badgeColor = getAssetBadgeColor(a.id);
+            return `
+              <div class="bg-white rounded-[22px] h-[44px] px-4 flex items-center justify-between shadow-sm mb-1.5 simulation-asset-row cursor-pointer active:scale-[0.98]" data-asset-id="${a.id}">
+                <span class="font-bold text-black text-sm">${a.name}</span>
+                <span class="rounded-[15.5px] px-2.5 py-0.5 text-xs font-medium text-black" style="background-color: ${badgeColor}">${val} €</span>
+              </div>
+            `;
+          }).join('')}
+
+          <!-- Boutons en bas : gauche Démarrer (texte), droite + (investir) -->
+          <div class="mt-auto sticky bottom-0 pt-2 pb-1 bg-[#F2F2F2] flex gap-2 justify-center items-center">
+            <button class="flex-1 max-w-[100px] h-10 rounded-[20px] bg-[#FFB472] text-black text-sm font-bold shadow-sm disabled:opacity-50" id="simulation-start-btn" ${totalAlloc <= 0 ? 'disabled' : ''}>Démarrer</button>
+            <button class="flex-shrink-0 w-10 h-10 rounded-[20px] bg-[#FFB472] text-black flex items-center justify-center shadow-sm" id="simulation-open-allocation-btn" title="Investir">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    if (phase === 'running') {
+      const month = simulationState.currentMonth;
+      const { total, byAsset } = getPortfolioValueAtMonth(simulationState.allocations, month);
+      const dateLabel = getSimulationDateLabel(month);
+      return `
+        <div class="h-full bg-[#F2F2F2] px-3 py-3 overflow-y-auto">
+          <div class="flex justify-between items-center mb-1 px-1">
+            <span class="text-xs text-gray-600">Mois ${month}/12 — ${dateLabel}</span>
+          </div>
+          <div class="flex justify-between items-center mb-2 px-1">
+            <span class="text-sm font-bold text-black">Total des avoirs</span>
+            <span class="text-sm font-bold text-black">${Math.round(total)} €</span>
+          </div>
+          <div class="w-full h-0.5 bg-black rounded-full mb-3 opacity-20"></div>
+
+          <div class="space-y-1.5">
+            ${simulationAssets.map(a => {
+              const value = byAsset[a.id] || 0;
+              const badgeColor = getAssetBadgeColor(a.id);
+              return `
+                <div class="bg-white rounded-[22px] h-[44px] px-4 flex items-center justify-between shadow-sm simulation-asset-row cursor-pointer active:scale-[0.98]" data-asset-id="${a.id}">
+                  <span class="font-bold text-black text-sm">${a.name}</span>
+                  <span class="rounded-[15.5px] px-2.5 py-0.5 text-xs font-medium text-black" style="background-color: ${badgeColor}">${Math.round(value)} €</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    if (phase === 'paused') {
+      const month = simulationState.currentMonth;
+      const { total, byAsset } = getPortfolioValueAtMonth(simulationState.allocations, month);
+      const dateLabel = getSimulationDateLabel(month);
+      const showPopup = !simulationState.popupMonth3Dismissed;
+      return `
+        <div class="h-full bg-[#F2F2F2] px-3 py-3 overflow-y-auto flex flex-col pb-20">
+          ${showPopup ? `
+          <div class="bg-[#9CD6FF] rounded-[22px] p-3 mb-2 shadow-sm border-2 border-[#7BC8F7]">
+            <h3 class="font-bold text-black text-sm mb-1">📰 Actualité — Début du mois 3</h3>
+            <p class="text-xs text-black mb-2">
+              L'IA prend de plus en plus de place. <strong>Ndiva</strong> et <strong>CapJumeaux</strong> bénéficient de cette tendance.
+            </p>
+            <button class="w-full h-9 rounded-[15.5px] bg-white text-black font-bold text-xs shadow-sm" id="simulation-close-popup-btn">J'ai compris</button>
+          </div>
+          ` : ''}
+
+          <div class="flex justify-between items-center mb-1 px-1">
+            <span class="text-xs text-gray-600">Mois ${month}/12 — ${dateLabel}</span>
+          </div>
+          <div class="flex justify-between items-center mb-2 px-1">
+            <span class="text-sm font-bold text-black">Total des avoirs</span>
+            <span class="text-sm font-bold text-black">${Math.round(total)} €</span>
+          </div>
+          <div class="w-full h-0.5 bg-black rounded-full mb-2 opacity-20"></div>
+
+          <div class="space-y-1.5 mb-4">
+            ${simulationAssets.map(a => {
+              const value = byAsset[a.id] || 0;
+              const badgeColor = getAssetBadgeColor(a.id);
+              return `
+                <div class="bg-white rounded-[22px] h-[44px] px-4 flex items-center justify-between shadow-sm simulation-asset-row cursor-pointer active:scale-[0.98]" data-asset-id="${a.id}">
+                  <span class="font-bold text-black text-sm">${a.name}</span>
+                  <span class="rounded-[15.5px] px-2.5 py-0.5 text-xs font-medium text-black" style="background-color: ${badgeColor}">${Math.round(value)} €</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+          <div class="mt-auto sticky bottom-0 pt-2 pb-1 bg-[#F2F2F2] flex gap-2 justify-center items-center">
+            <button class="flex-1 max-w-[100px] h-10 rounded-[20px] bg-[#FFB472] text-black text-sm font-bold shadow-sm" id="simulation-resume-btn">Reprendre</button>
+            <button class="flex-shrink-0 w-10 h-10 rounded-[20px] bg-[#FFB472] text-black flex items-center justify-center shadow-sm" id="simulation-open-allocation-paused-btn" title="Investir">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    return getSimulationFinishedPage();
+  }
+
+  // Écran investissement : Depuis (source) → Vers (destination), montant. Par défaut Depuis = Portefeuille, Vers = premier actif.
+  function getSimulationAllocationPage() {
+    const totalAlloc = Object.values(simulationState.allocations).reduce((s, v) => s + v, 0);
+    const portefeuilleBalance = SIMULATION_START_CAPITAL - totalAlloc;
+    const fromId = simulationState.allocationFromId || 'portefeuille';
+    const toId = simulationState.allocationToId || 'livret';
+    const fromBalance = fromId === 'portefeuille' ? portefeuilleBalance : (simulationState.allocations[fromId] || 0);
+    const fromOptions = [];
+    if (portefeuilleBalance > 0) fromOptions.push({ id: 'portefeuille', name: 'Portefeuille', balance: portefeuilleBalance });
+    simulationAssets.forEach(a => {
+      const bal = simulationState.allocations[a.id] || 0;
+      if (bal > 0) fromOptions.push({ id: a.id, name: a.name, balance: bal });
+    });
+    const toOptions = simulationAssets.filter(a => a.id !== fromId);
+    const selectedToId = toOptions.some(o => o.id === toId) ? toId : (toOptions[0]?.id || 'livret');
+    return `
+      <div class="h-full bg-[#F2F2F2] px-3 py-4 overflow-y-auto">
+        <div class="bg-white rounded-[22px] p-4 mb-3 shadow-sm">
+          <h2 class="text-lg font-bold text-black mb-3">Investir</h2>
+
+          <label class="block text-xs font-medium text-gray-700 mb-1">Depuis</label>
+          <div class="simulation-custom-select mb-3" id="simulation-from-wrapper">
+            <button type="button" class="simulation-select-trigger relative" id="simulation-from-trigger" aria-haspopup="listbox" aria-expanded="false">
+              ${(fromOptions.find(o => o.id === fromId) || fromOptions[0])?.name || 'Choisir'} (${(fromOptions.find(o => o.id === fromId) || fromOptions[0])?.balance ?? 0} €)
+            </button>
+            <div class="simulation-select-dropdown" id="simulation-from-dropdown" role="listbox" aria-hidden="true">
+              ${fromOptions.map(opt => `<button type="button" class="simulation-select-option" role="option" data-value="${opt.id}" data-balance="${opt.balance}">${opt.name} (${opt.balance} €)</button>`).join('')}
+            </div>
+          </div>
+
+          <label class="block text-xs font-medium text-gray-700 mb-1">Vers</label>
+          <div class="simulation-custom-select mb-3" id="simulation-to-wrapper">
+            <button type="button" class="simulation-select-trigger relative" id="simulation-to-trigger" aria-haspopup="listbox" aria-expanded="false">
+              ${(toOptions.find(o => o.id === selectedToId) || toOptions[0])?.name || 'Choisir'}
+            </button>
+            <div class="simulation-select-dropdown" id="simulation-to-dropdown" role="listbox" aria-hidden="true">
+              ${toOptions.map(a => `<button type="button" class="simulation-select-option" role="option" data-value="${a.id}">${a.name}</button>`).join('')}
+            </div>
+          </div>
+
+          <label class="block text-xs font-medium text-gray-700 mb-1">Montant (€)</label>
+          <input type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="${fromBalance}" step="10" value="0" class="simulation-transfer-amount w-full rounded-[18px] border border-gray-200 px-4 py-3 text-sm mb-1 bg-white shadow-sm" id="simulation-transfer-amount" />
+          <p class="text-xs text-gray-500">Disponible : ${fromBalance} €</p>
+        </div>
+
+        <button class="w-full h-10 rounded-[20px] bg-[#FFB472] text-black text-sm font-bold shadow-sm" id="simulation-validate-allocation-btn">
+          Valider
+        </button>
+      </div>
+    `;
+  }
+
+  function getSimulationFinishedPage() {
+    const startTotal = SIMULATION_START_CAPITAL;
+    const endTotal = simulationState.totalValueEnd;
+    const pct = startTotal !== 0 ? (((endTotal - startTotal) / startTotal) * 100) : 0;
+    const goalReached = pct >= 10;
+    return `
+      <div class="h-full bg-[#F2F2F2] px-3 py-4 flex flex-col justify-center">
+        <div class="bg-white rounded-[22px] p-4 mb-3 shadow-sm text-center">
+          <div class="text-4xl mb-2">${goalReached ? '🎉' : '📊'}</div>
+          <h2 class="text-lg font-bold text-black mb-2">Simulation terminée</h2>
+          <p class="text-sm text-gray-600 mb-1">Patrimoine de départ</p>
+          <p class="text-xl font-bold text-black mb-3">${startTotal} €</p>
+          <p class="text-sm text-gray-600 mb-1">Patrimoine final</p>
+          <p class="text-xl font-bold text-black mb-3">${Math.round(endTotal)} €</p>
+          <p class="text-sm text-gray-600 mb-1">Évolution</p>
+          <p class="text-2xl font-bold ${pct >= 0 ? 'text-green-600' : 'text-red-600'}">${pct >= 0 ? '+' : ''}${pct.toFixed(1)} %</p>
+          <p class="text-xs text-gray-500 mt-3">Objectif : +10 % en 1 an</p>
+          ${goalReached ? '<p class="text-sm font-medium text-green-600 mt-2">Objectif atteint !</p>' : '<p class="text-sm text-gray-600 mt-2">Réessayez en misant sur les entreprises boostées par l\'IA (Ndiva, CapJumeaux).</p>'}
+        </div>
+        <button class="w-full h-14 rounded-[28px] bg-[#FFB472] text-black font-bold shadow-sm" id="simulation-replay-btn">
+          Rejouer
+        </button>
+      </div>
+    `;
+  }
+
+  function getSimulationAssetDetailPage(assetId) {
+    const asset = simulationAssets.find(a => a.id === assetId);
+    if (!asset) return '<div class="p-4">Actif inconnu</div>';
+    const hasChart = asset.type === 'stock';
+    const prices = hasChart ? getStockPricesForYear(assetId) : null;
+    const maxP = prices ? Math.max(...prices) : 100;
+    const minP = prices ? Math.min(...prices) : 0;
+    const chartHeight = 120;
+    const pad = 5;
+    const points = prices && prices.length > 1 ? prices.map((p, i) => {
+      const x = pad + (i / (prices.length - 1)) * (100 - 2 * pad);
+      const y = maxP === minP ? 50 : pad + ((p - minP) / (maxP - minP)) * (100 - 2 * pad);
+      return `${x},${100 - y}`;
+    }).join(' ') : '';
+    return `
+      <div class="h-full bg-[#F2F2F2] px-3 py-4 overflow-y-auto">
+        <div class="bg-white rounded-[22px] p-4 mb-3 shadow-sm">
+          <h2 class="text-lg font-bold text-black mb-1">${asset.name}</h2>
+          <p class="text-xs text-gray-600 mb-3">${asset.domain}</p>
+          <p class="text-sm text-gray-700">${asset.description}</p>
+        </div>
+        ${hasChart ? `
+          <div class="bg-white rounded-[22px] p-4 shadow-sm">
+            <h3 class="text-sm font-bold text-black mb-2">Cours (base 100 au mois 0)</h3>
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" class="w-full" style="height: ${chartHeight}px;">
+              <polyline fill="none" stroke="#FFB472" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" points="${points}" />
+            </svg>
+            <div class="flex justify-between text-xs text-gray-500 mt-1">
+              <span>Mois 0</span>
+              <span>Mois 12</span>
+            </div>
+          </div>
+        ` : `
+          <div class="bg-white rounded-[22px] p-3 shadow-sm">
+            <p class="text-xs text-gray-500">Ce placement n'a pas de cours boursier. Les intérêts sont calculés au taux réglementaire (1,5 % net/an).</p>
+          </div>
+        `}
+      </div>
+    `;
+  }
+
+  function attachSimulationListeners() {
+    setTimeout(() => {
+      // Ouvrir écran Investir (bouton +) — par défaut Depuis = Portefeuille, Vers = Livret A
+      document.getElementById('simulation-open-allocation-btn')?.addEventListener('click', () => {
+        simulationState.screen = 'allocation';
+        simulationState.allocationFromId = 'portefeuille';
+        simulationState.allocationToId = 'livret';
+        simulationState.allocationFromOpen = false;
+        simulationState.allocationToOpen = false;
+        showPage('simulation', true);
+      });
+
+      document.getElementById('simulation-open-allocation-paused-btn')?.addEventListener('click', () => {
+        simulationState.screen = 'allocation';
+        simulationState.allocationFromId = 'portefeuille';
+        simulationState.allocationToId = 'livret';
+        simulationState.allocationFromOpen = false;
+        simulationState.allocationToOpen = false;
+        showPage('simulation', true);
+      });
+
+      // Fermer les listes déroulantes (aria-hidden = masqué) et réinitialiser position
+      function closeAllocationDropdowns() {
+        const fromDd = document.getElementById('simulation-from-dropdown');
+        const toDd = document.getElementById('simulation-to-dropdown');
+        fromDd?.setAttribute('aria-hidden', 'true');
+        toDd?.setAttribute('aria-hidden', 'true');
+        fromDd?.style.removeProperty('position');
+        fromDd?.style.removeProperty('top');
+        fromDd?.style.removeProperty('left');
+        fromDd?.style.removeProperty('width');
+        toDd?.style.removeProperty('position');
+        toDd?.style.removeProperty('top');
+        toDd?.style.removeProperty('left');
+        toDd?.style.removeProperty('width');
+        document.getElementById('simulation-from-trigger')?.setAttribute('aria-expanded', 'false');
+        document.getElementById('simulation-to-trigger')?.setAttribute('aria-expanded', 'false');
+      }
+      // Positionner la liste en fixed sous le trigger pour qu'elle ne soit jamais coupée
+      function positionDropdownUnderTrigger(dropdown, trigger) {
+        if (!dropdown || !trigger) return;
+        const r = trigger.getBoundingClientRect();
+        dropdown.style.position = 'fixed';
+        dropdown.style.top = (r.bottom + 4) + 'px';
+        dropdown.style.left = r.left + 'px';
+        dropdown.style.width = r.width + 'px';
+      }
+      // Délégation : un seul listener document pour que les listes s'ouvrent à coup sûr
+      if (!window.__allocationDropdownDelegation) {
+        window.__allocationDropdownDelegation = true;
+        document.addEventListener('click', function allocationDropdownDelegation(e) {
+          if (currentPage !== 'simulation' || simulationState.screen !== 'allocation') return;
+          const fromTrigger = document.getElementById('simulation-from-trigger');
+          const toTrigger = document.getElementById('simulation-to-trigger');
+          const fromDropdown = document.getElementById('simulation-from-dropdown');
+          const toDropdown = document.getElementById('simulation-to-dropdown');
+          if (!fromTrigger || !fromDropdown) return;
+          const t = e.target;
+          if (fromTrigger === t || fromTrigger.contains(t)) {
+            e.preventDefault();
+            e.stopPropagation();
+            const wasOpen = fromDropdown.getAttribute('aria-hidden') !== 'true';
+            closeAllocationDropdowns();
+            if (wasOpen) return; // déjà ouverte, on vient de la fermer
+            fromDropdown.setAttribute('aria-hidden', 'false');
+            fromTrigger.setAttribute('aria-expanded', 'true');
+            positionDropdownUnderTrigger(fromDropdown, fromTrigger);
+            return;
+          }
+          if (toTrigger && (toTrigger === t || toTrigger.contains(t))) {
+            e.preventDefault();
+            e.stopPropagation();
+            const wasOpen = toDropdown?.getAttribute('aria-hidden') !== 'true';
+            closeAllocationDropdowns();
+            if (wasOpen) return; // déjà ouverte, on vient de la fermer
+            toDropdown?.setAttribute('aria-hidden', 'false');
+            toTrigger.setAttribute('aria-expanded', 'true');
+            positionDropdownUnderTrigger(toDropdown, toTrigger);
+            return;
+          }
+          if (fromDropdown.contains(t)) {
+            const opt = t.closest?.('.simulation-select-option');
+            if (opt) {
+              e.preventDefault();
+              const id = opt.getAttribute('data-value');
+              const label = opt.textContent?.trim() || '';
+              simulationState.allocationFromId = id;
+              const firstOther = simulationAssets.find(a => a.id !== id);
+              if (firstOther) simulationState.allocationToId = firstOther.id;
+              fromTrigger.textContent = label;
+              closeAllocationDropdowns();
+              showPage('simulation', true);
+            }
+            return;
+          }
+          if (toDropdown && toDropdown.contains(t)) {
+            const opt = t.closest?.('.simulation-select-option');
+            if (opt) {
+              e.preventDefault();
+              const id = opt.getAttribute('data-value');
+              const label = opt.textContent?.trim() || '';
+              simulationState.allocationToId = id;
+              toTrigger.textContent = label;
+              closeAllocationDropdowns();
+            }
+            return;
+          }
+          closeAllocationDropdowns();
+        });
+      }
+
+      // Limiter le montant au solde disponible (selon Depuis sélectionné)
+      document.getElementById('simulation-transfer-amount')?.addEventListener('input', function() {
+        const totalAlloc = Object.values(simulationState.allocations).reduce((s, v) => s + v, 0);
+        const portefeuilleBalance = SIMULATION_START_CAPITAL - totalAlloc;
+        const fromId = simulationState.allocationFromId || 'portefeuille';
+        const balance = fromId === 'portefeuille' ? portefeuilleBalance : (simulationState.allocations[fromId] || 0);
+        const val = parseInt(this.value, 10) || 0;
+        if (val > balance) this.value = balance;
+      });
+
+      // Valider transfert : depuis → vers, montant
+      document.getElementById('simulation-validate-allocation-btn')?.addEventListener('click', () => {
+        const fromId = simulationState.allocationFromId || 'portefeuille';
+        const toId = simulationState.allocationToId || 'livret';
+        const amountInput = document.getElementById('simulation-transfer-amount');
+        const amount = Math.max(0, parseInt(amountInput?.value || '0', 10));
+        const totalAlloc = Object.values(simulationState.allocations).reduce((s, v) => s + v, 0);
+        const portefeuilleBalance = SIMULATION_START_CAPITAL - totalAlloc;
+        const fromBalance = fromId === 'portefeuille' ? portefeuilleBalance : (simulationState.allocations[fromId] || 0);
+        const safeAmount = Math.min(amount, fromBalance);
+        if (safeAmount <= 0) {
+          simulationState.screen = 'level';
+          showPage('simulation', true);
+          return;
+        }
+        if (fromId === 'portefeuille') {
+          simulationState.allocations[toId] = (simulationState.allocations[toId] || 0) + safeAmount;
+        } else {
+          simulationState.allocations[fromId] = (simulationState.allocations[fromId] || 0) - safeAmount;
+          simulationState.allocations[toId] = (simulationState.allocations[toId] || 0) + safeAmount;
+        }
+        simulationState.screen = 'level';
+        showPage('simulation', true);
+      });
+
+      // Démarrer la simulation (depuis page niveau)
+      document.getElementById('simulation-start-btn')?.addEventListener('click', () => {
+        const totalAlloc = Object.values(simulationState.allocations).reduce((s, v) => s + v, 0);
+        if (totalAlloc <= 0) return;
+        simulationState.phase = 'running';
+        simulationState.currentMonth = 0;
+        simulationState.startDate = new Date();
+        simulationState.popupMonth3Shown = false;
+        simulationState.popupMonth3Dismissed = false;
+        simulationState.intervalId = setInterval(advanceSimulationMonth, 2500);
+        showPage('simulation', true);
+      });
+
+      // Lignes actifs (running / paused / setup) : clic = détail
+      document.querySelectorAll('.simulation-asset-row').forEach(row => {
+        row.addEventListener('click', () => {
+          const id = row.getAttribute('data-asset-id');
+          if (id) {
+            simulationState.selectedAssetId = id;
+            showPage('simulation', true);
+          }
+        });
+      });
+
+      // Fermer popup mois 3
+      document.getElementById('simulation-close-popup-btn')?.addEventListener('click', () => {
+        simulationState.popupMonth3Dismissed = true;
+        showPage('simulation', true);
+      });
+
+      // Reprendre après pause (reprend le temps, pas de formulaire sur la page)
+      document.getElementById('simulation-resume-btn')?.addEventListener('click', () => {
+        simulationState.phase = 'running';
+        simulationState.popupMonth3Shown = true;
+        if (simulationState.intervalId) clearInterval(simulationState.intervalId);
+        simulationState.intervalId = setInterval(advanceSimulationMonth, 2500);
+        showPage('simulation', true);
+      });
+
+      // Rejouer
+      document.getElementById('simulation-replay-btn')?.addEventListener('click', () => {
+        if (simulationState.intervalId) {
+          clearInterval(simulationState.intervalId);
+          simulationState.intervalId = null;
+        }
+        simulationState.phase = 'setup';
+        simulationState.screen = 'level';
+        simulationState.allocations = { livret: 0, ldds: 0, capjumeaux: 0, lvmhash: 0, arcelorbital: 0, ndiva: 0 };
+        simulationState.currentMonth = 0;
+        simulationState.popupMonth3Shown = false;
+        simulationState.popupMonth3Dismissed = false;
+        simulationState.selectedAssetId = null;
+        showPage('simulation', true);
+      });
+    }, 10);
+  }
+
+  function advanceSimulationMonth() {
+    if (simulationState.phase !== 'running') return;
+    simulationState.currentMonth += 1;
+    if (simulationState.currentMonth >= 3 && !simulationState.popupMonth3Shown) {
+      if (simulationState.intervalId) {
+        clearInterval(simulationState.intervalId);
+        simulationState.intervalId = null;
+      }
+      simulationState.phase = 'paused';
+      showPage('simulation', true);
+      return;
+    }
+    if (simulationState.currentMonth >= 12) {
+      if (simulationState.intervalId) {
+        clearInterval(simulationState.intervalId);
+        simulationState.intervalId = null;
+      }
+      const { total } = getPortfolioValueAtMonth(simulationState.allocations, 12);
+      simulationState.totalValueEnd = total;
+      simulationState.phase = 'finished';
+      showPage('simulation', true);
+      return;
+    }
+    showPage('simulation', true);
   }
 </script>
