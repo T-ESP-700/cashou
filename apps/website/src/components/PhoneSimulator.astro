@@ -385,22 +385,20 @@
     ]
   };
 
-  // Données du dictionnaire (triées par ordre alphabétique)
+  // Données du dictionnaire (définitions issues du Dictionnaire de l'Académie française, 9e édition)
   const dicoEntries = [
-    { term: 'Action', definition: 'Titre de propriété d\'une partie du capital d\'une entreprise, donnant droit à des dividendes et à une participation aux décisions.' },
-    { term: 'Bourse', definition: 'Marché où s\'échangent des valeurs mobilières (actions, obligations) entre acheteurs et vendeurs.' },
-    { term: 'Capitalisation', definition: 'Processus par lequel les intérêts générés s\'ajoutent au capital initial pour produire de nouveaux intérêts.' },
-    { term: 'Dividende', definition: 'Part des bénéfices d\'une entreprise distribuée aux actionnaires en fonction du nombre d\'actions détenues.' },
-    { term: 'Épargne', definition: 'Part du revenu non consommée immédiatement, mise de côté pour un usage futur.' },
-    { term: 'Inflation', definition: 'Augmentation générale et durable des prix, réduisant le pouvoir d\'achat de la monnaie.' },
-    { term: 'Livret A', definition: 'Compte d\'épargne réglementé français, défiscalisé et garanti par l\'État, avec un plafond de 22 950 €.' },
-    { term: 'Obligation', definition: 'Titre de créance représentant une dette émise par une entreprise ou un État, rapportant des intérêts fixes.' },
-    { term: 'PEL', definition: 'Plan d\'Épargne Logement : compte d\'épargne permettant d\'obtenir un prêt immobilier après 4 ans d\'épargne.' },
-    { term: 'Plafond', definition: 'Montant maximum autorisé sur un compte d\'épargne réglementé.' },
-    { term: 'Portefeuille', definition: 'Ensemble des placements financiers (actions, obligations, etc.) détenus par un investisseur.' },
-    { term: 'Rendement', definition: 'Rapport entre le revenu généré par un placement et le capital investi, exprimé en pourcentage.' },
-    { term: 'Taux d\'intérêt', definition: 'Pourcentage appliqué au capital placé, représentant la rémunération de l\'épargne.' },
-    { term: 'Volatilité', definition: 'Mesure de l\'amplitude des variations de prix d\'un actif financier sur une période donnée.' }
+    { term: 'Action', definition: 'Titre négociable représentant une participation au capital social d\'une société.' },
+    { term: 'Bourse', definition: 'Bourse des valeurs ou Bourse : marché public spécialisé où s\'effectuent les transactions sur les valeurs mobilières.' },
+    { term: 'Capitalisation', definition: 'Transformation des intérêts ou des revenus en capital pour produire de nouveaux intérêts.' },
+    { term: 'Dividende', definition: 'Part des bénéfices distribuée à chaque actionnaire d\'une société.' },
+    { term: 'Épargne', definition: 'Mise en réserve d\'une partie de ses revenus, de ses biens.' },
+    { term: 'Inflation', definition: 'Phénomène économique caractérisé par une hausse des prix générale et durable.' },
+    { term: 'Livret A', definition: 'Le livret A est un produit d\'épargne réglementé, c\'est-à-dire dont les caractéristiques sont fixées par les pouvoirs publics. Son taux d\'intérêt s\'élève à 1,5%.' },
+    { term: 'Obligation', definition: 'Titre productif d\'intérêt et remboursable dans un délai déterminé, émis par l\'État, une collectivité publique, un établissement commercial ou financier.' },
+    { term: 'PEL', definition: 'Plan d\'Épargne Logement : système d\'encouragement à l\'épargne en vue de la construction, de l\'acquisition ou de l\'amélioration d\'un logement.' },
+    { term: 'Plafond', definition: 'Limite supérieure, point le plus haut que l\'on puisse atteindre, montant maximum autorisé.' },
+    { term: 'Taux d\'intérêt', definition: 'Pourcentage qui rétribue le prêt d\'un capital, l\'intérêt représente le loyer de la somme prêtée.' },
+    { term: 'Volatilité', definition: 'En finances, amplitude des variations de prix d\'un actif sur une période donnée.' }
   ].sort((a, b) => a.term.localeCompare(b.term, 'fr', { sensitivity: 'base' }));
 
   // État de l'application
