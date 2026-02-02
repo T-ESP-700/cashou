@@ -1,4 +1,4 @@
-import { FieldErrors, Path, UseFormRegister } from 'react-hook-form'
+import { FieldErrors, FieldValues, Path, UseFormRegister } from 'react-hook-form'
 import { cn } from '@/lib/utils'
 
 interface SelectOption {
@@ -6,7 +6,7 @@ interface SelectOption {
   label: string
 }
 
-interface SelectProps<TFieldValues extends Record<string, unknown>> {
+interface SelectProps<TFieldValues extends FieldValues = FieldValues> {
   label: string
   name: Path<TFieldValues>
   register: UseFormRegister<TFieldValues>
@@ -17,7 +17,7 @@ interface SelectProps<TFieldValues extends Record<string, unknown>> {
   helperText?: string
 }
 
-export function Select<TFieldValues extends Record<string, unknown>>({
+export function Select<TFieldValues extends FieldValues = FieldValues>({
   label,
   name,
   register,
