@@ -93,7 +93,7 @@ Thumbs.db
 !.claude/settings.json
 
 # Docker
-.dockerignore
+apps/backend/.dockerignore
 docker-compose.override.yml
 
 # Temporary files
