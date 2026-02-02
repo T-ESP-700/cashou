@@ -1,6 +1,6 @@
 // tests/router/level-event.router.test.ts
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import type { LevelEvent } from "@prisma/client";
+import type { LevelEvent } from "@cashou/db-app";
 import { levelEventRouter } from "../../src/trpc/routers/level-event.router";
 import { LevelEventService } from "../../src/trpc/services/level-event.service";
 
@@ -21,6 +21,8 @@ function makeLevelEvent(id: number, over: Partial<LevelEvent> = {}): LevelEvent 
         id,
         levelId: over.levelId ?? 1,
         eventId: over.eventId ?? 1,
+        triggerPercent: over.triggerPercent ?? 0,
+        position: over.position ?? 1,
         createdAt: over.createdAt ?? now,
         updatedAt: over.updatedAt ?? now,
     };
