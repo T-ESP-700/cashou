@@ -3,10 +3,21 @@
  * Utilise l'API backend au lieu de Supabase
  */
 
-import { trpc } from './trpc'
+import { createTRPCClient, httpBatchLink } from '@trpc/client'
+import type { AppRouter } from '../../../../apps/backend/src/trpc/router'
 
 const TOKEN_KEY = 'backoffice_auth_token'
 const USER_KEY = 'backoffice_user'
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'
+
+const vanillaClient = createTRPCClient<AppRouter>({
+  links: [
+    httpBatchLink({
+      url: `${BACKEND_URL}/api/trpc`,
+    }),
+  ],
+})
 
 export interface BackofficeUser {
   id: number
@@ -40,7 +51,7 @@ export class LocalAuthService {
 
   static async signIn(email: string, password: string) {
     try {
-      const result = await trpc.backofficeAuth.signIn.mutate({ email, password })
+      const result = await vanillaClient.backofficeAuth.signIn.mutate({ email, password })
 
       this.setToken(result.token)
       this.setUser(result.user)
@@ -58,7 +69,7 @@ export class LocalAuthService {
     }
 
     try {
-      const result = await trpc.backofficeAuth.verify.query({ token })
+      const result = await vanillaClient.backofficeAuth.verify.query({ token })
       this.setUser(result.user)
       return result.user
     } catch (error) {
