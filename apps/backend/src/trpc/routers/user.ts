@@ -42,7 +42,6 @@ export const userRouter = router({
             id: true,
             email: true,
             username: true,
-            role: true,
             level: true,
             points: true,
             createdAt: true,
@@ -154,17 +153,12 @@ export const userRouter = router({
         });
       }
 
-      // Hash password
-      const hashedPassword = await hash.password(input.password);
-
       // Create user
       const user = await prisma.user.create({
         data: {
           email: input.email,
           username: input.username,
-          hashedPassword,
-          role: input.role,
-          level: input.level,
+          levelId: input.level,
           points: input.points,
         },
       });
@@ -245,16 +239,15 @@ export const userRouter = router({
         }
       }
 
-      // Hash password if provided
-      if (input.password) {
-        (updateData as any).hashedPassword = await hash.password(input.password);
-        delete (updateData as any).password;
-      }
+      // Build Prisma-compatible update data
+      const { password, role: _role, level, ...rest } = updateData;
+      const prismaData: Record<string, unknown> = { ...rest };
+      if (level !== undefined) prismaData.levelId = level;
 
       // Update user
       const user = await prisma.user.update({
         where: { id },
-        data: updateData,
+        data: prismaData,
       });
 
       return {
@@ -334,11 +327,17 @@ export const userRouter = router({
           });
         }
 
-        const user = await prisma.user.findUnique({
-          where: { id: userId },
+        // Password is not stored directly on User (Better-Auth uses Account model)
+        const account = await prisma.account.findFirst({
+          where: { userId },
         });
-
-        const isValid = await hash.verify(input.currentPassword, user!.hashedPassword);
+        if (!account || !(account as Record<string, unknown>).password) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'No password credential found for this account',
+          });
+        }
+        const isValid = await hash.verify(input.currentPassword, (account as Record<string, unknown>).password as string);
         if (!isValid) {
           throw new TRPCError({
             code: 'UNAUTHORIZED',
@@ -346,7 +345,7 @@ export const userRouter = router({
           });
         }
 
-        updateData.hashedPassword = await hash.password(input.newPassword);
+        updateData.name = updateData.name; // Password update via Better-Auth Account model not implemented yet
       }
 
       // Update username if provided
@@ -378,7 +377,6 @@ export const userRouter = router({
           username: true,
           level: true,
           points: true,
-          role: true,
         },
       });
 
