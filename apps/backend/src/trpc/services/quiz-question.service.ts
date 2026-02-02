@@ -1,6 +1,6 @@
 // Service métier pour la gestion des quiz-questions du jeu
 // Couche d'abstraction entre les routers et la base de données
-import type { QuizQuestion, Question, PrismaClient } from "@prisma/client";
+import type { QuizQuestion, Question, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {QuizQuestionCreateSchema, QuizQuestionDataSchema} from "../schemas-zod/quiz-question-schema.ts";
 
