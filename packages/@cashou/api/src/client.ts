@@ -1,7 +1,7 @@
 import { createTRPCClient, httpBatchLink } from '@trpc/client';
 
 // Import AppRouter type directly from backend
-import type { AppRouter } from '../../../apps/backend/src/trpc/router';
+import type { AppRouter } from '../../../../apps/backend/src/trpc/router';
 
 export type { AppRouter };
 

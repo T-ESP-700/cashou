@@ -1,4 +1,4 @@
-import type { Market, Submarket, PrismaClient } from "@prisma/client";
+import type { Market, Submarket, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {MarketCreateSchema, MarketDataSchema} from "../schemas-zod/market-schema.ts";
 
@@ -123,7 +123,7 @@ export class MarketService {
      * @param trend - Tendance optionnelle
      * @returns Promise<Array<Market & { relevance: number }>>
      */
-    async search(query: string, tag?: string, trend?: string): Promise<Array<Market & { relevance: number }>> {
+    async search(query: string, tag?: string, _trend?: string): Promise<Array<Market & { relevance: number }>> {
         const where: any = {
             OR: [
                 { title: { contains: query, mode: 'insensitive' } },
@@ -728,7 +728,6 @@ export class MarketService {
      */
     private calculateRealTimeMetrics(market: any): any {
         const totalAssets = market.assets.length;
-        const totalSubmarkets = market.submarkets.length;
 
         // Calculer la valeur totale du marché
         let totalMarketValue = 0;
@@ -834,7 +833,8 @@ export class MarketService {
      * @param market - Marché à analyser
      * @returns any - Analyse de rotation sectorielle
      */
-    private calculateSectorRotation(market: any): any {
+    // @ts-ignore: reserved for future sector rotation analysis
+    private _calculateSectorRotation(market: any): any {
         // Grouper les actifs par secteur (field)
         const sectorGroups: { [key: string]: any[] } = {};
 
@@ -989,7 +989,7 @@ export class MarketService {
      * @param momentum - Momentum du secteur
      * @returns string - Signal de rotation
      */
-    private getRotationSignal(sectorType: string, momentum: number): string {
+    private getRotationSignal(_sectorType: string, momentum: number): string {
         if (momentum >= 15) return 'strong_buy';      // Fort achat
         if (momentum >= 5) return 'buy';              // Achat
         if (momentum >= -5) return 'hold';            // Maintenir
@@ -1168,7 +1168,7 @@ export class MarketService {
      * @param to - Date de fin
      * @returns any - Données agrégées
      */
-    private aggregateHistoricalData(histories: any[], from: Date, to: Date): any {
+    private aggregateHistoricalData(histories: any[], _from: Date, _to: Date): any {
         // Grouper par jour
         const dailyData: { [key: string]: any } = {};
 
@@ -1206,7 +1206,7 @@ export class MarketService {
      * @param to - Date de fin
  * @returns any - Statistiques temporelles
      */
-    private calculateTemporalStatistics(histories: any[], from: Date, to: Date): any {
+    private calculateTemporalStatistics(histories: any[], _from: Date, _to: Date): any {
         if (histories.length === 0) {
             return {
                 total_periods: 0,
