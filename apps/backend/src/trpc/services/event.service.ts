@@ -1,4 +1,6 @@
 // Service métier pour la gestion des événements du jeu
+// Import depuis @cashou/db-app (et non @prisma/client) car Bun crée des copies séparées
+// de @prisma/client par contexte de résolution, ce qui cause des types incompatibles
 import type { Event, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {EventCreateSchema, EventDataSchema} from "../schemas-zod/event-schemas.ts";

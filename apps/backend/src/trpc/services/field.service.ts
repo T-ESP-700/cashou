@@ -1,5 +1,7 @@
 // Service métier pour la gestion des champs de marché du jeu
 // Couche d'abstraction entre les routers et la base de données
+// Import depuis @cashou/db-app (et non @prisma/client) car Bun crée des copies séparées
+// de @prisma/client par contexte de résolution, ce qui cause des types incompatibles
 import type { Field, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {FieldCreateSchema, FieldDataSchema} from "../schemas-zod/field-schema.ts";

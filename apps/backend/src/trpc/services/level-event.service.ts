@@ -1,5 +1,7 @@
 
 // Service métier pour la gestion des associations niveau-événement
+// Import depuis @cashou/db-app (et non @prisma/client) car Bun crée des copies séparées
+// de @prisma/client par contexte de résolution, ce qui cause des types incompatibles
 import type { LevelEvent, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type { LevelEventCreateSchema, LevelEventDataSchema } from "../schemas-zod/level-event-schema.ts";

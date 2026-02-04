@@ -1,3 +1,5 @@
+// Import depuis @cashou/db-app (et non @prisma/client) car Bun crée des copies séparées
+// de @prisma/client par contexte de résolution, ce qui cause des types incompatibles
 import type { Wallet, PrismaClient } from "@cashou/db-app";
 import { Prisma } from "@cashou/db-app";
 
