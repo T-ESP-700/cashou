@@ -240,7 +240,8 @@ export const userRouter = router({
       }
 
       // Build Prisma-compatible update data
-      const { password, role: _role, level, ...rest } = updateData;
+      const { password: _password, role: _role, level, ...rest } = updateData;
+      void _password; void _role; // Champs exclus volontairement de la mise à jour Prisma
       const prismaData: Record<string, unknown> = { ...rest };
       if (level !== undefined) prismaData.levelId = level;
 
