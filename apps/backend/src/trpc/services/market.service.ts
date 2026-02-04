@@ -835,7 +835,7 @@ export class MarketService {
      * @param market - Marché à analyser
      * @returns any - Analyse de rotation sectorielle
      */
-    // @ts-expect-error: reserved for future sector rotation analysis
+    // Méthode réservée pour une future analyse de rotation sectorielle
     private _calculateSectorRotation(market: any): any {
         // Grouper les actifs par secteur (field)
         const sectorGroups: { [key: string]: any[] } = {};
