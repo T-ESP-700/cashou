@@ -1,8 +1,14 @@
 /**
  * Service d'authentification local pour le backoffice
  * Utilise l'API backend au lieu de Supabase
+ *
+ * Note : on utilise createTRPCClient (client vanilla) et non le client React Query
+ * (createTRPCReact) car cette classe n'est pas un composant React.
+ * Le client React Query expose des hooks (.useQuery, .useMutation) mais pas
+ * .mutate() / .query() directement, ce qui causait des erreurs TypeScript.
  */
 
+// Client tRPC vanilla — permet d'appeler .mutate() et .query() hors contexte React
 import { createTRPCClient, httpBatchLink } from '@trpc/client'
 import type { AppRouter } from '../../../../apps/backend/src/trpc/router'
 
@@ -11,6 +17,7 @@ const USER_KEY = 'backoffice_user'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'
 
+// Client tRPC dédié à ce service (indépendant du client React Query de ./trpc.ts)
 const vanillaClient = createTRPCClient<AppRouter>({
   links: [
     httpBatchLink({
