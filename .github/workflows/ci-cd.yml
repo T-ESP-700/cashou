@@ -54,7 +54,7 @@ jobs:
         run: bun run typecheck
       - name: Code quality
         run: bunx eslint . --ext .ts,.tsx
-        working-directory: backend
+        working-directory: apps/backend
 
   # Tests des packages partagés (uniquement ceux qui ont des tests)
   shared-packages-test:
