@@ -830,6 +830,302 @@ export class MarketService {
         return 'Dispersé';
     }
 
+    /**
+     * Calcule la rotation sectorielle du marché
+     * @param market - Marché à analyser
+     * @returns any - Analyse de rotation sectorielle
+     */
+    // Méthode réservée pour une future analyse de rotation sectorielle
+    private _calculateSectorRotation(market: any): any {
+        // Grouper les actifs par secteur (field)
+        const sectorGroups: { [key: string]: any[] } = {};
+
+        market.assets.forEach((asset: any) => {
+            const fieldName = this.getAssetFieldName(asset);
+            if (fieldName && asset.assetHistories && asset.assetHistories.length > 0) {
+                const sector = fieldName.toLowerCase();
+                if (!sectorGroups[sector]) {
+                    sectorGroups[sector] = [];
+                }
+                sectorGroups[sector].push(asset);
+            }
+        });
+
+        // Analyser chaque secteur
+        const sectorAnalysis = Object.entries(sectorGroups).map(([sector, assets]) => {
+            const totalValue = assets.reduce((sum, asset) => {
+                const lastHistory = asset.assetHistories[0];
+                return sum + (lastHistory.value || 0);
+            }, 0);
+
+            const totalVolume = assets.reduce((sum, asset) => {
+                const lastHistory = asset.assetHistories[0];
+                return sum + (lastHistory.volume || 0);
+            }, 0);
+
+            const avgValue = totalValue / assets.length;
+            const avgVolume = totalVolume / assets.length;
+
+            // Déterminer le type de secteur
+            const sectorType = this.categorizeSector(sector);
+
+            // Calculer le momentum du secteur
+            const momentum = this.calculateSectorMomentum(assets);
+
+            return {
+                sector_name: sector,
+                sector_type: sectorType,
+                asset_count: assets.length,
+                total_value: totalValue,
+                total_volume: totalVolume,
+                average_value: Math.round(avgValue),
+                average_volume: Math.round(avgVolume),
+                market_share: 0, // Sera calculé après
+                momentum: momentum,
+                rotation_signal: this.getRotationSignal(sectorType, momentum)
+            };
+        });
+
+        // Calculer la part de marché de chaque secteur
+        const totalMarketValue = sectorAnalysis.reduce((sum, sector) => sum + sector.total_value, 0);
+        sectorAnalysis.forEach(sector => {
+            sector.market_share = totalMarketValue > 0 ? Math.round((sector.total_value / totalMarketValue) * 100 * 100) / 100 : 0;
+        });
+
+        // Trier par performance (momentum)
+        sectorAnalysis.sort((a, b) => b.momentum - a.momentum);
+
+        // Identifier les secteurs en rotation
+        const rotationInsights = this.analyzeRotationPatterns(sectorAnalysis);
+
+        return {
+            sectors: sectorAnalysis,
+            rotation_insights: rotationInsights,
+            market_phase: this.determineMarketPhase(sectorAnalysis),
+            recommended_actions: this.getRecommendedActions(rotationInsights)
+        };
+    }
+
+    /**
+     * Catégorise un secteur selon son comportement économique
+     * @param sector - Nom du secteur
+     * @returns string - Type de secteur
+     */
+    private categorizeSector(sector: string): string {
+        const sectorCategories: { [key: string]: string } = {
+            // Secteurs de croissance (performants en expansion)
+            'tech': 'growth',
+            'ai': 'growth',
+            'biotech': 'growth',
+            'software': 'growth',
+            'cloud': 'growth',
+
+            // Secteurs cycliques (sensibles à l'économie)
+            'industrial': 'cyclical',
+            'materials': 'cyclical',
+            'energy': 'cyclical',
+            'automotive': 'cyclical',
+            'construction': 'cyclical',
+
+            // Secteurs défensifs (stables en récession)
+            'utilities': 'defensive',
+            'healthcare': 'defensive',
+            'consumer': 'defensive',
+            'food': 'defensive',
+            'pharmaceuticals': 'defensive',
+
+            // Secteurs financiers (sensibles aux taux)
+            'finance': 'financial',
+            'banking': 'financial',
+            'insurance': 'financial',
+            'real_estate': 'financial',
+
+            // Secteurs spéculatifs (volatils)
+            'crypto': 'speculative',
+            'gaming': 'speculative',
+            'entertainment': 'speculative'
+        };
+
+        return sectorCategories[sector] || 'other';
+    }
+
+    /**
+     * Calcule le momentum d'un secteur
+     * @param assets - Actifs du secteur
+     * @returns number - Score de momentum (-100 à +100)
+     */
+    private calculateSectorMomentum(assets: any[]): number {
+        if (assets.length === 0) return 0;
+
+        let momentumScore = 0;
+        let validAssets = 0;
+
+        assets.forEach(asset => {
+            if (asset.assetHistories && asset.assetHistories.length >= 2) {
+                const recentHistory = asset.assetHistories.slice(0, 2);
+                const currentValue = recentHistory[0].value || 0;
+                const previousValue = recentHistory[1].value || 0;
+
+                if (previousValue > 0) {
+                    const changePercent = ((currentValue - previousValue) / previousValue) * 100;
+
+                    // Score basé sur le changement de valeur
+                    if (changePercent > 10) momentumScore += 20;        // Forte hausse
+                    else if (changePercent > 5) momentumScore += 10;    // Hausse modérée
+                    else if (changePercent > 0) momentumScore += 5;     // Légère hausse
+                    else if (changePercent > -5) momentumScore += 0;    // Stable
+                    else if (changePercent > -10) momentumScore -= 10;  // Baisse modérée
+                    else momentumScore -= 20;                           // Forte baisse
+
+                    validAssets++;
+                }
+            }
+        });
+
+        return validAssets > 0 ? Math.round(momentumScore / validAssets) : 0;
+    }
+
+    /**
+     * Génère un signal de rotation pour un secteur
+     * @param sectorType - Type de secteur
+     * @param momentum - Momentum du secteur
+     * @returns string - Signal de rotation
+     */
+    private getRotationSignal(_sectorType: string, momentum: number): string {
+        if (momentum >= 15) return 'strong_buy';      // Fort achat
+        if (momentum >= 5) return 'buy';              // Achat
+        if (momentum >= -5) return 'hold';            // Maintenir
+        if (momentum >= -15) return 'sell';           // Vendre
+        return 'strong_sell';                         // Forte vente
+    }
+
+    /**
+     * Analyse les patterns de rotation sectorielle
+     * @param sectors - Analyse des secteurs
+     * @returns any - Insights de rotation
+     */
+    private analyzeRotationPatterns(sectors: any[]): any {
+        const growthSectors = sectors.filter(s => s.sector_type === 'growth');
+        const cyclicalSectors = sectors.filter(s => s.sector_type === 'cyclical');
+        const defensiveSectors = sectors.filter(s => s.sector_type === 'defensive');
+
+        const avgGrowthMomentum = growthSectors.length > 0 ?
+            growthSectors.reduce((sum, s) => sum + s.momentum, 0) / growthSectors.length : 0;
+
+        const avgCyclicalMomentum = cyclicalSectors.length > 0 ?
+            cyclicalSectors.reduce((sum, s) => sum + s.momentum, 0) / cyclicalSectors.length : 0;
+
+        const avgDefensiveMomentum = defensiveSectors.length > 0 ?
+            defensiveSectors.reduce((sum, s) => sum + s.momentum, 0) / defensiveSectors.length : 0;
+
+        return {
+            growth_momentum: Math.round(avgGrowthMomentum),
+            cyclical_momentum: Math.round(avgCyclicalMomentum),
+            defensive_momentum: Math.round(avgDefensiveMomentum),
+            rotation_trend: this.determineRotationTrend(avgGrowthMomentum, avgCyclicalMomentum, avgDefensiveMomentum),
+            leading_sector: this.findLeadingSector(sectors),
+            lagging_sector: this.findLaggingSector(sectors)
+        };
+    }
+
+    /**
+     * Détermine la tendance de rotation
+     * @param growth - Momentum des secteurs de croissance
+     * @param cyclical - Momentum des secteurs cycliques
+     * @param defensive - Momentum des secteurs défensifs
+     * @returns string - Tendance de rotation
+     */
+    private determineRotationTrend(growth: number, cyclical: number, defensive: number): string {
+        if (growth > cyclical && growth > defensive) {
+            return 'growth_leadership';        // Leadership de la croissance
+        } else if (cyclical > growth && cyclical > defensive) {
+            return 'cyclical_rotation';        // Rotation vers les cycliques
+        } else if (defensive > growth && defensive > cyclical) {
+            return 'defensive_rotation';       // Rotation défensive
+        } else if (growth < 0 && cyclical < 0 && defensive < 0) {
+            return 'market_contraction';       // Contraction du marché
+        } else {
+            return 'mixed_signals';            // Signaux mixtes
+        }
+    }
+
+    /**
+     * Trouve le secteur leader
+     * @param sectors - Analyse des secteurs
+     * @returns string - Secteur leader
+     */
+    private findLeadingSector(sectors: any[]): string {
+        if (sectors.length === 0) return 'none';
+        return sectors[0].sector_name;
+    }
+
+    /**
+     * Trouve le secteur en retard
+     * @param sectors - Analyse des secteurs
+     * @returns string - Secteur en retard
+     */
+    private findLaggingSector(sectors: any[]): string {
+        if (sectors.length === 0) return 'none';
+        return sectors[sectors.length - 1].sector_name;
+    }
+
+    /**
+     * Détermine la phase du marché
+     * @param sectors - Analyse des secteurs
+     * @returns string - Phase du marché
+     */
+    private determineMarketPhase(sectors: any[]): string {
+        const avgMomentum = sectors.reduce((sum, s) => sum + s.momentum, 0) / sectors.length;
+
+        if (avgMomentum >= 10) return 'expansion';           // Phase d'expansion
+        if (avgMomentum >= 0) return 'growth';               // Phase de croissance
+        if (avgMomentum >= -10) return 'consolidation';      // Phase de consolidation
+        if (avgMomentum >= -20) return 'contraction';        // Phase de contraction
+        return 'recession';                                   // Phase de récession
+    }
+
+    /**
+     * Génère des actions recommandées basées sur la rotation
+     * @param insights - Insights de rotation
+     * @returns string[] - Actions recommandées
+     */
+    private getRecommendedActions(insights: any): string[] {
+        const actions: string[] = [];
+
+        switch (insights.rotation_trend) {
+            case 'growth_leadership':
+                actions.push('Privilégier les secteurs de croissance (Tech, Biotech)');
+                actions.push('Maintenir l\'exposition aux cycliques');
+                actions.push('Réduire l\'exposition défensive');
+                break;
+
+            case 'cyclical_rotation':
+                actions.push('Augmenter l\'exposition aux secteurs cycliques');
+                actions.push('Maintenir une position équilibrée');
+                actions.push('Surveiller les indicateurs économiques');
+                break;
+
+            case 'defensive_rotation':
+                actions.push('Augmenter l\'exposition défensive');
+                actions.push('Réduire l\'exposition aux cycliques');
+                actions.push('Privilégier la stabilité');
+                break;
+
+            case 'market_contraction':
+                actions.push('Réduire l\'exposition au marché');
+                actions.push('Augmenter la liquidité');
+                actions.push('Privilégier les actifs défensifs');
+                break;
+
+            default:
+                actions.push('Maintenir une allocation équilibrée');
+                actions.push('Surveiller les signaux de rotation');
+                break;
+        }
+
+        return actions;
+    }
+
             /**
      * Détermine le statut global du marché
      * @param metrics - Métriques temps réel
