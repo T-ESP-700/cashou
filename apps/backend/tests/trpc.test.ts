@@ -1,15 +1,14 @@
-import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
+import { describe, it, expect, beforeAll } from 'bun:test';
 import { createTRPCProxyClient, httpBatchLink } from '@trpc/client';
 import type { AppRouter } from '../src/trpc/router';
-import { startServer } from '../src/index';
+import { ensureServerStarted } from './setup';
 
 describe('tRPC Routes Tests', () => {
   let client: ReturnType<typeof createTRPCProxyClient<AppRouter>>;
-  let server: any;
 
   beforeAll(async () => {
-    // Start the server explicitly
-    server = startServer();
+    // Start the server using shared setup
+    await ensureServerStarted();
 
     // Create tRPC client
     client = createTRPCProxyClient<AppRouter>({
@@ -21,11 +20,6 @@ describe('tRPC Routes Tests', () => {
     });
   });
 
-  afterAll(async () => {
-    if (server && server.stop) {
-      await server.stop();
-    }
-  });
 
   describe('Health Check', () => {
     it('should return health status', async () => {
