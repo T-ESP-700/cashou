@@ -329,7 +329,7 @@ jobs:
       - name: Deploy with Docker Compose
         run: |
           echo "Deploying with Docker Compose..."
-          docker-compose up -d
+          docker compose up -d
       - name: Run health checks
         run: |
           echo "Running health checks..."
