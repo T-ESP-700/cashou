@@ -281,6 +281,37 @@ async function main() {
         )
     );
 
+    // 5b. Goal + LevelGoal for level 1 (T-120: mandatory goal so endGame/LevelCompletionService work)
+    const level1 = levels[0];
+    if (level1) {
+        let seedGoal = await prisma.goal.findFirst({
+            where: { title: 'Reste en positif' }
+        });
+        if (!seedGoal) {
+            seedGoal = await prisma.goal.create({
+                data: {
+                    title: 'Reste en positif',
+                    description: "Ne pas perdre d'argent par rapport au capital initial.",
+                    goalType: 'wallet_gte_start',
+                    goalValue: 0
+                }
+            });
+        }
+        const existingLevelGoal = await prisma.levelGoal.findFirst({
+            where: { levelId: level1.id, goalId: seedGoal.id }
+        });
+        if (!existingLevelGoal) {
+            await prisma.levelGoal.create({
+                data: {
+                    levelId: level1.id,
+                    goalId: seedGoal.id,
+                    isMandatory: true
+                }
+            });
+            console.log('🎯 Goal "Reste en positif" lié au niveau 1 (obligatoire)');
+        }
+    }
+
     // 6. Créer des utilisateurs
     console.log(`👥 Création de ${DATA_COUNT} utilisateurs...`);
     const selectedUserTemplates = generateRandomData(userTemplates, DATA_COUNT);
@@ -298,6 +329,55 @@ async function main() {
             })
         )
     );
+
+    // 6b. Optional: UserLevelCompletion for demo stars (T-120) on level 1
+    const level1ForCompletion = levels[0];
+    if (level1ForCompletion && users.length >= 2) {
+        const now = new Date();
+        await prisma.userLevelCompletion.upsert({
+            where: {
+                userId_levelId: { userId: users[0]!.id, levelId: level1ForCompletion.id }
+            },
+            create: {
+                userId: users[0]!.id,
+                levelId: level1ForCompletion.id,
+                stars: 2,
+                mandatoryGoalsMet: true,
+                bonusGoalsMet: false,
+                quizPassed: true,
+                completedAt: now
+            },
+            update: {
+                stars: 2,
+                mandatoryGoalsMet: true,
+                bonusGoalsMet: false,
+                quizPassed: true,
+                completedAt: now
+            }
+        });
+        await prisma.userLevelCompletion.upsert({
+            where: {
+                userId_levelId: { userId: users[1]!.id, levelId: level1ForCompletion.id }
+            },
+            create: {
+                userId: users[1]!.id,
+                levelId: level1ForCompletion.id,
+                stars: 3,
+                mandatoryGoalsMet: true,
+                bonusGoalsMet: true,
+                quizPassed: true,
+                completedAt: now
+            },
+            update: {
+                stars: 3,
+                mandatoryGoalsMet: true,
+                bonusGoalsMet: true,
+                quizPassed: true,
+                completedAt: now
+            }
+        });
+        console.log('⭐ UserLevelCompletion démo créées (2 et 3 étoiles pour niveau 1)');
+    }
 
     // 7. Créer des questions
     console.log(`❓ Création de ${DATA_COUNT} questions...`);

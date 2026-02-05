@@ -23,6 +23,10 @@ interface EndGameResult {
   totalValue: number;
   goals: GoalResult[];
   message: string;
+  stars?: number;
+  mandatoryGoalsMet?: boolean;
+  bonusGoalsMet?: boolean;
+  quizPassed?: boolean;
 }
 
 interface GameInstanceData {
@@ -176,6 +180,38 @@ export default function GameSummaryScreen() {
           </Text>
         </View>
 
+        {/* Score: stars and criteria (when success and stars returned) */}
+        {endGameResult.success && endGameResult.stars != null && endGameResult.stars > 0 && (
+          <View style={[styles.card, styles.scoreCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="star" size={24} color={CashouTheme.colors.special.gold} />
+              <Text style={[styles.cardTitle, { color: theme.text }]}>Score</Text>
+            </View>
+            <View style={styles.starsRow}>
+              {[1, 2, 3].map((i) => (
+                <Ionicons
+                  key={i}
+                  name={i <= endGameResult.stars! ? 'star' : 'star-outline'}
+                  size={28}
+                  color={i <= endGameResult.stars! ? CashouTheme.colors.special.gold : CashouTheme.colors.icon.muted}
+                  style={styles.starIcon}
+                />
+              ))}
+            </View>
+            <View style={styles.criteriaRow}>
+              <Text style={[styles.criteriaText, { color: theme.text, opacity: 0.8 }]}>
+                Objectifs obligatoires : {endGameResult.mandatoryGoalsMet ? 'OK' : 'Non'}
+              </Text>
+              <Text style={[styles.criteriaText, { color: theme.text, opacity: 0.8 }]}>
+                Bonus : {endGameResult.bonusGoalsMet ? 'OK' : 'Non'}
+              </Text>
+              <Text style={[styles.criteriaText, { color: theme.text, opacity: 0.8 }]}>
+                Quiz : {endGameResult.quizPassed ? 'OK' : 'À faire'}
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Financial summary */}
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.cardHeader}>
@@ -313,6 +349,25 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 16,
     borderWidth: 2,
+  },
+  scoreCard: {
+    alignItems: 'center',
+  },
+  starsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  starIcon: {
+    marginHorizontal: 2,
+  },
+  criteriaRow: {
+    gap: 4,
+  },
+  criteriaText: {
+    fontSize: 14,
   },
   cardHeader: {
     flexDirection: 'row',

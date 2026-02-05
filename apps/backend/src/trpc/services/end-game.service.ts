@@ -31,6 +31,11 @@ export interface EndGameResult {
     totalValue: number;
     goals: GoalResult[];
     message: string;
+    /** Level completion score (1-3 stars), set when completion was recorded */
+    stars?: number;
+    mandatoryGoalsMet?: boolean;
+    bonusGoalsMet?: boolean;
+    quizPassed?: boolean;
 }
 
 export class EndGameService {
@@ -164,13 +169,23 @@ export class EndGameService {
             },
         });
 
-        // 5b. Record level completion (best stars) when all mandatory goals are validated
-        const allGoalsValidated = goalResults.every((g) => g.validated);
+        // 5b. Success and level completion: based on mandatory goals only (bonus only affects stars)
+        type LevelGoalWithMandatory = { goalId: number; isMandatory: boolean };
+        const levelGoalsWithMandatory = gameInstance.level.levelGoals as unknown as LevelGoalWithMandatory[];
+        const mandatoryGoalIds = levelGoalsWithMandatory
+            .filter((lg) => lg.isMandatory)
+            .map((lg) => lg.goalId);
+        const allMandatoryGoalsValidated =
+            mandatoryGoalIds.length === 0 ||
+            mandatoryGoalIds.every(
+                (goalId) => goalResults.find((g) => g.id === goalId)?.validated === true
+            );
         const userId = gameInstance.userId;
         const levelId = gameInstance.levelId;
-        if (allGoalsValidated && userId && levelId) {
+        let completion: Awaited<ReturnType<LevelCompletionService["getCompletion"]>> = null;
+        if (allMandatoryGoalsValidated && userId && levelId) {
             const goalResultsByGoalId = new Map(goalResults.map((g) => [g.id, g.validated]));
-            const levelGoals = gameInstance.level.levelGoals.map((lg) => ({
+            const levelGoals = levelGoalsWithMandatory.map((lg) => ({
                 goalId: lg.goalId,
                 isMandatory: lg.isMandatory,
             }));
@@ -180,20 +195,27 @@ export class EndGameService {
                 goalResultsByGoalId,
                 levelGoals
             );
+            completion = await this.levelCompletionService.getCompletion(userId, levelId);
         }
 
-        // 6. Retourner le resultat
+        // 6. Retourner le resultat (success = objectifs obligatoires atteints) + stars si enregistrement
         return {
-            success: allGoalsValidated,
+            success: allMandatoryGoalsValidated,
             gameInstanceId,
             startBalance,
             walletBalance: currentWalletBalance,
             assetsValue: totalAssetsValue,
             totalValue,
             goals: goalResults,
-            message: allGoalsValidated
+            message: allMandatoryGoalsValidated
                 ? `Bravo ! Tu as termine avec ${Math.round(totalValue)} EUR (wallet: ${Math.round(currentWalletBalance)} EUR + assets: ${Math.round(totalAssetsValue)} EUR dont ${Math.round(totalInterests)} EUR d'interets) pour un depart de ${startBalance} EUR`
                 : `Objectifs non atteints. Total: ${Math.round(totalValue)} EUR (depart: ${startBalance} EUR)`,
+            ...(completion && {
+                stars: completion.stars,
+                mandatoryGoalsMet: completion.mandatoryGoalsMet,
+                bonusGoalsMet: completion.bonusGoalsMet,
+                quizPassed: completion.quizPassed,
+            }),
         };
     }
 

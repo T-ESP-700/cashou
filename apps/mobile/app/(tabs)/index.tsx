@@ -1,4 +1,4 @@
-import { ScrollView, View, Text, ActivityIndicator } from 'react-native';
+import { ScrollView, View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LevelCard } from '@/components/level-card';
@@ -440,6 +440,18 @@ export default function HomeScreen() {
                 onPress={handleLevelPress}
               />
             ) : null}
+
+            {/* Link to all levels (hidden tab) */}
+            {isAuthenticated && (
+              <TouchableOpacity
+                onPress={() => router.push('/(tabs)/levels')}
+                style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm, marginBottom: spacing.sm }}
+              >
+                <Text style={{ fontSize: 15, color: colors.accent, fontFamily: fonts.body }}>
+                  Voir tous les niveaux
+                </Text>
+              </TouchableOpacity>
+            )}
 
             {/* Daily Quiz Card */}
             {(() => {
