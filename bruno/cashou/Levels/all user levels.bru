@@ -5,13 +5,13 @@ meta {
 }
 
 get {
-  url: {{base_url}}/api/trpc/level.getUserLevels?input={"id":1}
+  url: {{base_url}}/api/trpc/level.getUserLevels?input={"userId":"USER_CUID_HERE"}
   body: none
   auth: inherit
 }
 
 params:query {
-  input: {"id":1}
+  input: {"userId":"USER_CUID_HERE"}
 }
 
 settings {

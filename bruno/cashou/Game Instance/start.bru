@@ -1,0 +1,21 @@
+meta {
+  name: start
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{base_url}}/api/trpc/gameInstance.start
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 1
+  }
+}
+
+settings {
+  encodeUrl: true
+}

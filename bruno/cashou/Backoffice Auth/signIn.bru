@@ -1,7 +1,7 @@
 meta {
-  name: Auth backoffice
+  name: signIn
   type: http
-  seq: 26
+  seq: 1
 }
 
 post {
@@ -12,12 +12,11 @@ post {
 
 body:json {
   {
-      "email": "admin@cashou.com",
-      "password": "Admin123456!"
+    "email": "admin@cashou.com",
+    "password": "Admin123456!"
   }
 }
 
 settings {
   encodeUrl: true
-  timeout: 0
 }

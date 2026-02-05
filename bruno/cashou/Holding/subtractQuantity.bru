@@ -1,0 +1,22 @@
+meta {
+  name: subtractQuantity
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{base_url}}/api/trpc/holding.subtractQuantity
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 1,
+    "amountToSubtract": 25
+  }
+}
+
+settings {
+  encodeUrl: true
+}

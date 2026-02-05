@@ -1,0 +1,22 @@
+meta {
+  name: resetLevel
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{base_url}}/api/trpc/gameInstance.resetLevel
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "userId": "USER_CUID_HERE",
+    "levelId": 1
+  }
+}
+
+settings {
+  encodeUrl: true
+}
