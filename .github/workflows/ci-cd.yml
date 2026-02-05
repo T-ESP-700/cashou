@@ -3,6 +3,7 @@ name: CI/CD Monorepo
 on:
   push:
   pull_request:
+  workflow_dispatch:  # Permet le déclenchement manuel pour le deploy
 
 jobs:
   # Installation des dépendances du workspace
@@ -320,19 +321,16 @@ jobs:
         run: |
           echo "Pushing cashou-${{ matrix.service }}:latest"
 
-  # Déploiement
+  # Déploiement (placeholder - à configurer avec un vrai serveur/registry)
   deploy:
     needs: [docker-build]
     runs-on: ubuntu-latest
+    # Ne s'exécute que sur main et en mode manuel
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy with Docker Compose
+      - name: Deploy placeholder
         run: |
-          echo "Deploying with Docker Compose..."
-          docker compose up -d
-      - name: Run health checks
-        run: |
-          echo "Running health checks..."
-          sleep 30
-          echo "Backend health check..."
-          echo "Backoffice health check..."
+          echo "Deploy job triggered on main branch"
+          echo "TODO: Configure actual deployment (push to registry, deploy to server)"
+          echo "Skipping docker compose in CI - requires real infrastructure"
