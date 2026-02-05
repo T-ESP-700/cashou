@@ -1,0 +1,11 @@
+bun dev:mobile:go
+$ cd apps/mobile && bun x expo start --go
+Starting project at C:\Users\HEXANA\cashou\apps\mobile
+React Compiler enabled
+Starting Metro Bundler
+Error [ERR_BODY_ALREADY_USED]: Body already used
+Error: Body already used
+    at json (unknown)
+    at getNativeModuleVersionsAsync (C:\Users\HEXANA\cashou\node_modules\.bun\@expo+cli@54.0.16+c6f36a1dad75e206\node_modules\@expo\cli\build\src\api\getNativeModuleVersions.js:23:33)
+    at processTicksAndRejections (native:7:39)
+error: script "dev:mobile:go" exited with code 1
