@@ -315,7 +315,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build Docker image for ${{ matrix.service }}
         run: |
-          docker build -t cashou-${{ matrix.service }}:latest ./apps/${{ matrix.service }}
+          docker build -t cashou-${{ matrix.service }}:latest -f ./apps/${{ matrix.service }}/Dockerfile .
       - name: Push Docker image
         run: |
           echo "Pushing cashou-${{ matrix.service }}:latest"
