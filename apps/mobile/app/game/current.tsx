@@ -251,6 +251,7 @@ export default function GameCurrentScreen() {
       });
 
       setGameInstanceId(gameInstance.id);
+      setActiveGameInstanceId(gameInstance.id); // Mettre à jour le contexte global
       setWalletId(wallet.id);
       setIsPaused(true);
       setIsGameEnded(false);
