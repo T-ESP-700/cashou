@@ -1,5 +1,5 @@
 // tests/service/level.service.integration.test.ts
-import { describe, it, expect, afterAll } from "bun:test";
+import { describe, it, expect, afterAll, beforeAll } from "bun:test";
 import { PrismaClient, type Level } from "@cashou/db-app";
 import { LevelService } from "../../src/trpc/services/level.service";
 
@@ -11,6 +11,16 @@ const shouldRun = !!process.env.CASHOU_DB_URL;
   let createdId: number | null = null;
   // Use a unique number to avoid conflicts with seeded data
   const uniqueNumber = 10000 + Math.floor(Math.random() * 89999);
+
+  beforeAll(async () => {
+    // Reset the sequence to avoid ID conflicts with seeded data
+    // This ensures autoincrement starts after the max existing ID
+    try {
+      await prisma.$executeRaw`SELECT setval(pg_get_serial_sequence('levels', 'id'), COALESCE((SELECT MAX(id) FROM levels), 0) + 1, false)`;
+    } catch {
+      // Ignore errors if sequence reset fails (e.g., different DB)
+    }
+  });
 
   afterAll(async () => {
     try {
