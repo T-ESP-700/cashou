@@ -191,14 +191,10 @@ jobs:
         run: bun run db:migrate:app
       - name: Run migrations for backoffice database
         run: bun run db:migrate:backoffice
-      - name: Start backend server
-        run: |
-          bun run --filter backend dev &
-          sleep 10
+      # Note: Ne pas démarrer de serveur ici - les tests (trpc.test.ts, api.test.ts)
+      # démarrent leur propre serveur sur le port 3000
       - name: Run API tests
         run: bun run --filter backend test --timeout 30000
-      - name: Stop server
-        run: pkill -f "bun.*backend.*dev" || true
 
   # Build des applications
   apps-build:
