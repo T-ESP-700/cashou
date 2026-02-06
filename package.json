@@ -50,6 +50,7 @@
     "db:seed:level1": "cd apps/backend && bunx dotenv -e ../../.env -- bun run scripts/seed-level1.ts",
     "healthy:game": "cd apps/backend && bun run scripts/healthy-game.ts",
     "db:seed:dico": "cd apps/backend && bunx dotenv -e ../../.env -- bun run scripts/seed-dico.ts",
+    "db:seed:fees": "cd apps/backend && bunx dotenv -e ../../.env -- bun run scripts/seed-fee-assets.ts",
     "db:empty": "cd packages/@cashou/db-app && bunx dotenv -e ../../../.env -- prisma migrate reset --force",
     "db:check": "cd packages/@cashou/db-app && bunx dotenv -e ../../../.env -- prisma db pull --force",
     "db:status": "cd apps/backend && bun run scripts/db-check.ts",

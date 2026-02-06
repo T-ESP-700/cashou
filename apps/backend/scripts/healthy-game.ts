@@ -323,7 +323,7 @@ async function healthyGame(): Promise<boolean> {
             const expectedInterests = holdingQuantity * expectedDailyRate * elapsedGameDays;
 
             // Calcul via service
-            const calculatedInterests = investmentService.calculateInterests(
+            const calculatedInterests = await investmentService.calculateInterests(
                 remainingHolding as any,
                 gameInstanceWithLevel as any
             );

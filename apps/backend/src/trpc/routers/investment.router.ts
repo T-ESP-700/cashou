@@ -66,6 +66,18 @@ export const investmentRouter = t.router({
       await investmentService.applyInterestsToAllHoldings(input.gameInstanceId);
       return { success: true };
     }),
+
+  /**
+   * Récupère le résumé des frais payés pour une partie
+   * Endpoint: GET /trpc/investment.getFeesSummary
+   */
+  getFeesSummary: t.procedure
+    .input(z.object({
+      gameInstanceId: z.number().int().positive("L'ID de l'instance de jeu est requis"),
+    }))
+    .query(async ({ input }) => {
+      return await investmentService.getTotalFeesPaid(input.gameInstanceId);
+    }),
 });
 
 export type InvestmentRouter = typeof investmentRouter;

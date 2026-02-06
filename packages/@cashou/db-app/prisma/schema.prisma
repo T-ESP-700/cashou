@@ -216,6 +216,10 @@ model Submarket {
   gameInstanceId Int?     @map("game_instance_id")
   title          String?
   description    String?
+  entryFee       Float?   @map("entry_fee")
+  exitFee        Float?   @map("exit_fee")
+  managementFee  Float?   @map("management_fee")
+  maxAmount      Decimal? @map("max_amount")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
@@ -412,6 +416,8 @@ model Transaction {
   unitPrice       Decimal?  @map("unit_price")
   totalValue      Decimal?  @map("total_value")
   transactionDate DateTime? @map("transaction_date")
+  feeAmount       Decimal?  @map("fee_amount")
+  feePercent      Float?    @map("fee_percent")
   source          String?
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")

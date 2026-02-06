@@ -2,12 +2,13 @@
  * Service de fin de partie
  * Gère la liquidation des assets et la validation des objectifs
  */
-import type { PrismaClient, Holding, Asset, Level, GameInstance } from "@cashou/db-app";
+import type { PrismaClient, Holding, Asset, Submarket, Level, GameInstance } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import { GameTimeService } from "./game-time.service.ts";
+import type { FeesSummary, EnvelopeFees } from "./investment.service.ts";
 
 type HoldingWithAsset = Holding & {
-    asset: Asset;
+    asset: Asset & { submarket: Submarket | null };
 };
 
 type GameInstanceWithLevel = GameInstance & {
@@ -30,6 +31,7 @@ export interface EndGameResult {
     totalValue: number;
     goals: GoalResult[];
     message: string;
+    feesSummary: FeesSummary;
 }
 
 export class EndGameService {
@@ -42,17 +44,23 @@ export class EndGameService {
     }
 
     /**
-     * Calcule les interets pour un holding
+     * Calcule les interets pour un holding (taux net = rendement - frais de gestion)
      */
     private calculateInterests(holding: HoldingWithAsset, gameInstance: GameInstanceWithLevel): number {
         const asset = holding.asset;
         const level = gameInstance.level;
 
-        if (!level || !asset.rate) {
+        if (!level) {
             return 0;
         }
 
-        const annualRate = asset.rate;
+        const annualRate = asset.rate ?? 0;
+        const managementFee = asset.submarket?.managementFee ?? 0;
+        const netAnnualRate = annualRate - managementFee;
+
+        if (netAnnualRate === 0) {
+            return 0;
+        }
 
         // Temps reel ecoule depuis l'acquisition
         const elapsedRealSeconds = this.gameTimeService.calculateElapsedTimeSince(
@@ -65,10 +73,10 @@ export class EndGameService {
 
         // Calcul des interets
         const quantity = holding.quantity ? Number(holding.quantity) : 0;
-        const dailyRate = annualRate / 100 / 365;
+        const dailyRate = netAnnualRate / 100 / 365;
         const interests = quantity * dailyRate * elapsedGameDays;
 
-        return Math.max(0, interests);
+        return interests;
     }
 
     /**
@@ -97,7 +105,11 @@ export class EndGameService {
                 wallets: true,
                 holdings: {
                     include: {
-                        asset: true,
+                        asset: {
+                            include: {
+                                submarket: true,
+                            },
+                        },
                     },
                 },
             },
@@ -161,7 +173,10 @@ export class EndGameService {
             },
         });
 
-        // 6. Retourner le resultat
+        // 6. Calculer le résumé des frais
+        const feesSummary = await this.getTotalFeesPaid(gameInstanceId);
+
+        // 7. Retourner le resultat
         const allGoalsValidated = goalResults.every((g) => g.validated);
 
         return {
@@ -175,7 +190,40 @@ export class EndGameService {
             message: allGoalsValidated
                 ? `Bravo ! Tu as termine avec ${Math.round(totalValue)} EUR (wallet: ${Math.round(currentWalletBalance)} EUR + assets: ${Math.round(totalAssetsValue)} EUR dont ${Math.round(totalInterests)} EUR d'interets) pour un depart de ${startBalance} EUR`
                 : `Objectifs non atteints. Total: ${Math.round(totalValue)} EUR (depart: ${startBalance} EUR)`,
+            feesSummary,
         };
+    }
+
+    /**
+     * Calcule le total des frais payés par enveloppe pour une partie
+     */
+    private async getTotalFeesPaid(gameInstanceId: number): Promise<FeesSummary> {
+        const transactions = await this.prisma.transaction.findMany({
+            where: {
+                gameInstanceId,
+                feeAmount: { not: null },
+            },
+            include: { asset: { include: { submarket: true } } },
+        });
+
+        const byEnvelope: Record<string, EnvelopeFees> = {};
+        for (const tx of transactions) {
+            const envelopeName = tx.asset?.submarket?.title ?? "Autre";
+            if (!byEnvelope[envelopeName]) {
+                byEnvelope[envelopeName] = { entryFees: 0, exitFees: 0, managementFees: 0, total: 0 };
+            }
+            const fee = Number(tx.feeAmount);
+            if (tx.type === "BUY") byEnvelope[envelopeName].entryFees += fee;
+            if (tx.type === "SELL") byEnvelope[envelopeName].exitFees += fee;
+            if (tx.type === "MANAGEMENT_FEE") byEnvelope[envelopeName].managementFees += fee;
+        }
+
+        const grandTotal = Object.values(byEnvelope).reduce((s, e) => {
+            e.total = e.entryFees + e.exitFees + e.managementFees;
+            return s + e.total;
+        }, 0);
+
+        return { byEnvelope, grandTotal };
     }
 
     /**
