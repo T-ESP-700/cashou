@@ -43,7 +43,7 @@ export default function TransactionScreen() {
   const { user } = useAuth();
 
   // Configure header for this screen
-  useHeaderOptions({ showBackButton: true });
+  useHeaderOptions({ showBackButton: true, title: 'Transaction' });
 
   // Use refs to track values needed during cleanup to avoid stale closure issues
   const activeGameInstanceIdRef = useRef(activeGameInstanceId);

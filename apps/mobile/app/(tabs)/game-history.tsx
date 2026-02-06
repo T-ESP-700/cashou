@@ -33,7 +33,7 @@ export default function GameHistoryScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
 
-  useHeaderOptions({ showBackButton: false });
+  useHeaderOptions({ showBackButton: false, title: 'Historique' });
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -221,7 +221,7 @@ export default function GameHistoryScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top }]}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.header}>
         <Text style={[styles.title, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>
           Historique des parties
@@ -246,7 +246,7 @@ export default function GameHistoryScreen() {
           data={gameHistory}
           renderItem={renderGameItem}
           keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 16 }]}
+          contentContainerStyle={[styles.listContent, { paddingBottom: 120 }]}
           showsVerticalScrollIndicator={false}
         />
       )}

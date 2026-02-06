@@ -55,13 +55,11 @@ function RootNavigatorContent() {
   console.log('[RootNavigator] segments:', segments, 'isAuthenticated:', isAuthenticated);
 
   // Handle redirects BEFORE rendering Stack
-  // Case 1: Not authenticated and trying to access protected routes (tabs, game, or initial load)
   if (!isAuthenticated && (inTabs || inGame || isInitialRoute)) {
     console.log('[RootNavigator] Not authenticated, redirecting to /auth');
     return <Redirect href="/auth" />;
   }
 
-  // Case 2: Authenticated but on auth screen
   if (isAuthenticated && inAuthGroup) {
     console.log('[RootNavigator] Authenticated, redirecting to /(tabs)');
     return <Redirect href="/(tabs)" />;
@@ -74,6 +72,7 @@ function RootNavigatorContent() {
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       {showHeader && (
         <CashouHeader
+          title={headerOptions.title}
           showBackButton={headerOptions.showBackButton}
           onMenuPress={headerOptions.onMenuPress}
           onBackPress={headerOptions.onBackPress}

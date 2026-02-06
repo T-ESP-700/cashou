@@ -42,7 +42,7 @@ export default function DailyQuizScreen() {
   const [error, setError] = useState<string | null>(null);
 
   // Configure header for this screen
-  useHeaderOptions({ showBackButton: true, onBackPress: () => router.back() });
+  useHeaderOptions({ showBackButton: true, onBackPress: () => router.back(), title: 'Quiz du jour' });
 
   // Récupérer les paramètres depuis la navigation
   // useLocalSearchParams peut retourner un tableau ou une chaîne
