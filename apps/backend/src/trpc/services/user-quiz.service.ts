@@ -168,6 +168,17 @@ export class UserQuizService {
         // Mettre à jour les streaks si c'est le quiz du jour
         await this.updateStreaksIfTodaysQuiz(quizId, userId);
 
+        // If quiz passed and quiz is linked to a level (end-of-level quiz), update level completion star
+        if (isCorrect === true) {
+            const quiz = await this.prisma.quiz.findUnique({
+                where: { id: quizId },
+                select: { levelId: true },
+            });
+            if (quiz?.levelId != null) {
+                await this.levelCompletionService.recordFromQuizComplete(userId, quiz.levelId);
+            }
+        }
+
         return participation;
     }
 

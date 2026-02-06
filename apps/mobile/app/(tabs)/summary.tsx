@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, useColorScheme as useRNColorScheme } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useState, useEffect } from 'react';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useState, useEffect, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
@@ -100,6 +100,32 @@ export default function GameSummaryScreen() {
 
     fetchData();
   }, [gameId]);
+
+  // Refresh stars when returning from level quiz (getHomeData has up-to-date completion)
+  useFocusEffect(
+    useCallback(() => {
+      if (!gameInstance?.level?.id || !endGameResult?.success) return;
+      let cancelled = false;
+      trpcClient.auth.getHomeData.query().then((homeData: any) => {
+        if (cancelled) return;
+        const last = homeData?.lastCompletedGame;
+        if (last?.levelId === gameInstance.level?.id && last != null) {
+          setEndGameResult((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  stars: last.stars ?? prev.stars,
+                  mandatoryGoalsMet: last.mandatoryGoalsMet ?? prev.mandatoryGoalsMet,
+                  bonusGoalsMet: last.bonusGoalsMet ?? prev.bonusGoalsMet,
+                  quizPassed: last.quizPassed ?? prev.quizPassed,
+                }
+              : prev
+          );
+        }
+      }).catch(() => {});
+      return () => { cancelled = true; };
+    }, [gameInstance?.level?.id, endGameResult?.success])
+  );
 
   const handleGoHome = () => {
     router.replace('/(tabs)');
