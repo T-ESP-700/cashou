@@ -120,7 +120,7 @@ export default function GameCurrentScreen() {
   const { user } = useAuth();
   const { pendingEventCompletion, setPendingEventCompletion, isOnAssetsScreen, setActiveGameInstanceId, eventNotification } = useNotifications();
   // Configure header for this screen
-  useHeaderOptions({ showBackButton: true });
+  useHeaderOptions({ showBackButton: true, title: 'Partie' });
 
   const [levelData, setLevelData] = useState<LevelData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
