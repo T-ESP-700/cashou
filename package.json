@@ -45,7 +45,6 @@
     "migrate:reset": "cd packages/@cashou/db-app && bunx dotenv -e ../../../.env -- prisma migrate reset --force",
     "db:migrate:app": "cd packages/@cashou/db-app && bunx dotenv -e ../../../.env -- prisma migrate deploy",
     "db:migrate:backoffice": "cd packages/@cashou/db-backoffice && bunx dotenv -e ../../../.env -- prisma migrate deploy",
-    "db:seed": "cd apps/backend && bun run src/seed-data.ts",
     "db:seed:cac40": "cd apps/backend && bun run scripts/seed-cac40.ts",
     "db:seed:level1": "cd apps/backend && bunx dotenv -e ../../.env -- bun run scripts/seed-level1.ts",
     "healthy:game": "cd apps/backend && bun run scripts/healthy-game.ts",
@@ -65,8 +64,7 @@
     "reset": "bun run docker:down && bun run docker:clean && bun run docker:up && bun run migrate:reset",
     "logs:backend": "cd apps/backend && bun run dev",
     "logs:backoffice": "cd apps/backoffice && bun run dev",
-    "install:all": "bun install && cd backend && bun install && cd ../backoffice && bun install",
-    "setup:seeds": "bun run install:all && bun run docker:up && bun run generate && bun run migrate && bun run db:seed"
+    "install:all": "bun install && cd backend && bun install && cd ../backoffice && bun install"
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.1",

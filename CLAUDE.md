@@ -22,7 +22,6 @@ This is a Bun-based backend API for the Cashou application, a gamified financial
 - `bun run studio` - Open Prisma Studio for database inspection
 - `bun run db:check` - Pull database schema from remote
 - `bun run db:status` - Check database connection status (scripts/db-check.ts)
-- `bun run db:seed` - Seed database with initial data (src/seed-data.ts)
 - `bun run db:empty` - Force reset database (destructive)
 
 ### Testing
@@ -64,7 +63,6 @@ backend/
 │   ├── types/        # TypeScript type definitions
 │   ├── database.ts   # Prisma client singleton
 │   ├── index.ts      # Main server entry point
-│   └── seed-data.ts  # Database seeding script
 ├── scripts/
 │   └── db-check.ts   # Database connection verification
 └── tests/            # Test files
