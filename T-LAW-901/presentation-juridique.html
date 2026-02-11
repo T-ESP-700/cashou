@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cashou — Cadre juridique applicable</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Rowdies:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --cashou-primary: #FFB472;
+      --cashou-accent: #FFB472;
+      --cashou-secondary: #F0E8E3;
+      --cashou-dark: #1C1E33;
+      --cashou-card: #FFFFFF;
+      --cashou-bg: #F4F4F9;
+      --cashou-text: #1C1E33;
+      --cashou-text-muted: #5a5d6e;
+      --cashou-success: #4CAF50;
+      --cashou-warning: #FF9800;
+      --cashou-border: #E0E0E0;
+      --font-heading: 'Rowdies', cursive;
+      --font-body: 'Inter', sans-serif;
+      --radius: 16px;
+      --shadow: 0 8px 32px rgba(28,30,51,0.08);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font-body);
+      background: var(--cashou-bg);
+      color: var(--cashou-text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .slide {
+      min-height: 100vh;
+      padding: 3rem 4rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      position: relative;
+    }
+
+    .slide:not(.cover):not(.title) {
+      text-align: left;
+      align-items: stretch;
+    }
+
+    .slide.cover {
+      background: linear-gradient(145deg, var(--cashou-bg) 0%, var(--cashou-secondary) 50%, var(--cashou-card) 100%);
+    }
+
+    .logo-block {
+      margin-bottom: 2rem;
+    }
+    .logo-img {
+      width: 160px;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      filter: drop-shadow(0 4px 20px rgba(255,180,114,0.25));
+    }
+    .logo-text {
+      font-family: var(--font-heading);
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 700;
+      color: var(--cashou-primary);
+      letter-spacing: -0.02em;
+      margin-top: 0.5rem;
+    }
+    .slide.cover .subtitle {
+      font-size: 1.25rem;
+      color: var(--cashou-text-muted);
+      margin-top: 0.5rem;
+    }
+
+    .slide.title h1 {
+      font-family: var(--font-heading);
+      font-size: clamp(1.75rem, 4vw, 2.5rem);
+      color: var(--cashou-primary);
+      margin-bottom: 1rem;
+    }
+    .slide.title p {
+      color: var(--cashou-text);
+      max-width: 60ch;
+      margin: 0 auto;
+    }
+
+    h2 {
+      font-family: var(--font-heading);
+      font-size: 1.75rem;
+      color: var(--cashou-primary);
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--cashou-border);
+    }
+
+    .law-card {
+      background: var(--cashou-card);
+      border: 1px solid var(--cashou-border);
+      border-radius: var(--radius);
+      padding: 1.5rem 2rem;
+      margin-bottom: 1.25rem;
+      box-shadow: var(--shadow);
+    }
+    .law-card h3 {
+      font-size: 1.25rem;
+      color: var(--cashou-primary);
+      margin-bottom: 0.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .law-card .badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge.yes { background: rgba(76,175,80,0.2); color: #2e7d32; }
+    .badge.partial { background: rgba(255,152,0,0.2); color: #e65100; }
+    .badge.no { background: rgba(28,30,51,0.08); color: var(--cashou-text-muted); }
+    .badge.zone { background: rgba(33,150,243,0.15); color: #1565c0; }
+    .badge.org { background: rgba(156,39,176,0.12); color: #6a1b9a; }
+    .law-card .reason {
+      color: var(--cashou-text);
+      line-height: 1.5;
+      margin-top: 0.5rem;
+    }
+
+    .slide.rappel {
+      text-align: center;
+      align-items: center;
+    }
+    .slide.rappel .intro {
+      font-size: 1.1rem;
+      color: var(--cashou-text);
+      margin-bottom: 1.5rem;
+      max-width: 720px;
+    }
+    .feature-list-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.6rem 1.25rem;
+      max-width: 720px;
+      list-style: none;
+      margin: 0 auto;
+      text-align: center;
+    }
+    @media (max-width: 600px) { .feature-list-grid { grid-template-columns: 1fr; } }
+    .feature-list-grid li {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.85rem;
+      margin: 0;
+      color: var(--cashou-text);
+      font-size: 0.95rem;
+      line-height: 1.4;
+      background: rgba(255, 180, 114, 0.12);
+      border-radius: 999px;
+      border: 1px solid rgba(255, 180, 114, 0.25);
+    }
+    .feature-list-grid li::before {
+      content: "✓";
+      color: var(--cashou-primary);
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin: 1rem 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    th, td {
+      padding: 0.6rem 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid var(--cashou-border);
+      color: var(--cashou-text);
+    }
+    th { color: var(--cashou-primary); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <!-- Slide 1 : Logo + titre -->
+  <section class="slide cover" id="s1">
+    <div class="logo-block">
+      <img class="logo-img" src="../apps/mobile/assets/images/cashou-logo.png" alt="Cashou" />
+      <div class="logo-text">Cashou</div>
+    </div>
+    <p class="subtitle">Cadre juridique et réglementaire applicable</p>
+  </section>
+
+  <!-- Slide 2 : Rappel de l'app -->
+  <section class="slide rappel" id="s2">
+    <h2>Qu’est-ce que Cashou ?</h2>
+    <p class="intro">Une <strong>app gamifiée</strong> qui éduque à la finance : apprendre en jouant, sans risque.</p>
+    <ul class="feature-list-grid">
+      <li>Apprentissage par le jeu</li>
+      <li>Système de points</li>
+      <li>Dictionnaire financier</li>
+      <li>Portefeuille virtuel</li>
+      <li>Quiz quotidiens</li>
+      <li>100 % sécurisé</li>
+    </ul>
+  </section>
+
+  <!-- Slides 3+ : Détail par texte / autorité -->
+  <section class="slide" id="s3">
+    <h2>RGPD & LIL</h2>
+    <div class="law-card">
+      <h3>RGPD <span class="badge yes">Applicable</span><span class="badge zone">UE</span></h3>
+      <p class="reason">Données personnelles (compte, email, progression) → politique de confidentialité, droits utilisateurs.</p>
+    </div>
+    <div class="law-card">
+      <h3>LIL <span class="badge yes">Applicable</span><span class="badge zone">France</span><span class="badge org">CNIL</span></h3>
+      <p class="reason">Mêmes données que pour le RGPD (compte, email, progression, préférences). La LIL s’applique car on cible des utilisateurs en France → droit français en plus du RGPD (ex. transferts hors UE, autorité CNIL).</p>
+    </div>
+  </section>
+
+  <section class="slide" id="s4">
+    <h2>RIA (AI Act)</h2>
+    <div class="law-card">
+      <h3>Règlement européen sur l’IA <span class="badge yes">Applicable</span><span class="badge zone">UE</span></h3>
+      <p class="reason">Chatbot = risque limité si éducatif (transparence). Haut risque si conseil personnalisé / décisions d’investissement.</p>
+    </div>
+  </section>
+
+  <section class="slide" id="s5">
+    <h2>AMF / ACPR</h2>
+    <div class="law-card">
+      <h3>Autorités financières <span class="badge partial">Vigilance</span><span class="badge zone">France</span><span class="badge org">AMF · ACPR</span></h3>
+      <p class="reason">Rester éducatif uniquement. Pas de conseil en investissement. Disclaimers + filtres anti-conseil.</p>
+    </div>
+  </section>
+
+  <section class="slide" id="s6">
+    <h2>ePrivacy</h2>
+    <div class="law-card">
+      <h3>Directive ePrivacy / Art. 82 LIL <span class="badge yes">Applicable</span><span class="badge zone">UE / France</span><span class="badge org">CNIL</span></h3>
+      <p class="reason">Push + cookies → consentement opt-in explicite (Accepter / Refuser à égalité).</p>
+    </div>
+  </section>
+
+  <section class="slide" id="s7">
+    <h2>LCEN</h2>
+    <div class="law-card">
+      <h3>Loi Confiance Économie Numérique <span class="badge yes">Applicable</span><span class="badge zone">France</span></h3>
+      <p class="reason">Service en ligne → mentions légales (société, RCS, contact, hébergeur). Accessibles sur le site et dans l’app.</p>
+    </div>
+  </section>
+
+  <section class="slide" id="s8">
+    <h2>OMNIBUS / Code consommation</h2>
+    <div class="law-card">
+      <h3>CGU, transparence <span class="badge yes">Applicable</span><span class="badge zone">UE / France</span></h3>
+      <p class="reason">CGU/CGV lisibles, information précontractuelle claire.</p>
+    </div>
+  </section>
+
+  <section class="slide" id="s9">
+    <h2>Data Act · CRA · DSA</h2>
+    <div class="law-card">
+      <h3>Data Act <span class="badge partial">Partiel</span><span class="badge zone">UE</span></h3>
+      <p class="reason">Portabilité des données (ex. export progression).</p>
+    </div>
+    <div class="law-card">
+      <h3>CRA <span class="badge partial">Potentiel</span><span class="badge zone">UE</span></h3>
+      <p class="reason">Sécurité logicielle, gestion des vulnérabilités.</p>
+    </div>
+    <div class="law-card">
+      <h3>DSA <span class="badge partial">Exemption probable</span><span class="badge zone">UE</span></h3>
+      <p class="reason">Exempté si &lt; 50 sal. et &lt; 10 M€ CA.</p>
+    </div>
+  </section>
+
+  <section class="slide" id="s10">
+    <h2>NIS2 & DORA</h2>
+    <div class="law-card">
+      <h3>NIS2 <span class="badge no">Non applicable</span><span class="badge zone">UE</span><span class="badge org">ANSSI</span></h3>
+      <p class="reason">Secteurs vitaux (énergie, banque, santé…). Cashou = éducation.</p>
+    </div>
+    <div class="law-card">
+      <h3>DORA <span class="badge no">Non applicable</span><span class="badge zone">UE</span></h3>
+      <p class="reason">Entités financières régulées. Cashou = outil pédagogique, pas acteur financier.</p>
+    </div>
+  </section>
+
+  <!-- Récap (fin) -->
+  <section class="slide" id="s11">
+    <h2>Récap</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Réglementation</th><th>Applicable</th><th>Priorité</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>RGPD</td><td>✅ Oui</td><td>Critique</td></tr>
+          <tr><td>LIL</td><td>✅ Oui</td><td>Critique</td></tr>
+          <tr><td>RIA / AI Act</td><td>✅ Oui</td><td>Critique</td></tr>
+          <tr><td>AMF / ACPR</td><td>⚠️ À surveiller</td><td>Critique</td></tr>
+          <tr><td>ePrivacy</td><td>✅ Oui</td><td>Haute</td></tr>
+          <tr><td>LCEN</td><td>✅ Oui</td><td>Haute</td></tr>
+          <tr><td>OMNIBUS / Code conso</td><td>✅ Oui</td><td>Moyenne</td></tr>
+          <tr><td>Data Act</td><td>⚠️ Partiel</td><td>Moyenne</td></tr>
+          <tr><td>CRA</td><td>⚠️ Potentiel</td><td>Moyenne</td></tr>
+          <tr><td>DSA</td><td>⚠️ Exemption probable</td><td>Basse</td></tr>
+          <tr><td>NIS2</td><td>❌ Non</td><td>—</td></tr>
+          <tr><td>DORA</td><td>❌ Non</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <script>
+    const slides = document.querySelectorAll('.slide');
+    let current = 0;
+
+    function goTo(i) {
+      current = Math.max(0, Math.min(i, slides.length - 1));
+      slides[current].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' || e.key === ' ' || e.key === 'PageDown') {
+        e.preventDefault();
+        goTo(current + 1);
+      } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+        e.preventDefault();
+        goTo(current - 1);
+      }
+    });
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const idx = Array.from(slides).indexOf(entry.target);
+          if (idx >= 0) current = idx;
+        }
+      });
+    }, { threshold: 0.5 });
+    slides.forEach((s) => observer.observe(s));
+  </script>
+</body>
+</html>
