@@ -9,6 +9,7 @@ out
 dist
 build
 *.tgz
+.vercel
 
 # Code coverage
 coverage
