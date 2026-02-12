@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, useColorScheme as useRNColorScheme } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, useColorScheme as useRNColorScheme, Alert } from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useState, useEffect, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useHeaderOptions } from '@/hooks/use-header';
+import { useAuth } from '@/hooks/use-auth';
 
 interface GoalResult {
   id: number;
@@ -40,11 +41,13 @@ interface GameInstanceData {
     number: number | null;
     duration: number | null;
     speed: number | null;
+    startBalance: number | null;
   } | null;
 }
 
 export default function GameSummaryScreen() {
   const { gameId } = useLocalSearchParams<{ gameId: string }>();
+  const { user } = useAuth();
   const colorScheme = useRNColorScheme();
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
@@ -57,6 +60,7 @@ export default function GameSummaryScreen() {
   const [endGameResult, setEndGameResult] = useState<EndGameResult | null>(null);
   const [gameInstance, setGameInstance] = useState<GameInstanceData | null>(null);
   const [levelQuizId, setLevelQuizId] = useState<number | null>(null);
+  const [isReplaying, setIsReplaying] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -137,6 +141,35 @@ export default function GameSummaryScreen() {
         pathname: '/(tabs)/daily-quiz',
         params: { quizId: levelQuizId.toString() }
       });
+    }
+  };
+
+  const handleReplay = async () => {
+    if (!user?.id || !gameInstance?.level?.id) return;
+    setIsReplaying(true);
+    try {
+      const levelId = gameInstance.level.id;
+      const startBalance = gameInstance.level.startBalance ?? 1000;
+      const newGame = await trpcClient.gameInstance.create.mutate({
+        userId: user.id,
+        levelId,
+        startBalance,
+        isPaused: true,
+      });
+      await trpcClient.wallet.create.mutate({
+        userId: user.id,
+        gameInstanceId: newGame.id,
+        amount: startBalance,
+      });
+      router.replace({
+        pathname: '/game/current',
+        params: { gameId: String(newGame.id), levelId: String(levelId) },
+      });
+    } catch (err) {
+      console.error('Error creating replay game:', err);
+      Alert.alert('Erreur', 'Impossible de créer la partie');
+    } finally {
+      setIsReplaying(false);
     }
   };
 
@@ -317,6 +350,24 @@ export default function GameSummaryScreen() {
             <Text style={styles.quizButtonText}>Faire le quiz du niveau</Text>
           </TouchableOpacity>
         )}
+
+        {/* Replay button */}
+        {user && gameInstance?.level?.id && (
+          <TouchableOpacity
+            style={[styles.replayButton, isReplaying && styles.replayButtonDisabled]}
+            onPress={handleReplay}
+            disabled={isReplaying}
+          >
+            {isReplaying ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Ionicons name="play-circle-outline" size={24} color="#FFFFFF" />
+            )}
+            <Text style={styles.replayButtonText}>
+              {isReplaying ? 'Création en cours...' : 'Rejouer'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </View>
   );
@@ -484,6 +535,24 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   quizButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  replayButton: {
+    backgroundColor: '#2196F3',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+    marginTop: 8,
+  },
+  replayButtonDisabled: {
+    opacity: 0.7,
+  },
+  replayButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',

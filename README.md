@@ -461,6 +461,7 @@ Pour le déploiement en production :
 
 - **[README.md](README.md)** : Guide de démarrage et utilisation
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** : Documentation technique approfondie
+- **[docs/SCORING_SYSTEM.md](docs/SCORING_SYSTEM.md)** : Système de scoring (étoiles par niveau, critères, APIs)
 - **[.cursorrules](.cursorrules)** : Règles pour l'assistance IA
 - **[context7.json](context7.json)** : Configuration Context7 MCP
 

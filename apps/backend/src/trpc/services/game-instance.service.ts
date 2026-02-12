@@ -56,6 +56,8 @@ export class GameInstanceService {
    * Crée une nouvelle instance de jeu et schedule le premier événement
    */
   async create(data: GameInstanceCreateSchema): Promise<GameInstance> {
+    let levelStartBalance: number | null = null;
+
     // Validate foreign keys if provided
     if (data.userId) {
       const user = await this.prisma.user.findUnique({
@@ -74,21 +76,9 @@ export class GameInstanceService {
         throw new Error(`Le niveau avec l'ID "${data.levelId}" n'existe pas`);
       }
 
-      // Vérifier si l'utilisateur a déjà une partie terminée avec succès sur ce niveau
+      // Allow replay: do not block when a completed game exists for this level.
+      // Only block when there is already an active (non-ended) game on this level.
       if (data.userId) {
-        const completedGame = await this.prisma.gameInstance.findFirst({
-          where: {
-            userId: data.userId,
-            levelId: data.levelId,
-            isEnded: true,
-          },
-        });
-
-        if (completedGame) {
-          throw new Error(`Vous avez déjà terminé le niveau ${level.number}. Passez au niveau suivant !`);
-        }
-
-        // Vérifier aussi s'il y a déjà une partie en cours sur ce niveau
         const activeGame = await this.prisma.gameInstance.findFirst({
           where: {
             userId: data.userId,
@@ -101,6 +91,7 @@ export class GameInstanceService {
           throw new Error(`Vous avez déjà une partie en cours sur ce niveau. Reprenez votre partie !`);
         }
       }
+      levelStartBalance = level.startBalance;
     }
 
     // Respecter le paramètre isPaused si fourni (mode préparation)
@@ -110,7 +101,7 @@ export class GameInstanceService {
       ...data,
       userId: data.userId ?? null,
       levelId: data.levelId ?? null,
-      startBalance: data.startBalance ?? null,
+      startBalance: data.startBalance ?? levelStartBalance ?? null,
       // Initialize new fields
       totalPausedDuration: 0,
       currentEventIndex: 0,

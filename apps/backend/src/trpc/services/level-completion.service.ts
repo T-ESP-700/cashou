@@ -2,7 +2,7 @@
  * Service for level completion and star calculation.
  * Stores best result per (userId, levelId) and updates on game end or quiz completion.
  */
-import type { PrismaClient } from "@cashou/db-app";
+import type { PrismaClient } from "@prisma/client";
 import defaultPrisma from "../../database.ts";
 
 export interface LevelCompletionCriteria {
@@ -31,7 +31,7 @@ export class LevelCompletionService {
     }
 
     /**
-     * Check if user has passed at least one quiz for the given level.
+     * Check if user has passed the quiz for the given level.
      */
     async hasQuizPassedForLevel(userId: string, levelId: number): Promise<boolean> {
         const count = await this.prisma.userQuiz.count({

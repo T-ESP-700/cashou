@@ -258,7 +258,7 @@ async function main() {
   console.log(`✅ Level-Goal créé: Level ${level.number} ↔ Goal "${goal.title}" (obligatoire)`);
 
   // 9b. Optional: create a bonus goal for level 1 (demonstrates mandatory vs bonus)
-  const bonusGoalTitle = "Gagner au moins 500€";
+  const bonusGoalTitle = "Gagner au moins 100";
   let bonusGoal = await prisma.goal.findFirst({
     where: { title: bonusGoalTitle }
   });
@@ -266,9 +266,9 @@ async function main() {
     bonusGoal = await prisma.goal.create({
       data: {
         title: bonusGoalTitle,
-        description: "Avoir au moins 500€ de plus que ton capital de départ à la fin du niveau.",
+        description: "Avoir au moins 100 de plus que ton capital de départ à la fin du niveau.",
         goalType: "wallet_min",
-        goalValue: (level.startBalance ?? 2000) + 500
+        goalValue: (level.startBalance ?? 2000) + 100
       }
     });
     console.log(`✅ Objectif bonus créé: ${bonusGoal.title}`);
