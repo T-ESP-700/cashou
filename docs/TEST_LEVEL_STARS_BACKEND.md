@@ -34,6 +34,7 @@ bun run scripts/test-level-stars.ts
 3. Crée une partie (game instance) avec un wallet et un holding pour que la valeur totale (wallet + actifs) soit ≥ startBalance → les objectifs sont validés à la fin de partie.
 4. Appelle `EndGameService.endGame` → enregistrement dans `UserLevelCompletion` (étoiles selon objectifs obligatoires / bonus et quiz).
 5. Affiche le résultat de `endGame` et la ligne `UserLevelCompletion` (stars, mandatoryGoalsMet, bonusGoalsMet, quizPassed).
+   - Le payload `endGame` inclut aussi `modal` (`type`, `title`, `primaryMessage`, `secondaryMessage`) et `goals[].isMandatory`.
 6. Si un quiz existe pour le niveau 1 : crée une participation `UserQuiz` réussie et appelle `recordFromQuizComplete` → réaffiche `UserLevelCompletion` (étoiles mises à jour).
 7. Appelle `LevelService.getUserLevels(userId)` et affiche les niveaux avec leurs étoiles (comme l’API).
 8. Nettoie les données de test (partie, wallet, holdings, UserLevelCompletion) et conserve l’utilisateur de test pour les prochains runs.

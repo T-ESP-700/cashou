@@ -152,13 +152,15 @@ model Event {
 }
 
 model Goal {
-  id          Int      @id @default(autoincrement())
-  title       String?
-  description String?
-  goalType    String?  @map("goal_type")
-  goalValue   Float?   @map("goal_value")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id             Int      @id @default(autoincrement())
+  title          String?
+  description    String?
+  successMessage String?  @map("success_message")
+  failureMessage String?  @map("failure_message")
+  goalType       String?  @map("goal_type")
+  goalValue      Float?   @map("goal_value")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   // Relations
   levelGoals LevelGoal[]

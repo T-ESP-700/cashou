@@ -19,7 +19,20 @@ export interface GoalResult {
     id: number;
     title: string;
     description: string | null;
+    isMandatory: boolean;
     validated: boolean;
+}
+
+export type EndGameModalType =
+    | "PRIMARY_AND_SECONDARY_SUCCESS"
+    | "PRIMARY_SUCCESS_ONLY"
+    | "PRIMARY_FAILURE";
+
+export interface EndGameModalContent {
+    type: EndGameModalType;
+    title: string;
+    primaryMessage: string;
+    secondaryMessage: string | null;
 }
 
 export interface EndGameResult {
@@ -31,6 +44,7 @@ export interface EndGameResult {
     totalValue: number;
     goals: GoalResult[];
     message: string;
+    modal: EndGameModalContent;
     /** Level completion score (1-3 stars), set when completion was recorded */
     stars?: number;
     mandatoryGoalsMet?: boolean;
@@ -96,6 +110,7 @@ export class EndGameService {
                 level: {
                     include: {
                         levelGoals: {
+                            orderBy: { id: "asc" },
                             include: {
                                 goal: true,
                             },
@@ -144,10 +159,10 @@ export class EndGameService {
         const totalValue = currentWalletBalance + totalAssetsValue;
 
         // 4. Valider les objectifs
-        const goals = gameInstance.level.levelGoals.map((lg) => lg.goal);
         const goalResults: GoalResult[] = [];
 
-        for (const goal of goals) {
+        for (const levelGoal of gameInstance.level.levelGoals) {
+            const goal = levelGoal.goal;
             if (!goal) continue;
 
             const validated = this.validateGoal(goal.goalType, goal.goalValue, totalValue, startBalance);
@@ -156,6 +171,7 @@ export class EndGameService {
                 id: goal.id,
                 title: goal.title || "Objectif sans titre",
                 description: goal.description,
+                isMandatory: levelGoal.isMandatory,
                 validated,
             });
         }
@@ -198,6 +214,37 @@ export class EndGameService {
             completion = await this.levelCompletionService.getCompletion(userId, levelId);
         }
 
+        const firstMandatoryGoal = gameInstance.level.levelGoals.find((lg) => lg.isMandatory)?.goal ?? null;
+        const firstBonusGoal = gameInstance.level.levelGoals.find((lg) => !lg.isMandatory)?.goal ?? null;
+        const firstBonusGoalValidated =
+            firstBonusGoal ? goalResults.find((g) => g.id === firstBonusGoal.id)?.validated === true : false;
+
+        const primaryMessageFromGoal = allMandatoryGoalsValidated
+            ? firstMandatoryGoal?.successMessage
+            : firstMandatoryGoal?.failureMessage;
+        const secondaryMessageFromGoal =
+            allMandatoryGoalsValidated && firstBonusGoal
+                ? (firstBonusGoalValidated ? firstBonusGoal.successMessage : firstBonusGoal.failureMessage)
+                : null;
+
+        const modal: EndGameModalContent = allMandatoryGoalsValidated
+            ? {
+                type: firstBonusGoal && firstBonusGoalValidated
+                    ? "PRIMARY_AND_SECONDARY_SUCCESS"
+                    : "PRIMARY_SUCCESS_ONLY",
+                title: "Bravo !",
+                primaryMessage: primaryMessageFromGoal ?? "Tu as réussi l'objectif principal.",
+                secondaryMessage: secondaryMessageFromGoal ?? (
+                    firstBonusGoal ? "L'objectif secondaire n'a pas été atteint cette fois." : null
+                ),
+            }
+            : {
+                type: "PRIMARY_FAILURE",
+                title: "Dommage !",
+                primaryMessage: primaryMessageFromGoal ?? "Tu n'as pas atteint l'objectif principal.",
+                secondaryMessage: null,
+            };
+
         // 6. Retourner le resultat (success = objectifs obligatoires atteints) + stars si enregistrement
         return {
             success: allMandatoryGoalsValidated,
@@ -210,6 +257,7 @@ export class EndGameService {
             message: allMandatoryGoalsValidated
                 ? `Bravo ! Tu as termine avec ${Math.round(totalValue)} EUR (wallet: ${Math.round(currentWalletBalance)} EUR + assets: ${Math.round(totalAssetsValue)} EUR dont ${Math.round(totalInterests)} EUR d'interets) pour un depart de ${startBalance} EUR`
                 : `Objectifs non atteints. Total: ${Math.round(totalValue)} EUR (depart: ${startBalance} EUR)`,
+            modal,
             ...(completion && {
                 stars: completion.stars,
                 mandatoryGoalsMet: completion.mandatoryGoalsMet,

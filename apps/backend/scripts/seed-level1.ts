@@ -221,6 +221,8 @@ async function main() {
       where: { id: goal.id },
       data: {
         description: 'Ne pas perdre d\'argent par rapport à ton capital initial.',
+        successMessage: 'Tu as réussi à rester en positif.',
+        failureMessage: 'Tu n’as pas réussi à rester en positif, mais ce n’est pas grave, tu feras mieux la prochaine fois !',
         goalType: 'wallet_gte_start',
         goalValue: 0
       }
@@ -230,6 +232,8 @@ async function main() {
       data: {
         title: "Reste en positif",
         description: "Ne pas perdre d'argent par rapport à ton capital initial.",
+        successMessage: "Tu as réussi à rester en positif.",
+        failureMessage: "Tu n’as pas réussi à rester en positif, mais ce n’est pas grave, tu feras mieux la prochaine fois !",
         goalType: 'wallet_gte_start',
         goalValue: 0
       },
@@ -262,11 +266,25 @@ async function main() {
   let bonusGoal = await prisma.goal.findFirst({
     where: { title: bonusGoalTitle }
   });
-  if (!bonusGoal) {
+  if (bonusGoal) {
+    bonusGoal = await prisma.goal.update({
+      where: { id: bonusGoal.id },
+      data: {
+        description: "Avoir au moins 100 cashou de plus que ton capital de départ à la fin du niveau.",
+        successMessage: "Tu as même réussi à faire plus de 100 cashou de plus-value !",
+        failureMessage: "Par contre, tu n’as pas atteint l’objectif secondaire cette fois.",
+        goalType: "wallet_min",
+        goalValue: (level.startBalance ?? 2000) + 100
+      }
+    });
+    console.log(`✅ Objectif bonus mis à jour: ${bonusGoal.title}`);
+  } else {
     bonusGoal = await prisma.goal.create({
       data: {
         title: bonusGoalTitle,
         description: "Avoir au moins 100 de plus que ton capital de départ à la fin du niveau.",
+        successMessage: "Tu as même réussi à faire plus de 100 cashou de plus-value !",
+        failureMessage: "Par contre, tu n’as pas atteint l’objectif secondaire cette fois.",
         goalType: "wallet_min",
         goalValue: (level.startBalance ?? 2000) + 100
       }
@@ -770,7 +788,7 @@ async function main() {
   console.log(`   - 1 Level: ${level.title} (Niveau ${level.number})`);
   console.log(`   - 1 Event: ${event.title}`);
   console.log(`   - 1 Impact: ${impact.coef}% sur ${livretA.symbol}`);
-  console.log(`   - 1 Goal: ${goal.title}`);
+  console.log(`   - 2 Goals: ${goal.title}, ${bonusGoal.title}`);
   console.log(`   - 1 Quiz MCQ avec ${createdQuestions.length} questions`);
   console.log(`   - 2 Daily Quiz (hier et aujourd'hui)`);
   console.log('========================================\n');

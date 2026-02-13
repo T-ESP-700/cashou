@@ -32,6 +32,10 @@ function makePrismaMock() {
                     id: 123,
                     title: (data as Goal).title ?? "Objectif",
                     description: (data as Goal).description ?? null,
+                    successMessage: (data as Goal).successMessage ?? null,
+                    failureMessage: (data as Goal).failureMessage ?? null,
+                    goalType: (data as Goal).goalType ?? null,
+                    goalValue: (data as Goal).goalValue ?? null,
                     createdAt: now,
                     updatedAt: now,
                 };
@@ -45,6 +49,10 @@ function makePrismaMock() {
                     id,
                     title: (data as Goal).title ?? "Objectif",
                     description: (data as Goal).description ?? null,
+                    successMessage: (data as Goal).successMessage ?? null,
+                    failureMessage: (data as Goal).failureMessage ?? null,
+                    goalType: (data as Goal).goalType ?? null,
+                    goalValue: (data as Goal).goalValue ?? null,
                     createdAt: now,
                     updatedAt: now,
                 };
@@ -57,6 +65,10 @@ function makePrismaMock() {
                     id,
                     title: "Deleted",
                     description: null,
+                    successMessage: null,
+                    failureMessage: null,
+                    goalType: null,
+                    goalValue: null,
                     createdAt: now,
                     updatedAt: now,
                 };

@@ -4,6 +4,24 @@ Ce document résume les changements effectués pour (1) le stockage de la compl�
 
 ---
 
+## 0. Mise à jour fin de partie (modales + messages d’objectifs)
+
+### Ce qui a été ajouté
+
+- **Goal**
+  - Nouveaux champs : `successMessage` et `failureMessage` (DB: `success_message`, `failure_message`).
+- **EndGameService**
+  - La réponse `endGame` inclut désormais :
+    - `goals[].isMandatory` (distinction objectif principal/bonus),
+    - `modal` avec 3 états : `PRIMARY_AND_SECONDARY_SUCCESS`, `PRIMARY_SUCCESS_ONLY`, `PRIMARY_FAILURE`.
+  - Les textes de la modale sont alimentés par `Goal.successMessage` / `Goal.failureMessage` (avec fallback par défaut).
+
+### Migration
+
+- `20260212100000_add_goal_success_failure_messages` : ajoute `goals.success_message` et `goals.failure_message`.
+
+---
+
 ## 1. Complétion de niveau et étoiles (fonctionnalité principale)
 
 ### Ce qui a été ajouté

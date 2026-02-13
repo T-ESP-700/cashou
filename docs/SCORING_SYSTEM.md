@@ -58,7 +58,7 @@ Seul le **meilleur** résultat par (utilisateur, niveau) est conservé : si le j
 
 | API | Données de scoring |
 |-----|--------------------|
-| **gameInstance.endGame** | En cas de complétion enregistrée : `stars`, `mandatoryGoalsMet`, `bonusGoalsMet`, `quizPassed` dans la réponse. |
+| **gameInstance.endGame** | En cas de complétion enregistrée : `stars`, `mandatoryGoalsMet`, `bonusGoalsMet`, `quizPassed` dans la réponse. Retourne aussi `modal` (`type`, `title`, `primaryMessage`, `secondaryMessage`) et pour chaque goal `isMandatory`. |
 | **auth.getHomeData** | `lastCompletedGame.stars`, `lastCompletedGame.mandatoryGoalsMet`, `lastCompletedGame.bonusGoalsMet`, `lastCompletedGame.quizPassed` (issus de UserLevelCompletion pour la dernière partie terminée). |
 | **level.getUserLevels** | Pour chaque niveau : `stars`, `unlocked`, et optionnellement `mandatoryGoalsMet`, `bonusGoalsMet`, `quizPassed`. |
 

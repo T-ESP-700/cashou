@@ -185,6 +185,29 @@ output: Array<{ level, stars, points, unlocked, mandatoryGoalsMet?, bonusGoalsMe
 | `goal.update` | mutation | Update goal |
 | `goal.delete` | mutation | Delete goal |
 
+#### `goal.create`
+```typescript
+input: {
+  title?: string | null,
+  description?: string | null,
+  successMessage?: string | null,
+  failureMessage?: string | null
+}
+```
+
+#### `goal.update`
+```typescript
+input: {
+  id: number,
+  data: {
+    title?: string | null,
+    description?: string | null,
+    successMessage?: string | null,
+    failureMessage?: string | null
+  }
+}
+```
+
 ### Level-Goal Router (`levelGoal.*`)
 
 | Endpoint | Type | Description |
@@ -228,6 +251,37 @@ output: Array<{ level, stars, points, unlocked, mandatoryGoalsMet?, bonusGoalsMe
 | `gameInstance.completeEvent` | mutation | Complete current event, schedule next |
 | `gameInstance.getTimeInfo` | query | Get time info for instance |
 | `gameInstance.resetLevel` | mutation | Reset level for user (dev) |
+
+#### `gameInstance.endGame`
+```typescript
+input: { id: number }
+output: {
+  success: boolean,
+  gameInstanceId: number,
+  startBalance: number,
+  walletBalance: number,
+  assetsValue: number,
+  totalValue: number,
+  goals: Array<{
+    id: number,
+    title: string,
+    description: string | null,
+    isMandatory: boolean,
+    validated: boolean
+  }>,
+  message: string,
+  modal: {
+    type: "PRIMARY_AND_SECONDARY_SUCCESS" | "PRIMARY_SUCCESS_ONLY" | "PRIMARY_FAILURE",
+    title: string,
+    primaryMessage: string,
+    secondaryMessage: string | null
+  },
+  stars?: number,
+  mandatoryGoalsMet?: boolean,
+  bonusGoalsMet?: boolean,
+  quizPassed?: boolean
+}
+```
 
 ### Game Instance Event Router (`gameInstanceEvent.*`)
 
