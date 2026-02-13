@@ -198,8 +198,8 @@ export default function LevelsScreen() {
           <Ionicons
             key={i}
             name={filled ? 'star' : 'star-outline'}
-            size={16}
-            color="#EFA667"
+            size={12}
+            color={filled ? '#FFFFFF' : 'rgba(255,255,255,0.5)'}
           />
         ))}
       </View>
@@ -210,27 +210,19 @@ export default function LevelsScreen() {
     switch (status) {
       case 'completed':
         return (
-          <Ionicons
-            name="checkmark-circle"
-            size={28}
-            color="#88D498"
-          />
+          <Ionicons name="checkmark-circle" size={34} color="#88D498" />
         );
       case 'current':
         return (
-          <Ionicons
-            name="arrow-forward-circle"
-            size={28}
-            color="#EFA667"
-          />
+          <View style={styles.statusIconCurrent}>
+            <Ionicons name="arrow-forward" size={18} color="#2B2C48" />
+          </View>
         );
       case 'locked':
         return (
-          <Ionicons
-            name="lock-closed"
-            size={22}
-            color="#767676"
-          />
+          <View style={styles.statusIconLocked}>
+            <Ionicons name="lock-closed" size={16} color="#FFFFFF" />
+          </View>
         );
     }
   };
@@ -244,11 +236,9 @@ export default function LevelsScreen() {
       <TouchableOpacity
         style={[
           styles.levelRow,
-          {
-            backgroundColor: isLocked ? (isDark ? '#2A2D45' : '#CFCFCF') : '#FFFFFF',
-            borderColor: isCurrent ? '#EFA667' : 'transparent',
-            borderWidth: isCurrent ? 1.5 : 0,
-          },
+          isLocked && styles.levelRowLocked,
+          isCurrent && styles.levelRowCurrent,
+          isCompleted && styles.levelRowCompleted,
         ]}
         onPress={() => handleLevelPress(item)}
         activeOpacity={isLocked ? 1 : 0.7}
@@ -258,7 +248,7 @@ export default function LevelsScreen() {
           <Text
             style={[
               styles.levelName,
-              { color: isLocked ? '#767676' : '#2B2C48' },
+              isLocked && styles.levelNameLocked,
             ]}
           >
             Niveau {item.number ?? '?'}
@@ -299,7 +289,7 @@ export default function LevelsScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top }]}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <FlatList
         data={levels}
         renderItem={renderLevelItem}
@@ -324,6 +314,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
+    fontFamily: 'Anybody',
   },
   errorContainer: {
     flex: 1,
@@ -336,34 +327,78 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     textAlign: 'center',
+    fontFamily: 'Anybody',
   },
   listContent: {
     padding: 16,
-    gap: 10,
+    gap: 12,
   },
+  // Base level row
   levelRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 22,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  // Completed level: white bg, no border
+  levelRowCompleted: {
+    backgroundColor: '#FFFFFF',
+  },
+  // Current level: white bg, orange border
+  levelRowCurrent: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#EFA667',
+    borderWidth: 2,
+  },
+  // Locked level: gray bg
+  levelRowLocked: {
+    backgroundColor: '#D9D9D9',
   },
   levelInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     flex: 1,
   },
   levelName: {
-    fontSize: 16,
-    fontWeight: '400',
+    fontSize: 20,
+    fontFamily: 'Anybody',
+    color: '#2B2C48',
+  },
+  levelNameLocked: {
+    color: '#2B2C48',
   },
   starsContainer: {
     flexDirection: 'row',
-    gap: 2,
+    alignItems: 'center',
+    backgroundColor: '#EFA667',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    gap: 4,
   },
   statusIcon: {
     marginLeft: 12,
+  },
+  // Orange rounded square for current
+  statusIconCurrent: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#FFB472',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Gray circle for locked
+  statusIconLocked: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#A0A0A0',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
