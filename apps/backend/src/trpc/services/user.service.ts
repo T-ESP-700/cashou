@@ -128,15 +128,17 @@ export class UserService {
      * @returns Promise<User> - L'utilisateur avec les points mis à jour
      */
     async addPoints(id: number, pointsToAdd: number): Promise<User> {
-        const user = await this.findOne(id);
-        if (!user) {
-            throw new Error("Utilisateur introuvable");
-        }
-        
-        const currentPoints = user.points || 0;
-        return this.prisma.user.update({
-            where: { id },
-            data: { points: currentPoints + pointsToAdd }
+        return this.prisma.$transaction(async (tx) => {
+            const user = await tx.user.findUnique({ where: { id } });
+            if (!user) {
+                throw new Error("Utilisateur introuvable");
+            }
+
+            const currentPoints = user.points || 0;
+            return tx.user.update({
+                where: { id },
+                data: { points: currentPoints + pointsToAdd }
+            });
         });
     }
 }

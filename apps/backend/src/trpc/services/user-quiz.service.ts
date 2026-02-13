@@ -135,37 +135,40 @@ export class UserQuizService {
      * @returns Promise<UserQuiz> - La participation créée ou mise à jour
      */
     async createOrUpdateParticipation(quizId: number, userId: string, isCorrect?: boolean): Promise<UserQuiz> {
-        // Chercher une participation existante
-        const existingParticipation = await this.prisma.userQuiz.findFirst({
-            where: { quizId, userId }
+        // Transaction atomique pour garantir la cohérence entre participation et streaks
+        return this.prisma.$transaction(async (tx) => {
+            // Chercher une participation existante
+            const existingParticipation = await tx.userQuiz.findFirst({
+                where: { quizId, userId }
+            });
+
+            let participation: UserQuiz;
+            if (existingParticipation) {
+                // Mettre à jour la participation existante
+                participation = await tx.userQuiz.update({
+                    where: { id: existingParticipation.id },
+                    data: {
+                        completedAt: new Date(),
+                        isCorrect: isCorrect !== undefined ? isCorrect : existingParticipation.isCorrect,
+                    }
+                });
+            } else {
+                // Créer une nouvelle participation
+                participation = await tx.userQuiz.create({
+                    data: {
+                        quizId,
+                        userId,
+                        completedAt: new Date(),
+                        isCorrect: isCorrect,
+                    }
+                });
+            }
+
+            // Mettre à jour les streaks si c'est le quiz du jour
+            await this.updateStreaksIfTodaysQuiz(quizId, userId, tx);
+
+            return participation;
         });
-
-        let participation: UserQuiz;
-        if (existingParticipation) {
-            // Mettre à jour la participation existante
-            participation = await this.prisma.userQuiz.update({
-                where: { id: existingParticipation.id },
-                data: {
-                    completedAt: new Date(),
-                    isCorrect: isCorrect !== undefined ? isCorrect : existingParticipation.isCorrect,
-                }
-            });
-        } else {
-            // Créer une nouvelle participation
-            participation = await this.prisma.userQuiz.create({
-                data: {
-                    quizId,
-                    userId,
-                    completedAt: new Date(),
-                    isCorrect: isCorrect,
-                }
-            });
-        }
-
-        // Mettre à jour les streaks si c'est le quiz du jour
-        await this.updateStreaksIfTodaysQuiz(quizId, userId);
-
-        return participation;
     }
 
     /**
@@ -173,14 +176,16 @@ export class UserQuizService {
      * @param quizId - Identifiant du quiz
      * @param userId - Identifiant de l'utilisateur (string)
      */
-    private async updateStreaksIfTodaysQuiz(quizId: number, userId: string): Promise<void> {
+    private async updateStreaksIfTodaysQuiz(quizId: number, userId: string, tx?: any): Promise<void> {
+        const db = tx || this.prisma;
+
         // Vérifier si c'est le quiz du jour
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
 
-        const quiz = await this.prisma.quiz.findUnique({
+        const quiz = await db.quiz.findUnique({
             where: { id: quizId }
         });
 
@@ -199,7 +204,7 @@ export class UserQuizService {
         }
 
         // Récupérer toutes les questions du quiz
-        const quizQuestions = await this.prisma.quizQuestion.findMany({
+        const quizQuestions = await db.quizQuestion.findMany({
             where: { quizId },
             include: {
                 question: {
@@ -216,7 +221,7 @@ export class UserQuizService {
 
         // Récupérer toutes les réponses de l'utilisateur pour ce quiz
         const questionIds = quizQuestions.map(qq => qq.questionId);
-        const userAnswers = await this.prisma.userAnswer.findMany({
+        const userAnswers = await db.userAnswer.findMany({
             where: {
                 userId,
                 questionId: { in: questionIds }
@@ -235,7 +240,7 @@ export class UserQuizService {
         const score = correctAnswers / totalQuestions;
 
         // Récupérer l'utilisateur pour accéder aux streaks actuels
-        const user = await this.prisma.user.findUnique({
+        const user = await db.user.findUnique({
             where: { id: userId },
             select: { currentStreak: true, maxStreak: true }
         });
@@ -262,7 +267,7 @@ export class UserQuizService {
         }
 
         // Mettre à jour l'utilisateur
-        await this.prisma.user.update({
+        await db.user.update({
             where: { id: userId },
             data: {
                 currentStreak: newCurrentStreak,

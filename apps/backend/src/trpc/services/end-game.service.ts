@@ -81,101 +81,104 @@ export class EndGameService {
      * @returns EndGameResult - Résultat de la fin de partie
      */
     async endGame(gameInstanceId: number): Promise<EndGameResult> {
-        // 1. Recuperer l'instance de jeu avec toutes ses donnees
-        const gameInstance = await this.prisma.gameInstance.findUnique({
-            where: { id: gameInstanceId },
-            include: {
-                level: {
-                    include: {
-                        levelGoals: {
-                            include: {
-                                goal: true,
+        // Transaction atomique pour garantir la cohérence entre lecture des données et marquage de fin
+        return this.prisma.$transaction(async (tx) => {
+            // 1. Recuperer l'instance de jeu avec toutes ses donnees
+            const gameInstance = await tx.gameInstance.findUnique({
+                where: { id: gameInstanceId },
+                include: {
+                    level: {
+                        include: {
+                            levelGoals: {
+                                include: {
+                                    goal: true,
+                                },
                             },
                         },
                     },
-                },
-                wallets: true,
-                holdings: {
-                    include: {
-                        asset: true,
+                    wallets: true,
+                    holdings: {
+                        include: {
+                            asset: true,
+                        },
                     },
                 },
-            },
-        });
-
-        if (!gameInstance) {
-            throw new Error(`GameInstance ${gameInstanceId} non trouvée`);
-        }
-
-        if (!gameInstance.level) {
-            throw new Error(`Aucun niveau associé à la partie ${gameInstanceId}`);
-        }
-
-        const startBalance = Number(gameInstance.startBalance || gameInstance.level.startBalance || 0);
-        const wallet = gameInstance.wallets[0];
-
-        if (!wallet) {
-            throw new Error(`Aucun wallet trouvé pour la partie ${gameInstanceId}`);
-        }
-
-        // 2. Calculer la valeur totale des holdings avec interets
-        let totalAssetsValue = 0;
-        let totalInterests = 0;
-
-        for (const holding of gameInstance.holdings) {
-            const holdingWithAsset = holding as HoldingWithAsset;
-            const quantity = holdingWithAsset.quantity ? Number(holdingWithAsset.quantity) : 0;
-            const interests = this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
-
-            totalInterests += interests;
-            totalAssetsValue += quantity + interests;
-        }
-
-        // 3. Calculer la valeur totale (wallet + assets avec interets)
-        const currentWalletBalance = Number(wallet.amount || 0);
-        const totalValue = currentWalletBalance + totalAssetsValue;
-
-        // 4. Valider les objectifs
-        const goals = gameInstance.level.levelGoals.map((lg) => lg.goal);
-        const goalResults: GoalResult[] = [];
-
-        for (const goal of goals) {
-            if (!goal) continue;
-
-            const validated = this.validateGoal(goal.goalType, goal.goalValue, totalValue, startBalance);
-
-            goalResults.push({
-                id: goal.id,
-                title: goal.title || "Objectif sans titre",
-                description: goal.description,
-                validated,
             });
-        }
 
-        // 5. Marquer la partie comme terminee
-        await this.prisma.gameInstance.update({
-            where: { id: gameInstanceId },
-            data: {
-                isEnded: true,
-                endedAt: new Date(),
-            },
+            if (!gameInstance) {
+                throw new Error(`GameInstance ${gameInstanceId} non trouvée`);
+            }
+
+            if (!gameInstance.level) {
+                throw new Error(`Aucun niveau associé à la partie ${gameInstanceId}`);
+            }
+
+            const startBalance = Number(gameInstance.startBalance || gameInstance.level.startBalance || 0);
+            const [wallet] = gameInstance.wallets;
+
+            if (!wallet) {
+                throw new Error(`Aucun wallet trouvé pour la partie ${gameInstanceId}`);
+            }
+
+            // 2. Calculer la valeur totale des holdings avec interets
+            let totalAssetsValue = 0;
+            let totalInterests = 0;
+
+            for (const holding of gameInstance.holdings) {
+                const holdingWithAsset = holding as HoldingWithAsset;
+                const quantity = holdingWithAsset.quantity ? Number(holdingWithAsset.quantity) : 0;
+                const interests = this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
+
+                totalInterests += interests;
+                totalAssetsValue += quantity + interests;
+            }
+
+            // 3. Calculer la valeur totale (wallet + assets avec interets)
+            const currentWalletBalance = Number(wallet.amount || 0);
+            const totalValue = currentWalletBalance + totalAssetsValue;
+
+            // 4. Valider les objectifs
+            const goals = gameInstance.level.levelGoals.map((lg) => lg.goal);
+            const goalResults: GoalResult[] = [];
+
+            for (const goal of goals) {
+                if (!goal) continue;
+
+                const validated = this.validateGoal(goal.goalType, goal.goalValue, totalValue, startBalance);
+
+                goalResults.push({
+                    id: goal.id,
+                    title: goal.title || "Objectif sans titre",
+                    description: goal.description,
+                    validated,
+                });
+            }
+
+            // 5. Marquer la partie comme terminee
+            await tx.gameInstance.update({
+                where: { id: gameInstanceId },
+                data: {
+                    isEnded: true,
+                    endedAt: new Date(),
+                },
+            });
+
+            // 6. Retourner le resultat
+            const allGoalsValidated = goalResults.every((g) => g.validated);
+
+            return {
+                success: allGoalsValidated,
+                gameInstanceId,
+                startBalance,
+                walletBalance: currentWalletBalance,
+                assetsValue: totalAssetsValue,
+                totalValue,
+                goals: goalResults,
+                message: allGoalsValidated
+                    ? `Bravo ! Tu as termine avec ${Math.round(totalValue)} EUR (wallet: ${Math.round(currentWalletBalance)} EUR + assets: ${Math.round(totalAssetsValue)} EUR dont ${Math.round(totalInterests)} EUR d'interets) pour un depart de ${startBalance} EUR`
+                    : `Objectifs non atteints. Total: ${Math.round(totalValue)} EUR (depart: ${startBalance} EUR)`,
+            };
         });
-
-        // 6. Retourner le resultat
-        const allGoalsValidated = goalResults.every((g) => g.validated);
-
-        return {
-            success: allGoalsValidated,
-            gameInstanceId,
-            startBalance,
-            walletBalance: currentWalletBalance,
-            assetsValue: totalAssetsValue,
-            totalValue,
-            goals: goalResults,
-            message: allGoalsValidated
-                ? `Bravo ! Tu as termine avec ${Math.round(totalValue)} EUR (wallet: ${Math.round(currentWalletBalance)} EUR + assets: ${Math.round(totalAssetsValue)} EUR dont ${Math.round(totalInterests)} EUR d'interets) pour un depart de ${startBalance} EUR`
-                : `Objectifs non atteints. Total: ${Math.round(totalValue)} EUR (depart: ${startBalance} EUR)`,
-        };
     }
 
     /**
