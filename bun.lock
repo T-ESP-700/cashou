@@ -1,6 +1,5 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 1,
   "workspaces": {
     "": {
       "name": "cashou",
@@ -99,6 +98,7 @@
       "name": "mobile",
       "version": "1.0.0",
       "dependencies": {
+        "@expo-google-fonts/anybody": "^0.4.2",
         "@expo-google-fonts/roboto": "0.4.1",
         "@expo-google-fonts/rowdies": "0.4.2",
         "@expo/vector-icons": "15.0.3",
@@ -492,6 +492,8 @@
     "@eslint/object-schema": ["@eslint/object-schema@2.1.7", "", {}, "sha512-VtAOaymWVfZcmZbp6E2mympDIHvyjXs/12LqWYjVw6qjrfF+VK+fyG33kChz3nnK+SU5/NeHOqrTEHS8sXO3OA=="],
 
     "@eslint/plugin-kit": ["@eslint/plugin-kit@0.3.5", "", { "dependencies": { "@eslint/core": "^0.15.2", "levn": "^0.4.1" } }, "sha512-Z5kJ+wU3oA7MMIqVR9tyZRtjYPr4OC004Q4Rw7pgOKUOKkJfZ3O24nz3WYfGRpMDNmcOi3TwQOmgm7B7Tpii0w=="],
+
+    "@expo-google-fonts/anybody": ["@expo-google-fonts/anybody@0.4.2", "", {}, "sha512-sXGJzetfFjW19TeeYZRURKYs10BvAMErUFhxjAlNsjq9X8EUF7wmOYD14bV5MeKrYHHHw65xsR26UHbtXV77tg=="],
 
     "@expo-google-fonts/roboto": ["@expo-google-fonts/roboto@0.4.1", "", {}, "sha512-kil05iC3NGEhdwbkbftA++0xyWTDqdbCmQEuM2sCPdESzTJVtqXDyoRZqBoXRjvLZWH76uR0x115QPQEeNJa1w=="],
 
