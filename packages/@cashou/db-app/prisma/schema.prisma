@@ -278,7 +278,6 @@ model Asset {
   description String?
   marketId    Int?     @map("market_id")
   submarketId Int?     @map("submarket_id")
-  taux        Float?
   maxAmount   Decimal? @map("max_amount") // Plafond (ex: 22950 pour Livret A)
   minAmount   Decimal? @map("min_amount") // Montant minimum (ex: 10€)
   createdAt   DateTime @default(now()) @map("created_at")

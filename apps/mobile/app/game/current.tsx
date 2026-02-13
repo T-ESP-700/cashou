@@ -29,7 +29,6 @@ interface AssetData {
   title: string | null;
   symbol: string | null;
   rate: number | null;
-  taux: number | null;
   description: string | null;
 }
 
@@ -295,6 +294,7 @@ export default function GameCurrentScreen() {
       });
 
       setGameInstanceId(gameInstance.id);
+      setActiveGameInstanceId(gameInstance.id); // Mettre à jour le contexte global
       setWalletId(wallet.id);
       setIsPaused(true);
       setIsGameEnded(false);
@@ -1039,11 +1039,11 @@ export default function GameCurrentScreen() {
                     {Number(holding.quantity ?? 0).toFixed(2)}€
                   </Text>
                   <View style={styles.assetRateContainer}>
-                    <Text style={[styles.assetRateArrow, { color: (holding.asset?.taux ?? 0) >= 0 ? '#4CAF50' : '#F44336' }]}>
-                      {(holding.asset?.taux ?? 0) >= 0 ? '▲' : '▼'}
+                    <Text style={[styles.assetRateArrow, { color: (holding.asset?.rate ?? 0) >= 0 ? '#4CAF50' : '#F44336' }]}>
+                      {(holding.asset?.rate ?? 0) >= 0 ? '▲' : '▼'}
                     </Text>
                     <Text style={[styles.assetRate, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
-                      {holding.asset?.taux ?? 0}%
+                      {holding.asset?.rate ?? 0}%
                     </Text>
                   </View>
                 </TouchableOpacity>

@@ -12,8 +12,8 @@ export default function TabLayout() {
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const pathname = usePathname();
 
-  // Pages liées à l'historique de jeu (la manette doit être en focus)
-  const isGameHistoryRelated = pathname === '/game-history' || pathname === '/summary';
+  // Pages liees aux niveaux (l'icone doit etre en focus)
+  const isLevelsRelated = pathname === '/game-history' || pathname === '/summary';
 
   return (
     <Tabs
@@ -171,9 +171,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="game-history"
         options={{
-          title: 'Game',
+          title: 'Niveaux',
           tabBarIcon: ({ size }) => {
-            const isFocused = isGameHistoryRelated;
+            const isFocused = isLevelsRelated;
             return (
               <View style={{ alignItems: 'center', justifyContent: 'center' }}>
                 {isFocused && (

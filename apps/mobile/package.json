@@ -16,6 +16,7 @@
     "build:android:dev": "eas build --profile development --platform android"
   },
   "dependencies": {
+    "@expo-google-fonts/anybody": "^0.4.2",
     "@expo-google-fonts/roboto": "0.4.1",
     "@expo-google-fonts/rowdies": "0.4.2",
     "@expo/vector-icons": "15.0.3",
