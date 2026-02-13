@@ -29,6 +29,7 @@
     "test:regression": "bun test tests/service/level.service.regression.test.ts",
     "test:router": "bun test tests/router/level.router.test.ts",
     "test:grep:unit": "bun test --grep='Tests unitaires'",
+    "test:transactions": "SKIP_PRISMA_INIT=1 bun test tests/service/wallet.service.unit.test.ts tests/service/user.service.unit.test.ts tests/service/end-game.service.unit.test.ts tests/service/user-quiz.service.unit.test.ts tests/service/game-instance.service.unit.test.ts tests/service/investment.service.unit.test.ts",
     "healthy:game": "bun run scripts/healthy-game.ts"
   },
   "dependencies": {
