@@ -66,7 +66,8 @@
     "logs:backend": "cd apps/backend && bun run dev",
     "logs:backoffice": "cd apps/backoffice && bun run dev",
     "install:all": "bun install && cd backend && bun install && cd ../backoffice && bun install",
-    "setup:seeds": "bun run install:all && bun run docker:up && bun run generate && bun run migrate && bun run db:seed"
+    "setup:seeds": "bun run install:all && bun run docker:up && bun run generate && bun run migrate && bun run db:seed",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.1",
@@ -79,6 +80,7 @@
     "concurrently": "8.2.2",
     "dotenv-cli": "8.0.0",
     "eslint": "9.31.0",
+    "husky": "^9.1.7",
     "prisma": "6.14.0",
     "typescript": "5.9.3"
   },
