@@ -159,10 +159,23 @@ export function UserProfile() {
             color: colors.text,
             opacity: 0.7,
             textAlign: 'center',
+            marginBottom: spacing.md,
           }}
         >
           {user.email}
         </Text>
+
+        {/* Edit Profile Button */}
+        <Button
+          title="Éditer"
+          variant="outline"
+          onPress={() => {
+            // TODO: Navigate to edit profile screen
+            Alert.alert('Éditer le profil', 'Fonctionnalité à venir');
+          }}
+          leftIcon={<Ionicons name="create-outline" size={18} color={colors.accent} />}
+          style={{ minWidth: 140 }}
+        />
       </Card>
 
       {/* Stats Cards Grid */}
