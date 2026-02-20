@@ -138,6 +138,24 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1, backgroundColor: colors.background }}
             >
+                {/* Drag indicator */}
+                <View
+                    style={{
+                        alignItems: 'center',
+                        paddingTop: spacing.sm,
+                        paddingBottom: spacing.xs,
+                    }}
+                >
+                    <View
+                        style={{
+                            width: 40,
+                            height: 5,
+                            borderRadius: 3,
+                            backgroundColor: colors.border,
+                            opacity: 0.6,
+                        }}
+                    />
+                </View>
                 {/* Header */}
                 <View
                     style={{
@@ -215,6 +233,8 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
                         onSubmitEditing={handleSubmit}
                     />
 
+                    <View style={{ height: spacing.lg }} />
+
                     <Input
                         label="Nom d'utilisateur"
                         value={form.username}
@@ -227,9 +247,6 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
                         returnKeyType="done"
                         onSubmitEditing={handleSubmit}
                         editable={!isSubmitting}
-                        leftIcon={
-                            <Ionicons name="at-outline" size={18} color={colors.icon} />
-                        }
                     />
 
                     <View style={{ height: spacing.lg }} />

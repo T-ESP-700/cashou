@@ -312,7 +312,7 @@ export const userRouter = router({
     .input(
       z.object({
         username: z.string().min(3).optional(),
-        name: z.string().min(2).optional(), // ✅ Ajout d'une validation minimale
+        name: z.string().min(2).optional(),
         currentPassword: z.string().optional(),
         newPassword: z.string().min(8).optional(),
       })

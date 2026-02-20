@@ -104,10 +104,12 @@
   "author": "Cashou Team",
   "license": "MIT",
   "dependencies": {
-    "@trpc/server": "11.4.3",
     "@trpc/react-query": "11.7.1",
-    "pg-boss": "12.5.2",
-    "expo-server-sdk": "4.0.0"
+    "@trpc/server": "11.4.3",
+    "expo-image-manipulator": "~14.0.8",
+    "expo-image-picker": "~17.0.10",
+    "expo-server-sdk": "4.0.0",
+    "pg-boss": "12.5.2"
   },
   "resolutions": {
     "react": "19.1.0",
