@@ -24,7 +24,7 @@ export function LevelCard({
   stars = 0,
   onPress,
 }: LevelCardProps) {
-  const { colors, status: statusColors, special, fonts, spacing, borderRadius } = useCashouTheme();
+  const { colors, special, fonts, spacing } = useCashouTheme();
 
   // Badge config based on status
   const getBadgeConfig = (): { text: string; variant: 'success' | 'accent' | 'neutral' | 'warning' } => {
@@ -144,25 +144,6 @@ export function LevelCard({
               </Text>
             </View>
           </View>
-        </View>
-
-        {/* Progress Bar */}
-        <View
-          style={{
-            height: 12,
-            borderRadius: borderRadius.sm - 2,
-            overflow: 'hidden',
-            backgroundColor: colors.progressBarBackground,
-          }}
-        >
-          <View
-            style={{
-              height: '100%',
-              borderRadius: borderRadius.sm - 2,
-              backgroundColor: colors.accent,
-              width: `${progression}%`,
-            }}
-          />
         </View>
       </Card>
     </TouchableOpacity>

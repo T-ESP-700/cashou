@@ -3,7 +3,6 @@
  * Provides a centralized way to access theme colors, spacing, and other tokens
  */
 
-import { useColorScheme } from 'react-native';
 import {
   CashouTheme,
   CashouStatusColors,
@@ -13,6 +12,7 @@ import {
   CashouSpacing,
   CashouBorderRadius,
 } from '@/constants/cashou-theme';
+import { useThemePreference } from '@/hooks/use-theme-provider';
 
 export type ThemeMode = 'light' | 'dark';
 
@@ -25,6 +25,7 @@ export interface CashouThemeColorsExtended {
   accent: string;
   card: string;
   border: string;
+  borderLight: string;
   progressBarBackground: string;
   icon: string;
   iconMuted: string;
@@ -75,9 +76,8 @@ export interface UseCashouThemeReturn {
  * ```
  */
 export function useCashouTheme(): UseCashouThemeReturn {
-  const colorScheme = useColorScheme();
-  const mode: ThemeMode = colorScheme === 'dark' ? 'dark' : 'light';
-  const isDark = mode === 'dark';
+  const { resolved, isDark } = useThemePreference();
+  const mode: ThemeMode = resolved;
 
   const modeColors = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
 

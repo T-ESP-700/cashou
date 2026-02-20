@@ -21,10 +21,10 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/hooks/use-auth';
 import { HeaderProvider, useHeader } from '@/hooks/use-header';
 import { NotificationProvider } from '@/hooks/use-notifications';
+import { ThemePreferenceProvider, useThemePreference } from '@/hooks/use-theme-provider';
 import { CashouHeader } from '@/components/cashou-header';
 import { EventNotificationModal } from '@/components/event-notification-modal';
 import { CashouTheme } from '@/constants/cashou-theme';
@@ -37,8 +37,7 @@ function RootNavigatorContent() {
   const { options: headerOptions } = useHeader();
   const segments = useSegments();
   const navigationState = useRootNavigationState();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { isDark } = useThemePreference();
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
 
   // Show loading screen while checking authentication or navigation not ready
@@ -53,12 +52,12 @@ function RootNavigatorContent() {
   const inAuthGroup = segments[0] === 'auth';
   const inTabs = segments[0] === '(tabs)';
   const inGame = segments[0] === 'game';
-  const isInitialRoute = (segments as string[]).length === 0;
+  // const isInitialRoute = (segments as string[]).length === 0;
 
   console.log('[RootNavigator] segments:', segments, 'isAuthenticated:', isAuthenticated);
 
   // Handle redirects BEFORE rendering Stack
-  if (!isAuthenticated && (inTabs || inGame || isInitialRoute)) {
+  if (!isAuthenticated && (inTabs || inGame)) {
     console.log('[RootNavigator] Not authenticated, redirecting to /auth');
     return <Redirect href="/auth" />;
   }
@@ -99,9 +98,19 @@ function RootNavigator() {
   );
 }
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+function RootLayoutInner() {
+  const { isDark } = useThemePreference();
 
+  return (
+    <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+      <RootNavigator />
+      <EventNotificationModal />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+    </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     Rowdies: Rowdies_400Regular,
     'Rowdies-Light': Rowdies_300Light,
@@ -123,15 +132,13 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <NotificationProvider>
-          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <RootNavigator />
-            <EventNotificationModal />
-            <StatusBar style="auto" />
-          </ThemeProvider>
-        </NotificationProvider>
-      </AuthProvider>
+      <ThemePreferenceProvider>
+        <AuthProvider>
+          <NotificationProvider>
+            <RootLayoutInner />
+          </NotificationProvider>
+        </AuthProvider>
+      </ThemePreferenceProvider>
     </GestureHandlerRootView>
   );
 }

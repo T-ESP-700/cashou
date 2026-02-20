@@ -1,19 +1,26 @@
 import { Tabs, usePathname } from 'expo-router';
 import React from 'react';
-import { useColorScheme as useRNColorScheme, View, Platform, Dimensions } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { CashouTheme } from '@/constants/cashou-theme';
+import { useThemePreference } from '@/hooks/use-theme-provider';
+
+import TabHome from '@/assets/images/tab-home.svg';
+import TabDico from '@/assets/images/tab-dico.svg';
+import TabProfil from '@/assets/images/tab-profil.svg';
+import TabHistory from '@/assets/images/tab-history.svg';
 
 const TAB_BAR_HEIGHT = 74;
 const TAB_BAR_MARGIN_HORIZONTAL = 40;
 const TAB_BAR_MARGIN_BOTTOM = 28;
 
+const ICON_SIZE = 28;
+const ICON_STROKE_WIDTH = 3;
+
 export default function TabLayout() {
-  const colorScheme = useRNColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { isDark } = useThemePreference();
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
@@ -21,7 +28,30 @@ export default function TabLayout() {
   // Pages liees aux niveaux (l'icone doit etre en focus)
   const isLevelsRelated = pathname === '/game-history' || pathname === '/summary';
 
+  const focusedIconColor = isDark ? "#FFFFFF" : "#172D4E";
+  const unfocusedIconColor = isDark ? "rgba(255, 255, 255, 0.6)" : "rgba(0, 0, 0, 0.6)";
+
   const bottomMargin = Math.max(TAB_BAR_MARGIN_BOTTOM, insets.bottom + 8);
+
+  const renderTabIcon = (SvgIcon: React.FC<any>, focused: boolean) => (
+    <View
+      style={{
+        flex: 1,
+        alignSelf: 'stretch',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 9999,
+        backgroundColor: focused ? '#FFFFFF' : 'transparent',
+      }}
+    >
+      <SvgIcon
+        width={ICON_SIZE}
+        height={ICON_SIZE}
+        color={focused ? focusedIconColor : unfocusedIconColor}
+        strokeWidth={ICON_STROKE_WIDTH}
+      />
+    </View>
+  );
 
   return (
     <Tabs
@@ -38,26 +68,27 @@ export default function TabLayout() {
           backgroundColor: theme.primary,
           borderRadius: TAB_BAR_HEIGHT / 2,
           borderTopWidth: 0,
-          borderWidth: 1,
-          borderColor: isDark
-            ? "rgba(255, 255, 255, 0.08)"
-            : "rgba(0, 0, 0, 0.06)",
-          paddingVertical: 8,
-          paddingHorizontal: 8,
+          borderWidth: 0,
+          padding: 2,
           marginHorizontal: 16,
+          overflow: 'hidden',
+        },
+        tabBarItemStyle: {
+          flex: 1,
           justifyContent: 'center',
-          alignItems: 'center',
-          // ...Platform.select({
-          //   ios: {
-          //     shadowColor: "#000",
-          //     shadowOffset: { width: 0, height: 4 },
-          //     shadowOpacity: 0.15,
-          //     shadowRadius: 16,
-          //   },
-          //   android: {
-          //     elevation: 8,
-          //   },
-          // }),
+          alignItems: 'stretch',
+          height: TAB_BAR_HEIGHT,
+          paddingTop: 0,
+          paddingBottom: 0,
+          borderRadius: 9999,
+          overflow: 'hidden',
+        },
+        tabBarIconStyle: {
+          flex: 1,
+          width: '100%',
+          alignSelf: 'stretch',
+          marginTop: 0,
+          marginBottom: 0,
         },
         headerShown: false,
         tabBarButton: HapticTab,
@@ -68,69 +99,14 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: ({ size, focused }) => (
-            <View
-              className="items-center justify-center flex-1"
-              style={{
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-            >
-              {focused && (
-                <View
-                  className="flex rounded-xl bg-white/90"
-                  style={{
-                    width: 48,
-                    height: 48,
-                    alignSelf: 'center',
-                    // position: 'absolute',
-                    // zIndex: 0,
-                  }}
-                />
-              )}
-              <Ionicons
-                name={(focused ? "home" : "home-outline") as any}
-                size={22}
-                color="#1C1E33"
-                style={{ opacity: focused ? 1 : 0.45, zIndex: 1 }}
-              />
-            </View>
-          ),
+          tabBarIcon: ({ focused }) => renderTabIcon(TabHome, focused),
         }}
       />
       <Tabs.Screen
         name="wallet"
         options={{
           title: "Wallet",
-          tabBarIcon: ({ size, focused }) => (
-            <View
-              className="items-center justify-center flex-1"
-              style={{
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-            >
-              {focused && (
-                <View
-                  className={`rounded-xl ${
-                    isDark ? "bg-white/90" : "bg-white/90"
-                  }`}
-                  style={{
-                    position: 'absolute',
-                    width: 48,
-                    height: 48,
-                    zIndex: 0,
-                  }}
-                />
-              )}
-              <Ionicons
-                name="logo-usd"
-                size={22}
-                color="#1C1E33"
-                style={{ opacity: focused ? 1 : 0.45, zIndex: 1 }}
-              />
-            </View>
-          ),
+          tabBarIcon: ({ focused }) => renderTabIcon(TabHome, focused),
           href: null,
         }}
       />
@@ -138,35 +114,7 @@ export default function TabLayout() {
         name="learn"
         options={{
           title: "Learn",
-          tabBarIcon: ({ size, focused }) => (
-            <View
-              className="items-center justify-center flex-1"
-              style={{
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-            >
-              {focused && (
-                <View
-                  className={`rounded-xl ${
-                    isDark ? "bg-white/90" : "bg-white/90"
-                  }`}
-                  style={{
-                    position: 'absolute',
-                    width: 48,
-                    height: 48,
-                    zIndex: 0,
-                  }}
-                />
-              )}
-              <Ionicons
-                name={(focused ? "book" : "book-outline") as any}
-                size={22}
-                color="#1C1E33"
-                style={{ opacity: focused ? 1 : 0.45, zIndex: 1 }}
-              />
-            </View>
-          ),
+          tabBarIcon: ({ focused }) => renderTabIcon(TabDico, focused),
           href: null,
         }}
       />
@@ -174,70 +122,14 @@ export default function TabLayout() {
         name="dico"
         options={{
           title: "Dico",
-          tabBarIcon: ({ size, focused }) => (
-            <View
-              className="items-center justify-center flex-1"
-              style={{
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-            >
-              {focused && (
-                <View
-                  className={`rounded-xl ${
-                    isDark ? "bg-white/90" : "bg-white/90"
-                  }`}
-                  style={{
-                    position: 'absolute',
-                    width: 48,
-                    height: 48,
-                    zIndex: 0,
-                  }}
-                />
-              )}
-              <Ionicons
-                name={(focused ? "book" : "book-outline") as any}
-                size={22}
-                color="#1C1E33"
-                style={{ opacity: focused ? 1 : 0.45, zIndex: 1 }}
-              />
-            </View>
-          ),
+          tabBarIcon: ({ focused }) => renderTabIcon(TabDico, focused),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Account",
-          tabBarIcon: ({ size, focused }) => (
-            <View
-              className="items-center justify-center flex-1"
-              style={{
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-            >
-              {focused && (
-                <View
-                  className={`rounded-xl ${
-                    isDark ? "bg-white/90" : "bg-white/90"
-                  }`}
-                  style={{
-                    position: 'absolute',
-                    width: 48,
-                    height: 48,
-                    zIndex: 0,
-                  }}
-                />
-              )}
-              <Ionicons
-                name={(focused ? "person" : "person-outline") as any}
-                size={22}
-                color="#1C1E33"
-                style={{ opacity: focused ? 1 : 0.45, zIndex: 1 }}
-              />
-            </View>
-          ),
+          tabBarIcon: ({ focused }) => renderTabIcon(TabProfil, focused),
         }}
       />
       <Tabs.Screen
