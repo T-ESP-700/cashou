@@ -11,6 +11,10 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
+    password: {
+      hash: async (password) => bcrypt.hash(password, 10),
+      verify: async ({ hash, password }) => bcrypt.compare(password, hash),
+    },
   },
   // Temporarily disable social providers
   // socialProviders: {
