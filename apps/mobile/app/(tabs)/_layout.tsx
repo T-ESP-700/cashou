@@ -26,7 +26,7 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
 
   // Pages liées à l'historique de jeu
-  const isGameHistoryRelated = pathname === '/game-history' || pathname === '/summary';
+  const isGameHistoryRelated = pathname === '/game-history';
 
   const focusedIconColor = isDark ? "#FFFFFF" : "#172D4E";
   const unfocusedIconColor = isDark ? "rgba(255, 255, 255, 0.6)" : "rgba(0, 0, 0, 0.6)";
@@ -135,7 +135,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="game-history"
         options={{
-          title: "Game",
+          title: "Niveaux",
           tabBarIcon: ({ focused }) => renderTabIcon(TabHistory, focused || isGameHistoryRelated),
         }}
       />
@@ -155,6 +155,9 @@ export default function TabLayout() {
         name="summary"
         options={{
           href: null,
+          tabBarStyle: {
+            display: 'none',
+          },
         }}
       />
     </Tabs>
