@@ -5,11 +5,15 @@ import { useAuth } from '@/hooks/use-auth';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card, Badge, Button } from '@/components/ui';
+import { useState } from 'react';
+import { EditProfileModal } from '@/components/auth/edit-profile-modal';
 
 export function UserProfile() {
   const { user, isLoading, logout } = useAuth();
   const { colors, status, special, fonts, spacing, borderRadius, borderWidth, isDark } = useCashouTheme();
   const insets = useSafeAreaInsets();
+
+  const [editModalVisible, setEditModalVisible] = useState(false);
 
   const handleLogout = () => {
     Alert.alert(
@@ -48,6 +52,8 @@ export function UserProfile() {
 
   // Get display name
   const getDisplayName = (): string => {
+    console.log('User name', user?.name);
+    console.log('User username', user?.username);
     return user?.name || user?.username || 'Investisseur';
   };
 
@@ -169,13 +175,16 @@ export function UserProfile() {
         <Button
           title="Éditer"
           variant="outline"
-          onPress={() => {
-            // TODO: Navigate to edit profile screen
-            Alert.alert('Éditer le profil', 'Fonctionnalité à venir');
-          }}
+          onPress={() => setEditModalVisible(true)}
           leftIcon={<Ionicons name="create-outline" size={18} color={colors.accent} />}
-          style={{ minWidth: 140 }}
         />
+
+        {/* 4. Add modal before closing tag */}
+        <EditProfileModal
+          visible={editModalVisible}
+          onClose={() => setEditModalVisible(false)}
+        />
+
       </Card>
 
       {/* Stats Cards Grid */}
