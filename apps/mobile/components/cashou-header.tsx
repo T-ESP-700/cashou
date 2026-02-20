@@ -32,10 +32,10 @@ export function CashouHeader({
     }
   };
 
-  const iconColor = isDark ? '#FFFFFF' : '#1C1E33';
-  const pillBg = colors.primary;
-  const pillBorder = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)';
-  const pillTextColor = isDark ? '#FFFFFF' : '#1C1E33';
+  const iconColor = '#1C1E33';
+  const pillBg = '#FFB472';
+  const pillBorder = 'rgba(0, 0, 0, 0.06)';
+  const pillTextColor = '#1C1E33';
 
   return (
     <View

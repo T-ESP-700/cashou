@@ -28,7 +28,7 @@ export default function TabLayout() {
   // Pages liées à l'historique de jeu
   const isGameHistoryRelated = pathname === '/game-history';
 
-  const focusedIconColor = isDark ? "#FFFFFF" : "#172D4E";
+  const focusedIconColor = "#172D4E";
   const unfocusedIconColor = isDark ? "rgba(255, 255, 255, 0.6)" : "rgba(0, 0, 0, 0.6)";
 
   const bottomMargin = Math.max(TAB_BAR_MARGIN_BOTTOM, insets.bottom + 8);
@@ -41,7 +41,7 @@ export default function TabLayout() {
         justifyContent: 'center',
         alignItems: 'center',
         borderRadius: 9999,
-        backgroundColor: focused ? '#FFFFFF' : 'transparent',
+        backgroundColor: focused ? (isDark ? theme.accent : '#FFFFFF') : 'transparent',
       }}
     >
       <SvgIcon
