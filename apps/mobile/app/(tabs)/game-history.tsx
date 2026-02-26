@@ -140,13 +140,14 @@ export default function LevelsScreen() {
               stars.quiz = ul.stars > 0;
             }
 
+            const completedGame = completedGamesMap.get(ul.level.id);
             return {
               id: ul.level.id,
               number: ul.level.number,
               title: ul.level.title,
               unlocked: ul.unlocked,
               status,
-              gameId: activeGameByLevel.get(ul.level.id),
+              gameId: activeGameByLevel.get(ul.level.id) ?? completedGame?.id,
               stars,
             };
           })
@@ -182,10 +183,10 @@ export default function LevelsScreen() {
           params: { levelId: level.id.toString() },
         });
       }
-    } else if (level.status === 'completed') {
+    } else if (level.status === 'completed' && level.gameId) {
       router.push({
         pathname: '/(tabs)/summary',
-        params: { levelId: level.id.toString() },
+        params: { gameId: level.gameId.toString() },
       });
     }
   };

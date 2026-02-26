@@ -122,6 +122,20 @@ export class TransactionService {
    * @param walletId - Identifiant du portefeuille
    * @returns Promise<number> - Valeur totale (somme des totalValue)
    */
+  async findByGameInstance(gameInstanceId: number) {
+    return this.prisma.transaction.findMany({
+      where: { gameInstanceId },
+      orderBy: { transactionDate: "asc" },
+      include: {
+        asset: {
+          include: {
+            submarket: true,
+          },
+        },
+      },
+    });
+  }
+
   async getTotalValueByWallet(walletId: number): Promise<number> {
     const transactions = await this.prisma.transaction.findMany({
       where: { walletId },

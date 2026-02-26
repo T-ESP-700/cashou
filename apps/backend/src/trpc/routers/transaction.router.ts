@@ -100,6 +100,16 @@ export const transactionRouter = t.router({
     }),
 
   /**
+   * Récupère toutes les transactions d’une instance de jeu
+   * Endpoint: GET http://localhost:3000/trpc/transaction.getByGameInstance?input={"gameInstanceId":1}
+   */
+  getByGameInstance: t.procedure
+    .input(z.object({ gameInstanceId: z.number().int().min(1) }))
+    .query(async ({ input }) => {
+      return await transactionService.findByGameInstance(input.gameInstanceId);
+    }),
+
+  /**
    * Calcule la valeur totale des transactions d’un portefeuille
    * Endpoint: GET http://localhost:3000/trpc/transaction.getTotalValueByWallet?input={"walletId":1}
    */

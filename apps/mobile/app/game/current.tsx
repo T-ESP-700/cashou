@@ -1225,7 +1225,7 @@ export default function GameCurrentScreen() {
               ) : (
                 <ActionPillButton
                   label="Rejouer"
-                  iconName="refresh"
+                  iconName="refresh-outline"
                   onPress={handleReplay}
                   disabled={isReplayCreating}
                   isLoading={isReplayCreating}
@@ -1481,6 +1481,7 @@ const styles = StyleSheet.create({
   },
   endGameBlur: {
     flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   endGameOverlay: {
     flex: 1,
@@ -1544,7 +1545,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   endGameActionButton: {
-    flex: 1,
   },
   endGameSingleAction: {
     flex: 0,

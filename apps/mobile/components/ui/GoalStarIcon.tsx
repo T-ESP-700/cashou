@@ -14,7 +14,7 @@ export function GoalStarIcon({ filled, size = 14, idSuffix = 'default' }: GoalSt
   if (filled) {
     return (
       <Svg width={size} height={size} viewBox="0 0 14 14" fill="none">
-        <Path d={STAR_PATH} fill="#2B2C48" />
+        <Path d={STAR_PATH} fill="#FFFFFF" />
       </Svg>
     );
   }
@@ -49,7 +49,7 @@ export function GoalStarIcon({ filled, size = 14, idSuffix = 'default' }: GoalSt
         transform="translate(0.42 0.42) scale(0.94)"
         fill="none"
         stroke="#5C4A3A"
-        strokeOpacity="0.45"
+        strokeOpacity="0.25"
         strokeWidth="0.7"
         strokeLinejoin="round"
       />
