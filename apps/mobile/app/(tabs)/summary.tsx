@@ -9,6 +9,9 @@ import { useHeaderOptions } from '@/hooks/use-header';
 import { useAuth } from '@/hooks/use-auth';
 import { ActionPillButton, GoalStarIcon } from '@/components/ui';
 import QuizActionIcon from '@/assets/images/quiz-action.svg';
+import TxIconBuy from '@/assets/images/tx-icon-buy.svg';
+import TxIconSell from '@/assets/images/tx-icon-sell.svg';
+import TxIconArrow from '@/assets/images/tx-icon-arrow.svg';
 
 interface GoalResult {
   id: number;
@@ -345,27 +348,37 @@ export default function GameSummaryScreen() {
               <Text allowFontScaling={false} style={styles.summaryLabel}>Aucune transaction</Text>
             </View>
           ) : (
-            transactionGroups.map((group, gi) => (
-              <View key={group.submarketTitle} style={styles.transactionGroup}>
+            transactionGroups.map((group) => (
+              <View key={group.submarketTitle}>
                 <Text allowFontScaling={false} style={styles.transactionGroupTitle}>{group.submarketTitle}</Text>
+              <View style={styles.transactionGroupCard}>
                 {group.items.map((item) => {
                   const isSell = item.type === 'SELL';
                   const isInterest = item.type === 'INTEREST';
-                  const dotColor = isSell ? '#D54747' : '#0C9A20';
-                  const label = isInterest
-                    ? `Intérêts ${item.assetTitle}`
-                    : isSell
-                      ? `${item.assetTitle} → Portefeuille`
-                      : `Portefeuille → ${item.assetTitle}`;
+                  const TypeIcon = isSell ? TxIconSell : TxIconBuy;
                   return (
                     <View key={item.id} style={styles.transactionRow}>
-                      <View style={[styles.transactionDot, { backgroundColor: dotColor }]} />
-                      <Text allowFontScaling={false} style={styles.transactionLabel} numberOfLines={1}>{label}</Text>
+                      <TypeIcon width={12} height={12} />
+                      {isInterest ? (
+                        <Text allowFontScaling={false} style={styles.transactionLabelFlex} numberOfLines={1}>
+                          Intérêts {item.assetTitle}
+                        </Text>
+                      ) : (
+                        <View style={styles.transactionLabelRow}>
+                          <Text allowFontScaling={false} style={styles.transactionLabel} numberOfLines={1}>
+                            {isSell ? item.assetTitle : 'Portefeuille'}
+                          </Text>
+                          <TxIconArrow width={12} height={12} />
+                          <Text allowFontScaling={false} style={styles.transactionLabel} numberOfLines={1}>
+                            {isSell ? 'Portefeuille' : item.assetTitle}
+                          </Text>
+                        </View>
+                      )}
                       <Text allowFontScaling={false} style={styles.transactionAmount}>{formatAmount(item.totalValue)}</Text>
                     </View>
                   );
                 })}
-                {gi < transactionGroups.length - 1 && <View style={styles.summaryDivider} />}
+              </View>
               </View>
             ))
           )
@@ -545,9 +558,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Roboto',
   },
   screenTitle: {
-    fontSize: 42,
+    fontSize: 26,
     color: '#2B2C48',
     fontFamily: 'Anybody',
+    fontWeight: '700',
     marginBottom: 6,
   },
   titleUnderline: {
@@ -563,9 +577,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   sectionTitle: {
-    fontSize: 24,
+    fontSize: 20,
     color: '#2B2C48',
     fontFamily: 'Anybody',
+    fontWeight: '700',
   },
   simpleViewRow: {
     flexDirection: 'row',
@@ -577,38 +592,53 @@ const styles = StyleSheet.create({
     color: '#2B2C48',
     fontFamily: 'Roboto',
   },
-  transactionGroup: {
+  transactionGroupCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
     marginBottom: 12,
   },
   transactionGroupTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: '#2B2C48',
-    fontFamily: 'Roboto',
+    fontFamily: 'Anybody',
     marginBottom: 8,
+    marginTop: 4,
   },
   transactionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 6,
+    marginBottom: 12,
   },
-  transactionDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  transactionLabelRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flexShrink: 1,
   },
   transactionLabel: {
-    flex: 1,
     fontSize: 14,
     fontFamily: 'Roboto',
     color: '#2B2C48',
+    flexShrink: 1,
+  },
+  transactionLabelFlex: {
+    fontSize: 14,
+    fontFamily: 'Roboto',
+    color: '#2B2C48',
+    flex: 1,
+    flexShrink: 1,
   },
   transactionAmount: {
     fontSize: 14,
     fontWeight: '700',
     fontFamily: 'Roboto',
     color: '#2B2C48',
+    flexShrink: 0,
   },
   panel: {
     backgroundColor: '#F2F2F2',
@@ -712,6 +742,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#F4A258',
     borderRadius: 22,
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 14,
     paddingVertical: 10,
     flexDirection: 'row',
