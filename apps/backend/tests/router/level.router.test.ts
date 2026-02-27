@@ -1,6 +1,6 @@
 // tests/router/level.router.test.ts
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import type { Level } from "@prisma/client";
+import type { Level } from "@cashou/db-app";
 import { levelRouter } from "../../src/trpc/routers/level.router";
 import { LevelService } from "../../src/trpc/services/level.service";
 

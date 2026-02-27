@@ -1,6 +1,6 @@
 // tests/service/goal.service.integration.test.ts
 import { describe, it, expect, afterAll } from "bun:test";
-import { PrismaClient, type Goal } from "@prisma/client";
+import { PrismaClient, type Goal } from "@cashou/db-app";
 import { GoalService } from "../../src/trpc/services/goal.service";
 
 const shouldRun = !!process.env.CASHOU_DB_URL;
@@ -24,6 +24,8 @@ const shouldRun = !!process.env.CASHOU_DB_URL;
         const data: Omit<Goal, "id" | "createdAt" | "updatedAt"> = {
             title: "Objectif IT",
             description: "Atteindre 1000 points pour les tests d'intégration",
+            goalType: null,
+            goalValue: null,
         };
 
         const created = await service.create(data);

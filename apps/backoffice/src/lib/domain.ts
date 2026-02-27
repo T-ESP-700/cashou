@@ -176,7 +176,7 @@ export interface Question {
 
 export interface Answer {
   id: number
-  questionId: number
+  questionId: number | null
   text?: string | null
   isCorrect?: boolean | null
   createdAt?: string | Date | null
@@ -338,6 +338,7 @@ export interface EntityField {
 export interface ModuleConfig {
   key: BackofficeModule
   title: string
+  description?: string
   badge?: string
   accent?: string
   icon: LucideIcon

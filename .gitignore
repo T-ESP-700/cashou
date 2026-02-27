@@ -93,7 +93,7 @@ Thumbs.db
 !.claude/settings.json
 
 # Docker
-.dockerignore
+apps/backend/.dockerignore
 docker-compose.override.yml
 
 # Temporary files
@@ -149,6 +149,7 @@ web_modules/
 # dotenv environment variable files
 .env.*
 !.env.example
+!.env.docker
 
 # parcel-bundler cache (https://parceljs.org/)
 .parcel-cache
@@ -220,3 +221,4 @@ vite.config.ts.timestamp-*
 
 ios/
 android/
+.env.docker

@@ -1,6 +1,6 @@
 import { describe, test, expect, mock, beforeEach } from "bun:test";
 import { EventService } from "../../src/trpc/services/event.service";
-import type { Event, PrismaClient } from "@prisma/client";
+import type { Event, PrismaClient } from "@cashou/db-app";
 
 // Fonction utilitaire pour créer des événements de test
 function makeEvent(id: number, over: Partial<Event> = {}): Event {

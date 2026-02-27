@@ -54,7 +54,7 @@ jobs:
         run: bun run typecheck
       - name: Code quality
         run: bunx eslint . --ext .ts,.tsx
-        working-directory: backend
+        working-directory: apps/backend
 
   # Tests des packages partagés (uniquement ceux qui ont des tests)
   shared-packages-test:
@@ -191,14 +191,10 @@ jobs:
         run: bun run db:migrate:app
       - name: Run migrations for backoffice database
         run: bun run db:migrate:backoffice
-      - name: Start backend server
-        run: |
-          bun run --filter backend dev &
-          sleep 10
+      # Note: Ne pas démarrer de serveur ici - les tests (trpc.test.ts, api.test.ts)
+      # démarrent leur propre serveur sur le port 3000
       - name: Run API tests
         run: bun run --filter backend test --timeout 30000
-      - name: Stop server
-        run: pkill -f "bun.*backend.*dev" || true
 
   # Build des applications
   apps-build:
@@ -222,6 +218,10 @@ jobs:
             packages/*/node_modules
           key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
       - run: bun install --frozen-lockfile
+      - name: Generate Prisma clients
+        run: |
+          bun run db:generate:app
+          bun run db:generate:backoffice
       - name: Type-check & build ${{ matrix.app }}
         run: bun run --filter ${{ matrix.app }} build
 
@@ -315,24 +315,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build Docker image for ${{ matrix.service }}
         run: |
-          docker build -t cashou-${{ matrix.service }}:latest ./apps/${{ matrix.service }}
+          docker build -t cashou-${{ matrix.service }}:latest -f ./apps/${{ matrix.service }}/Dockerfile .
       - name: Push Docker image
         run: |
           echo "Pushing cashou-${{ matrix.service }}:latest"
-
-  # Déploiement
-  deploy:
-    needs: [docker-build]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Deploy with Docker Compose
-        run: |
-          echo "Deploying with Docker Compose..."
-          docker-compose up -d
-      - name: Run health checks
-        run: |
-          echo "Running health checks..."
-          sleep 30
-          echo "Backend health check..."
-          echo "Backoffice health check..."

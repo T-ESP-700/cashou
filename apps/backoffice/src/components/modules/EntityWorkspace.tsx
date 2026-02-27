@@ -75,7 +75,7 @@ export function EntityWorkspace({ moduleKey }: { moduleKey?: BackofficeModule } 
         assetHistory,
         eventAsset,
         impacts,
-        dicoEntries,
+        dicoEntries: dicoEntries ?? [],
       }),
     [
       module,
@@ -372,7 +372,7 @@ function FieldControl({
       {field.type === 'number' && (
         <input
           type="number"
-          value={value ?? ''}
+          value={(value as string | number | undefined) ?? ''}
           onChange={(event) => onChange(event.target.value === '' ? '' : Number(event.target.value))}
           className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
           placeholder={field.placeholder}
@@ -398,7 +398,7 @@ function FieldControl({
       )}
       {field.type === 'select' && (
         <select
-          value={value ?? ''}
+          value={(value as string | number | undefined) ?? ''}
           onChange={(event) => {
             const nextValue = event.target.value
             if (nextValue === '') {

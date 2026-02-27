@@ -71,6 +71,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.1",
+    "@types/bcryptjs": "^3.0.0",
     "@types/bun": "1.2.21",
     "@types/node": "24.0.14",
     "@types/pg": "8.15.4",
@@ -81,8 +82,9 @@
     "dotenv-cli": "8.0.0",
     "eslint": "9.31.0",
     "husky": "^9.1.7",
-    "prisma": "6.14.0",
-    "typescript": "5.9.3"
+    "prisma": "6.18.0",
+    "typescript": "5.9.3",
+    "wait-on": "^9.0.3"
   },
   "peerDependencies": {
     "typescript": "5.9.3"
@@ -106,10 +108,11 @@
   "author": "Cashou Team",
   "license": "MIT",
   "dependencies": {
-    "@trpc/server": "11.4.3",
     "@trpc/react-query": "11.7.1",
-    "pg-boss": "12.5.2",
-    "expo-server-sdk": "4.0.0"
+    "@trpc/server": "11.7.1",
+    "bcryptjs": "^3.0.3",
+    "expo-server-sdk": "4.0.0",
+    "pg-boss": "12.5.2"
   },
   "resolutions": {
     "react": "19.1.0",

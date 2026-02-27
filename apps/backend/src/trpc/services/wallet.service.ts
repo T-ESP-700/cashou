@@ -1,3 +1,5 @@
+// Import depuis @cashou/db-app (et non @prisma/client) car Bun crée des copies séparées
+// de @prisma/client par contexte de résolution, ce qui cause des types incompatibles
 import type { Wallet, PrismaClient } from "@cashou/db-app";
 import { Prisma } from "@cashou/db-app";
 
@@ -56,8 +58,8 @@ export class WalletService {
            ? null
            : new Prisma.Decimal(
                typeof data.amount === "string"
-                 ? data.amount.replace(/,/g, "")
-                 : data.amount
+                 ? (data.amount as string).replace(/,/g, "")
+                 : String(data.amount)
              ),
      };
 
@@ -67,7 +69,7 @@ export class WalletService {
      // 🔢 Convert Decimal to number for API output
      return {
        ...wallet,
-       amount: wallet.amount ? Number(wallet.amount) : wallet.amount,
+       amount: wallet.amount ? new Prisma.Decimal(Number(wallet.amount)) : wallet.amount,
      };
    }
 

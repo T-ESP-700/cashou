@@ -1,7 +1,9 @@
 // Service métier pour la gestion des niveaux du jeu
 // Couche d'abstraction entre les routers et la base de données
 // Updated: Added User progression fields (points, levelId)
-import type { Level, Goal, PrismaClient, User } from "@prisma/client";
+// Import depuis @cashou/db-app (et non @prisma/client) car Bun crée des copies séparées
+// de @prisma/client par contexte de résolution, ce qui cause des types incompatibles
+import type { Level, Goal, PrismaClient, User } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {LevelCreateSchema, LevelDataSchema} from "../schemas-zod/level-schema.ts";
 

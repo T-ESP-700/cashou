@@ -1,6 +1,8 @@
 
 // Service métier pour la gestion des associations niveau-objectif
-import type { LevelGoal, PrismaClient } from "@prisma/client";
+// Import depuis @cashou/db-app (et non @prisma/client) car Bun crée des copies séparées
+// de @prisma/client par contexte de résolution, ce qui cause des types incompatibles
+import type { LevelGoal, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type { LevelGoalCreateSchema, LevelGoalDataSchema } from "../schemas-zod/level-goal-schema.ts";
 

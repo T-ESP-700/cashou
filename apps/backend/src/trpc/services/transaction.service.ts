@@ -1,4 +1,6 @@
-import type { Transaction, PrismaClient } from "@prisma/client";
+// Import depuis @cashou/db-app (et non @prisma/client) car Bun crée des copies séparées
+// de @prisma/client par contexte de résolution, ce qui cause des types incompatibles
+import type { Transaction, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {
   TransactionCreateSchema,
@@ -128,7 +130,7 @@ export class TransactionService {
       select: { totalValue: true },
     });
 
-    return transactions.reduce((sum, t) => {
+    return transactions.reduce((sum: number, t: { totalValue: unknown }) => {
       const value = t.totalValue ? Number(t.totalValue) : 0;
       return sum + value;
     }, 0);

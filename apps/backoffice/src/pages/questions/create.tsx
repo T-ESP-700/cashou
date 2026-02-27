@@ -61,7 +61,7 @@ export default function CreateQuestionPage() {
         await Promise.all(
           validAnswers.map((answer) =>
             createAnswerMutation.mutateAsync({
-              questionId: question.id,
+              questionId: (question as unknown as { question: { id: number } }).question.id,
               text: answer.text,
               isCorrect: answer.isCorrect,
             })

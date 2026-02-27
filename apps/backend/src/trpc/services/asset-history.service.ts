@@ -1,6 +1,8 @@
 // Service métier pour la gestion de l'historique des actifs du jeu
 // Couche d'abstraction entre les routers et la base de données
-import type { AssetHistory, PrismaClient } from "@prisma/client";
+// Import depuis @cashou/db-app (et non @prisma/client) car Bun crée des copies séparées
+// de @prisma/client par contexte de résolution, ce qui cause des types incompatibles
+import type { AssetHistory, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {AssetHistoryCreateSchema, AssetHistoryDataSchema} from "../schemas-zod/asset-history-schema.ts";
 

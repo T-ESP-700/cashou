@@ -146,7 +146,7 @@ export const authRouter = router({
     )
     .mutation(async ({ input }) => {
       try {
-        await auth.api.forgetPassword({
+        await (auth.api as any).forgetPassword({
           body: {
             email: input.email,
             redirectTo: (process.env.FRONTEND_URL || 'http://localhost:3000') + '/reset-password',

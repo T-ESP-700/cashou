@@ -1,6 +1,6 @@
 // tests/router/goal.router.test.ts
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import type { Goal } from "@prisma/client";
+import type { Goal } from "@cashou/db-app";
 import { goalRouter } from "../../src/trpc/routers/goal.router";
 import { GoalService } from "../../src/trpc/services/goal.service";
 
@@ -19,6 +19,8 @@ function makeGoal(id: number, over: Partial<Goal> = {}): Goal {
         id,
         title: over.title ?? `Goal ${id}`,
         description: over.description ?? null,
+        goalType: over.goalType ?? null,
+        goalValue: over.goalValue ?? null,
         createdAt: over.createdAt ?? now,
         updatedAt: over.updatedAt ?? now,
     };

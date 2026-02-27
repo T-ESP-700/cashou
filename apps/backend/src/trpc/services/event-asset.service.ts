@@ -1,7 +1,9 @@
 // Service métier pour la gestion des événements d'actifs du jeu
 // Couche d'abstraction entre les routers et la base de données
-import type { EventAsset, PrismaClient } from "@prisma/client";
-import { Prisma } from "@prisma/client";
+// Import depuis @cashou/db-app (et non @prisma/client) car Bun crée des copies séparées
+// de @prisma/client par contexte de résolution, ce qui cause des types incompatibles
+import type { EventAsset, PrismaClient } from "@cashou/db-app";
+import { Prisma } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {EventAssetCreateSchema, EventAssetDataSchema} from "../schemas-zod/event-asset-schema.ts";
 
@@ -116,8 +118,7 @@ export class EventAssetService {
                     data: {
                         assetId: data.assetId,
                         timestamp: data.date,  // Le champ date devient timestamp
-                        value: data.value,
-                        volume: data.volume
+                        value: data.value
                     }
                 });
             }
@@ -172,8 +173,7 @@ export class EventAssetService {
                         where: { id: existingAssetHistory.id },
                         data: {
                             timestamp: date,
-                            value: data.value,
-                            volume: data.volume
+                            value: data.value
                         }
                     });
                 } else {
@@ -182,8 +182,7 @@ export class EventAssetService {
                         data: {
                             assetId: assetId,
                             timestamp: date,
-                            value: data.value,
-                            volume: data.volume
+                            value: data.value
                         }
                     });
                 }
