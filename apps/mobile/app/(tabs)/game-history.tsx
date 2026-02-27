@@ -151,10 +151,13 @@ export default function LevelsScreen() {
           params: { levelId: level.id.toString() },
         });
       }
-    } else if (level.status === 'completed' && level.gameId) {
+    } else if (level.status === 'completed') {
       router.push({
         pathname: '/(tabs)/summary',
-        params: { gameId: level.gameId.toString() },
+        params: {
+          levelId: level.id.toString(),
+          mode: 'history',
+        },
       });
     }
   };

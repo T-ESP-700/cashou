@@ -268,6 +268,98 @@ export class EndGameService {
     }
 
     /**
+     * Recalcule le résultat de fin de partie pour une partie déjà terminée, sans modifier l'état.
+     * Utilisé pour afficher le recap en lecture seule (ex: mode history).
+     */
+    async getEndGameResult(gameInstanceId: number): Promise<EndGameResult> {
+        const gameInstance = await this.prisma.gameInstance.findUnique({
+            where: { id: gameInstanceId },
+            include: {
+                level: {
+                    include: {
+                        levelGoals: {
+                            orderBy: { id: "asc" },
+                            include: { goal: true },
+                        },
+                    },
+                },
+                wallets: true,
+                holdings: { include: { asset: true } },
+            },
+        });
+
+        if (!gameInstance) throw new Error(`GameInstance ${gameInstanceId} non trouvée`);
+        if (!gameInstance.level) throw new Error(`Aucun niveau associé à la partie ${gameInstanceId}`);
+
+        const startBalance = Number(gameInstance.startBalance || gameInstance.level.startBalance || 0);
+        const wallet = gameInstance.wallets[0];
+        if (!wallet) throw new Error(`Aucun wallet trouvé pour la partie ${gameInstanceId}`);
+
+        let totalAssetsValue = 0;
+        let totalInterests = 0;
+        for (const holding of gameInstance.holdings) {
+            const holdingWithAsset = holding as HoldingWithAsset;
+            const quantity = holdingWithAsset.quantity ? Number(holdingWithAsset.quantity) : 0;
+            const interests = this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
+            totalInterests += interests;
+            totalAssetsValue += quantity + interests;
+        }
+
+        const currentWalletBalance = Number(wallet.amount || 0);
+        const totalValue = currentWalletBalance + totalAssetsValue;
+
+        const goalResults: GoalResult[] = [];
+        for (const levelGoal of gameInstance.level.levelGoals) {
+            const goal = levelGoal.goal;
+            if (!goal) continue;
+            const validated = this.validateGoal(goal.goalType, goal.goalValue, totalValue, startBalance);
+            goalResults.push({
+                id: goal.id,
+                title: goal.title || "Objectif sans titre",
+                description: goal.description,
+                isMandatory: levelGoal.isMandatory,
+                validated,
+            });
+        }
+
+        const allMandatoryGoalsValidated = gameInstance.level.levelGoals
+            .filter((lg) => lg.isMandatory)
+            .every((lg) => goalResults.find((g) => g.id === lg.goal?.id)?.validated === true);
+
+        const userId = gameInstance.userId;
+        const levelId = gameInstance.levelId;
+        let completion: Awaited<ReturnType<LevelCompletionService["getCompletion"]>> = null;
+        if (userId && levelId) {
+            completion = await this.levelCompletionService.getCompletion(userId, levelId);
+        }
+
+        return {
+            success: allMandatoryGoalsValidated,
+            gameInstanceId,
+            startBalance,
+            walletBalance: currentWalletBalance,
+            assetsValue: totalAssetsValue,
+            totalValue,
+            goals: goalResults,
+            message: allMandatoryGoalsValidated
+                ? `Total: ${Math.round(totalValue)} EUR`
+                : `Objectifs non atteints. Total: ${Math.round(totalValue)} EUR`,
+            modal: {
+                type: allMandatoryGoalsValidated ? "PRIMARY_SUCCESS_ONLY" : "PRIMARY_FAILURE",
+                title: allMandatoryGoalsValidated ? "Bravo !" : "Dommage !",
+                primaryMessage: "",
+                secondaryMessage: null,
+            },
+            ...(completion && {
+                stars: completion.stars,
+                mandatoryGoalsMet: completion.mandatoryGoalsMet,
+                bonusGoalsMet: completion.bonusGoalsMet,
+                quizPassed: completion.quizPassed,
+            }),
+        };
+    }
+
+    /**
      * Valide un objectif basé sur son goalType et goalValue
      * @param goalType - Type d'objectif (ex: 'wallet_gte_start')
      * @param goalValue - Valeur associée (ex: 0 pour >= startBalance)

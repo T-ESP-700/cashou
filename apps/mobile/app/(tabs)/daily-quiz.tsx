@@ -867,7 +867,14 @@ export default function DailyQuizScreen() {
                 <TouchableOpacity
                   style={[styles.completedButton, { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border }]}
                   onPress={() => {
-                    router.push('/(tabs)/history');
+                    if (isLevelQuiz && gameInstanceId) {
+                      router.push({
+                        pathname: '/(tabs)/summary',
+                        params: { gameId: gameInstanceId.toString() },
+                      });
+                    } else {
+                      router.push('/(tabs)/history');
+                    }
                   }}
                   activeOpacity={0.8}
                 >
@@ -877,7 +884,7 @@ export default function DailyQuizScreen() {
                       { fontFamily: CashouTheme.fonts.subheading, color: theme.text },
                     ]}
                   >
-                    Historique
+                    {isLevelQuiz ? 'Recap' : 'Historique'}
                   </Text>
                 </TouchableOpacity>
               </View>
