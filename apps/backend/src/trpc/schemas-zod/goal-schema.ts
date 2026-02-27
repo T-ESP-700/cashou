@@ -8,8 +8,8 @@ export const goalDataSchema = z.object({
   description: z.string().nullish(),
   successMessage: z.string().nullish(),
   failureMessage: z.string().nullish(),
-  goalType: z.string().nullish(),      // ← à ajouter
-  goalValue: z.number().nullish(),     // ← à ajouter
+  goalType: z.string().nullish(),
+  goalValue: z.number().nullish(),
 });
 export type GoalDataSchema = z.infer<typeof goalDataSchema>;
 
