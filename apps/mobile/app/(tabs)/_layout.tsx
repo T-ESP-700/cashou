@@ -25,8 +25,33 @@ export default function TabLayout() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
 
-  // Pages liees aux niveaux (l'icone doit etre en focus)
-  const isLevelsRelated = pathname === '/game-history' || pathname === '/summary';
+  // Pages liées à l'historique de jeu
+  const isGameHistoryRelated = pathname === '/game-history';
+
+  const focusedIconColor = "#172D4E";
+  const unfocusedIconColor = isDark ? "rgba(255, 255, 255, 0.6)" : "rgba(0, 0, 0, 0.6)";
+
+  const bottomMargin = Math.max(TAB_BAR_MARGIN_BOTTOM, insets.bottom + 8);
+
+  const renderTabIcon = (SvgIcon: React.FC<any>, focused: boolean) => (
+    <View
+      style={{
+        flex: 1,
+        alignSelf: 'stretch',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 9999,
+        backgroundColor: focused ? (isDark ? theme.accent : '#FFFFFF') : 'transparent',
+      }}
+    >
+      <SvgIcon
+        width={ICON_SIZE}
+        height={ICON_SIZE}
+        color={focused ? focusedIconColor : unfocusedIconColor}
+        strokeWidth={ICON_STROKE_WIDTH}
+      />
+    </View>
+  );
 
   const focusedIconColor = "#172D4E";
   const unfocusedIconColor = isDark ? "rgba(255, 255, 255, 0.6)" : "rgba(0, 0, 0, 0.6)";
