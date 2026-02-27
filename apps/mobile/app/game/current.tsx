@@ -708,7 +708,10 @@ export default function GameCurrentScreen() {
     setShowEndGameModal(false);
     router.push({
       pathname: '/(tabs)/daily-quiz',
-      params: { quizId: levelQuizId.toString() },
+      params: {
+        quizId: levelQuizId.toString(),
+        gameInstanceId: gameInstanceId ? gameInstanceId.toString() : '',
+      },
     });
   };
 
