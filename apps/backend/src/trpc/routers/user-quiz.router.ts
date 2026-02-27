@@ -379,6 +379,22 @@ export const userQuizRouter = router({
         }),
 
     /**
+     * Retourne le statut du quiz de niveau pour une gameInstance donnée.
+     * Endpoint: GET http://localhost:3000/trpc/userQuiz.getQuizStatusForGame
+     * @input {gameInstanceId: number}
+     */
+    getQuizStatusForGame: protectedProcedure
+        .input(z.object({
+            gameInstanceId: z.number().min(1, "L'ID de la partie doit être > 0"),
+        }))
+        .query(async ({ ctx, input }) => {
+            return await userQuizService.getQuizStatusForGame(
+                input.gameInstanceId,
+                ctx.userId
+            );
+        }),
+
+    /**
      * Démarre un quiz de niveau : crée un UserQuiz lié à la gameInstance
      * et tire 1 question aléatoire parmi celles du quiz.
      * Endpoint: POST http://localhost:3000/trpc/userQuiz.startLevelQuiz

@@ -927,6 +927,35 @@ export class UserQuizService {
     }
 
     /**
+     * Retourne le statut du quiz de niveau pour une gameInstance donnée.
+     * - notDone : aucun UserQuiz complété lié à cette partie
+     * - doneAndPassed : quiz fait et réussi
+     * - doneAndFailed : quiz fait mais raté
+     */
+    async getQuizStatusForGame(gameInstanceId: number, userId: string): Promise<{
+        status: 'notDone' | 'doneAndPassed' | 'doneAndFailed';
+        userQuizId: number | null;
+    }> {
+        const userQuiz = await this.prisma.userQuiz.findFirst({
+            where: {
+                gameInstanceId,
+                userId,
+                completedAt: { not: null },
+            },
+            orderBy: { completedAt: 'desc' },
+        });
+
+        if (!userQuiz) {
+            return { status: 'notDone', userQuizId: null };
+        }
+
+        return {
+            status: userQuiz.isCorrect ? 'doneAndPassed' : 'doneAndFailed',
+            userQuizId: userQuiz.id,
+        };
+    }
+
+    /**
      * Démarre un quiz de niveau pour une instance de jeu donnée.
      * Crée un UserQuiz lié à la gameInstance et tire 1 question aléatoire parmi celles du quiz.
      * Chaque appel crée une nouvelle tentative indépendante.

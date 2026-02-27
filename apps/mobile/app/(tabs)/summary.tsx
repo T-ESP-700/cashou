@@ -97,6 +97,8 @@ export default function GameSummaryScreen() {
   const [endGameResult, setEndGameResult] = useState<EndGameResult | null>(null);
   const [gameInstance, setGameInstance] = useState<GameInstanceData | null>(null);
   const [levelQuizId, setLevelQuizId] = useState<number | null>(null);
+  // statut du quiz pour CETTE partie spécifique (source de vérité)
+  const [quizStatusForGame, setQuizStatusForGame] = useState<'notDone' | 'doneAndPassed' | 'doneAndFailed'>('notDone');
   const [nextLevel, setNextLevel] = useState<UserLevelEntry['level'] | null>(null);
   const [isReplaying, setIsReplaying] = useState(false);
   const [isDetailedView, setIsDetailedView] = useState(false);
@@ -126,6 +128,16 @@ export default function GameSummaryScreen() {
               setLevelQuizId(quizzes?.[0]?.id ?? null);
             } catch (quizErr) {
               console.error('Error fetching level quiz:', quizErr);
+            }
+
+            // Charger le statut du quiz pour CETTE partie depuis UserQuiz.gameInstanceId
+            try {
+              const quizStatus = await trpcClient.userQuiz.getQuizStatusForGame.query({
+                gameInstanceId: gameInstanceId,
+              });
+              setQuizStatusForGame(quizStatus.status);
+            } catch {
+              setQuizStatusForGame('notDone');
             }
           }
         }
@@ -184,36 +196,23 @@ export default function GameSummaryScreen() {
       });
   }, [isDetailedView, gameId]);
 
-  // Refresh stars/quiz status when returning from level quiz
+  // Rafraîchir le statut du quiz au retour de l'écran quiz
   useFocusEffect(
     useCallback(() => {
-      if (!gameInstance?.level?.id || !endGameResult?.success) return;
+      if (!gameInstance?.id) return;
       let cancelled = false;
 
-      trpcClient.auth.getHomeData.query()
-        .then((homeData: any) => {
+      trpcClient.userQuiz.getQuizStatusForGame.query({ gameInstanceId: gameInstance.id })
+        .then((result: any) => {
           if (cancelled) return;
-          const last = homeData?.lastCompletedGame;
-          if (last?.levelId === gameInstance.level?.id && last != null) {
-            setEndGameResult((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    stars: last.stars ?? prev.stars,
-                    mandatoryGoalsMet: last.mandatoryGoalsMet ?? prev.mandatoryGoalsMet,
-                    bonusGoalsMet: last.bonusGoalsMet ?? prev.bonusGoalsMet,
-                    quizPassed: last.quizPassed ?? prev.quizPassed,
-                  }
-                : prev
-            );
-          }
+          setQuizStatusForGame(result.status);
         })
         .catch(() => {});
 
       return () => {
         cancelled = true;
       };
-    }, [gameInstance?.level?.id, endGameResult?.success])
+    }, [gameInstance?.id])
   );
 
   const handleGoHome = () => {
@@ -224,7 +223,10 @@ export default function GameSummaryScreen() {
     if (!levelQuizId) return;
     router.push({
       pathname: '/(tabs)/daily-quiz',
-      params: { quizId: levelQuizId.toString() },
+      params: {
+        quizId: levelQuizId.toString(),
+        gameInstanceId: gameInstance?.id ? gameInstance.id.toString() : '',
+      },
     });
   };
 
@@ -281,8 +283,11 @@ export default function GameSummaryScreen() {
   const bonusGoal = endGameResult?.goals.find((g) => g.isMandatory === false) ?? endGameResult?.goals[1] ?? null;
 
   const hasLevelQuiz = levelQuizId != null;
-  const isQuizDone = endGameResult?.quizPassed === true || !hasLevelQuiz;
-  const shouldShowQuizCta = endGameResult?.success === true && hasLevelQuiz && !isQuizDone;
+  // Le quiz est "fait" pour cette partie si un UserQuiz complété existe pour cette gameInstance
+  const isQuizDoneForThisGame = quizStatusForGame !== 'notDone';
+  const isQuizPassedForThisGame = quizStatusForGame === 'doneAndPassed';
+  // Le bouton quiz n'apparaît que si la partie est réussie ET le quiz n'a pas encore été tenté
+  const shouldShowQuizCta = endGameResult?.success === true && hasLevelQuiz && !isQuizDoneForThisGame;
 
   if (isLoading) {
     return (
@@ -464,16 +469,22 @@ export default function GameSummaryScreen() {
                 </View>
               </View>
             </TouchableOpacity>
-          ) : (
+          ) : isQuizDoneForThisGame ? (
             <View style={styles.goalCard}>
+              <Text allowFontScaling={false} style={styles.goalCardTitle}>Quizz</Text>
               <View style={styles.goalCardRow}>
-                <Text allowFontScaling={false} style={styles.goalCardTitle}>Quizz</Text>
+                <Text
+                  allowFontScaling={false}
+                  style={[styles.goalCardSubtitle, isQuizPassedForThisGame && styles.goalReachedText]}
+                >
+                  Question aléatoire
+                </Text>
                 <View style={styles.goalIconWrap}>
-                  <GoalStarIcon filled size={14} idSuffix="summary-quiz" />
+                  <GoalStarIcon filled={isQuizPassedForThisGame} size={14} idSuffix="summary-quiz" />
                 </View>
               </View>
             </View>
-          )
+          ) : null
         )}
         </>
         )}
