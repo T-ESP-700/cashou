@@ -30,7 +30,7 @@ export default function AssetDetailScreen() {
   // Configure header for this screen
   useHeaderOptions({ showBackButton: true });
 
-  const [asset, setAsset] = useState<any>(null);
+  const [asset, setAsset] = useState<Asset | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentHolding, setCurrentHolding] = useState(0);
@@ -159,17 +159,17 @@ export default function AssetDetailScreen() {
         if (walletId) {
           try {
             const holdings = await trpcClient.holding.getByWallet.query({ walletId: parseInt(walletId) });
-            const holding = holdings.find((h: any) => h.assetId === parseInt(assetId));
+            const holding = (holdings as Holding[]).find((h) => h.assetId === parseInt(assetId));
             if (holding) {
               setCurrentHolding(Number(holding.quantity) || 0);
             }
-          } catch (e) {
-            console.error('[AssetDetail] Failed to load holding:', e);
+          } catch (holdingError) {
+            console.error('[AssetDetail] Failed to load holding:', holdingError);
           }
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error('[AssetDetail] Failed to load asset:', e);
-        setError(e?.message ? String(e.message) : 'Impossible de charger l\'asset');
+        setError(e instanceof Error ? e.message : 'Impossible de charger l\'asset');
       } finally {
         setLoading(false);
       }

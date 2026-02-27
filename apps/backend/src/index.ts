@@ -26,8 +26,11 @@ async function startServer() {
     // Don't fail server startup, but log the error
   }
 
+  // Determine port: TEST_PORT for tests, PORT for env, default 3000
+  const port = parseInt(process.env.TEST_PORT || process.env.PORT || '3000');
+  
   serverInstance = Bun.serve({
-    port: 3000,
+    port,
     hostname: '0.0.0.0', // Listen on all network interfaces
     async fetch(req) {
       const url = new URL(req.url);
@@ -114,10 +117,27 @@ async function startServer() {
   });
 
   console.log(`Backend listening on http://localhost:${serverInstance.port}`);
-  console.log('Auth endpoints available at http://localhost:3000/api/auth/*');
-  console.log('tRPC endpoints available at http://localhost:3000/api/trpc/*');
+  console.log(`Auth endpoints available at http://localhost:${serverInstance.port}/api/auth/*`);
+  console.log(`tRPC endpoints available at http://localhost:${serverInstance.port}/api/trpc/*`);
 
-  return serverInstance;
+  // Return an object with both the server instance and a proper stop method
+  return {
+    ...serverInstance,
+    stop: async () => {
+      console.log('Stopping server and job queue...');
+      try {
+        await stopJobQueue();
+        console.log('Job queue stopped');
+      } catch (error) {
+        console.error('Error stopping job queue:', error);
+      }
+      if (serverInstance) {
+        serverInstance.stop();
+        serverInstance = null;
+        console.log('Server stopped');
+      }
+    }
+  };
 }
 
 // Graceful shutdown handler

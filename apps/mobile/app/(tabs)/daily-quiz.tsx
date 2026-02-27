@@ -1,12 +1,36 @@
 import { View, Text, useColorScheme as useRNColorScheme, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import BottomSheet, { BottomSheetView, BottomSheetBackdrop, BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
 // import { CashouHeader } from '@/components/cashou-header';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useAuth } from '@/hooks/use-auth';
 import { useHeaderOptions } from '@/hooks/use-header';
+
+// Types pour les données de l'API
+interface QuizQuestionData {
+  question: {
+    id: number;
+    text: string | null;
+    explanation: string | null;
+    answers: Array<{
+      id: number;
+      text: string | null;
+      isCorrect: boolean | null;
+    }>;
+  };
+}
+
+interface UserQuizParticipation {
+  userId: string | null;
+  completedAt: Date | null;
+}
+
+interface UserAnswer {
+  answerId: number;
+  accurate: boolean | null;
+}
 
 interface Quiz {
   id: number;
@@ -89,7 +113,7 @@ export default function DailyQuizScreen() {
 
   // Backdrop personnalisé
   const renderBackdrop = useCallback(
-    (props: any) => (
+    (props: BottomSheetBackdropProps) => (
       <BottomSheetBackdrop
         {...props}
         disappearsOnIndex={-1}
@@ -140,11 +164,11 @@ export default function DailyQuizScreen() {
           });
 
           // Transformer les données
-          const formattedQuestions: Question[] = questionsData.map((qq: any) => ({
+          const formattedQuestions: Question[] = (questionsData as QuizQuestionData[]).map((qq) => ({
             id: qq.question.id,
             text: qq.question.text,
             explanation: qq.question.explanation,
-            answers: qq.question.answers.map((a: any) => ({
+            answers: qq.question.answers.map((a) => ({
               id: a.id,
               text: a.text,
               isCorrect: a.isCorrect,
@@ -187,8 +211,8 @@ export default function DailyQuizScreen() {
                   quizId: (quizData as Quiz).id,
                 });
 
-                const userParticipation = (participations as any[]).find(
-                  (p: any) => p.userId === user.id && p.completedAt !== null
+                const userParticipation = (participations as UserQuizParticipation[]).find(
+                  (p) => p.userId === user.id && p.completedAt !== null
                 );
 
                 isQuizCompleted = userParticipation !== undefined;
@@ -206,10 +230,11 @@ export default function DailyQuizScreen() {
                 questionId: q.id,
               });
               if (userAnswer) {
+                const typedAnswer = userAnswer as UserAnswer;
                 return {
                   questionId: q.id,
-                  answerId: (userAnswer as any).answerId,
-                  isCorrect: (userAnswer as any).accurate || false,
+                  answerId: typedAnswer.answerId,
+                  isCorrect: typedAnswer.accurate || false,
                 };
               }
             } catch {
@@ -300,11 +325,11 @@ export default function DailyQuizScreen() {
       });
 
       // Transformer les données
-      const formattedQuestions: Question[] = questionsData.map((qq: any) => ({
+      const formattedQuestions: Question[] = (questionsData as QuizQuestionData[]).map((qq) => ({
         id: qq.question.id,
         text: qq.question.text,
         explanation: qq.question.explanation,
-        answers: qq.question.answers.map((a: any) => ({
+        answers: qq.question.answers.map((a) => ({
           id: a.id,
           text: a.text,
           isCorrect: a.isCorrect,
@@ -341,8 +366,8 @@ export default function DailyQuizScreen() {
           quizId: quiz.id,
         });
 
-        const userParticipation = (existingParticipations as any[]).find(
-          (p: any) => p.userId === user.id && p.completedAt !== null
+        const userParticipation = (existingParticipations as UserQuizParticipation[]).find(
+          (p) => p.userId === user.id && p.completedAt !== null
         );
 
         if (userParticipation) {
@@ -424,7 +449,7 @@ export default function DailyQuizScreen() {
                 userId: user.id,
                 questionId: q.id,
               });
-              return (userAnswer as any)?.accurate || false;
+              return (userAnswer as UserAnswer | null)?.accurate || false;
             } catch {
               return false;
             }
@@ -442,9 +467,10 @@ export default function DailyQuizScreen() {
               questionId: q.id,
             });
             if (userAnswer) {
+              const typedAnswer = userAnswer as UserAnswer;
               answersMap.set(q.id, {
-                answerId: (userAnswer as any).answerId,
-                isCorrect: (userAnswer as any).accurate || false,
+                answerId: typedAnswer.answerId,
+                isCorrect: typedAnswer.accurate || false,
               });
             }
           } catch {

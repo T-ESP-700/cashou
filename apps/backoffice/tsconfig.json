@@ -10,8 +10,5 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*"],
-  "references": [
-    { "path": "../../packages/@cashou/ui" }
-  ]
+  "include": ["src/**/*"]
 }

@@ -63,10 +63,10 @@ export class WalletService {
              ),
      };
 
-     // 💾 Create the wallet record
+     // Create the wallet record
      const wallet = await this.prisma.wallet.create({ data: normalizedData });
 
-     // 🔢 Convert Decimal to number for API output
+     // Convert Decimal to number for API output
      return {
        ...wallet,
        amount: wallet.amount ? new Prisma.Decimal(Number(wallet.amount)) : wallet.amount,

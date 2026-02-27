@@ -83,8 +83,8 @@ export function CreateLevelDialog({ open, onOpenChange, onSuccess }: CreateLevel
       onSuccess(result.id)
       onOpenChange(false)
       reset()
-    } catch (error: any) {
-      toast.error(`Impossible de créer le niveau : ${error?.message ?? 'Erreur inconnue'}`)
+    } catch (error: unknown) {
+      toast.error(`Impossible de créer le niveau : ${error instanceof Error ? error.message : 'Erreur inconnue'}`)
     }
   }
 

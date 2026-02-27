@@ -2,12 +2,21 @@ import { useEffect, useMemo, useState } from 'react'
 import { AlertCircle, CheckCircle2, Plus } from 'lucide-react'
 import { MODULE_CONFIGS } from '@/config/modules'
 import type { BackofficeModule, EntityField } from '@/lib/domain'
-import { backofficeApi } from '@/services/backoffice-api'
+import { backofficeApi, CrudOperations } from '@/services/backoffice-api'
 import { useBackofficeStore } from '@/store/useBackofficeStore'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-const CRUD_HANDLERS: Partial<Record<BackofficeModule, any>> = {
+import type {
+  Level, Goal, LevelGoal, LevelEvent, Quiz, Question, Answer, QuizQuestion,
+  Market, Submarket, Field, Asset, Event, AssetHistory, EventAsset, Impact, DicoEntry
+} from '@/lib/domain'
+
+// Union type for all possible entity types
+type BaseEntity = Level | Goal | LevelGoal | LevelEvent | Quiz | Question | Answer | QuizQuestion |
+  Market | Submarket | Field | Asset | Event | AssetHistory | EventAsset | Impact | DicoEntry
+
+const CRUD_HANDLERS: Partial<Record<BackofficeModule, CrudOperations>> = {
   levels: backofficeApi.level,
   goals: backofficeApi.goal,
   levelGoals: backofficeApi.levelGoal,
@@ -101,7 +110,7 @@ export function EntityWorkspace({ moduleKey }: { moduleKey?: BackofficeModule } 
 
   const moduleFilteredRecords = useMemo(() => {
     if (module === 'quizzes' && quizTypeFilter !== 'ALL') {
-      return records.filter((record) => record.type === quizTypeFilter)
+      return records.filter((record) => 'type' in record && record.type === quizTypeFilter)
     }
     return records
   }, [records, module, quizTypeFilter])
@@ -128,7 +137,7 @@ export function EntityWorkspace({ moduleKey }: { moduleKey?: BackofficeModule } 
 
   useEffect(() => {
     if (selectedRecord && selectedRecordId !== '__new__') {
-      setFormValues(selectedRecord)
+      setFormValues(selectedRecord as unknown as Record<string, unknown>)
     } else {
       setFormValues({})
     }
@@ -265,7 +274,7 @@ export function EntityWorkspace({ moduleKey }: { moduleKey?: BackofficeModule } 
                     {config.columns?.map((column) => (
                       <td key={`${record.id}-${column.key}`} className="px-4 py-3 text-slate-700">
                         {column.render
-                          ? column.render(record)
+                          ? column.render(record as unknown as Record<string, unknown>)
                           : formatValue(record[column.key as keyof typeof record])}
                       </td>
                     ))}
@@ -448,25 +457,25 @@ function formatValue(value: unknown) {
 function getRecordsForModule(
   module: BackofficeModule,
   data: {
-    levels: any[]
-    goals: any[]
-    levelGoals: any[]
-    levelEvents: any[]
-    quizzes: any[]
-    questions: any[]
-    answers: any[]
-    quizQuestions: any[]
-    markets: any[]
-    submarkets: any[]
-    fields: any[]
-    assets: any[]
-    events: any[]
-    assetHistory: any[]
-    eventAsset: any[]
-    impacts: any[]
-    dicoEntries: any[]
+    levels: Level[]
+    goals: Goal[]
+    levelGoals: LevelGoal[]
+    levelEvents: LevelEvent[]
+    quizzes: Quiz[]
+    questions: Question[]
+    answers: Answer[]
+    quizQuestions: QuizQuestion[]
+    markets: Market[]
+    submarkets: Submarket[]
+    fields: Field[]
+    assets: Asset[]
+    events: Event[]
+    assetHistory: AssetHistory[]
+    eventAsset: EventAsset[]
+    impacts: Impact[]
+    dicoEntries: DicoEntry[]
   },
-) {
+): BaseEntity[] {
   switch (module) {
     case 'levels':
       return data.levels
@@ -518,15 +527,15 @@ function buildDynamicOptions({
   quizzes,
   questions,
 }: {
-  markets: any[]
-  submarkets: any[]
-  fields: any[]
-  assets: any[]
-  events: any[]
-  levels: any[]
-  goals: any[]
-  quizzes: any[]
-  questions: any[]
+  markets: Market[]
+  submarkets: Submarket[]
+  fields: Field[]
+  assets: Asset[]
+  events: Event[]
+  levels: Level[]
+  goals: Goal[]
+  quizzes: Quiz[]
+  questions: Question[]
 }): Record<string, Array<{ value: number; label: string }>> {
   return {
     marketId: markets.map((market) => ({

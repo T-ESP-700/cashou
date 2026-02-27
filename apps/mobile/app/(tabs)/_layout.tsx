@@ -1,10 +1,12 @@
 import { Tabs, usePathname } from 'expo-router';
-import React from 'react';
+import React, { ComponentProps } from 'react';
 import { useColorScheme as useRNColorScheme, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { CashouTheme } from '@/constants/cashou-theme';
+
+type IoniconsName = ComponentProps<typeof Ionicons>['name'];
 
 export default function TabLayout() {
   const colorScheme = useRNColorScheme();
@@ -49,7 +51,7 @@ export default function TabLayout() {
                 />
               )}
               <Ionicons
-                name={(focused ? "home" : "home-outline") as any}
+                name={(focused ? "home" : "home-outline") as IoniconsName}
                 size={size}
                 color="#FFFFFF"
                 style={{ opacity: focused ? 1 : 0.6 }}
@@ -104,7 +106,7 @@ export default function TabLayout() {
                 />
               )}
               <Ionicons
-                name={(focused ? "book" : "book-outline") as any}
+                name={(focused ? "book" : "book-outline") as IoniconsName}
                 size={size}
                 color="#FFFFFF"
                 style={{ opacity: focused ? 1 : 0.6 }}
@@ -132,7 +134,7 @@ export default function TabLayout() {
                 />
               )}
               <Ionicons
-                name={(focused ? "book" : "book-outline") as any}
+                name={(focused ? "book" : "book-outline") as IoniconsName}
                 size={size}
                 color="#FFFFFF"
                 style={{ opacity: focused ? 1 : 0.6 }}
@@ -159,7 +161,7 @@ export default function TabLayout() {
                 />
               )}
               <Ionicons
-                name={(focused ? "person" : "person-outline") as any}
+                name={(focused ? "person" : "person-outline") as IoniconsName}
                 size={size}
                 color="#FFFFFF"
                 style={{ opacity: focused ? 1 : 0.6 }}
@@ -188,7 +190,7 @@ export default function TabLayout() {
                   />
                 )}
                 <Ionicons
-                  name={(isFocused ? "game-controller" : "game-controller-outline") as any}
+                  name={(isFocused ? "game-controller" : "game-controller-outline") as IoniconsName}
                   size={size}
                   color="#FFFFFF"
                   style={{ opacity: isFocused ? 1 : 0.6 }}

@@ -31,8 +31,8 @@ function makePrismaMock() {
                     id: 123,
                     levelId: (data as LevelEvent).levelId ?? 1,
                     eventId: (data as LevelEvent).eventId ?? 1,
-                    triggerPercent: (data as LevelEvent).triggerPercent ?? 50,
-                    position: (data as LevelEvent).position ?? 1,
+                    triggerPercent: (data as LevelEvent).triggerPercent ?? 0,
+                    position: (data as LevelEvent).position ?? 0,
                     createdAt: now,
                     updatedAt: now,
                 };
@@ -46,8 +46,8 @@ function makePrismaMock() {
                     id,
                     levelId: (data as LevelEvent).levelId ?? 1,
                     eventId: (data as LevelEvent).eventId ?? 1,
-                    triggerPercent: (data as LevelEvent).triggerPercent ?? 50,
-                    position: (data as LevelEvent).position ?? 1,
+                    triggerPercent: (data as LevelEvent).triggerPercent ?? 0,
+                    position: (data as LevelEvent).position ?? 0,
                     createdAt: now,
                     updatedAt: now,
                 };
@@ -60,8 +60,8 @@ function makePrismaMock() {
                     id,
                     levelId: 1,
                     eventId: 1,
-                    triggerPercent: 50,
-                    position: 1,
+                    triggerPercent: 0,
+                    position: 0,
                     createdAt: now,
                     updatedAt: now,
                 };
@@ -140,10 +140,10 @@ describe("LevelEventService — Tests unitaires", () => {
     it("update transmet where.id + data", async () => {
         const { prisma, calls } = makePrismaMock();
         const service = new LevelEventService(prisma as unknown as PrismaClient);
-        const updated = await service.update(7, { levelId: 4, eventId: 5, triggerPercent: 50, position: 1 });
+        const updated = await service.update(7, { levelId: 4, eventId: 5, triggerPercent: 60, position: 2 });
         expect(updated).toMatchObject({ id: 7, levelId: 4, eventId: 5 });
         const updateCall = calls.find((c) => c.method === "update");
-        expect(updateCall?.args).toEqual({ where: { id: 7 }, data: { levelId: 4, eventId: 5, triggerPercent: 50, position: 1 } });
+        expect(updateCall?.args).toEqual({ where: { id: 7 }, data: { levelId: 4, eventId: 5, triggerPercent: 60, position: 2 } });
     });
 
     it("delete transmet where.id", async () => {

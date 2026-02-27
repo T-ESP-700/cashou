@@ -119,6 +119,7 @@ export class EventAssetService {
                         assetId: data.assetId,
                         timestamp: data.date,  // Le champ date devient timestamp
                         value: data.value
+                        // Note: volume field removed from AssetHistory schema
                     }
                 });
             }

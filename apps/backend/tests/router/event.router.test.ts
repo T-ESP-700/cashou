@@ -1,17 +1,9 @@
 // tests/router/event.router.test.ts
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect } from "bun:test";
 import type { Event } from "@cashou/db-app";
 import { eventRouter } from "../../src/trpc/routers/event.router";
 import { EventService } from "../../src/trpc/services/event.service";
-
-type Call =
-    | { method: "findAll"; args?: undefined }
-    | { method: "findOne"; args: { id: number } }
-    | { method: "create"; args: { data: Partial<Event> } }
-    | { method: "update"; args: { id: number; data: Partial<Event> } }
-    | { method: "delete"; args: { id: number } };
-
-const calls: Call[] = [];
+import { createRouterTestSetup } from "../helpers/router-test-factory";
 
 function makeEvent(id: number, over: Partial<Event> = {}): Event {
     const now = new Date();
@@ -25,51 +17,8 @@ function makeEvent(id: number, over: Partial<Event> = {}): Event {
     };
 }
 
-const original = {
-    findAll: EventService.prototype.findAll,
-    findOne: EventService.prototype.findOne,
-    create: EventService.prototype.create,
-    update: EventService.prototype.update,
-    delete: EventService.prototype.delete,
-};
-
-beforeEach(() => {
-    calls.length = 0;
-
-    EventService.prototype.findAll = (async function (this: unknown): Promise<Event[]> {
-        calls.push({ method: "findAll" });
-        return [makeEvent(1, { title: "Event1" })];
-    });
-
-    EventService.prototype.findOne = (async function (this: unknown, id: number): Promise<Event | null> {
-        calls.push({ method: "findOne", args: { id } });
-        if (id === 404) return null;
-        return makeEvent(id);
-    });
-
-    EventService.prototype.create = (async function (this: unknown, data: Partial<Event>): Promise<Event> {
-        calls.push({ method: "create", args: { data } });
-        return makeEvent(123, data);
-    });
-
-    EventService.prototype.update = (async function (this: unknown, id: number, data: Partial<Event>): Promise<Event> {
-        calls.push({ method: "update", args: { id, data } });
-        return makeEvent(id, data);
-    });
-
-    EventService.prototype.delete = (async function (this: unknown, id: number): Promise<Pick<Event, "id">> {
-        calls.push({ method: "delete", args: { id } });
-        return { id };
-    }) as unknown as typeof EventService.prototype.delete;
-});
-
-afterEach(() => {
-    EventService.prototype.findAll = original.findAll;
-    EventService.prototype.findOne = original.findOne;
-    EventService.prototype.create = original.create;
-    EventService.prototype.update = original.update;
-    EventService.prototype.delete = original.delete;
-});
+// Configuration automatique des mocks avec le helper
+const { calls } = createRouterTestSetup(EventService, makeEvent);
 
 type Ctx = Parameters<typeof eventRouter.createCaller>[0];
 
@@ -77,7 +26,7 @@ describe("event.router — createCaller (sans HTTP)", () => {
     it("event.getAll → appelle service.findAll et retourne la liste", async () => {
         const caller = eventRouter.createCaller({} as Ctx);
         const res = await caller.getAll();
-        expect(res).toMatchObject([{ id: 1, title: "Event1" }]);
+        expect(res).toMatchObject([{ id: 1, title: "Event 1" }]);
         const hit = calls.find((c) => c.method === "findAll");
         expect(hit).toBeDefined();
     });

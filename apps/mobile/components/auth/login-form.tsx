@@ -34,7 +34,32 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      let data;
+      const contentType = response.headers.get('content-type');
+
+      // Handle JSON parsing with error handling
+      try {
+        if (contentType && contentType.includes('application/json')) {
+          const text = await response.text();
+          data = text ? JSON.parse(text) : {};
+        } else {
+          // If response is not JSON, try to parse as text
+          const text = await response.text();
+          if (text) {
+            try {
+              data = JSON.parse(text);
+            } catch {
+              // If parsing fails, create error object
+              data = { error: { message: text || 'Invalid response format' } };
+            }
+          } else {
+            data = { error: { message: 'Empty response from server' } };
+          }
+        }
+      } catch (parseError) {
+        console.error('[LoginForm] JSON parsing error:', parseError);
+        data = { error: { message: 'Failed to parse server response' } };
+      }
 
       if (!response.ok || data.error) {
         Alert.alert('Login Failed', data.error?.message || 'Invalid credentials');
@@ -65,6 +90,8 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           '• Device is on the same network\n' +
           '• API URL is correct in .env'
         );
+      } else if (error instanceof SyntaxError) {
+        Alert.alert('Error', 'Invalid response from server. Please try again.');
       } else {
         Alert.alert('Error', 'An error occurred during login');
       }
