@@ -216,6 +216,12 @@ export default function TabLayout() {
           href: null, // Masquer de la tab bar
         }}
       />
+      <Tabs.Screen
+        name="levels"
+        options={{
+          href: null, // Hidden tab, navigated from Profile / Home
+        }}
+      />
     </Tabs>
   );
 }

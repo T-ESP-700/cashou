@@ -19,6 +19,10 @@ function makeGoal(id: number, over: Partial<Goal> = {}): Goal {
         id,
         title: over.title ?? `Goal ${id}`,
         description: over.description ?? null,
+        successMessage: over.successMessage ?? null,
+        failureMessage: over.failureMessage ?? null,
+        goalType: over.goalType ?? null,
+        goalValue: over.goalValue ?? null,
         createdAt: over.createdAt ?? now,
         updatedAt: over.updatedAt ?? now,
     };

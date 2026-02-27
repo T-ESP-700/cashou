@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
@@ -9,9 +10,12 @@ import { useAuth } from '@/hooks/use-auth';
 import { useHeaderOptions } from '@/hooks/use-header';
 import { useNotifications } from '@/hooks/use-notifications';
 import { LevelInfoModal } from '@/components/level-info-modal';
+import { ActionPillButton, GoalStarIcon } from '@/components/ui';
 import FastForwardIcon from '@/assets/images/fast-forward.svg';
 import PauseIcon from '@/assets/images/pause.svg';
 import StopIcon from '@/assets/images/stop.svg';
+import QuizActionIcon from '@/assets/images/quiz-action.svg';
+import RecapActionIcon from '@/assets/images/recap-action.svg';
 
 interface GameStats {
   level: number;
@@ -38,6 +42,13 @@ interface GoalData {
   id: number;
   title: string | null;
   description: string | null;
+  isMandatory?: boolean;
+}
+
+interface LevelGoalData {
+  goalId: number;
+  isMandatory: boolean;
+  goal: { id: number; title: string | null; description: string | null };
 }
 
 interface LevelData {
@@ -51,6 +62,7 @@ interface LevelData {
     speed: number | null;
   } | null;
   goals?: GoalData[];
+  levelGoals?: LevelGoalData[];
 }
 
 interface GameTimeState {
@@ -61,6 +73,34 @@ interface GameTimeState {
   isEnded: boolean; // partie terminée
   isPaused: boolean; // partie en pause
   pausedAt: Date | null; // date de début de pause actuelle
+}
+
+type EndGameModalType =
+  | 'PRIMARY_AND_SECONDARY_SUCCESS'
+  | 'PRIMARY_SUCCESS_ONLY'
+  | 'PRIMARY_FAILURE';
+
+interface EndGameModalContent {
+  type: EndGameModalType;
+  title: string;
+  primaryMessage: string;
+  secondaryMessage: string | null;
+}
+
+interface EndGameGoalResult {
+  id: number;
+  title: string;
+  description: string | null;
+  isMandatory: boolean;
+  validated: boolean;
+}
+
+interface EndGameResult {
+  success: boolean;
+  gameInstanceId: number;
+  goals: EndGameGoalResult[];
+  message: string;
+  modal?: EndGameModalContent;
 }
 
 // Constantes pour l'animation de la date
@@ -94,6 +134,10 @@ export default function GameCurrentScreen() {
   const [holdings, setHoldings] = useState<HoldingData[]>([]);
   const [showNoInvestmentModal, setShowNoInvestmentModal] = useState(false);
   const [isEndingGame, setIsEndingGame] = useState(false);
+  const [showEndGameModal, setShowEndGameModal] = useState(false);
+  const [endGameResult, setEndGameResult] = useState<EndGameResult | null>(null);
+  const [levelQuizId, setLevelQuizId] = useState<number | null>(null);
+  const [isReplayCreating, setIsReplayCreating] = useState(false);
   const [showLevelInfoModal, setShowLevelInfoModal] = useState(false);
   const hasShownLevelInfoRef = useRef(false);
 
@@ -150,12 +194,11 @@ export default function GameCurrentScreen() {
       setIsEndingGame(true);
       console.log('Game time elapsed, ending game...');
 
-      // Appeler le backend pour terminer la partie
-      await trpcClient.gameInstance.endGame.mutate({ id: gameInstanceId });
+      const result = await trpcClient.gameInstance.endGame.mutate({ id: gameInstanceId }) as EndGameResult;
 
-      // Mettre à jour l'état local
+      setEndGameResult(result);
       setIsGameEnded(true);
-      // La redirection vers summary sera déclenchée par le useEffect qui surveille isGameEnded
+      setShowEndGameModal(true);
     } catch (err) {
       console.error('Error ending game:', err);
       Alert.alert('Erreur', 'Impossible de terminer la partie');
@@ -619,19 +662,6 @@ export default function GameCurrentScreen() {
     }, [gameInstanceId, calculateEndDate, isPaused, walletId])
   );
 
-  // Redirection vers l'écran de résumé quand la partie est terminée
-  useEffect(() => {
-    console.log('[GameCurrentScreen] 🎯 Redirect effect check: isGameEnded=', isGameEnded, 'gameInstanceId=', gameInstanceId);
-    if (isGameEnded && gameInstanceId) {
-      console.log('[GameCurrentScreen] 🚀 Redirecting to summary for game', gameInstanceId);
-      // Rediriger vers l'écran de résumé
-      router.replace({
-        pathname: '/(tabs)/summary',
-        params: { gameId: gameInstanceId.toString() },
-      });
-    }
-  }, [isGameEnded, gameInstanceId, router]);
-
   // Auto-show level info modal for new games (when no gameId is passed)
   useEffect(() => {
     // Only show once per session, only for new games, and only after level data is loaded
@@ -640,6 +670,95 @@ export default function GameCurrentScreen() {
       setShowLevelInfoModal(true);
     }
   }, [gameId, levelData, isLoading]);
+
+  useEffect(() => {
+    const fetchLevelQuizId = async () => {
+      if (!levelData?.level?.id) {
+        setLevelQuizId(null);
+        return;
+      }
+
+      try {
+        const quizzes = await trpcClient.quiz.getByLevel.query({ levelId: levelData.level.id });
+        setLevelQuizId(quizzes?.[0]?.id ?? null);
+      } catch (err) {
+        console.error('Error fetching level quiz for end-game modal:', err);
+        setLevelQuizId(null);
+      }
+    };
+
+    fetchLevelQuizId();
+  }, [levelData?.level?.id]);
+
+  const handleOpenRecap = () => {
+    if (!gameInstanceId) return;
+    setShowEndGameModal(false);
+    router.replace({
+      pathname: '/(tabs)/summary',
+      params: { gameId: gameInstanceId.toString() },
+    });
+  };
+
+  const handleOpenQuiz = () => {
+    if (!endGameResult?.success) return;
+    if (!levelQuizId) {
+      Alert.alert('Quiz indisponible', 'Aucun quiz n’est associé à ce niveau pour le moment.');
+      return;
+    }
+    setShowEndGameModal(false);
+    router.push({
+      pathname: '/(tabs)/daily-quiz',
+      params: { quizId: levelQuizId.toString() },
+    });
+  };
+
+  const handleReplay = async () => {
+    if (!user?.id || !levelData?.level?.id) return;
+
+    try {
+      setIsReplayCreating(true);
+      const startBalance = levelData.level.startBalance ?? 1000;
+      const newGame = await trpcClient.gameInstance.create.mutate({
+        userId: user.id,
+        levelId: levelData.level.id,
+        startBalance,
+        isPaused: true,
+      });
+      const wallet = await trpcClient.wallet.create.mutate({
+        userId: user.id,
+        gameInstanceId: newGame.id,
+        amount: startBalance,
+      });
+
+      setShowEndGameModal(false);
+      router.replace({
+        pathname: '/game/current',
+        params: {
+          gameId: String(newGame.id),
+          levelId: String(levelData.level.id),
+        },
+      });
+
+      setGameInstanceId(newGame.id);
+      setWalletId(wallet.id);
+      setIsPaused(true);
+      setIsGameEnded(false);
+      setEndGameResult(null);
+      setGameTimeState(null);
+      setGameDate(GAME_START_DATE);
+      setHoldings([]);
+      setStats((prev) => ({
+        ...prev,
+        cash: startBalance,
+        timePassed: '0m',
+      }));
+    } catch (err) {
+      console.error('Error creating replay game:', err);
+      Alert.alert('Erreur', 'Impossible de créer la partie');
+    } finally {
+      setIsReplayCreating(false);
+    }
+  };
 
   const handleAddAsset = () => {
     if (!gameInstanceId || !walletId) {
@@ -780,6 +899,14 @@ export default function GameCurrentScreen() {
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
   };
+
+  const hasPrimaryGoalSuccess = endGameResult?.success === true;
+  const modalContent = endGameResult?.modal;
+  const modalStarFillCount = modalContent?.type === 'PRIMARY_AND_SECONDARY_SUCCESS'
+    ? 2
+    : modalContent?.type === 'PRIMARY_SUCCESS_ONLY'
+      ? 1
+      : 0;
 
   if (isLoading) {
     return (
@@ -1012,7 +1139,7 @@ export default function GameCurrentScreen() {
               Aucun investissement
             </Text>
             <Text style={[styles.modalMessage, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
-              Vous n'avez fait aucun investissement. Si vous demarrez maintenant, vous ne pourrez pas gagner d'argent pendant la partie.
+              {"Vous n'avez fait aucun investissement. Si vous demarrez maintenant, vous ne pourrez pas gagner d'argent pendant la partie."}
             </Text>
             <Text style={[styles.modalMessage, { fontFamily: CashouTheme.fonts.body, color: theme.text, marginTop: 8 }]}>
               Voulez-vous vraiment demarrer sans investir ?
@@ -1023,7 +1150,7 @@ export default function GameCurrentScreen() {
                 onPress={() => setShowNoInvestmentModal(false)}
               >
                 <Text style={[styles.modalButtonText, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
-                  Investir d'abord
+                  {"Investir d'abord"}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -1039,6 +1166,79 @@ export default function GameCurrentScreen() {
         </View>
       </Modal>
 
+      {/* Modale de fin de partie */}
+      <Modal
+        visible={showEndGameModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {}}
+      >
+        <BlurView
+          intensity={60}
+          tint={isDark ? 'dark' : 'light'}
+          style={styles.endGameBlur}
+        >
+          <View style={[styles.endGameOverlay, { backgroundColor: 'transparent' }]}>
+            <View style={styles.endGameCardBackdrop}>
+            <View style={styles.endGameCard}>
+            <Text allowFontScaling={false} style={[styles.endGameTitle, { fontFamily: 'Anybody' }]}>
+              {modalContent?.title ?? (hasPrimaryGoalSuccess ? 'Bravo !' : 'Dommage !')}
+            </Text>
+
+            <Text allowFontScaling={false} style={[styles.endGameMessage, { fontFamily: 'Anybody' }]}>
+              {modalContent?.primaryMessage ?? endGameResult?.message}
+            </Text>
+
+            {!!modalContent?.secondaryMessage && (
+              <Text allowFontScaling={false} style={[styles.endGameMessage, styles.endGameSecondary, { fontFamily: 'Anybody' }]}>
+                {modalContent.secondaryMessage}
+              </Text>
+            )}
+
+            <View style={styles.endGameStarsRow}>
+              {[0, 1].map((index) => (
+                <GoalStarIcon
+                  key={index}
+                  filled={index < modalStarFillCount}
+                  size={16}
+                  idSuffix={`end-game-${index}`}
+                />
+              ))}
+            </View>
+
+            <View style={styles.endGameActions}>
+              {hasPrimaryGoalSuccess ? (
+                <>
+                  <ActionPillButton
+                    label="Récap"
+                    customIcon={<RecapActionIcon width={22} height={22} />}
+                    onPress={handleOpenRecap}
+                    style={styles.endGameActionButton}
+                  />
+                  <ActionPillButton
+                    label="Quiz"
+                    customIcon={<QuizActionIcon width={18} height={18} />}
+                    onPress={handleOpenQuiz}
+                    style={styles.endGameActionButton}
+                  />
+                </>
+              ) : (
+                <ActionPillButton
+                  label="Rejouer"
+                  iconName="refresh-outline"
+                  onPress={handleReplay}
+                  disabled={isReplayCreating}
+                  isLoading={isReplayCreating}
+                  style={StyleSheet.flatten([styles.endGameActionButton, styles.endGameSingleAction])}
+                />
+              )}
+            </View>
+            </View>
+          </View>
+          </View>
+        </BlurView>
+      </Modal>
+
       {/* Modal d'informations du niveau */}
       <LevelInfoModal
         visible={showLevelInfoModal}
@@ -1047,7 +1247,14 @@ export default function GameCurrentScreen() {
           ...levelData.level,
           description: levelData.level.description ?? null,
         } : null}
-        goals={levelData?.goals ?? []}
+        goals={
+          (levelData?.levelGoals?.map((lg) => ({
+            id: lg.goal.id,
+            title: lg.goal.title,
+            description: lg.goal.description,
+            isMandatory: lg.isMandatory,
+          })) ?? levelData?.goals) ?? []
+        }
       />
     </View>
   );
@@ -1271,5 +1478,76 @@ const styles = StyleSheet.create({
   },
   modalButtonText: {
     fontSize: 14,
+  },
+  endGameBlur: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  endGameOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+  },
+  endGameCardBackdrop: {
+    width: '97%',
+    maxWidth: 410,
+    borderRadius: 36,
+    backgroundColor: '#ECECEC',
+    padding: 6,
+  },
+  endGameCard: {
+    width: '100%',
+    borderRadius: 30,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    paddingBottom: 12,
+    shadowColor: '#101425',
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
+  endGameTitle: {
+    fontSize: 28,
+    fontFamily: 'Anybody',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 12,
+    color: '#1C2440',
+  },
+  endGameMessage: {
+    fontSize: 15,
+    fontFamily: 'Anybody',
+    fontWeight: 'normal',
+    lineHeight: 20,
+    color: '#1C2440',
+  },
+  endGameSecondary: {
+    marginTop: 9,
+  },
+  endGameStarsRow: {
+    alignSelf: 'center',
+    marginTop: 14,
+    marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: 30,
+    backgroundColor: '#F7B167',
+    paddingHorizontal: 7,
+    paddingVertical: 5,
+  },
+  endGameActions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  endGameActionButton: {
+  },
+  endGameSingleAction: {
+    flex: 0,
+    minWidth: 132,
   },
 });

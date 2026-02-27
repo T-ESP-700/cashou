@@ -1,0 +1,15 @@
+meta {
+  name: getByAsset
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}/api/trpc/holding.getByAsset?input={"assetId":1}
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}

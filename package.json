@@ -45,7 +45,6 @@
     "migrate:reset": "cd packages/@cashou/db-app && bunx dotenv -e ../../../.env -- prisma migrate reset --force",
     "db:migrate:app": "cd packages/@cashou/db-app && bunx dotenv -e ../../../.env -- prisma migrate deploy",
     "db:migrate:backoffice": "cd packages/@cashou/db-backoffice && bunx dotenv -e ../../../.env -- prisma migrate deploy",
-    "db:seed": "cd apps/backend && bun run src/seed-data.ts",
     "db:seed:cac40": "cd apps/backend && bun run scripts/seed-cac40.ts",
     "db:seed:level1": "cd apps/backend && bunx dotenv -e ../../.env -- bun run scripts/seed-level1.ts",
     "healthy:game": "cd apps/backend && bun run scripts/healthy-game.ts",

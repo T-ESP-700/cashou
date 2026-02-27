@@ -221,6 +221,8 @@ async function main() {
       where: { id: goal.id },
       data: {
         description: 'Ne pas perdre d\'argent par rapport à ton capital initial.',
+        successMessage: 'Tu as réussi à rester en positif.',
+        failureMessage: 'Tu n’as pas réussi à rester en positif, mais ce n’est pas grave, tu feras mieux la prochaine fois !',
         goalType: 'wallet_gte_start',
         goalValue: 0
       }
@@ -230,6 +232,8 @@ async function main() {
       data: {
         title: "Reste en positif",
         description: "Ne pas perdre d'argent par rapport à ton capital initial.",
+        successMessage: "Tu as réussi à rester en positif.",
+        failureMessage: "Tu n’as pas réussi à rester en positif, mais ce n’est pas grave, tu feras mieux la prochaine fois !",
         goalType: 'wallet_gte_start',
         goalValue: 0
       },
@@ -250,11 +254,59 @@ async function main() {
     levelGoal = await prisma.levelGoal.create({
       data: {
         levelId: level.id,
-        goalId: goal.id
-      }
+        goalId: goal.id,
+        isMandatory: true
+      } as { levelId: number; goalId: number; isMandatory?: boolean }
     });
   }
-  console.log(`✅ Level-Goal créé: Level ${level.number} ↔ Goal "${goal.title}"`);
+  console.log(`✅ Level-Goal créé: Level ${level.number} ↔ Goal "${goal.title}" (obligatoire)`);
+
+  // 9b. Optional: create a bonus goal for level 1 (demonstrates mandatory vs bonus)
+  const bonusGoalTitle = "Gagner au moins 100";
+  let bonusGoal = await prisma.goal.findFirst({
+    where: { title: bonusGoalTitle }
+  });
+  if (bonusGoal) {
+    bonusGoal = await prisma.goal.update({
+      where: { id: bonusGoal.id },
+      data: {
+        description: "Avoir au moins 100 cashou de plus que ton capital de départ à la fin du niveau.",
+        successMessage: "Tu as même réussi à faire plus de 100 cashou de plus-value !",
+        failureMessage: "Par contre, tu n’as pas atteint l’objectif secondaire cette fois.",
+        goalType: "wallet_min",
+        goalValue: (level.startBalance ?? 2000) + 100
+      }
+    });
+    console.log(`✅ Objectif bonus mis à jour: ${bonusGoal.title}`);
+  } else {
+    bonusGoal = await prisma.goal.create({
+      data: {
+        title: bonusGoalTitle,
+        description: "Avoir au moins 100 de plus que ton capital de départ à la fin du niveau.",
+        successMessage: "Tu as même réussi à faire plus de 100 cashou de plus-value !",
+        failureMessage: "Par contre, tu n’as pas atteint l’objectif secondaire cette fois.",
+        goalType: "wallet_min",
+        goalValue: (level.startBalance ?? 2000) + 100
+      }
+    });
+    console.log(`✅ Objectif bonus créé: ${bonusGoal.title}`);
+  }
+  let bonusLevelGoal = await prisma.levelGoal.findFirst({
+    where: {
+      levelId: level.id,
+      goalId: bonusGoal.id
+    }
+  });
+  if (!bonusLevelGoal) {
+    bonusLevelGoal = await prisma.levelGoal.create({
+      data: {
+        levelId: level.id,
+        goalId: bonusGoal.id,
+        isMandatory: false
+      } as { levelId: number; goalId: number; isMandatory?: boolean }
+    });
+    console.log(`✅ Level-Goal bonus créé: Level ${level.number} ↔ Goal "${bonusGoal.title}"`);
+  }
 
   // 10. Créer le LevelEvent (timing: ~608 jours = 1/3 de 1825)
   console.log('🔗 Liaison niveau-événement...');
@@ -697,6 +749,35 @@ async function main() {
 
   console.log(`✅ 2 Daily Quiz vérifiés/créés (hier et aujourd'hui) avec 3 questions chacun`);
 
+  // Optional: create a UserLevelCompletion for demo stars if a user exists
+  const demoUser = await prisma.user.findFirst({
+    where: { email: 'test-stars@cashou.fr' }
+  }) ?? await prisma.user.findFirst({ take: 1 });
+  if (demoUser) {
+    await (prisma as any).userLevelCompletion.upsert({
+      where: {
+        userId_levelId: { userId: demoUser.id, levelId: level.id }
+      },
+      create: {
+        userId: demoUser.id,
+        levelId: level.id,
+        stars: 2,
+        mandatoryGoalsMet: true,
+        bonusGoalsMet: false,
+        quizPassed: true,
+        completedAt: new Date()
+      },
+      update: {
+        stars: 2,
+        mandatoryGoalsMet: true,
+        bonusGoalsMet: false,
+        quizPassed: true,
+        completedAt: new Date()
+      }
+    });
+    console.log(`✅ UserLevelCompletion créée pour démo (user: ${demoUser.email ?? demoUser.id}, level 1, 2 étoiles)`);
+  }
+
   console.log('\n✨ ========================================');
   console.log('✅ Seeding du niveau 1 terminé avec succès !');
   console.log('========================================');
@@ -707,7 +788,7 @@ async function main() {
   console.log(`   - 1 Level: ${level.title} (Niveau ${level.number})`);
   console.log(`   - 1 Event: ${event.title}`);
   console.log(`   - 1 Impact: ${impact.coef}% sur ${livretA.symbol}`);
-  console.log(`   - 1 Goal: ${goal.title}`);
+  console.log(`   - 2 Goals: ${goal.title}, ${bonusGoal.title}`);
   console.log(`   - 1 Quiz MCQ avec ${createdQuestions.length} questions`);
   console.log(`   - 2 Daily Quiz (hier et aujourd'hui)`);
   console.log('========================================\n');

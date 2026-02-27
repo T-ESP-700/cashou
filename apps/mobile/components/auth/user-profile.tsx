@@ -1,15 +1,41 @@
-import React from 'react';
-import { ActivityIndicator, View, Alert, Text, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { ActivityIndicator, View, Alert, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/use-auth';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card, Badge, Button } from '@/components/ui';
+import { trpcClient } from '@/lib/trpc';
+
+interface UserLevelEntry {
+  level: { id: number; number: number | null; title: string | null };
+  stars: number;
+  unlocked: boolean;
+}
 
 export function UserProfile() {
   const { user, isLoading, logout } = useAuth();
   const { colors, status, special, fonts, spacing, borderRadius, borderWidth, isDark } = useCashouTheme();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const [userLevels, setUserLevels] = useState<UserLevelEntry[]>([]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setUserLevels([]);
+      return;
+    }
+    let cancelled = false;
+    trpcClient.level.getUserLevels.query({ userId: user.id })
+      .then((data) => {
+        if (!cancelled) setUserLevels((data as UserLevelEntry[]) ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setUserLevels([]);
+      });
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -277,6 +303,40 @@ export function UserProfile() {
           <Text style={{ fontSize: 12, fontFamily: fonts.body, color: colors.text, opacity: 0.6, textAlign: 'center' }}>
             Progression vers le niveau suivant
           </Text>
+        </Card>
+      )}
+
+      {/* Score: total stars and link to levels */}
+      {userLevels.length > 0 && (
+        <Card variant="outlined" padding="lg" style={{ gap: spacing.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <Ionicons name="star" size={24} color={special.gold} />
+            <Text style={{ fontSize: 18, fontFamily: fonts.subheading, color: colors.text }}>
+              Score
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs }}>
+            <Text style={{ fontSize: 24, fontFamily: fonts.subheading, color: colors.text }}>
+              {userLevels.reduce((sum, l) => sum + l.stars, 0)} / {userLevels.length * 3} étoiles
+            </Text>
+          </View>
+          <Text style={{ fontSize: 14, fontFamily: fonts.body, color: colors.text, opacity: 0.8 }}>
+            {userLevels.filter((l) => l.stars > 0).length} niveau{userLevels.filter((l) => l.stars > 0).length !== 1 ? 'x' : ''} complété{userLevels.filter((l) => l.stars > 0).length !== 1 ? 's' : ''}
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.push('/(tabs)/levels')}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.sm,
+              paddingVertical: spacing.sm,
+            }}
+          >
+            <Ionicons name="list-outline" size={20} color={colors.accent} />
+            <Text style={{ fontSize: 14, fontFamily: fonts.body, color: colors.accent }}>
+              Voir le détail par niveau
+            </Text>
+          </TouchableOpacity>
         </Card>
       )}
 

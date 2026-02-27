@@ -1,0 +1,22 @@
+meta {
+  name: updateQuantity
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{base_url}}/api/trpc/holding.updateQuantity
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 1,
+    "quantity": 200
+  }
+}
+
+settings {
+  encodeUrl: true
+}

@@ -27,6 +27,7 @@ interface GoalData {
   id: number;
   title: string | null;
   description: string | null;
+  isMandatory?: boolean;
 }
 
 interface LevelInfoModalProps {
@@ -51,12 +52,12 @@ export function LevelInfoModal({ visible, onClose, level, goals }: LevelInfoModa
     return null;
   }
 
-  // Default goals if none are provided
+  // Default goals if none are provided; otherwise use goals with optional isMandatory for labels
   const displayGoals = goals.length > 0
     ? goals
     : [
-        { id: 1, title: 'Objectif principal', description: 'Complétez le niveau avec succès' },
-        { id: 2, title: 'Bonus', description: 'Atteignez les objectifs secondaires' }
+        { id: 1, title: 'Objectif principal', description: 'Complétez le niveau avec succès', isMandatory: true },
+        { id: 2, title: 'Bonus', description: 'Atteignez les objectifs secondaires', isMandatory: false }
       ];
 
   const handleNext = () => {
@@ -276,38 +277,53 @@ export function LevelInfoModal({ visible, onClose, level, goals }: LevelInfoModa
 
                 {/* Goals List */}
                 <ScrollView style={{ maxHeight: 250, marginBottom: spacing.md }}>
-                  {displayGoals.map((goal, index) => (
-                    <View
-                      key={goal.id}
-                      style={{
-                        backgroundColor: colors.secondary,
-                        borderRadius: 12,
-                        padding: spacing.md,
-                        marginBottom: index < displayGoals.length - 1 ? spacing.sm : 0,
-                      }}
-                    >
-                      <Text
+                  {displayGoals.map((goal, index) => {
+                    const isMandatory = goal.isMandatory !== false;
+                    return (
+                      <View
+                        key={goal.id}
                         style={{
-                          fontSize: 13,
-                          fontFamily: fonts.body,
-                          color: colors.text,
-                          opacity: 0.7,
-                          marginBottom: 4,
+                          backgroundColor: colors.secondary,
+                          borderRadius: 12,
+                          padding: spacing.md,
+                          marginBottom: index < displayGoals.length - 1 ? spacing.sm : 0,
                         }}
                       >
-                        {goal.title || `Objectif ${index + 1}`}
-                      </Text>
-                      <Text
-                        style={{
-                          fontSize: 16,
-                          fontFamily: fonts.subheading,
-                          color: colors.text,
-                        }}
-                      >
-                        {goal.description || 'À accomplir'}
-                      </Text>
-                    </View>
-                  ))}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              fontFamily: fonts.body,
+                              color: isMandatory ? colors.accent : colors.text,
+                              opacity: 0.9,
+                            }}
+                          >
+                            {isMandatory ? 'Objectif principal' : 'Bonus'}
+                          </Text>
+                        </View>
+                        <Text
+                          style={{
+                            fontSize: 13,
+                            fontFamily: fonts.body,
+                            color: colors.text,
+                            opacity: 0.7,
+                            marginBottom: 4,
+                          }}
+                        >
+                          {goal.title || `Objectif ${index + 1}`}
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 16,
+                            fontFamily: fonts.subheading,
+                            color: colors.text,
+                          }}
+                        >
+                          {goal.description || 'À accomplir'}
+                        </Text>
+                      </View>
+                    );
+                  })}
                 </ScrollView>
 
                 {/* Page Indicator */}

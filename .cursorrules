@@ -31,7 +31,6 @@
 
 ### Project Structure
 - Keep database schemas in `backend/prisma/app/schema.prisma`
-- Store seed data in `backend/src/seed-data.ts`
 - Place examples and utilities in appropriate subdirectories
 - Maintain separation between backend and backoffice concerns
 
@@ -100,7 +99,6 @@ bun run studio          # Open Prisma Studio
 # Database
 bun run generate        # Generate Prisma client
 bun run migrate         # Run migrations
-bun run db:seed         # Seed development data
 bun run db:empty        # Reset database
 
 # Docker

@@ -5,6 +5,7 @@
 import type { PrismaClient, Holding, Asset, Level, GameInstance } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import { GameTimeService } from "./game-time.service.ts";
+import { LevelCompletionService } from "./level-completion.service.ts";
 
 type HoldingWithAsset = Holding & {
     asset: Asset;
@@ -18,7 +19,20 @@ export interface GoalResult {
     id: number;
     title: string;
     description: string | null;
+    isMandatory: boolean;
     validated: boolean;
+}
+
+export type EndGameModalType =
+    | "PRIMARY_AND_SECONDARY_SUCCESS"
+    | "PRIMARY_SUCCESS_ONLY"
+    | "PRIMARY_FAILURE";
+
+export interface EndGameModalContent {
+    type: EndGameModalType;
+    title: string;
+    primaryMessage: string;
+    secondaryMessage: string | null;
 }
 
 export interface EndGameResult {
@@ -30,15 +44,23 @@ export interface EndGameResult {
     totalValue: number;
     goals: GoalResult[];
     message: string;
+    modal: EndGameModalContent;
+    /** Level completion score (1-3 stars), set when completion was recorded */
+    stars?: number;
+    mandatoryGoalsMet?: boolean;
+    bonusGoalsMet?: boolean;
+    quizPassed?: boolean;
 }
 
 export class EndGameService {
     private prisma: PrismaClient;
     private gameTimeService: GameTimeService;
+    private levelCompletionService: LevelCompletionService;
 
     constructor(prismaClient?: PrismaClient) {
         this.prisma = prismaClient || defaultPrisma;
         this.gameTimeService = new GameTimeService();
+        this.levelCompletionService = new LevelCompletionService(prismaClient);
     }
 
     /**
@@ -88,6 +110,7 @@ export class EndGameService {
                 level: {
                     include: {
                         levelGoals: {
+                            orderBy: { id: "asc" },
                             include: {
                                 goal: true,
                             },
@@ -136,10 +159,10 @@ export class EndGameService {
         const totalValue = currentWalletBalance + totalAssetsValue;
 
         // 4. Valider les objectifs
-        const goals = gameInstance.level.levelGoals.map((lg) => lg.goal);
         const goalResults: GoalResult[] = [];
 
-        for (const goal of goals) {
+        for (const levelGoal of gameInstance.level.levelGoals) {
+            const goal = levelGoal.goal;
             if (!goal) continue;
 
             const validated = this.validateGoal(goal.goalType, goal.goalValue, totalValue, startBalance);
@@ -148,6 +171,7 @@ export class EndGameService {
                 id: goal.id,
                 title: goal.title || "Objectif sans titre",
                 description: goal.description,
+                isMandatory: levelGoal.isMandatory,
                 validated,
             });
         }
@@ -161,20 +185,85 @@ export class EndGameService {
             },
         });
 
-        // 6. Retourner le resultat
-        const allGoalsValidated = goalResults.every((g) => g.validated);
+        // 5b. Success and level completion: based on mandatory goals only (bonus only affects stars)
+        type LevelGoalWithMandatory = { goalId: number; isMandatory: boolean };
+        const levelGoalsWithMandatory = gameInstance.level.levelGoals as unknown as LevelGoalWithMandatory[];
+        const mandatoryGoalIds = levelGoalsWithMandatory
+            .filter((lg) => lg.isMandatory)
+            .map((lg) => lg.goalId);
+        const allMandatoryGoalsValidated =
+            mandatoryGoalIds.length === 0 ||
+            mandatoryGoalIds.every(
+                (goalId) => goalResults.find((g) => g.id === goalId)?.validated === true
+            );
+        const userId = gameInstance.userId;
+        const levelId = gameInstance.levelId;
+        let completion: Awaited<ReturnType<LevelCompletionService["getCompletion"]>> = null;
+        if (allMandatoryGoalsValidated && userId && levelId) {
+            const goalResultsByGoalId = new Map(goalResults.map((g) => [g.id, g.validated]));
+            const levelGoals = levelGoalsWithMandatory.map((lg) => ({
+                goalId: lg.goalId,
+                isMandatory: lg.isMandatory,
+            }));
+            await this.levelCompletionService.recordFromGameEnd(
+                userId,
+                levelId,
+                goalResultsByGoalId,
+                levelGoals
+            );
+            completion = await this.levelCompletionService.getCompletion(userId, levelId);
+        }
 
+        const firstMandatoryGoal = gameInstance.level.levelGoals.find((lg) => lg.isMandatory)?.goal ?? null;
+        const firstBonusGoal = gameInstance.level.levelGoals.find((lg) => !lg.isMandatory)?.goal ?? null;
+        const firstBonusGoalValidated =
+            firstBonusGoal ? goalResults.find((g) => g.id === firstBonusGoal.id)?.validated === true : false;
+
+        const primaryMessageFromGoal = allMandatoryGoalsValidated
+            ? firstMandatoryGoal?.successMessage
+            : firstMandatoryGoal?.failureMessage;
+        const secondaryMessageFromGoal =
+            allMandatoryGoalsValidated && firstBonusGoal
+                ? (firstBonusGoalValidated ? firstBonusGoal.successMessage : firstBonusGoal.failureMessage)
+                : null;
+
+        const modal: EndGameModalContent = allMandatoryGoalsValidated
+            ? {
+                type: firstBonusGoal && firstBonusGoalValidated
+                    ? "PRIMARY_AND_SECONDARY_SUCCESS"
+                    : "PRIMARY_SUCCESS_ONLY",
+                title: "Bravo !",
+                primaryMessage: primaryMessageFromGoal ?? "Tu as réussi l'objectif principal.",
+                secondaryMessage: secondaryMessageFromGoal ?? (
+                    firstBonusGoal ? "L'objectif secondaire n'a pas été atteint cette fois." : null
+                ),
+            }
+            : {
+                type: "PRIMARY_FAILURE",
+                title: "Dommage !",
+                primaryMessage: primaryMessageFromGoal ?? "Tu n'as pas atteint l'objectif principal.",
+                secondaryMessage: null,
+            };
+
+        // 6. Retourner le resultat (success = objectifs obligatoires atteints) + stars si enregistrement
         return {
-            success: allGoalsValidated,
+            success: allMandatoryGoalsValidated,
             gameInstanceId,
             startBalance,
             walletBalance: currentWalletBalance,
             assetsValue: totalAssetsValue,
             totalValue,
             goals: goalResults,
-            message: allGoalsValidated
+            message: allMandatoryGoalsValidated
                 ? `Bravo ! Tu as termine avec ${Math.round(totalValue)} EUR (wallet: ${Math.round(currentWalletBalance)} EUR + assets: ${Math.round(totalAssetsValue)} EUR dont ${Math.round(totalInterests)} EUR d'interets) pour un depart de ${startBalance} EUR`
                 : `Objectifs non atteints. Total: ${Math.round(totalValue)} EUR (depart: ${startBalance} EUR)`,
+            modal,
+            ...(completion && {
+                stars: completion.stars,
+                mandatoryGoalsMet: completion.mandatoryGoalsMet,
+                bonusGoalsMet: completion.bonusGoalsMet,
+                quizPassed: completion.quizPassed,
+            }),
         };
     }
 

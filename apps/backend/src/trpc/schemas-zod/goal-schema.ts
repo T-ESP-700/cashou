@@ -6,6 +6,8 @@ import { z } from "zod";
 export const goalDataSchema = z.object({
   title: z.string().nullish(),
   description: z.string().nullish(),
+  successMessage: z.string().nullish(),
+  failureMessage: z.string().nullish(),
 });
 export type GoalDataSchema = z.infer<typeof goalDataSchema>;
 

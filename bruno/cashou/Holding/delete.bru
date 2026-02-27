@@ -1,0 +1,21 @@
+meta {
+  name: delete
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{base_url}}/api/trpc/holding.delete
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 1
+  }
+}
+
+settings {
+  encodeUrl: true
+}

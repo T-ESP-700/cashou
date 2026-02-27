@@ -50,6 +50,12 @@ export class GameEndTriggerService {
         totalValue: 0,
         goals: [],
         message: "La partie est déjà terminée",
+        modal: {
+          type: "PRIMARY_FAILURE",
+          title: "Dommage !",
+          primaryMessage: "La partie est déjà terminée.",
+          secondaryMessage: null,
+        },
       };
     }
 

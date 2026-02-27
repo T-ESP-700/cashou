@@ -1,16 +1,23 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, useColorScheme as useRNColorScheme } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, useColorScheme as useRNColorScheme, Alert, Switch } from 'react-native';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useHeaderOptions } from '@/hooks/use-header';
+import { useAuth } from '@/hooks/use-auth';
+import { ActionPillButton, GoalStarIcon } from '@/components/ui';
+import QuizActionIcon from '@/assets/images/quiz-action.svg';
+import TxIconBuy from '@/assets/images/tx-icon-buy.svg';
+import TxIconSell from '@/assets/images/tx-icon-sell.svg';
+import TxIconArrow from '@/assets/images/tx-icon-arrow.svg';
 
 interface GoalResult {
   id: number;
   title: string;
   description: string | null;
+  isMandatory?: boolean;
   validated: boolean;
 }
 
@@ -23,24 +30,61 @@ interface EndGameResult {
   totalValue: number;
   goals: GoalResult[];
   message: string;
+  stars?: number;
+  mandatoryGoalsMet?: boolean;
+  bonusGoalsMet?: boolean;
+  quizPassed?: boolean;
 }
 
 interface GameInstanceData {
   id: number;
-  createdAt: string;
-  endedAt: string | null;
-  totalPausedDuration: number | null;
   level: {
     id: number;
     title: string | null;
     number: number | null;
-    duration: number | null;
-    speed: number | null;
+    startBalance: number | null;
   } | null;
+}
+
+interface UserLevelEntry {
+  unlocked: boolean;
+  level: {
+    id: number;
+    number: number | null;
+    title: string | null;
+  };
+}
+
+interface TransactionItem {
+  id: number;
+  type: string;
+  assetTitle: string;
+  totalValue: number;
+}
+
+interface TransactionGroup {
+  submarketTitle: string;
+  items: TransactionItem[];
+}
+
+function groupTransactionsBySubmarket(txs: any[]): TransactionGroup[] {
+  const groups = new Map<string, TransactionItem[]>();
+  for (const tx of txs) {
+    const key = tx.asset?.submarket?.title ?? 'Autre';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push({
+      id: tx.id,
+      type: tx.type ?? 'BUY',
+      assetTitle: tx.asset?.title ?? 'Actif inconnu',
+      totalValue: tx.totalValue ? Number(tx.totalValue) : 0,
+    });
+  }
+  return Array.from(groups.entries()).map(([submarketTitle, items]) => ({ submarketTitle, items }));
 }
 
 export default function GameSummaryScreen() {
   const { gameId } = useLocalSearchParams<{ gameId: string }>();
+  const { user } = useAuth();
   const colorScheme = useRNColorScheme();
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
@@ -53,6 +97,11 @@ export default function GameSummaryScreen() {
   const [endGameResult, setEndGameResult] = useState<EndGameResult | null>(null);
   const [gameInstance, setGameInstance] = useState<GameInstanceData | null>(null);
   const [levelQuizId, setLevelQuizId] = useState<number | null>(null);
+  const [nextLevel, setNextLevel] = useState<UserLevelEntry['level'] | null>(null);
+  const [isReplaying, setIsReplaying] = useState(false);
+  const [isDetailedView, setIsDetailedView] = useState(false);
+  const [transactionGroups, setTransactionGroups] = useState<TransactionGroup[] | null>(null);
+  const transactionsFetched = useRef(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -65,26 +114,23 @@ export default function GameSummaryScreen() {
       try {
         setIsLoading(true);
 
-        // Fetch game instance data
-        const instance = await trpcClient.gameInstance.getById.query({ id: parseInt(gameId, 10) });
+        const gameInstanceId = parseInt(gameId, 10);
+        const instance = await trpcClient.gameInstance.getById.query({ id: gameInstanceId });
         if (instance) {
-          setGameInstance(instance as GameInstanceData);
+          const typedInstance = instance as GameInstanceData;
+          setGameInstance(typedInstance);
 
-          // Fetch quiz for this level
-          if (instance.level?.id) {
+          if (typedInstance.level?.id) {
             try {
-              const quizzes = await trpcClient.quiz.getByLevel.query({ levelId: instance.level.id });
-              if (quizzes && quizzes.length > 0) {
-                setLevelQuizId(quizzes[0].id);
-              }
+              const quizzes = await trpcClient.quiz.getByLevel.query({ levelId: typedInstance.level.id });
+              setLevelQuizId(quizzes?.[0]?.id ?? null);
             } catch (quizErr) {
               console.error('Error fetching level quiz:', quizErr);
             }
           }
         }
 
-        // Fetch end game results
-        const result = await trpcClient.gameInstance.endGame.mutate({ id: parseInt(gameId, 10) });
+        const result = await trpcClient.gameInstance.endGame.mutate({ id: gameInstanceId });
         setEndGameResult(result as EndGameResult);
       } catch (err) {
         console.error('Error fetching game summary:', err);
@@ -97,43 +143,153 @@ export default function GameSummaryScreen() {
     fetchData();
   }, [gameId]);
 
+  useEffect(() => {
+    const fetchNextLevel = async () => {
+      if (!user?.id || !gameInstance?.level?.id) return;
+
+      try {
+        const levels = await trpcClient.level.getUserLevels.query({ userId: user.id }) as UserLevelEntry[];
+        const currentNumber = gameInstance.level.number ?? null;
+        const currentLevelId = gameInstance.level.id;
+
+        if (currentNumber != null) {
+          const candidate = levels
+            .filter((entry) => entry.unlocked && (entry.level.number ?? 0) > currentNumber)
+            .sort((a, b) => (a.level.number ?? 0) - (b.level.number ?? 0))[0];
+          setNextLevel(candidate?.level ?? null);
+          return;
+        }
+
+        const candidateById = levels
+          .filter((entry) => entry.unlocked && entry.level.id > currentLevelId)
+          .sort((a, b) => a.level.id - b.level.id)[0];
+        setNextLevel(candidateById?.level ?? null);
+      } catch (err) {
+        console.error('Error fetching user levels for next level CTA:', err);
+      }
+    };
+
+    fetchNextLevel();
+  }, [gameInstance?.level?.id, gameInstance?.level?.number, user?.id]);
+
+  useEffect(() => {
+    if (!isDetailedView || transactionsFetched.current || !gameId) return;
+    const gameInstanceId = parseInt(gameId, 10);
+    transactionsFetched.current = true;
+    trpcClient.transaction.getByGameInstance.query({ gameInstanceId })
+      .then((txs: any[]) => setTransactionGroups(groupTransactionsBySubmarket(txs)))
+      .catch((err: any) => {
+        console.error('Error fetching transactions:', err);
+        setTransactionGroups([]);
+      });
+  }, [isDetailedView, gameId]);
+
+  // Refresh stars/quiz status when returning from level quiz
+  useFocusEffect(
+    useCallback(() => {
+      if (!gameInstance?.level?.id || !endGameResult?.success) return;
+      let cancelled = false;
+
+      trpcClient.auth.getHomeData.query()
+        .then((homeData: any) => {
+          if (cancelled) return;
+          const last = homeData?.lastCompletedGame;
+          if (last?.levelId === gameInstance.level?.id && last != null) {
+            setEndGameResult((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    stars: last.stars ?? prev.stars,
+                    mandatoryGoalsMet: last.mandatoryGoalsMet ?? prev.mandatoryGoalsMet,
+                    bonusGoalsMet: last.bonusGoalsMet ?? prev.bonusGoalsMet,
+                    quizPassed: last.quizPassed ?? prev.quizPassed,
+                  }
+                : prev
+            );
+          }
+        })
+        .catch(() => {});
+
+      return () => {
+        cancelled = true;
+      };
+    }, [gameInstance?.level?.id, endGameResult?.success])
+  );
+
   const handleGoHome = () => {
     router.replace('/(tabs)');
   };
 
   const handleGoToQuiz = () => {
-    if (levelQuizId) {
-      router.push({
-        pathname: '/(tabs)/daily-quiz',
-        params: { quizId: levelQuizId.toString() }
+    if (!levelQuizId) return;
+    router.push({
+      pathname: '/(tabs)/daily-quiz',
+      params: { quizId: levelQuizId.toString() },
+    });
+  };
+
+  const handleGoToNextLevel = () => {
+    if (!nextLevel?.id) return;
+    router.replace({
+      pathname: '/game/current',
+      params: { levelId: String(nextLevel.id) },
+    });
+  };
+
+  const handleReplay = async () => {
+    if (!user?.id || !gameInstance?.level?.id) return;
+
+    setIsReplaying(true);
+    try {
+      const levelId = gameInstance.level.id;
+      const startBalance = gameInstance.level.startBalance ?? 1000;
+      const newGame = await trpcClient.gameInstance.create.mutate({
+        userId: user.id,
+        levelId,
+        startBalance,
+        isPaused: true,
       });
+
+      await trpcClient.wallet.create.mutate({
+        userId: user.id,
+        gameInstanceId: newGame.id,
+        amount: startBalance,
+      });
+
+      router.replace({
+        pathname: '/game/current',
+        params: { gameId: String(newGame.id), levelId: String(levelId) },
+      });
+    } catch (err) {
+      console.error('Error creating replay game:', err);
+      Alert.alert('Erreur', 'Impossible de créer la partie');
+    } finally {
+      setIsReplaying(false);
     }
   };
 
-  // Calculate profit percentage
-  const calculateProfitPercent = (): string => {
-    if (!endGameResult) return '0%';
-    const profit = ((endGameResult.totalValue - endGameResult.startBalance) / endGameResult.startBalance) * 100;
-    const sign = profit >= 0 ? '+' : '';
-    return `${sign}${profit.toFixed(1)}%`;
-  };
+  const formatAmount = (value: number): string => `${Math.round(value).toLocaleString('fr-FR')} EUR`;
 
-  const getProfitColor = (): string => {
-    if (!endGameResult) return theme.text;
-    const profit = endGameResult.totalValue - endGameResult.startBalance;
-    if (profit > 0) return '#4CAF50';
-    if (profit < 0) return '#F44336';
-    return theme.text;
-  };
+  const profit = endGameResult ? endGameResult.totalValue - endGameResult.startBalance : 0;
+  const profitPercent = endGameResult
+    ? ((profit / endGameResult.startBalance) * 100)
+    : 0;
+  const profitText = `${profitPercent >= 0 ? '+' : ''}${profitPercent.toFixed(1)}%`;
+  const profitChipColor = profit >= 0 ? '#0C9A20' : '#D54747';
+
+  const primaryGoal = endGameResult?.goals.find((g) => g.isMandatory) ?? endGameResult?.goals[0] ?? null;
+  const bonusGoal = endGameResult?.goals.find((g) => g.isMandatory === false) ?? endGameResult?.goals[1] ?? null;
+
+  const hasLevelQuiz = levelQuizId != null;
+  const isQuizDone = endGameResult?.quizPassed === true || !hasLevelQuiz;
+  const shouldShowQuizCta = endGameResult?.success === true && hasLevelQuiz && !isQuizDone;
 
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.accent} />
-          <Text style={[styles.loadingText, { color: theme.text }]}>
-            Calcul des resultats...
-          </Text>
+          <Text style={[styles.loadingText, { color: theme.text }]}>Chargement du recapitulatif...</Text>
         </View>
       </View>
     );
@@ -144,14 +300,12 @@ export default function GameSummaryScreen() {
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={64} color={theme.accent} />
-          <Text style={[styles.errorText, { color: theme.text }]}>
-            {error || 'Erreur lors du chargement'}
-          </Text>
+          <Text style={[styles.errorText, { color: theme.text }]}>{error || 'Erreur lors du chargement'}</Text>
           <TouchableOpacity
-            style={[styles.button, { backgroundColor: theme.card, borderColor: theme.border }]}
+            style={[styles.backButton, { backgroundColor: theme.card, borderColor: theme.border }]}
             onPress={handleGoHome}
           >
-            <Text style={[styles.buttonText, { color: theme.text }]}>Retour</Text>
+            <Text style={[styles.backButtonText, { color: theme.text }]}>Retour</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -159,103 +313,202 @@ export default function GameSummaryScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 16 }]}>
-        {/* Header with result */}
-        <View style={[styles.resultHeader, { backgroundColor: endGameResult.success ? '#4CAF50' : '#F44336' }]}>
-          <Ionicons
-            name={endGameResult.success ? 'trophy' : 'close-circle'}
-            size={64}
-            color="#FFFFFF"
-          />
-          <Text style={styles.resultTitle}>
-            {endGameResult.success ? 'Niveau reussi !' : 'Niveau echoue'}
+    <View style={[styles.container, { backgroundColor: '#E8E8E8' }]}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 112 }]}
+      >
+        <Text allowFontScaling={false} style={styles.screenTitle}>Récapitulatif</Text>
+        <View style={styles.titleUnderline} />
+
+        <View style={styles.sectionHeaderRow}>
+          <Text allowFontScaling={false} style={styles.sectionTitle}>
+            {isDetailedView ? 'Transactions' : 'Bilan'}
           </Text>
-          <Text style={styles.resultSubtitle}>
-            Niveau {gameInstance?.level?.number || '?'} - {gameInstance?.level?.title || 'Sans titre'}
-          </Text>
-        </View>
-
-        {/* Financial summary */}
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <View style={styles.cardHeader}>
-            <Ionicons name="wallet-outline" size={24} color={theme.text} />
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Bilan financier</Text>
-          </View>
-
-          <View style={styles.financialGrid}>
-            <View style={styles.financialItem}>
-              <Text style={[styles.financialLabel, { color: theme.text, opacity: 0.7 }]}>Capital initial</Text>
-              <Text style={[styles.financialValue, { color: theme.text }]}>
-                {Math.round(endGameResult.startBalance).toLocaleString('fr-FR')} EUR
-              </Text>
-            </View>
-
-            <View style={styles.financialItem}>
-              <Text style={[styles.financialLabel, { color: theme.text, opacity: 0.7 }]}>Cash final</Text>
-              <Text style={[styles.financialValue, { color: theme.text }]}>
-                {Math.round(endGameResult.walletBalance).toLocaleString('fr-FR')} EUR
-              </Text>
-            </View>
-
-            <View style={styles.financialItem}>
-              <Text style={[styles.financialLabel, { color: theme.text, opacity: 0.7 }]}>Valeur des actifs</Text>
-              <Text style={[styles.financialValue, { color: theme.text }]}>
-                {Math.round(endGameResult.assetsValue).toLocaleString('fr-FR')} EUR
-              </Text>
-            </View>
-
-            <View style={[styles.financialItem, styles.totalItem]}>
-              <Text style={[styles.financialLabel, { color: theme.text }]}>Portefeuille final</Text>
-              <Text style={[styles.totalValue, { color: getProfitColor() }]}>
-                {Math.round(endGameResult.totalValue).toLocaleString('fr-FR')} EUR
-              </Text>
-              <Text style={[styles.profitPercent, { color: getProfitColor() }]}>
-                {calculateProfitPercent()}
-              </Text>
-            </View>
+          <View style={styles.simpleViewRow}>
+            <Text allowFontScaling={false} style={styles.simpleViewText}>
+              {isDetailedView ? 'Vue détaillée' : 'Vue simple'}
+            </Text>
+            <Switch
+              value={isDetailedView}
+              onValueChange={setIsDetailedView}
+              trackColor={{ false: '#D0D1D5', true: '#4CAF50' }}
+              thumbColor="#FFFFFF"
+            />
           </View>
         </View>
 
-        {/* Goals */}
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <View style={styles.cardHeader}>
-            <Ionicons name="flag-outline" size={24} color={theme.text} />
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Objectifs</Text>
-          </View>
-
-          {endGameResult.goals.map((goal) => (
-            <View key={goal.id} style={styles.goalItem}>
-              <View style={[styles.goalIcon, { backgroundColor: goal.validated ? '#4CAF50' : '#F44336' }]}>
-                <Ionicons
-                  name={goal.validated ? 'checkmark' : 'close'}
-                  size={20}
-                  color="#FFFFFF"
-                />
+        {isDetailedView ? (
+          transactionGroups === null ? (
+            <View style={styles.panel}>
+              <ActivityIndicator size="small" color="#2B2C48" />
+            </View>
+          ) : transactionGroups.length === 0 ? (
+            <View style={styles.panel}>
+              <Text allowFontScaling={false} style={styles.summaryLabel}>Aucune transaction</Text>
+            </View>
+          ) : (
+            transactionGroups.map((group) => (
+              <View key={group.submarketTitle}>
+                <Text allowFontScaling={false} style={styles.transactionGroupTitle}>{group.submarketTitle}</Text>
+              <View style={styles.transactionGroupCard}>
+                {group.items.map((item) => {
+                  const isSell = item.type === 'SELL';
+                  const isInterest = item.type === 'INTEREST';
+                  const TypeIcon = isSell ? TxIconSell : TxIconBuy;
+                  return (
+                    <View key={item.id} style={styles.transactionRow}>
+                      <TypeIcon width={12} height={12} />
+                      {isInterest ? (
+                        <Text allowFontScaling={false} style={styles.transactionLabelFlex} numberOfLines={1}>
+                          Intérêts {item.assetTitle}
+                        </Text>
+                      ) : (
+                        <View style={styles.transactionLabelRow}>
+                          <Text allowFontScaling={false} style={styles.transactionLabel} numberOfLines={1}>
+                            {isSell ? item.assetTitle : 'Portefeuille'}
+                          </Text>
+                          <TxIconArrow width={12} height={12} />
+                          <Text allowFontScaling={false} style={styles.transactionLabel} numberOfLines={1}>
+                            {isSell ? 'Portefeuille' : item.assetTitle}
+                          </Text>
+                        </View>
+                      )}
+                      <Text allowFontScaling={false} style={styles.transactionAmount}>{formatAmount(item.totalValue)}</Text>
+                    </View>
+                  );
+                })}
               </View>
-              <View style={styles.goalContent}>
-                <Text style={[styles.goalTitle, { color: theme.text }]}>{goal.title}</Text>
-                {goal.description && (
-                  <Text style={[styles.goalDescription, { color: theme.text, opacity: 0.7 }]}>
-                    {goal.description}
-                  </Text>
-                )}
+              </View>
+            ))
+          )
+        ) : (
+        <View style={styles.panel}>
+          <View style={styles.summaryRow}>
+            <Text allowFontScaling={false} style={styles.summaryLabel}>Capital initial</Text>
+            <Text allowFontScaling={false} style={styles.summaryValue}>{formatAmount(endGameResult.startBalance)}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text allowFontScaling={false} style={styles.summaryLabel}>Cash final</Text>
+            <Text allowFontScaling={false} style={styles.summaryValue}>{formatAmount(endGameResult.walletBalance)}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text allowFontScaling={false} style={styles.summaryLabel}>Valeur des actifs</Text>
+            <Text allowFontScaling={false} style={styles.summaryValue}>{formatAmount(endGameResult.assetsValue)}</Text>
+          </View>
+
+          <View style={styles.summaryDivider} />
+
+          <View style={styles.summaryRow}>
+            <View style={styles.finalPortfolioLabelRow}>
+              <Text allowFontScaling={false} style={[styles.summaryLabel, styles.finalPortfolioLabel]}>
+                Portefeuille final
+              </Text>
+              <View style={[styles.profitPill, { backgroundColor: profitChipColor }]}>
+                <Text allowFontScaling={false} style={styles.profitPillText}>{profitText}</Text>
               </View>
             </View>
-          ))}
+            <Text allowFontScaling={false} style={styles.finalPortfolioValue}>{formatAmount(endGameResult.totalValue)}</Text>
+          </View>
         </View>
+        )}
 
-        {/* Quiz button */}
-        {levelQuizId && (
-          <TouchableOpacity
-            style={styles.quizButton}
-            onPress={handleGoToQuiz}
-          >
-            <Ionicons name="school-outline" size={24} color="#FFFFFF" />
-            <Text style={styles.quizButtonText}>Faire le quiz du niveau</Text>
-          </TouchableOpacity>
+        {!isDetailedView && (
+        <>
+        <Text allowFontScaling={false} style={[styles.sectionTitle, styles.objectiveTitle]}>Objectif</Text>
+
+        {primaryGoal && (
+          <View style={styles.goalCard}>
+            <Text allowFontScaling={false} style={styles.goalCardTitle}>Objectif Principal</Text>
+            <View style={styles.goalCardRow}>
+              <Text
+                allowFontScaling={false}
+                style={[styles.goalCardSubtitle, primaryGoal.validated && styles.goalReachedText]}
+              >
+                {primaryGoal.title}
+              </Text>
+              <View style={styles.goalIconWrap}>
+                <GoalStarIcon filled={primaryGoal.validated} size={14} idSuffix={`summary-primary-${primaryGoal.id}`} />
+              </View>
+            </View>
+          </View>
+        )}
+
+        {bonusGoal && (
+          <View style={styles.goalCard}>
+            <Text allowFontScaling={false} style={styles.goalCardTitle}>Objectif Bonus</Text>
+            <View style={styles.goalCardRow}>
+              <Text
+                allowFontScaling={false}
+                style={[styles.goalCardSubtitle, bonusGoal.validated && styles.goalReachedText]}
+              >
+                {bonusGoal.title}
+              </Text>
+              <View style={styles.goalIconWrap}>
+                <GoalStarIcon filled={bonusGoal.validated} size={14} idSuffix={`summary-bonus-${bonusGoal.id}`} />
+              </View>
+            </View>
+          </View>
+        )}
+
+        {hasLevelQuiz && (
+          shouldShowQuizCta ? (
+            <TouchableOpacity style={styles.quizCtaRow} onPress={handleGoToQuiz} activeOpacity={0.85}>
+              <Text allowFontScaling={false} style={styles.quizCtaTitle}>Quizz</Text>
+              <View style={styles.quizCtaRight}>
+                <View style={styles.quizStatusPill}>
+                  <Text allowFontScaling={false} style={styles.quizStatusText}>À faire</Text>
+                </View>
+                <View style={styles.quizArrowCircle}>
+                  <Ionicons name="arrow-forward" size={18} color="#2B2C48" />
+                </View>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.goalCard}>
+              <View style={styles.goalCardRow}>
+                <Text allowFontScaling={false} style={styles.goalCardTitle}>Quizz</Text>
+                <View style={styles.goalIconWrap}>
+                  <GoalStarIcon filled size={14} idSuffix="summary-quiz" />
+                </View>
+              </View>
+            </View>
+          )
+        )}
+        </>
         )}
       </ScrollView>
+
+      {user && gameInstance?.level?.id && (
+        <View style={[styles.bottomActions, { paddingBottom: insets.bottom + 10 }]}>
+          <ActionPillButton
+            label={isReplaying ? '...' : 'Rejouer'}
+            iconName="refresh-outline"
+            onPress={handleReplay}
+            disabled={isReplaying}
+            isLoading={isReplaying}
+            style={styles.bottomActionButton}
+          />
+
+          {shouldShowQuizCta ? (
+            <ActionPillButton
+              label="Quiz"
+              customIcon={<QuizActionIcon width={18} height={18} />}
+              onPress={handleGoToQuiz}
+              style={styles.bottomActionButton}
+            />
+          ) : (
+            !!nextLevel?.id && (
+              <ActionPillButton
+                label={`Niveau ${nextLevel.number ?? ''}`.trim()}
+                iconName="play"
+                onPress={handleGoToNextLevel}
+                style={styles.bottomActionButton}
+              />
+            )
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -268,143 +521,279 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingTop: 10,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
   },
   loadingText: {
     fontSize: 16,
+    color: '#2B2C48',
+    fontFamily: 'Roboto',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
-    gap: 16,
+    paddingHorizontal: 20,
+    gap: 14,
   },
   errorText: {
-    fontSize: 16,
     textAlign: 'center',
-  },
-  resultHeader: {
-    borderRadius: 16,
-    padding: 32,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  resultTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginTop: 16,
-  },
-  resultSubtitle: {
     fontSize: 16,
-    color: '#FFFFFF',
-    opacity: 0.9,
-    marginTop: 8,
+    fontFamily: 'Roboto',
   },
-  card: {
-    borderRadius: 16,
-    padding: 20,
+  backButton: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  backButtonText: {
+    fontSize: 15,
+    fontFamily: 'Roboto',
+  },
+  screenTitle: {
+    fontSize: 26,
+    color: '#2B2C48',
+    fontFamily: 'Anybody',
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  titleUnderline: {
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: '#2B2C48',
     marginBottom: 16,
-    borderWidth: 2,
   },
-  cardHeader: {
+  sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    color: '#2B2C48',
+    fontFamily: 'Anybody',
+    fontWeight: '700',
+  },
+  simpleViewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+  simpleViewText: {
+    fontSize: 14,
+    color: '#2B2C48',
+    fontFamily: 'Roboto',
   },
-  financialGrid: {
-    gap: 12,
+  transactionGroupCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    marginBottom: 12,
   },
-  financialItem: {
+  transactionGroupTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#2B2C48',
+    fontFamily: 'Anybody',
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  transactionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  transactionLabelRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flexShrink: 1,
+  },
+  transactionLabel: {
+    fontSize: 14,
+    fontFamily: 'Roboto',
+    color: '#2B2C48',
+    flexShrink: 1,
+  },
+  transactionLabelFlex: {
+    fontSize: 14,
+    fontFamily: 'Roboto',
+    color: '#2B2C48',
+    flex: 1,
+    flexShrink: 1,
+  },
+  transactionAmount: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Roboto',
+    color: '#2B2C48',
+    flexShrink: 0,
+  },
+  panel: {
+    backgroundColor: '#F2F2F2',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    marginBottom: 16,
+  },
+  summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
   },
-  financialLabel: {
+  summaryLabel: {
     fontSize: 14,
+    color: '#2B2C48',
+    fontFamily: 'Roboto',
   },
-  financialValue: {
-    fontSize: 16,
+  summaryValue: {
+    fontSize: 14,
+    color: '#2B2C48',
+    fontFamily: 'Roboto',
+    fontWeight: '700',
+  },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: '#D6D6D6',
+    marginTop: 2,
+    marginBottom: 10,
+  },
+  finalPortfolioLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 1,
+  },
+  finalPortfolioLabel: {
     fontWeight: '500',
   },
-  totalItem: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.2)',
-    flexWrap: 'wrap',
+  finalPortfolioValue: {
+    fontSize: 16,
+    color: '#2B2C48',
+    fontFamily: 'Roboto',
+    fontWeight: '700',
   },
-  totalValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  profitPill: {
+    borderRadius: 9,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
   },
-  profitPercent: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginLeft: 8,
+  profitPillText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontFamily: 'Roboto',
+    fontWeight: '700',
   },
-  goalItem: {
+  objectiveTitle: {
+    marginBottom: 10,
+  },
+  goalCard: {
+    backgroundColor: '#F2F2F2',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    marginBottom: 10,
+  },
+  goalCardRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 12,
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 12,
   },
-  goalIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
+  goalCardTitle: {
+    fontSize: 14,
+    color: '#2B2C48',
+    fontFamily: 'Roboto',
+    fontWeight: '700',
   },
-  goalContent: {
+  goalCardSubtitle: {
+    fontSize: 12,
+    color: '#2B2C48',
+    fontFamily: 'Roboto',
+    fontWeight: '500',
     flex: 1,
   },
-  goalTitle: {
-    fontSize: 16,
-    fontWeight: '500',
+  goalReachedText: {
+    textDecorationLine: 'line-through',
+    textDecorationStyle: 'solid',
   },
-  goalDescription: {
-    fontSize: 14,
-    marginTop: 2,
-  },
-  button: {
-    flexDirection: 'row',
+  goalIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#F7B167',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
+  },
+  quizCtaRow: {
     borderWidth: 2,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  quizButton: {
-    backgroundColor: '#FF9800',
+    borderColor: '#F4A258',
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-    marginTop: 8,
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
-  quizButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+  quizCtaTitle: {
+    fontSize: 14,
+    color: '#2B2C48',
+    fontFamily: 'Roboto',
+    fontWeight: '700',
+  },
+  quizCtaRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  quizStatusPill: {
+    backgroundColor: '#F7B167',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  quizStatusText: {
+    fontSize: 12,
+    color: '#2B2C48',
+    fontFamily: 'Roboto',
+  },
+  quizArrowCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#F7B167',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bottomActions: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    backgroundColor: 'rgba(232,232,232,0.95)',
+  },
+  bottomActionButton: {
+    flex: 1,
   },
 });

@@ -1,19 +1,22 @@
 // Service métier pour la gestion des niveaux du jeu
 // Couche d'abstraction entre les routers et la base de données
-// Updated: Added User progression fields (points, levelId)
+// Updated: Added User progression fields (points, levelId); stars from UserLevelCompletion
 import type { Level, Goal, PrismaClient, User } from "@prisma/client";
 import defaultPrisma from "../../database.ts";
 import type {LevelCreateSchema, LevelDataSchema} from "../schemas-zod/level-schema.ts";
+import { LevelCompletionService } from "./level-completion.service.ts";
 
 // Extended User type with progression fields (temporary until Prisma regenerates)
 type UserWithProgression = User & { points?: number | null; levelId?: number | null };
 
 export class LevelService {
     private prisma: PrismaClient;
+    private levelCompletionService: LevelCompletionService;
 
     // Permet d'injecter Prisma pour les tests
     constructor(prismaClient?: PrismaClient) {
         this.prisma = prismaClient || defaultPrisma;
+        this.levelCompletionService = new LevelCompletionService(prismaClient);
     }
 
     /**
@@ -103,18 +106,33 @@ export class LevelService {
     }
 
     /**
-     * Récupère un résumé: niveau + objectifs + événements
+     * Récupère un résumé: niveau + objectifs + événements + levelGoals (with isMandatory for stars)
      */
     async getSummary(levelId: number) {
-        const level = await this.prisma.level.findUnique({
+        const levelWithGoals = await this.prisma.level.findUnique({
             where: { id: levelId },
+            include: {
+                levelGoals: { include: { goal: true } },
+            },
         });
-        // Récupérer séparément les listes d'objectifs et d'événements
-        const [goals, events] = await Promise.all([
-            this.findGoals(levelId),
-            this.findEvents(levelId),
-        ]);
-        return { level, goals, events };
+        const events = await this.findEvents(levelId);
+        const levelGoals = levelWithGoals?.levelGoals ?? [];
+        const goals = levelGoals.map((lg) => lg.goal).filter(Boolean);
+        const level = levelWithGoals
+            ? {
+                id: levelWithGoals.id,
+                title: levelWithGoals.title,
+                number: levelWithGoals.number,
+                description: levelWithGoals.description,
+                startBalance: levelWithGoals.startBalance,
+                pointsRequired: levelWithGoals.pointsRequired,
+                duration: levelWithGoals.duration,
+                speed: levelWithGoals.speed,
+                createdAt: levelWithGoals.createdAt,
+                updatedAt: levelWithGoals.updatedAt,
+            }
+            : null;
+        return { level, goals, events, levelGoals };
     }
 
     /**
@@ -143,7 +161,13 @@ export class LevelService {
         });
         // Recréer les associations
         if (src.levelGoals?.length) {
-            await this.prisma.levelGoal.createMany({ data: src.levelGoals.map((g: { goalId: number }) => ({ levelId: newLevel.id, goalId: g.goalId })) });
+            await this.prisma.levelGoal.createMany({
+                data: src.levelGoals.map((g: { goalId: number; isMandatory?: boolean }) => ({
+                    levelId: newLevel.id,
+                    goalId: g.goalId,
+                    isMandatory: g.isMandatory ?? true,
+                })),
+            });
         }
         if (src.levelEvents?.length) {
             await this.prisma.levelEvent.createMany({ data: src.levelEvents.map((e: { eventId: number }) => ({ levelId: newLevel.id, eventId: e.eventId })) });
@@ -152,19 +176,30 @@ export class LevelService {
     }
 
     /**
-     * Liste des niveaux avec progression utilisateur
+     * Liste des niveaux avec progression utilisateur (stars from UserLevelCompletion)
      */
-    async getUserLevels(userId: string): Promise<Array<{ level: Level; stars: number; points: number; unlocked: boolean }>> {
+    async getUserLevels(userId: string): Promise<Array<{ level: Level; stars: number; points: number; unlocked: boolean; mandatoryGoalsMet?: boolean; bonusGoalsMet?: boolean; quizPassed?: boolean }>> {
         const user = await this.prisma.user.findUnique({ where: { id: userId } }) as UserWithProgression | null;
         if (!user) return [];
-        const levels = await this.prisma.level.findMany({ orderBy: { number: 'asc' } });
-        const result: Array<{ level: Level; stars: number; points: number; unlocked: boolean }> = [];
+        const [levels, completions] = await Promise.all([
+            this.prisma.level.findMany({ orderBy: { number: 'asc' } }),
+            this.levelCompletionService.getCompletionsByUser(userId),
+        ]);
+        const completionByLevelId = new Map(completions.map((c) => [c.levelId, c]));
+        const result: Array<{ level: Level; stars: number; points: number; unlocked: boolean; mandatoryGoalsMet?: boolean; bonusGoalsMet?: boolean; quizPassed?: boolean }> = [];
         for (const lvl of levels) {
-            const stars = await this.prisma.userQuiz.count({
-                where: { userId, isCorrect: true, quiz: { levelId: lvl.id } }
-            });
+            const completion = completionByLevelId.get(lvl.id);
+            const stars = completion?.stars ?? 0;
             const unlocked = ((user.levelId ?? 0) >= lvl.id) || ((lvl.pointsRequired ?? 0) <= (user.points ?? 0));
-            result.push({ level: lvl, stars, points: user.points ?? 0, unlocked });
+            result.push({
+                level: lvl,
+                stars,
+                points: user.points ?? 0,
+                unlocked,
+                mandatoryGoalsMet: completion?.mandatoryGoalsMet,
+                bonusGoalsMet: completion?.bonusGoalsMet,
+                quizPassed: completion?.quizPassed,
+            });
         }
         return result;
     }

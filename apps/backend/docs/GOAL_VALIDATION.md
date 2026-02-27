@@ -18,6 +18,8 @@ La logique calcule `wallet + valeur des assets` et vérifie si les conditions de
 ```prisma
 model Goal {
   // ...
+  successMessage String?  @map("success_message") // Message en cas de réussite
+  failureMessage String?  @map("failure_message") // Message en cas d'échec
   goalType    String?  @map("goal_type")   // Type de validation
   goalValue   Float?   @map("goal_value")  // Valeur cible
 }
@@ -31,6 +33,7 @@ model Goal {
 Le goal "Reste en positif" est maintenant configuré avec :
 - `goalType: 'wallet_gte_start'` → wallet + assets >= startBalance
 - `goalValue: 0` → pas de marge supplémentaire requise
+- `successMessage` / `failureMessage` → textes affichés dans la modale de fin de partie
 
 ---
 
@@ -90,7 +93,8 @@ CASHOU_DB_URL="postgresql://..." bun run scripts/test-goal-validation.ts
 ```typescript
 const result = await trpc.gameInstance.endGame.mutate({ id: gameInstanceId });
 // result.success = true/false
-// result.goals = [{ title, validated }]
+// result.goals = [{ title, isMandatory, validated }]
+// result.modal = { type, title, primaryMessage, secondaryMessage }
 ```
 
 ### Via HTTP

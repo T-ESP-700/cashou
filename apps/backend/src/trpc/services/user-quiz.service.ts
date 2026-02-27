@@ -3,13 +3,16 @@
 import type { UserQuiz, Quiz, PrismaClient } from "@prisma/client";
 import defaultPrisma from "../../database.ts";
 import type {UserQuizCreateSchema, UserQuizDataSchema} from "../schemas-zod/user-quiz-schema.ts";
+import { LevelCompletionService } from "./level-completion.service.ts";
 
 export class UserQuizService {
     private prisma: PrismaClient;
+    private levelCompletionService: LevelCompletionService;
 
     // Permet d'injecter Prisma pour les tests
     constructor(prismaClient?: PrismaClient) {
         this.prisma = prismaClient || defaultPrisma;
+        this.levelCompletionService = new LevelCompletionService(prismaClient);
     }
 
     /**
@@ -165,6 +168,17 @@ export class UserQuizService {
         // Mettre à jour les streaks si c'est le quiz du jour
         await this.updateStreaksIfTodaysQuiz(quizId, userId);
 
+        // If quiz passed and quiz is linked to a level (end-of-level quiz), update level completion star
+        if (isCorrect === true) {
+            const quiz = await this.prisma.quiz.findUnique({
+                where: { id: quizId },
+                select: { levelId: true },
+            });
+            if (quiz?.levelId != null) {
+                await this.levelCompletionService.recordFromQuizComplete(userId, quiz.levelId);
+            }
+        }
+
         return participation;
     }
 
@@ -278,13 +292,21 @@ export class UserQuizService {
      * @returns Promise<UserQuiz> - La participation mise à jour
      */
     async completeQuiz(id: number, isCorrect: boolean): Promise<UserQuiz> {
-        return this.prisma.userQuiz.update({
+        const updated = await this.prisma.userQuiz.update({
             where: { id },
             data: {
                 isCorrect,
                 completedAt: new Date()
-            }
+            },
+            include: { quiz: true }
         });
+        if (isCorrect && updated.userId && updated.quiz?.levelId) {
+            await this.levelCompletionService.recordFromQuizComplete(
+                updated.userId,
+                updated.quiz.levelId
+            );
+        }
+        return updated;
     }
 
     /**
