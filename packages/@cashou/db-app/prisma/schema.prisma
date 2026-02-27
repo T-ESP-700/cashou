@@ -375,6 +375,7 @@ model GameInstance {
   notifications Notification[]
   holdings      Holding[]
   gameInstanceEvents GameInstanceEvent[]
+  userQuiz      UserQuiz[]
 
   @@map("game_instances")
 }
@@ -490,17 +491,19 @@ model Quiz {
 }
 
 model UserQuiz {
-  id          Int       @id @default(autoincrement())
-  quizId      Int?      @map("quiz_id")
-  userId      String?   @map("user_id")
-  completedAt DateTime? @map("completed_at")
-  isCorrect   Boolean?  @map("is_correct")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id             Int       @id @default(autoincrement())
+  quizId         Int?      @map("quiz_id")
+  userId         String?   @map("user_id")
+  gameInstanceId Int?      @map("game_instance_id")
+  completedAt    DateTime? @map("completed_at")
+  isCorrect      Boolean?  @map("is_correct")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
   // Relations
-  quiz Quiz? @relation(fields: [quizId], references: [id])
-  user User? @relation(fields: [userId], references: [id])
+  quiz         Quiz?         @relation(fields: [quizId], references: [id])
+  user         User?         @relation(fields: [userId], references: [id])
+  gameInstance GameInstance? @relation(fields: [gameInstanceId], references: [id], onDelete: SetNull)
 
   @@map("user_quiz")
 }
