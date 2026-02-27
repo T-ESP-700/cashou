@@ -6,13 +6,38 @@ import { cors } from './middleware/cors';
 import { getJobQueue, stopJobQueue } from './lib/job-queue';
 import { startGameEventWorkers } from './workers/game-event.worker';
 
-// Server instance variable to track if server is already running
+interface ServerHandle {
+  stop(): void | Promise<void>;
+}
+
 let serverInstance: ReturnType<typeof Bun.serve> | null = null;
+let startServerPromise: Promise<ServerHandle> | null = null;
 
 // Start server only if not already started and not in test mode during imports
 async function startServer() {
+  if (startServerPromise) {
+    return startServerPromise;
+  }
+  startServerPromise = _startServerInternal();
+  return startServerPromise;
+}
+
+async function _startServerInternal() {
   if (serverInstance) {
     return serverInstance;
+  }
+
+  const port = parseInt(process.env.TEST_PORT || process.env.PORT || '3000');
+
+  // Check if port is already in use (another test file may have started the server)
+  try {
+    const probe = await fetch(`http://localhost:${port}/health`);
+    if (probe.ok) {
+      console.log(`Server already running on port ${port}, reusing.`);
+      return { stop() {} };
+    }
+  } catch {
+    // Port not in use, proceed with startup
   }
 
   // Initialize pg-boss job queue and workers
@@ -26,9 +51,7 @@ async function startServer() {
     // Don't fail server startup, but log the error
   }
 
-  // Determine port: TEST_PORT for tests, PORT for env, default 3000
-  const port = parseInt(process.env.TEST_PORT || process.env.PORT || '3000');
-  
+  try {
   serverInstance = Bun.serve({
     port,
     hostname: '0.0.0.0', // Listen on all network interfaces
@@ -93,28 +116,46 @@ async function startServer() {
 
       // tRPC endpoints
       if (url.pathname.startsWith('/api/trpc')) {
-        const response = await fetchRequestHandler({
-          endpoint: '/api/trpc',
-          req,
-          router: trpcRouter,
-          createContext,
-          onError: ({ error }) => {
-            console.error('tRPC Error:', error);
-          },
-        });
+        try {
+          const response = await fetchRequestHandler({
+            endpoint: '/api/trpc',
+            req,
+            router: trpcRouter,
+            createContext,
+            onError: ({ error }) => {
+              console.error('tRPC Error:', error);
+            },
+          });
 
-        // Add CORS headers to tRPC response
-        Object.entries(corsHeaders).forEach(([key, value]) => {
-          response.headers.set(key, value);
-        });
+          // Add CORS headers to tRPC response
+          Object.entries(corsHeaders).forEach(([key, value]) => {
+            response.headers.set(key, value);
+          });
 
-        return response;
+          return response;
+        } catch (error) {
+          console.error('Unhandled tRPC handler error:', error);
+          return new Response(
+            JSON.stringify({ error: 'Internal Server Error' }),
+            {
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
+        }
       }
 
       // Default response
       return new Response('Cashou Backend API', { headers: corsHeaders });
     },
   });
+  } catch (e: unknown) {
+    if (e && typeof e === 'object' && 'code' in e && e.code === 'EADDRINUSE') {
+      console.log(`Port ${port} already in use, reusing existing server.`);
+      return { stop() {} };
+    }
+    throw e;
+  }
 
   console.log(`Backend listening on http://localhost:${serverInstance.port}`);
   console.log(`Auth endpoints available at http://localhost:${serverInstance.port}/api/auth/*`);

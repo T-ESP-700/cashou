@@ -3,9 +3,9 @@
  * Simplifie la création d'entités de test avec des valeurs par défaut cohérentes
  */
 
-import type { 
-  User, Level, GameInstance, Wallet, Asset, Holding, Market, 
-  Field, Submarket, Event, LevelEvent, Goal, LevelGoal, PrismaClient 
+import type {
+  User, Level, GameInstance, Wallet, Asset, Holding, Market,
+  Field, Submarket, Event, LevelEvent, Goal, LevelGoal, PrismaClient
 } from "@cashou/db-app";
 import { Prisma } from "@cashou/db-app";
 
@@ -26,7 +26,7 @@ export class IntegrationTestFactory {
    */
   async createUser(data?: Partial<User>): Promise<User> {
     const uniqueSuffix = this.uniqueId();
-    const userData: any = {
+    const userData: Prisma.UserUncheckedCreateInput = {
       email: data?.email ?? `user-${uniqueSuffix}@test.com`,
       username: data?.username ?? `user${uniqueSuffix}`,
       name: data?.name ?? "Test User",
@@ -35,13 +35,9 @@ export class IntegrationTestFactory {
       points: data?.points ?? 0,
       currentStreak: data?.currentStreak ?? 0,
       maxStreak: data?.maxStreak ?? 0,
+      ...(data?.levelId !== undefined && { levelId: data.levelId }),
     };
-    
-    // N'ajouter levelId que s'il est fourni explicitement
-    if (data?.levelId !== undefined) {
-      userData.levelId = data.levelId;
-    }
-    
+
     return this.prisma.user.create({ data: userData });
   }
 
@@ -139,7 +135,6 @@ export class IntegrationTestFactory {
         submarketId,
         rate: data?.rate !== undefined ? data.rate : 1.0, // Respecter null explicite
         description: data?.description ?? null,
-        taux: data?.taux ?? 0.02,
         maxAmount: data?.maxAmount ?? new Prisma.Decimal(100000),
         minAmount: data?.minAmount ?? new Prisma.Decimal(100),
       },
@@ -204,10 +199,10 @@ export class IntegrationTestFactory {
   /**
    * Crée un holding de test
    */
-  async createHolding(data: { 
-    walletId: number; 
-    assetId: number; 
-    gameInstanceId: number 
+  async createHolding(data: {
+    walletId: number;
+    assetId: number;
+    gameInstanceId: number
   } & Partial<Holding>): Promise<Holding> {
     return this.prisma.holding.create({
       data: {
@@ -293,40 +288,40 @@ export class IntegrationTestFactory {
     const market = await this.createMarket({});
     const field = await this.createField({ marketId: market.id });
     const submarket = await this.createSubmarket({ marketId: market.id });
-    
+
     // Créer le level AVANT le user (FK constraint)
     const level = await this.createLevel({
       startBalance: overrides?.startBalance ?? 10000,
     });
-    
+
     const user = await this.createUser({
       levelId: level.id, // Lier l'utilisateur au level
     });
-    
+
     const gameInstance = await this.createGameInstance({
       userId: user.id,
       levelId: level.id,
       startBalance: overrides?.startBalance ?? 10000,
     });
-    
+
     const wallet = await this.createWallet({
       gameInstanceId: gameInstance.id,
       amount: new Prisma.Decimal(overrides?.startBalance ?? 10000),
     });
-    
+
     const asset = await this.createAsset({
       fieldId: field.id,
       marketId: market.id,
       submarketId: submarket.id,
       rate: overrides?.assetRate ?? 2.0,
-      maxAmount: overrides?.assetMaxAmount 
-        ? new Prisma.Decimal(overrides.assetMaxAmount) 
+      maxAmount: overrides?.assetMaxAmount
+        ? new Prisma.Decimal(overrides.assetMaxAmount)
         : new Prisma.Decimal(50000),
-      minAmount: overrides?.assetMinAmount 
-        ? new Prisma.Decimal(overrides.assetMinAmount) 
+      minAmount: overrides?.assetMinAmount
+        ? new Prisma.Decimal(overrides.assetMinAmount)
         : new Prisma.Decimal(100),
     });
-    
+
     return {
       user,
       level,

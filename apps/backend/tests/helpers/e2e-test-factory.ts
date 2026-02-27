@@ -18,12 +18,26 @@ import { beforeAll, afterAll } from "bun:test";
 import { createTRPCProxyClient, httpBatchLink } from "@trpc/client";
 import type { AppRouter } from "../../src/trpc/router";
 import { startServer } from "../../src/index";
+import { ensureServerStarted } from "../setup";
 import { auth } from "@cashou/auth/server";
 import prisma from "../../src/database";
 import { IntegrationTestFactory } from "./integration-test-factory";
-import type { User, Level, GameInstance, Asset, Wallet, Quiz, Question, Answer } from "@cashou/db-app";
+import type {
+  User,
+  Level,
+  GameInstance,
+  Asset,
+  Wallet,
+  Quiz,
+  Question,
+  Answer,
+  Market,
+  Submarket,
+  Field,
+} from "@cashou/db-app";
 
 type ServerInstance = Awaited<ReturnType<typeof startServer>>;
+type MarketWithRelations = Market & { submarkets: Submarket[]; fields: Field[] };
 
 const TEST_PORT = process.env.TEST_PORT || "3001";
 const TEST_URL = `http://localhost:${TEST_PORT}`;
@@ -48,9 +62,9 @@ export interface GameE2ESetup {
   gameInstance: GameInstance;
   wallet: Wallet;
   asset: Asset;
-  market: any;
-  submarket: any;
-  field: any;
+  market: MarketWithRelations;
+  submarket: Submarket | undefined;
+  field: Field | undefined;
 }
 
 export interface QuizE2ESetup {
@@ -73,17 +87,12 @@ export function createE2ESetup(): E2EContext {
   // Créer la factory immédiatement (pas dans beforeAll)
   const factory = new IntegrationTestFactory(prisma);
   
-  const context: E2EContext = {
-    client: null as any,
-    server: null as any,
-    factory: factory,
-  };
+  const context = { factory } as E2EContext;
 
   beforeAll(async () => {
-    // 1. Démarrer le serveur (singleton)
+    // 1. Démarrer le serveur (singleton partagé avec tous les tests)
     if (!globalE2EServer) {
-      process.env.TEST_PORT = TEST_PORT;
-      globalE2EServer = await startServer();
+      globalE2EServer = await ensureServerStarted();
     }
     context.server = globalE2EServer;
 
@@ -111,14 +120,11 @@ export function createE2ESetup(): E2EContext {
 }
 
 /**
- * Nettoie le serveur global (à appeler dans afterAll global si besoin)
+ * Nettoie les références E2E (le serveur est partagé et géré par setup.ts)
  */
 export async function cleanupE2EServer() {
-  if (globalE2EServer?.stop) {
-    await globalE2EServer.stop();
-    globalE2EServer = null;
-    globalE2EClient = null;
-  }
+  globalE2EServer = null;
+  globalE2EClient = null;
 }
 
 /**
@@ -264,16 +270,19 @@ export async function createGameE2ESetup(
       fields: true,
     },
   });
+  if (!market) {
+    throw new Error("Market introuvable pour l'asset créé");
+  }
   
   // Filtrer le submarket et field spécifiques (si présents)
   const submarketId = asset.submarketId !== null ? asset.submarketId : undefined;
   const submarket = submarketId !== undefined 
-    ? market?.submarkets?.find(s => s.id === submarketId)
+    ? market.submarkets.find(s => s.id === submarketId)
     : undefined;
   
   const fieldId = asset.fieldId !== null ? asset.fieldId : undefined;
   const field = fieldId !== undefined
-    ? market?.fields?.find(f => f.id === fieldId)
+    ? market.fields.find(f => f.id === fieldId)
     : undefined;
 
   return {
@@ -284,7 +293,7 @@ export async function createGameE2ESetup(
     gameInstance,
     wallet,
     asset,
-    market: market!,
+    market,
     submarket: submarket,
     field: field,
   };

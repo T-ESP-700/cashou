@@ -1,9 +1,6 @@
 import { describe, it, expect, beforeAll } from 'bun:test';
 import { ensureServerStarted } from './setup';
 
-type ServerInstance = Awaited<ReturnType<typeof startServer>>;
-
-// Use port 3001 for tests to avoid conflicts with Docker backend on 3000
 const TEST_PORT = process.env.TEST_PORT || '3001';
 const TEST_URL = `http://localhost:${TEST_PORT}`;
 
