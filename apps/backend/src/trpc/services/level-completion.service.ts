@@ -79,7 +79,7 @@ export class LevelCompletionService {
             const permanentQuizPassed = existing.quizPassed || criteria.quizPassed;
 
             if (sessionStars > existing.stars) {
-                // Better session: update stars and all flags (quiz flag stays permanent)
+                // Strictly better session: upgrade stars and all flags
                 await this.prisma.userLevelCompletion.update({
                     where: { userId_levelId: { userId, levelId } },
                     data: {
@@ -91,8 +91,21 @@ export class LevelCompletionService {
                         updatedAt: now,
                     },
                 });
+            } else if (sessionStars === existing.stars) {
+                // Equal score: keep stars unchanged but update mandatory/bonus flags
+                // so that a future quiz completion can correctly compute 3 stars.
+                // quizPassed stays permanent. Stars are never downgraded.
+                await this.prisma.userLevelCompletion.update({
+                    where: { userId_levelId: { userId, levelId } },
+                    data: {
+                        mandatoryGoalsMet: criteria.mandatoryGoalsMet,
+                        bonusGoalsMet: criteria.bonusGoalsMet,
+                        quizPassed: permanentQuizPassed,
+                        updatedAt: now,
+                    },
+                });
             } else if (permanentQuizPassed !== existing.quizPassed) {
-                // Same or lower stars, but quiz was just earned: only update quizPassed
+                // Lower stars but quiz was just earned: only update quizPassed
                 await this.prisma.userLevelCompletion.update({
                     where: { userId_levelId: { userId, levelId } },
                     data: {
@@ -101,7 +114,7 @@ export class LevelCompletionService {
                     },
                 });
             }
-            // If stars are equal or lower AND quizPassed hasn't changed: do nothing
+            // If stars are strictly lower AND quizPassed hasn't changed: do nothing
         } else {
             await this.prisma.userLevelCompletion.create({
                 data: {

@@ -89,8 +89,7 @@ export default function LevelsScreen() {
         }
 
         // Construire la liste des niveaux avec les etoiles
-        const result: LevelItem[] = await Promise.all(
-          (userLevels as any[]).map(async (ul: any) => {
+        const result: LevelItem[] = (userLevels as any[]).map((ul: any) => {
             const isCompleted = completedLevelIds.has(ul.level.id);
             const isCurrent = ul.level.id === currentLevelId;
 
@@ -103,42 +102,12 @@ export default function LevelsScreen() {
               status = 'locked';
             }
 
-            // Calculer les etoiles pour les niveaux completes
-            let stars: LevelStars = { mandatory: false, bonus: false, quiz: false };
-
-            if (isCompleted) {
-              const game = completedGamesMap.get(ul.level.id);
-              const startBalance = game?.startBalance || ul.level.startBalance || 0;
-              const walletAmount = game?.wallets?.[0]?.amount ? Number(game.wallets[0].amount) : 0;
-
-              // Etoile 1 : objectif obligatoire (wallet >= startBalance)
-              stars.mandatory = walletAmount >= startBalance;
-
-              // Etoile 2 : objectif bonus (verifier les goals du niveau)
-              try {
-                const goals = await trpcClient.levelGoal.getByLevelId.query({ levelId: ul.level.id });
-                const goalsList = goals as any[];
-                if (goalsList.length >= 2) {
-                  // Objectif bonus = deuxieme goal
-                  const bonusGoal = goalsList[1]?.goal;
-                  if (bonusGoal?.goalType === 'wallet_gt_start') {
-                    stars.bonus = walletAmount > startBalance + (bonusGoal.goalValue || 0);
-                  } else if (bonusGoal?.goalType === 'wallet_min') {
-                    stars.bonus = walletAmount >= (bonusGoal.goalValue || 0);
-                  } else {
-                    stars.bonus = walletAmount > startBalance;
-                  }
-                } else if (goalsList.length === 1) {
-                  // Un seul goal = pas de bonus
-                  stars.bonus = false;
-                }
-              } catch {
-                stars.bonus = false;
-              }
-
-              // Etoile 3 : quiz complete
-              stars.quiz = ul.stars > 0;
-            }
+            // Les étoiles viennent directement de UserLevelCompletion via getUserLevels
+            const stars: LevelStars = {
+              mandatory: ul.mandatoryGoalsMet ?? false,
+              bonus: ul.bonusGoalsMet ?? false,
+              quiz: ul.quizPassed ?? false,
+            };
 
             const completedGame = completedGamesMap.get(ul.level.id);
             return {
@@ -150,8 +119,7 @@ export default function LevelsScreen() {
               gameId: activeGameByLevel.get(ul.level.id) ?? completedGame?.id,
               stars,
             };
-          })
-        );
+        });
 
         setLevels(result);
       } catch (err) {
