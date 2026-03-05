@@ -74,7 +74,7 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
     const { colors, fonts, spacing } = useCashouTheme();
     const { user, refreshUser } = useAuth();
 
-    const [form, setForm] = useState<FormData>({ name: "", username: "" });
+    const [form, setForm] = useState<FormData>({ username: "" });
     const [errors, setErrors] = useState<FormErrors>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
