@@ -1,17 +1,23 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
   Modal,
-  Dimensions,
   ScrollView,
+  StyleSheet,
+  Dimensions,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { Ionicons } from '@expo/vector-icons';
+import Svg, { Path } from 'react-native-svg';
+import { ActionPillButton } from '@/components/ui';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
-import { Card, Button } from '@/components/ui';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const OVERLAY_PH = 18;
+const BACKDROP_PADDING = 6;
+const BACKDROP_MAX_WIDTH = 410;
+const BACKDROP_RATIO = 0.97;
 
 interface LevelInfoData {
   id: number;
@@ -38,13 +44,18 @@ interface LevelInfoModalProps {
 }
 
 export function LevelInfoModal({ visible, onClose, level, goals }: LevelInfoModalProps) {
-  const { colors, fonts, spacing, isDark } = useCashouTheme();
+  const { colors, isDark } = useCashouTheme();
   const [currentPage, setCurrentPage] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+  const screenWidth = Dimensions.get('window').width;
+  const backdropWidth = Math.min((screenWidth - OVERLAY_PH * 2) * BACKDROP_RATIO, BACKDROP_MAX_WIDTH);
+  const pageWidth = backdropWidth - BACKDROP_PADDING * 2;
 
   // Reset to first page when modal opens
   React.useEffect(() => {
     if (visible) {
       setCurrentPage(0);
+      scrollRef.current?.scrollTo({ x: 0, animated: false });
     }
   }, [visible]);
 
@@ -52,7 +63,7 @@ export function LevelInfoModal({ visible, onClose, level, goals }: LevelInfoModa
     return null;
   }
 
-  // Default goals if none are provided; otherwise use goals with optional isMandatory for labels
+  // Default goals if none are provided
   const displayGoals = goals.length > 0
     ? goals
     : [
@@ -60,22 +71,14 @@ export function LevelInfoModal({ visible, onClose, level, goals }: LevelInfoModa
         { id: 2, title: 'Bonus', description: 'Atteignez les objectifs secondaires', isMandatory: false }
       ];
 
-  const handleNext = () => {
-    setCurrentPage(1);
-  };
-
-  const handlePrevious = () => {
-    setCurrentPage(0);
-  };
-
-  const formatSpeed = (speed: number | null): string => {
-    if (!speed) return '1x';
-    return `${speed}x`;
-  };
-
   const formatDuration = (duration: number | null): string => {
     if (!duration) return '30 jours';
     return `${duration} jours`;
+  };
+
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const page = Math.round(e.nativeEvent.contentOffset.x / pageWidth);
+    setCurrentPage(page);
   };
 
   return (
@@ -87,289 +90,237 @@ export function LevelInfoModal({ visible, onClose, level, goals }: LevelInfoModa
       onRequestClose={onClose}
     >
       <BlurView
-        intensity={80}
+        intensity={60}
         tint={isDark ? 'dark' : 'light'}
-        style={{ flex: 1 }}
+        style={styles.levelInfoBlur}
       >
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg }}>
-          <Card
-            variant="elevated"
-            padding="lg"
-            style={{
-              width: SCREEN_WIDTH - 48,
-              maxWidth: 400,
-              maxHeight: '80%',
-            }}
-          >
-            {currentPage === 0 ? (
-              // Page 0: Description
-              <>
-                {/* Header Icon */}
-                <View
-                  style={{
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 70,
-                    height: 70,
-                    borderRadius: 35,
-                    backgroundColor: `${colors.accent}20`,
-                    marginBottom: spacing.md,
-                    alignSelf: 'center',
-                  }}
-                >
-                  <Ionicons name="information-circle" size={36} color={colors.accent} />
-                </View>
+        <View style={styles.levelInfoOverlay}>
+          <View style={[styles.levelInfoCardBackdrop, { backgroundColor: colors.secondary }]}>
+            <View style={[styles.levelInfoCard, { backgroundColor: colors.card, shadowColor: colors.border }]}>
+              <ScrollView
+                ref={scrollRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={handleScroll}
+                style={styles.levelInfoScrollView}
+              >
+                {/* Page 0: Description */}
+                <View style={[styles.levelInfoPage, { width: pageWidth }]}>
+                  {/* Title */}
+                  <Text style={[styles.levelInfoTitle, { color: colors.text }]}>
+                    Niveau {level.number}
+                  </Text>
 
-                {/* Title */}
-                <Text
-                  style={{
-                    fontSize: 22,
-                    fontFamily: fonts.heading,
-                    color: colors.text,
-                    textAlign: 'center',
-                    marginBottom: spacing.xs,
-                  }}
-                >
-                  Niveau {level.number}
-                </Text>
+                  {/* Subtitle */}
+                  <Text style={[styles.levelInfoSubtitle, { color: colors.text }]}>
+                    {level.title || 'Sans titre'}
+                  </Text>
 
-                {/* Subtitle */}
-                <Text
-                  style={{
-                    fontSize: 18,
-                    fontFamily: fonts.subheading,
-                    color: colors.text,
-                    textAlign: 'center',
-                    marginBottom: spacing.md,
-                    opacity: 0.9,
-                  }}
-                >
-                  {level.title || 'Sans titre'}
-                </Text>
-
-                {/* Description */}
-                <ScrollView style={{ maxHeight: 150, marginBottom: spacing.md }}>
-                  <Text
-                    style={{
-                      fontSize: 15,
-                      fontFamily: fonts.body,
-                      color: colors.text,
-                      textAlign: 'center',
-                      lineHeight: 22,
-                      opacity: 0.85,
-                    }}
-                  >
+                  {/* Description */}
+                  <Text style={[styles.levelInfoDescription, { color: colors.text }]}>
                     {level.description || 'Aucune description disponible pour ce niveau.'}
                   </Text>
-                </ScrollView>
 
-                {/* Info Cards */}
-                <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg }}>
-                  <View
-                    style={{
-                      flex: 1,
-                      backgroundColor: colors.secondary,
-                      borderRadius: 12,
-                      padding: spacing.sm,
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Text style={{ fontSize: 12, fontFamily: fonts.body, color: colors.text, opacity: 0.7 }}>
-                      Durée
-                    </Text>
-                    <Text style={{ fontSize: 16, fontFamily: fonts.subheading, color: colors.text, marginTop: 4 }}>
-                      {formatDuration(level.duration)}
-                    </Text>
-                  </View>
-                  <View
-                    style={{
-                      flex: 1,
-                      backgroundColor: colors.secondary,
-                      borderRadius: 12,
-                      padding: spacing.sm,
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Text style={{ fontSize: 12, fontFamily: fonts.body, color: colors.text, opacity: 0.7 }}>
-                      Vitesse
-                    </Text>
-                    <Text style={{ fontSize: 16, fontFamily: fonts.subheading, color: colors.text, marginTop: 4 }}>
-                      {formatSpeed(level.speed)}
-                    </Text>
-                  </View>
-                  <View
-                    style={{
-                      flex: 1,
-                      backgroundColor: colors.secondary,
-                      borderRadius: 12,
-                      padding: spacing.sm,
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Text style={{ fontSize: 12, fontFamily: fonts.body, color: colors.text, opacity: 0.7 }}>
-                      Capital
-                    </Text>
-                    <Text style={{ fontSize: 16, fontFamily: fonts.subheading, color: colors.text, marginTop: 4 }}>
-                      {level.startBalance ?? 1000}€
-                    </Text>
+                  {/* Info Cards */}
+                  <View style={styles.levelInfoCardsRow}>
+                    <View style={[styles.levelInfoInfoCard, { backgroundColor: colors.secondary }]}>
+                      <Text style={[styles.levelInfoInfoLabel, { color: colors.text }]}>Durée</Text>
+                      <Text style={[styles.levelInfoInfoValue, { color: colors.text }]}>
+                        {formatDuration(level.duration)}
+                      </Text>
+                    </View>
+                    <View style={[styles.levelInfoInfoCard, { backgroundColor: colors.secondary }]}>
+                      <Text style={[styles.levelInfoInfoLabel, { color: colors.text }]}>Capital</Text>
+                      <Text style={[styles.levelInfoInfoValue, { color: colors.text }]}>
+                        {level.startBalance ?? 1000}€
+                      </Text>
+                    </View>
                   </View>
                 </View>
 
-                {/* Page Indicator */}
-                <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: spacing.md }}>
-                  <View
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: 4,
-                      backgroundColor: colors.accent,
-                    }}
-                  />
-                  <View
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: 4,
-                      backgroundColor: colors.border,
-                    }}
-                  />
-                </View>
+                {/* Page 1: Goals */}
+                <View style={[styles.levelInfoPage, { width: pageWidth }]}>
+                  {/* Title */}
+                  <Text style={[styles.levelInfoTitle, { color: colors.text }]}>
+                    Objectifs
+                  </Text>
 
-                {/* Button */}
-                <Button
-                  title="Suivant"
-                  variant="primary"
-                  onPress={handleNext}
-                  fullWidth
-                />
-              </>
-            ) : (
-              // Page 1: Goals
-              <>
-                {/* Header Icon */}
-                <View
-                  style={{
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 70,
-                    height: 70,
-                    borderRadius: 35,
-                    backgroundColor: `${colors.accent}20`,
-                    marginBottom: spacing.md,
-                    alignSelf: 'center',
-                  }}
-                >
-                  <Ionicons name="flag" size={36} color={colors.accent} />
-                </View>
-
-                {/* Title */}
-                <Text
-                  style={{
-                    fontSize: 22,
-                    fontFamily: fonts.heading,
-                    color: colors.text,
-                    textAlign: 'center',
-                    marginBottom: spacing.md,
-                  }}
-                >
-                  Objectifs
-                </Text>
-
-                {/* Goals List */}
-                <ScrollView style={{ maxHeight: 250, marginBottom: spacing.md }}>
+                  {/* Goals List */}
                   {displayGoals.map((goal, index) => {
                     const isMandatory = goal.isMandatory !== false;
                     return (
                       <View
                         key={goal.id}
-                        style={{
-                          backgroundColor: colors.secondary,
-                          borderRadius: 12,
-                          padding: spacing.md,
-                          marginBottom: index < displayGoals.length - 1 ? spacing.sm : 0,
-                        }}
+                        style={[
+                          styles.levelInfoGoalCard,
+                          { backgroundColor: colors.secondary },
+                          index < displayGoals.length - 1 && { marginBottom: 8 },
+                        ]}
                       >
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                          <Text
-                            style={{
-                              fontSize: 11,
-                              fontFamily: fonts.body,
-                              color: isMandatory ? colors.accent : colors.text,
-                              opacity: 0.9,
-                            }}
-                          >
-                            {isMandatory ? 'Objectif principal' : 'Bonus'}
-                          </Text>
-                        </View>
                         <Text
-                          style={{
-                            fontSize: 13,
-                            fontFamily: fonts.body,
-                            color: colors.text,
-                            opacity: 0.7,
-                            marginBottom: 4,
-                          }}
+                          style={[
+                            styles.levelInfoGoalBadge,
+                            { color: colors.text },
+                            isMandatory && { color: colors.accent },
+                          ]}
                         >
+                          {isMandatory ? 'Objectif principal' : 'Bonus'}
+                        </Text>
+                        <Text style={[styles.levelInfoGoalTitle, { color: colors.text }]}>
                           {goal.title || `Objectif ${index + 1}`}
                         </Text>
-                        <Text
-                          style={{
-                            fontSize: 16,
-                            fontFamily: fonts.subheading,
-                            color: colors.text,
-                          }}
-                        >
+                        <Text style={[styles.levelInfoGoalDescription, { color: colors.text }]}>
                           {goal.description || 'À accomplir'}
                         </Text>
                       </View>
                     );
                   })}
-                </ScrollView>
-
-                {/* Page Indicator */}
-                <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: spacing.md }}>
-                  <View
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: 4,
-                      backgroundColor: colors.border,
-                    }}
-                  />
-                  <View
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: 4,
-                      backgroundColor: colors.accent,
-                    }}
-                  />
                 </View>
+              </ScrollView>
 
-                {/* Buttons */}
-                <View style={{ flexDirection: 'row', width: '100%', gap: spacing.sm + 4 }}>
-                  <View style={{ flex: 1 }}>
-                    <Button
-                      title="Précédent"
-                      variant="outline"
-                      onPress={handlePrevious}
-                      fullWidth
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Button
-                      title="Fermer"
-                      variant="primary"
-                      onPress={onClose}
-                      fullWidth
-                    />
-                  </View>
-                </View>
-              </>
-            )}
-          </Card>
+              {/* Page Indicator */}
+              <View style={styles.levelInfoDots}>
+                <View style={[styles.levelInfoDot, { backgroundColor: colors.progressBarBackground }, currentPage === 0 && { backgroundColor: colors.accent }]} />
+                <View style={[styles.levelInfoDot, { backgroundColor: colors.progressBarBackground }, currentPage === 1 && { backgroundColor: colors.accent }]} />
+              </View>
+
+              {/* Button */}
+              <View style={styles.levelInfoActions}>
+                <ActionPillButton
+                  label="Commencer"
+                  customIcon={
+                    <Svg width={17} height={17} viewBox="0 0 24 24" fill="none">
+                      <Path
+                        d="M21.4086 9.35258C23.5305 10.5065 23.5305 13.4935 21.4086 14.6474L8.59662 21.6145C6.53435 22.736 4 21.2763 4 18.9671L4 5.0329C4 2.72368 6.53435 1.26402 8.59661 2.38548L21.4086 9.35258Z"
+                        fill={colors.text}
+                      />
+                    </Svg>
+                  }
+                  onPress={onClose}
+                  style={{ flex: 0, maxWidth: undefined, paddingHorizontal: 10 }}
+                />
+              </View>
+            </View>
+          </View>
         </View>
       </BlurView>
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  levelInfoBlur: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  levelInfoOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+  },
+  levelInfoCardBackdrop: {
+    width: '97%',
+    maxWidth: 410,
+    borderRadius: 36,
+    padding: 6,
+  },
+  levelInfoCard: {
+    width: '100%',
+    borderRadius: 30,
+    paddingTop: 24,
+    paddingBottom: 20,
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+    overflow: 'hidden',
+  },
+  levelInfoScrollView: {
+    flexGrow: 0,
+  },
+  levelInfoPage: {
+    paddingHorizontal: 18,
+  },
+  levelInfoTitle: {
+    fontSize: 28,
+    fontFamily: 'Anybody',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  levelInfoSubtitle: {
+    fontSize: 18,
+    fontFamily: 'Anybody',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  levelInfoDescription: {
+    fontSize: 13,
+    fontFamily: 'Anybody',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 14,
+  },
+  levelInfoCardsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  levelInfoInfoCard: {
+    flex: 1,
+    borderRadius: 12,
+    padding: 10,
+    alignItems: 'center',
+  },
+  levelInfoInfoLabel: {
+    fontSize: 12,
+    fontFamily: 'Anybody',
+    opacity: 0.7,
+  },
+  levelInfoInfoValue: {
+    fontSize: 16,
+    fontFamily: 'Anybody',
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  levelInfoDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 14,
+    marginBottom: 12,
+    paddingHorizontal: 18,
+  },
+  levelInfoDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  levelInfoGoalCard: {
+    borderRadius: 12,
+    padding: 14,
+  },
+  levelInfoGoalBadge: {
+    fontSize: 16,
+    fontFamily: 'Anybody',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  levelInfoGoalTitle: {
+    fontSize: 14,
+    fontFamily: 'Anybody',
+    marginBottom: 4,
+  },
+  levelInfoGoalDescription: {
+    fontSize: 13,
+    fontFamily: 'Anybody',
+    opacity: 0.7,
+  },
+  levelInfoActions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 18,
+  },
+});
