@@ -14,6 +14,7 @@ export const CashouTheme = {
       accent: "#FFB472",
       card: "#FFFFFF",
       border: "#1C1E33",
+      borderLight: "#D1D5DB",
       progressBarBackground: "#E0E0E0",
     },
     dark: {
@@ -24,6 +25,7 @@ export const CashouTheme = {
       accent: "#FFB472",
       card: "#2A2D45",
       border: "#3A3D55",
+      borderLight: "#4B5563",
       progressBarBackground: "#3A3D55",
     },
     // Semantic status colors (mode-agnostic)
@@ -79,7 +81,7 @@ export const CashouTheme = {
     sm: 8,
     md: 12,
     lg: 16,
-    xl: 24,
+    xl: 22,
   },
   borderWidth: {
     thin: 1,

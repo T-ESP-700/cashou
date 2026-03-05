@@ -131,7 +131,7 @@ export default function HomeScreen() {
   const router = useRouter();
 
   // Configure header for this screen
-  useHeaderOptions({ showBackButton: false });
+  useHeaderOptions({ showBackButton: false, title: 'Cashou' });
   const [dailyQuizStatus, setDailyQuizStatus] = useState<'todo' | 'done'>('todo');
   const [isLoadingDailyQuiz, setIsLoadingDailyQuiz] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<string>('0h0m');
@@ -390,7 +390,7 @@ export default function HomeScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Content */}
-      <ScrollView style={{ flex: 1 }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120 }}>
         {/* Loading State */}
         {isLoadingHomeData ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl * 1.5 }}>

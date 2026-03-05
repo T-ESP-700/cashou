@@ -112,11 +112,11 @@ function useProvideAuth(): UseAuthReturn {
           lastError = err;
 
           // Check if it's an auth error (token invalid/expired)
+          // This is a normal flow — silently clear and redirect to login
           if (isAuthError(err)) {
-            console.error('[useAuth] Authentication error, token invalid:', err);
+            console.log('[useAuth] Token expired or invalid, clearing session');
             setUser(null);
             await tokenStorage.removeToken();
-            setError('Session expired. Please login again.');
             break; // Don't retry on auth errors
           }
 
@@ -137,14 +137,16 @@ function useProvideAuth(): UseAuthReturn {
       // If we get here, we've exhausted retries
       throw lastError;
     } catch (err) {
-      console.error('[useAuth] Failed to fetch user after retries:', err);
-
       if (isNetworkError(err)) {
+        console.warn('[useAuth] Network error during fetchUser:', err);
         setError('Network error. Please check your connection.');
-      } else if (!isAuthError(err)) {
+      } else if (isAuthError(err)) {
+        // Auth errors are already handled in the retry loop above
+        console.log('[useAuth] Token expired or invalid, session cleared');
+      } else {
+        console.error('[useAuth] Unexpected error during fetchUser:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch user');
         setUser(null);
-        // Clear token on other errors (but not on network issues)
         await tokenStorage.removeToken();
       }
     } finally {

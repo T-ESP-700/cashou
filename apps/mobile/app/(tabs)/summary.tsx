@@ -93,7 +93,7 @@ export default function GameSummaryScreen() {
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const insets = useSafeAreaInsets();
 
-  useHeaderOptions({ showBackButton: true });
+  useHeaderOptions({ showBackButton: true, title: 'Résumé' });
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -391,7 +391,7 @@ export default function GameSummaryScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: '#E8E8E8' }]}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 112 }]}
@@ -715,6 +715,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 10,
+    paddingTop: 20,
   },
   sectionTitle: {
     fontSize: 20,
@@ -781,7 +782,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   panel: {
-    backgroundColor: '#F2F2F2',
+    backgroundColor: 'white',
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 14,
@@ -841,7 +842,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   goalCard: {
-    backgroundColor: '#F2F2F2',
+    backgroundColor: 'white',
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 14,
@@ -931,7 +932,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 18,
     paddingTop: 10,
-    backgroundColor: 'rgba(232,232,232,0.95)',
+    backgroundColor: 'transparent',
   },
   bottomActionButton: {
     flex: 1,

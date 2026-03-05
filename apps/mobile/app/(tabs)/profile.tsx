@@ -14,7 +14,7 @@ export default function ProfileScreen() {
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
 
   // Configure header for this screen
-  useHeaderOptions({ showBackButton: false });
+  useHeaderOptions({ showBackButton: false, title: 'Profil' });
 
   // Show loading state while checking authentication
   if (isLoading) {

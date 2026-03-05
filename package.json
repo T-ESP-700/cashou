@@ -14,7 +14,7 @@
     "dev:all": "docker stop cashou-backend-1 cashou-backoffice-1 2>/dev/null || true && docker compose up db_cashou db_backoffice -d && concurrently \"bun run dev:backend\" \"bun run dev:backoffice\" \"bun run dev:mobile\"",
     "dev:backend": "cd apps/backend && bun run dev",
     "dev:backoffice": "cd apps/backoffice && bun run dev",
-    "dev:mobile": "cd apps/mobile && npx expo start",
+    "dev:mobile": "cd apps/mobile && bun run start",
     "dev:mobile:go": "cd apps/mobile && npx expo start --go",
     "dev:mobile:web": "cd apps/mobile && npx expo start --web",
     "dev:stop": "docker stop cashou-db_cashou-1 cashou-db_backoffice-1",
@@ -49,6 +49,7 @@
     "db:seed:level1": "cd apps/backend && bunx dotenv -e ../../.env -- bun run scripts/seed-level1.ts",
     "healthy:game": "cd apps/backend && bun run scripts/healthy-game.ts",
     "db:seed:dico": "cd apps/backend && bunx dotenv -e ../../.env -- bun run scripts/seed-dico.ts",
+    "db:seed:dev-account": "cd apps/backend && bunx dotenv -e ../../.env -- bun run scripts/seed-dev-account.ts",
     "db:empty": "cd packages/@cashou/db-app && bunx dotenv -e ../../../.env -- prisma migrate reset --force",
     "db:check": "cd packages/@cashou/db-app && bunx dotenv -e ../../../.env -- prisma db pull --force",
     "db:status": "cd apps/backend && bun run scripts/db-check.ts",
@@ -58,7 +59,7 @@
     "docker:build": "docker compose build",
     "docker:logs": "docker compose logs -f",
     "docker:clean": "docker compose down -v && docker system prune -f",
-    "setup": "bun install && docker compose down -v 2>/dev/null || true && docker compose up -d --build && bun run generate && bun run migrate && (cd packages/@cashou/db-backoffice && bunx prisma generate && bunx dotenv -e ../../../.env -- prisma migrate deploy && bunx dotenv -e ../../../.env -- bun ./seed-admin.ts) && bun run db:seed:level1 && bun run db:seed:dico",
+    "setup": "bun install && docker compose down -v 2>/dev/null || true && docker compose up -d --build && bun run generate && bun run migrate && (cd packages/@cashou/db-backoffice && bunx prisma generate && bunx dotenv -e ../../../.env -- prisma migrate deploy && bunx dotenv -e ../../../.env -- bun ./seed-admin.ts) && bun run db:seed:level1 && bun run db:seed:dico && bun run db:seed:dev-account",
     "setup:clean": "bun --bun pm cache rm",
     "setup:cac40": "bun run setup && bun run db:seed:cac40",
     "reset": "bun run docker:down && bun run docker:clean && bun run docker:up && bun run migrate:reset",
@@ -87,6 +88,7 @@
     "typescript": "5.9.3"
   },
   "engines": {
+    "node": ">=20.0.0",
     "bun": ">=1.0.0"
   },
   "keywords": [

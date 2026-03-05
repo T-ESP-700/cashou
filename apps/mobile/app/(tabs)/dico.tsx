@@ -48,7 +48,7 @@ export default function DicoScreen() {
   const insets = useSafeAreaInsets();
 
   // Configure header for this screen (no back button for main tab screens)
-  useHeaderOptions({ showBackButton: false });
+  useHeaderOptions({ showBackButton: false, title: 'Dico' });
 
   // Bottom sheet ref
   const bottomSheetRef = useRef<BottomSheet>(null);
@@ -467,7 +467,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 24,
+    paddingBottom: 120,
     flexGrow: 1,
   },
   letterSection: {
