@@ -21,6 +21,7 @@ interface LevelItem {
   unlocked: boolean;
   status: 'completed' | 'current' | 'locked';
   gameId?: number;
+  hasActiveGame: boolean;
   stars: LevelStars;
 }
 
@@ -110,13 +111,15 @@ export default function LevelsScreen() {
             };
 
             const completedGame = completedGamesMap.get(ul.level.id);
+            const activeGameId = activeGameByLevel.get(ul.level.id);
             return {
               id: ul.level.id,
               number: ul.level.number,
               title: ul.level.title,
               unlocked: ul.unlocked,
               status,
-              gameId: activeGameByLevel.get(ul.level.id) ?? completedGame?.id,
+              gameId: activeGameId ?? completedGame?.id,
+              hasActiveGame: !!activeGameId,
               stars,
             };
         });
@@ -136,21 +139,23 @@ export default function LevelsScreen() {
   const handleLevelPress = (level: LevelItem) => {
     if (level.status === 'locked') return;
 
+    // Partie en cours : aller sur la partie (même si niveau déjà complété)
+    if (level.hasActiveGame && level.gameId) {
+      router.push({
+        pathname: '/game/current',
+        params: {
+          levelId: level.id.toString(),
+          gameId: level.gameId.toString(),
+        },
+      });
+      return;
+    }
+
     if (level.status === 'current') {
-      if (level.gameId) {
-        router.push({
-          pathname: '/game/current',
-          params: {
-            levelId: level.id.toString(),
-            gameId: level.gameId.toString(),
-          },
-        });
-      } else {
-        router.push({
-          pathname: '/game/current',
-          params: { levelId: level.id.toString() },
-        });
-      }
+      router.push({
+        pathname: '/game/current',
+        params: { levelId: level.id.toString() },
+      });
     } else if (level.status === 'completed') {
       router.push({
         pathname: '/(tabs)/summary',
@@ -178,16 +183,24 @@ export default function LevelsScreen() {
     );
   };
 
-  const renderStatusIcon = (status: LevelItem['status']) => {
-    switch (status) {
+  const renderStatusIcon = (item: LevelItem) => {
+    // Partie en cours : orange + flèche, quel que soit le statut (même niveau déjà complété)
+    if (item.hasActiveGame) {
+      return (
+        <View style={styles.statusIconCurrent}>
+          <Ionicons name="arrow-forward" size={18} color="#2B2C48" />
+        </View>
+      );
+    }
+    switch (item.status) {
       case 'completed':
         return (
           <Ionicons name="checkmark-circle" size={34} color="#88D498" />
         );
       case 'current':
         return (
-          <View style={styles.statusIconCurrent}>
-            <Ionicons name="arrow-forward" size={18} color="#2B2C48" />
+          <View style={styles.statusIconUnlocked}>
+            <Ionicons name="lock-open-outline" size={16} color="#FFFFFF" />
           </View>
         );
       case 'locked':
@@ -203,14 +216,17 @@ export default function LevelsScreen() {
     const isLocked = item.status === 'locked';
     const isCurrent = item.status === 'current';
     const isCompleted = item.status === 'completed';
+    const hasActiveGame = item.hasActiveGame;
+    const isCurrentUnlockedNoGame = isCurrent && !hasActiveGame;
 
     return (
       <TouchableOpacity
         style={[
           styles.levelRow,
           isLocked && styles.levelRowLocked,
-          isCurrent && styles.levelRowCurrent,
-          isCompleted && styles.levelRowCompleted,
+          hasActiveGame && styles.levelRowCurrent,
+          isCurrentUnlockedNoGame && styles.levelRowUnlockedNoGame,
+          isCompleted && !hasActiveGame && styles.levelRowCompleted,
         ]}
         onPress={() => handleLevelPress(item)}
         activeOpacity={isLocked ? 1 : 0.7}
@@ -225,10 +241,10 @@ export default function LevelsScreen() {
           >
             Niveau {item.number ?? '?'}
           </Text>
-          {isCompleted && renderStars(item.stars)}
+          {isCompleted && !item.hasActiveGame && renderStars(item.stars)}
         </View>
         <View style={styles.statusIcon}>
-          {renderStatusIcon(item.status)}
+          {renderStatusIcon(item)}
         </View>
       </TouchableOpacity>
     );
@@ -319,10 +335,16 @@ const styles = StyleSheet.create({
   levelRowCompleted: {
     backgroundColor: '#FFFFFF',
   },
-  // Current level: white bg, orange border
+  // Current level with active game: white bg, orange border
   levelRowCurrent: {
     backgroundColor: '#FFFFFF',
     borderColor: '#EFA667',
+    borderWidth: 2,
+  },
+  // Unlocked level without active game (next to play): white bg, blue border
+  levelRowUnlockedNoGame: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#9CD6FF',
     borderWidth: 2,
   },
   // Locked level: gray bg
@@ -370,6 +392,15 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     backgroundColor: '#A0A0A0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Blue circle for unlocked (no active game)
+  statusIconUnlocked: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#9CD6FF',
     alignItems: 'center',
     justifyContent: 'center',
   },
