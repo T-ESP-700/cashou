@@ -167,6 +167,28 @@ export class GameInstanceService {
   }
 
   /**
+   * Retourne la partie en cours de l'utilisateur (isEnded = false), ou null.
+   */
+  async findActiveByUser(userId: string): Promise<GameInstance | null> {
+    return this.prisma.gameInstance.findFirst({
+      where: { userId, isEnded: false },
+      orderBy: { createdAt: "desc" },
+      include: { level: true },
+    });
+  }
+
+  /**
+   * Abandonne une partie en cours : la clôture sans enregistrer de récompenses.
+   * Ne pas appeler endGame (qui calcule et enregistre les étoiles).
+   */
+  async abandon(id: number): Promise<GameInstance> {
+    return this.prisma.gameInstance.update({
+      where: { id },
+      data: { isEnded: true, endedAt: new Date() },
+    });
+  }
+
+  /**
    * Récupère toutes les instances d'un utilisateur
    */
   async findByUser(userId: string): Promise<GameInstance[]> {

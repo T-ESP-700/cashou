@@ -300,6 +300,22 @@ export default function GameSummaryScreen() {
   const handleReplay = async () => {
     if (!user?.id || !gameInstance?.level?.id) return;
 
+    const activeGame = await trpcClient.gameInstance.getActiveByUser.query({ userId: user.id });
+    if (activeGame) {
+      const confirmed = await new Promise<boolean>((resolve) => {
+        Alert.alert(
+          'Partie en cours',
+          'Lancer cette partie va clôturer la partie en cours sans gagner de récompenses. Voulez-vous continuer ?',
+          [
+            { text: 'Annuler', style: 'cancel' as const, onPress: () => resolve(false) },
+            { text: 'Continuer', onPress: () => resolve(true) },
+          ]
+        );
+      });
+      if (!confirmed) return;
+      await trpcClient.gameInstance.abandon.mutate({ id: activeGame.id });
+    }
+
     setIsReplaying(true);
     try {
       const levelId = gameInstance.level.id;

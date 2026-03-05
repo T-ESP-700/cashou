@@ -54,13 +54,6 @@ export default function LevelsScreen() {
           trpcClient.gameInstance.getByUser.query({ userId: user.id }),
         ]);
 
-        // Determiner les niveaux completes (au moins une partie terminee)
-        const completedLevelIds = new Set(
-          (gameInstances as any[])
-            .filter((g: any) => g.isEnded && g.levelId)
-            .map((g: any) => g.levelId)
-        );
-
         // Trouver les parties en cours par niveau
         const activeGameByLevel = new Map<number, number>();
         for (const g of gameInstances as any[]) {
@@ -69,21 +62,22 @@ export default function LevelsScreen() {
           }
         }
 
-        // Pour chaque niveau complete, calculer les etoiles
+        // Pour les niveaux complétés (recap), garder une gameInstance de référence
         const completedGamesMap = new Map<number, any>();
         for (const g of gameInstances as any[]) {
           if (g.isEnded && g.levelId) {
-            // Garder la derniere partie terminee par niveau
             if (!completedGamesMap.has(g.levelId)) {
               completedGamesMap.set(g.levelId, g);
             }
           }
         }
 
-        // Trouver le premier niveau non complete et debloque (= niveau courant)
+        // Un niveau est "complété" uniquement s'il a au moins 1 étoile (partie finie avec récompenses)
+        // 0 étoile = abandonné ou jamais validé = non terminé
+        // Trouver le premier niveau non complété et débloqué (= niveau courant)
         let currentLevelId: number | null = null;
         for (const ul of userLevels as any[]) {
-          if (ul.unlocked && !completedLevelIds.has(ul.level.id)) {
+          if (ul.unlocked && (ul.stars ?? 0) < 1) {
             currentLevelId = ul.level.id;
             break;
           }
@@ -91,7 +85,7 @@ export default function LevelsScreen() {
 
         // Construire la liste des niveaux avec les etoiles
         const result: LevelItem[] = (userLevels as any[]).map((ul: any) => {
-            const isCompleted = completedLevelIds.has(ul.level.id);
+            const isCompleted = (ul.stars ?? 0) >= 1;
             const isCurrent = ul.level.id === currentLevelId;
 
             let status: LevelItem['status'];
