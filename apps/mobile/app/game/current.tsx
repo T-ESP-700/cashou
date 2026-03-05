@@ -516,6 +516,25 @@ export default function GameCurrentScreen() {
           // 4. We don't already have a gameInstanceId set (from previous fetch)
           // This prevents creating a new instance when navigating from a notification
           if (!gameId && !gameInstanceId && user && data.level) {
+            const activeGame = await trpcClient.gameInstance.getActiveByUser.query({ userId: user.id });
+            if (activeGame) {
+              const confirmed = await new Promise<boolean>((resolve) => {
+                Alert.alert(
+                  'Partie en cours',
+                  'Lancer cette partie va clôturer la partie en cours sans gagner de récompenses. Voulez-vous continuer ?',
+                  [
+                    { text: 'Annuler', style: 'cancel' as const, onPress: () => resolve(false) },
+                    { text: 'Continuer', onPress: () => resolve(true) },
+                  ]
+                );
+              });
+              if (!confirmed) {
+                setIsLoading(false);
+                router.back();
+                return;
+              }
+              await trpcClient.gameInstance.abandon.mutate({ id: activeGame.id });
+            }
             await createGameInstanceForPreparation(data as LevelData);
           }
         }

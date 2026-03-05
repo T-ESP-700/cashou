@@ -81,6 +81,18 @@ export const gameInstanceRouter = t.router({
       return await gameInstanceService.findByUser(input.userId);
     }),
 
+  getActiveByUser: t.procedure
+    .input(userIdSchema)
+    .query(async ({ input }) => {
+      return await gameInstanceService.findActiveByUser(input.userId);
+    }),
+
+  abandon: t.procedure
+    .input(gameInstanceIdSchema)
+    .mutation(async ({ input }) => {
+      return await gameInstanceService.abandon(input.id);
+    }),
+
   /**
    * Récupère les instances d’un niveau
    * Endpoint: GET http://localhost:3000/trpc/gameInstance.getByLevel?input={"levelId":1}
