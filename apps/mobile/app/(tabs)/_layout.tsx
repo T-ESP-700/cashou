@@ -1,4 +1,4 @@
-import { Tabs, usePathname } from 'expo-router';
+import { Tabs } from 'expo-router';
 import React from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,36 +22,7 @@ const ICON_STROKE_WIDTH = 3;
 export default function TabLayout() {
   const { isDark } = useThemePreference();
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
-  const pathname = usePathname();
   const insets = useSafeAreaInsets();
-
-  // Pages liées à l'historique de jeu
-  const isGameHistoryRelated = pathname === '/game-history';
-
-  const focusedIconColor = "#172D4E";
-  const unfocusedIconColor = isDark ? "rgba(255, 255, 255, 0.6)" : "rgba(0, 0, 0, 0.6)";
-
-  const bottomMargin = Math.max(TAB_BAR_MARGIN_BOTTOM, insets.bottom + 8);
-
-  const renderTabIcon = (SvgIcon: React.FC<any>, focused: boolean) => (
-    <View
-      style={{
-        flex: 1,
-        alignSelf: 'stretch',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderRadius: 9999,
-        backgroundColor: focused ? (isDark ? theme.accent : '#FFFFFF') : 'transparent',
-      }}
-    >
-      <SvgIcon
-        width={ICON_SIZE}
-        height={ICON_SIZE}
-        color={focused ? focusedIconColor : unfocusedIconColor}
-        strokeWidth={ICON_STROKE_WIDTH}
-      />
-    </View>
-  );
 
   const focusedIconColor = "#172D4E";
   const unfocusedIconColor = isDark ? "rgba(255, 255, 255, 0.6)" : "rgba(0, 0, 0, 0.6)";
@@ -160,44 +131,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="game-history"
         options={{
-          title: 'Niveaux',
-          tabBarIcon: ({ size }) => {
-            const isFocused = isLevelsRelated;
-            return (
-              <View
-                className="items-center justify-center flex-1"
-                style={{
-                  height: TAB_BAR_HEIGHT,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                }}
-              >
-                {isFocused && (
-                  <View
-                    className={`rounded-xl ${
-                      isDark ? "bg-white/90" : "bg-white/90"
-                    }`}
-                    style={{
-                      position: 'absolute',
-                      width: 48,
-                      height: 48,
-                      zIndex: 0,
-                    }}
-                  />
-                )}
-                <Ionicons
-                  name={
-                    (isFocused
-                      ? "game-controller"
-                      : "game-controller-outline") as any
-                  }
-                  size={22}
-                  color="#1C1E33"
-                  style={{ opacity: isFocused ? 1 : 0.45, zIndex: 1 }}
-                />
-              </View>
-            );
-          },
+          title: 'History',
+          tabBarIcon: ({ focused }) => renderTabIcon(TabHistory, focused),
         }}
       />
       <Tabs.Screen
