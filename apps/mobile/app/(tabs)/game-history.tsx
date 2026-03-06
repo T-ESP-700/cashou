@@ -31,7 +31,7 @@ export default function LevelsScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
 
-  useHeaderOptions({ showBackButton: false });
+  useHeaderOptions({ showBackButton: false, title: 'Historique' });
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

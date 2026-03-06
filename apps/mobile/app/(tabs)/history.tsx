@@ -21,7 +21,7 @@ export default function HistoryScreen() {
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
 
   // Configure header for this screen
-  useHeaderOptions({ showBackButton: true, onBackPress: () => router.back() });
+  useHeaderOptions({ showBackButton: true, onBackPress: () => router.back(), title: 'Historique' });
 
   // Commencer au mois en cours, mais ne pas pouvoir naviguer avant Octobre 2025
   const today = new Date();

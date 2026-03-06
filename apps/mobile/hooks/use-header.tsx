@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useRef, ReactN
 import { useFocusEffect } from 'expo-router';
 
 interface HeaderOptions {
+  title: string;
   showBackButton: boolean;
   onMenuPress?: () => void;
   onBackPress?: () => void;
@@ -14,6 +15,7 @@ interface HeaderContextType {
 }
 
 const defaultOptions: HeaderOptions = {
+  title: 'Cashou',
   showBackButton: false,
   onMenuPress: undefined,
   onBackPress: undefined,

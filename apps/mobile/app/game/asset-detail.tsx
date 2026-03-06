@@ -28,7 +28,7 @@ export default function AssetDetailScreen() {
   const { user } = useAuth();
 
   // Configure header for this screen
-  useHeaderOptions({ showBackButton: true });
+  useHeaderOptions({ showBackButton: true, title: 'Détail' });
 
   const [asset, setAsset] = useState<any>(null);
   const [loading, setLoading] = useState(true);
