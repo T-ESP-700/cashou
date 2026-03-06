@@ -1,4 +1,4 @@
-import { Tabs } from 'expo-router';
+import { Tabs, usePathname } from 'expo-router';
 import React from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,6 +24,7 @@ export default function TabLayout() {
   const { isDark } = useThemePreference();
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const insets = useSafeAreaInsets();
+  const pathname = usePathname();
 
   // Pages liées à l'historique de jeu
   const isGameHistoryRelated = pathname === '/game-history';
