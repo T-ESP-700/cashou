@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  useColorScheme as useRNColorScheme,
   Pressable,
   ActivityIndicator,
   RefreshControl,
@@ -14,9 +13,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
-import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
 import { CashouTheme } from '@/constants/cashou-theme';
+import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useHeaderOptions } from '@/hooks/use-header';
 
@@ -42,16 +41,14 @@ const groupByLetter = (entries: DicoEntry[]): Record<string, DicoEntry[]> => {
 };
 
 export default function DicoScreen() {
-  const colorScheme = useRNColorScheme();
-  const isDark = colorScheme === 'dark';
-  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const { colors: theme, isDark } = useCashouTheme();
   const insets = useSafeAreaInsets();
 
   // Configure header for this screen (no back button for main tab screens)
   useHeaderOptions({ showBackButton: false, title: 'Dico' });
 
   // Bottom sheet ref
-  const bottomSheetRef = useRef<BottomSheet>(null);
+  const bottomSheetRef = useRef<BottomSheetModal>(null);
 
   // State for data fetching
   const [entries, setEntries] = useState<DicoEntry[]>([]);
@@ -128,7 +125,7 @@ export default function DicoScreen() {
   // Handle entry press - open bottom sheet
   const handleEntryPress = useCallback((entry: DicoEntry) => {
     setSelectedEntry(entry);
-    bottomSheetRef.current?.expand();
+    bottomSheetRef.current?.present();
   }, []);
 
   // Handle sheet changes
@@ -156,8 +153,7 @@ export default function DicoScreen() {
   // Loading state
   if (isLoading && entries.length === 0) {
     return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
           <View style={styles.centerContainer}>
             <ActivityIndicator size="large" color={theme.accent} />
             <Text
@@ -170,20 +166,18 @@ export default function DicoScreen() {
             </Text>
           </View>
         </View>
-      </GestureHandlerRootView>
     );
   }
 
   // Error state
   if (error && entries.length === 0) {
     return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
           <View style={styles.centerContainer}>
             <Ionicons
               name="cloud-offline-outline"
               size={64}
-              color={isDark ? '#9BA1A6' : '#687076'}
+              color={theme.icon}
             />
             <Text
               style={[
@@ -208,12 +202,10 @@ export default function DicoScreen() {
             </Pressable>
           </View>
         </View>
-      </GestureHandlerRootView>
     );
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         {/* Content */}
         <View style={styles.content}>
@@ -239,7 +231,7 @@ export default function DicoScreen() {
             <Ionicons
               name="search"
               size={20}
-              color={isDark ? '#9BA1A6' : '#687076'}
+              color={theme.icon}
               style={styles.searchIcon}
             />
             <TextInput
@@ -251,7 +243,7 @@ export default function DicoScreen() {
                 },
               ]}
               placeholder="Rechercher un terme..."
-              placeholderTextColor={isDark ? '#9BA1A6' : '#687076'}
+              placeholderTextColor={theme.icon}
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoCapitalize="none"
@@ -262,7 +254,7 @@ export default function DicoScreen() {
                 <Ionicons
                   name="close-circle"
                   size={20}
-                  color={isDark ? '#9BA1A6' : '#687076'}
+                  color={theme.icon}
                 />
               </TouchableOpacity>
             )}
@@ -287,7 +279,7 @@ export default function DicoScreen() {
                 <Ionicons
                   name="book-outline"
                   size={64}
-                  color={isDark ? '#9BA1A6' : '#687076'}
+                  color={theme.icon}
                 />
                 <Text
                   style={[
@@ -311,7 +303,7 @@ export default function DicoScreen() {
                 <Ionicons
                   name="search-outline"
                   size={48}
-                  color={isDark ? '#9BA1A6' : '#687076'}
+                  color={theme.icon}
                 />
                 <Text
                   style={[
@@ -365,10 +357,9 @@ export default function DicoScreen() {
           </ScrollView>
         </View>
 
-        {/* Bottom Sheet for Definition - Dynamic sizing */}
-        <BottomSheet
+        {/* Bottom Sheet for Definition - rendered via portal above tab bar */}
+        <BottomSheetModal
           ref={bottomSheetRef}
-          index={-1}
           enableDynamicSizing
           onChange={handleSheetChanges}
           enablePanDownToClose
@@ -422,9 +413,8 @@ export default function DicoScreen() {
               </>
             )}
           </BottomSheetView>
-        </BottomSheet>
+        </BottomSheetModal>
       </View>
-    </GestureHandlerRootView>
   );
 }
 

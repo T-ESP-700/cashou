@@ -1,9 +1,8 @@
-import { Tabs, usePathname } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Tabs } from 'expo-router';
 import React from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-import { Ionicons } from '@expo/vector-icons';
 import { HapticTab } from '@/components/haptic-tab';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { useThemePreference } from '@/hooks/use-theme-provider';
@@ -24,13 +23,6 @@ export default function TabLayout() {
   const { isDark } = useThemePreference();
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const insets = useSafeAreaInsets();
-  const pathname = usePathname();
-
-  // Pages liées à l'historique de jeu
-  const isGameHistoryRelated = pathname === '/game-history';
-
-  // Pages liees aux niveaux (l'icone doit etre en focus)
-  const isLevelsRelated = pathname === '/game-history' || pathname === '/summary';
 
   const focusedIconColor = "#172D4E";
   const unfocusedIconColor = isDark ? "rgba(255, 255, 255, 0.6)" : "rgba(0, 0, 0, 0.6)";
@@ -57,8 +49,24 @@ export default function TabLayout() {
     </View>
   );
 
+  const fadePadding = 80;
+
   return (
-    <Tabs
+    <View style={{ flex: 1 }}>
+      <LinearGradient
+        colors={['transparent', theme.background, theme.background]}
+        locations={[0, 0.5, 1]}
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: bottomMargin + TAB_BAR_HEIGHT + fadePadding,
+          zIndex: 10,
+        }}
+      />
+      <Tabs
       screenOptions={{
         tabBarActiveTintColor: "#1C1E33",
         tabBarInactiveTintColor: "rgba(0, 0, 0, 0.4)",
@@ -76,6 +84,7 @@ export default function TabLayout() {
           padding: 2,
           marginHorizontal: 16,
           overflow: 'hidden',
+          zIndex: 20,
         },
         tabBarItemStyle: {
           flex: 1,
@@ -169,5 +178,6 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+    </View>
   );
 }

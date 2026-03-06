@@ -5,6 +5,7 @@ import 'react-native-reanimated';
 import '../global.css';
 import { useFonts } from 'expo-font';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import {
   Rowdies_300Light,
   Rowdies_400Regular,
@@ -132,13 +133,15 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemePreferenceProvider>
-        <AuthProvider>
-          <NotificationProvider>
-            <RootLayoutInner />
-          </NotificationProvider>
-        </AuthProvider>
-      </ThemePreferenceProvider>
+      <BottomSheetModalProvider>
+        <ThemePreferenceProvider>
+          <AuthProvider>
+            <NotificationProvider>
+              <RootLayoutInner />
+            </NotificationProvider>
+          </AuthProvider>
+        </ThemePreferenceProvider>
+      </BottomSheetModalProvider>
     </GestureHandlerRootView>
   );
 }
