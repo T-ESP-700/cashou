@@ -1457,28 +1457,21 @@ export default function GameCurrentScreen() {
                   router.push(`/game/asset-detail?id=${asset.id}&gameInstanceId=${gameInstanceId}&walletId=${walletId}`);
                 }}
               >
-                <View style={{ flex: 1 }}>
+                <View style={styles.assetsSheetRowLeft}>
                   <Text style={[styles.assetsSheetRowName, { color: theme.text, fontFamily: 'Anybody' }]}>
                     {asset.title ?? asset.symbol ?? 'Asset'}
                   </Text>
                   {asset.submarket?.title && (
-                    <View style={[styles.assetsSheetBadge, { backgroundColor: isDark ? '#2A2D45' : '#EFF1F5' }]}>
-                      <Text style={{ color: theme.text, fontSize: 11, fontFamily: CashouTheme.fonts.body }}>
+                    <View style={[styles.assetsSheetBadge, { backgroundColor: isDark ? '#3D3358' : '#D8CCE8' }]}>
+                      <Text style={{ color: isDark ? '#E0D4F0' : '#4A3560', fontSize: 13, fontFamily: CashouTheme.fonts.body }}>
                         {asset.submarket.title}
                       </Text>
                     </View>
                   )}
                 </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  {impactCoefs[asset.id] != null && (
-                    <Text style={{ color: impactCoefs[asset.id] < 1 ? '#F44336' : '#4CAF50', fontSize: 14, marginRight: 4 }}>
-                      {impactCoefs[asset.id] < 1 ? '▼' : '▲'}
-                    </Text>
-                  )}
-                  <Text style={[styles.assetsSheetRowPrice, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
-                    {getAdjustedRate(asset.id, asset.rate) != null ? `${getAdjustedRate(asset.id, asset.rate)}%` : '—'}
-                  </Text>
-                </View>
+                <Text style={[styles.assetsSheetRowPrice, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
+                  {asset.maxAmount != null ? `${Number(asset.maxAmount).toLocaleString('fr-FR')}€` : (getAdjustedRate(asset.id, asset.rate) != null ? `${getAdjustedRate(asset.id, asset.rate)}%` : '—')}
+                </Text>
               </TouchableOpacity>
             ))
           )}
@@ -1828,22 +1821,29 @@ const styles = StyleSheet.create({
   assetsSheetRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    borderRadius: CashouTheme.borderRadius.md,
-    marginBottom: 8,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    borderRadius: 22,
+    marginBottom: 10,
+  },
+  assetsSheetRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
   },
   assetsSheetRowName: {
-    fontSize: 16,
-    marginBottom: 4,
+    fontSize: 20,
+    fontWeight: '600',
   },
   assetsSheetBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     borderRadius: 999,
   },
   assetsSheetRowPrice: {
-    fontSize: 16,
-    marginLeft: 12,
+    fontSize: 22,
+    fontWeight: '700',
   },
 });
