@@ -7,7 +7,7 @@ interface LevelCardProps {
   level: number;
   levelId?: number;
   title?: string | null;
-  progression: number; // 0-100
+  cash: number;
   currentReturn: number; // percentage
   status?: 'not_started' | 'in_progress' | 'completed' | 'quiz_pending';
   stars?: number; // 1-3 from level completion
@@ -18,7 +18,7 @@ export function LevelCard({
   level,
   levelId,
   title,
-  progression,
+  cash,
   currentReturn,
   status = 'in_progress',
   stars = 0,
@@ -43,6 +43,9 @@ export function LevelCard({
   };
 
   const badgeConfig = getBadgeConfig();
+  const isPositiveReturn = currentReturn >= 0;
+  const returnColor = isPositiveReturn ? '#22C55E' : '#EF4444';
+  const returnArrow = isPositiveReturn ? '↑' : '↓';
 
   // Special display for not started level
   if (status === 'not_started') {
@@ -53,7 +56,7 @@ export function LevelCard({
           padding="md"
           style={{ marginHorizontal: spacing.md, marginBottom: spacing.md }}
         >
-          {/* Header with Level and Status Badge */}
+          {/* Header: Niveau X + Badge */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm + 4 }}>
             <Text style={{ fontSize: 24, fontFamily: fonts.subheading, color: colors.text }}>
               Niveau {level}
@@ -62,17 +65,7 @@ export function LevelCard({
           </View>
 
           {/* Welcome Message */}
-          <View style={{ marginBottom: spacing.sm }}>
-            <Text
-              style={{
-                fontSize: 18,
-                fontFamily: fonts.subheading,
-                color: colors.text,
-                marginBottom: spacing.sm,
-              }}
-            >
-              Bienvenue dans Cashou !
-            </Text>
+          <View>
             <Text
               style={{
                 fontSize: 14,
@@ -97,7 +90,7 @@ export function LevelCard({
         padding="md"
         style={{ marginHorizontal: spacing.md, marginBottom: spacing.md }}
       >
-        {/* Header with Level, Stars (when completed/quiz_pending), and Status Badge */}
+        {/* Line 1: Niveau X (+ stars) | Badge */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm + 4 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Text style={{ fontSize: 24, fontFamily: fonts.subheading, color: colors.text }}>
@@ -119,31 +112,15 @@ export function LevelCard({
           <Badge label={badgeConfig.text} variant={badgeConfig.variant} showDot />
         </View>
 
-        {/* Progression Section */}
-        <View style={{ marginBottom: spacing.md }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm }}>
-            <Text style={{ fontSize: 14, fontFamily: fonts.body, color: colors.text }}>
-              Progression
-            </Text>
-            <Text style={{ fontSize: 14, fontFamily: fonts.body, color: colors.text }}>
-              Rendement actuel
-            </Text>
-          </View>
+        {/* Line 2: Cash amount | Return % */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <Text style={{ fontSize: 32, fontFamily: fonts.subheading, color: colors.text }}>
+            {cash.toLocaleString('fr-FR')}€
+          </Text>
 
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-            {/* Progression Percentage */}
-            <Text style={{ fontSize: 36, fontFamily: fonts.subheading, color: colors.text }}>
-              {progression}%
-            </Text>
-
-            {/* Current Return */}
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={{ fontSize: 24, marginRight: 4 }}>▲</Text>
-              <Text style={{ fontSize: 30, fontFamily: fonts.subheading, color: colors.text }}>
-                {currentReturn}%
-              </Text>
-            </View>
-          </View>
+          <Text style={{ fontSize: 22, fontFamily: fonts.subheading, color: returnColor }}>
+            {returnArrow}{Math.abs(currentReturn)}%
+          </Text>
         </View>
       </Card>
     </TouchableOpacity>

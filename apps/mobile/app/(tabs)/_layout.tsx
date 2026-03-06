@@ -3,6 +3,7 @@ import React from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Ionicons } from '@expo/vector-icons';
 import { HapticTab } from '@/components/haptic-tab';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { useThemePreference } from '@/hooks/use-theme-provider';
@@ -23,6 +24,12 @@ export default function TabLayout() {
   const { isDark } = useThemePreference();
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const insets = useSafeAreaInsets();
+
+  // Pages liées à l'historique de jeu
+  const isGameHistoryRelated = pathname === '/game-history';
+
+  // Pages liees aux niveaux (l'icone doit etre en focus)
+  const isLevelsRelated = pathname === '/game-history' || pathname === '/summary';
 
   const focusedIconColor = "#172D4E";
   const unfocusedIconColor = isDark ? "rgba(255, 255, 255, 0.6)" : "rgba(0, 0, 0, 0.6)";
@@ -151,6 +158,7 @@ export default function TabLayout() {
         name="summary"
         options={{
           href: null,
+          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
