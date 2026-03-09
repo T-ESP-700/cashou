@@ -27,18 +27,19 @@ export function DailyQuizCard({
   return (
     <TouchableOpacity onPress={handlePress} activeOpacity={0.7}>
       <Card
-        variant="outlined"
+        variant="default"
         padding="md"
-        style={{ marginHorizontal: spacing.md, marginBottom: spacing.md }}
+        style={{}}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={{ fontSize: 24, fontFamily: fonts.subheading, color: colors.text }}>
+          <Text style={{ fontSize: 24, fontFamily: fonts.body, color: colors.text }}>
             Daily Quiz
           </Text>
           <Badge
             label={status === 'todo' ? 'À faire' : 'Terminé'}
             variant={status === 'todo' ? 'accent' : 'neutral'}
-            showDot
+            showDot={status !== 'todo'}
+            fontWeight={status === 'todo' ? '400' : undefined}
           />
         </View>
       </Card>

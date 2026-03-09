@@ -380,10 +380,9 @@ export default function HomeScreen() {
           </View>
         ) : (
           <>
-            {/* Greeting & Contextual Messages as chat bubbles */}
-            <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.lg, gap: spacing.sm }}>
+            <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.lg, gap: 8 }}>
               {/* Greeting bubble */}
-              <Card variant="outlined" padding="md">
+              <Card variant="default" padding="md">
                 <Text
                   style={{
                     fontSize: 22,
@@ -397,7 +396,7 @@ export default function HomeScreen() {
 
               {/* Contextual messages — all in one card */}
               {contextualMessages.length > 0 && (
-                <Card variant="outlined" padding="md">
+                <Card variant="default" padding="md">
                   {contextualMessages.map((message, index) => (
                     <Text
                       key={index}
@@ -414,9 +413,6 @@ export default function HomeScreen() {
                   ))}
                 </Card>
               )}
-            </View>
-
-            <View style={{ height: spacing.md }} />
 
             {/* Level Card */}
             {levelCardData.hasGame || homeData?.level ? (
@@ -434,6 +430,7 @@ export default function HomeScreen() {
 
             {/* Daily Quiz Card */}
             <DailyQuizCard status={dailyQuizStatus} />
+            </View>
           </>
         )}
       </ScrollView>

@@ -52,16 +52,18 @@ export function LevelCard({
     return (
       <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
         <Card
-          variant="outlined"
+          variant="default"
           padding="md"
-          style={{ marginHorizontal: spacing.md, marginBottom: spacing.md }}
+          style={{}}
         >
           {/* Header: Niveau X + Badge */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm + 4 }}>
-            <Text style={{ fontSize: 24, fontFamily: fonts.subheading, color: colors.text }}>
+            <Text style={{ fontSize: 24, fontFamily: fonts.body, color: colors.text }}>
               Niveau {level}
             </Text>
-            <Badge label={badgeConfig.text} variant={badgeConfig.variant} showDot />
+            <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#9CD6FF', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="lock-open-outline" size={16} color="#FFFFFF" />
+            </View>
           </View>
 
           {/* Welcome Message */}
@@ -86,14 +88,14 @@ export function LevelCard({
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
       <Card
-        variant="outlined"
+        variant="default"
         padding="md"
-        style={{ marginHorizontal: spacing.md, marginBottom: spacing.md }}
+        style={{}}
       >
         {/* Line 1: Niveau X (+ stars) | Badge */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm + 4 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={{ fontSize: 24, fontFamily: fonts.subheading, color: colors.text }}>
+            <Text style={{ fontSize: 24, fontFamily: fonts.body, color: colors.text }}>
               Niveau {level}
             </Text>
             {(status === 'completed' || status === 'quiz_pending') && stars > 0 && (
@@ -109,16 +111,26 @@ export function LevelCard({
               </View>
             )}
           </View>
-          <Badge label={badgeConfig.text} variant={badgeConfig.variant} showDot />
+          {status === 'in_progress' && (
+            <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#FFB472', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+            </View>
+          )}
+          {status === 'quiz_pending' && (
+            <Badge label={badgeConfig.text} variant={badgeConfig.variant} showDot />
+          )}
+          {status === 'completed' && (
+            <Ionicons name="checkmark-circle" size={34} color="#88D498" />
+          )}
         </View>
 
         {/* Line 2: Cash amount | Return % */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-          <Text style={{ fontSize: 32, fontFamily: fonts.subheading, color: colors.text }}>
+          <Text style={{ fontSize: 32, fontFamily: fonts.body, color: colors.text }}>
             {cash.toLocaleString('fr-FR')}€
           </Text>
 
-          <Text style={{ fontSize: 22, fontFamily: fonts.subheading, color: returnColor }}>
+          <Text style={{ fontSize: 22, fontFamily: fonts.body, color: returnColor }}>
             {returnArrow}{Math.abs(currentReturn)}%
           </Text>
         </View>
