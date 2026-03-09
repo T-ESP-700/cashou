@@ -7,8 +7,11 @@ const monorepoRoot = path.resolve(projectRoot, '../..');
 
 const config = getDefaultConfig(projectRoot);
 
-// Watch the monorepo root so Metro can follow Bun workspace symlinks
-config.watchFolders = [monorepoRoot];
+// Only watch the specific monorepo folders that mobile actually needs
+config.watchFolders = [
+  path.resolve(monorepoRoot, 'packages/@cashou/api'),
+  path.resolve(monorepoRoot, 'node_modules'),
+];
 
 config.transformer = {
   ...config.transformer,
@@ -25,15 +28,8 @@ config.resolver = {
     path.resolve(monorepoRoot, 'node_modules'),
   ],
   blockList: [
-    // Other workspace apps (backend, backoffice)
-    /.*\/apps\/backend\/.*/,
-    /.*\/apps\/backoffice\/.*/,
-    // Prisma packages
     /.*\/packages\/@cashou\/db-app\/.*/,
     /.*\/packages\/@cashou\/db-backoffice\/.*/,
-    // Native build artifacts
-    /.*\/apps\/mobile\/android\/.*/,
-    /.*\/apps\/mobile\/ios\/.*/,
   ],
 };
 
