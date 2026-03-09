@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,8 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useNotifications } from '@/hooks/use-notifications';
-import { useAuth } from '@/hooks/use-auth';
 import { useHeaderOptions } from '@/hooks/use-header';
+import { PriceChart } from '@/components/price-chart';
 
 export default function AssetDetailScreen() {
   const colorScheme = useRNColorScheme();
@@ -24,8 +24,7 @@ export default function AssetDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const insets = useSafeAreaInsets();
-  const { activeGameInstanceId, pendingEventCompletion, setPendingEventCompletion, setAssetsScreenDepth, assetsScreenDepthRef, setIsOnAssetsScreen, setPausedByAssets } = useNotifications();
-  const { user } = useAuth();
+  const { setAssetsScreenDepth, assetsScreenDepthRef } = useNotifications();
 
   // Configure header for this screen
   useHeaderOptions({ showBackButton: true, title: 'Détail' });
@@ -34,6 +33,7 @@ export default function AssetDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentHolding, setCurrentHolding] = useState(0);
+  const [priceHistory, setPriceHistory] = useState<any[]>([]);
 
   // Get params from URL
   const assetIdParam = params?.id;
@@ -41,104 +41,19 @@ export default function AssetDetailScreen() {
   const gameInstanceId = params?.gameInstanceId as string;
   const walletId = params?.walletId as string;
 
-  // Use refs to track values needed during cleanup to avoid stale closure issues
-  const activeGameInstanceIdRef = useRef(activeGameInstanceId);
-  const userRef = useRef(user);
-  const pendingEventCompletionRef = useRef(pendingEventCompletion);
-
-  // Keep refs in sync with current values
-  useEffect(() => {
-    activeGameInstanceIdRef.current = activeGameInstanceId;
-  }, [activeGameInstanceId]);
-
-  useEffect(() => {
-    userRef.current = user;
-  }, [user]);
-
-  useEffect(() => {
-    pendingEventCompletionRef.current = pendingEventCompletion;
-  }, [pendingEventCompletion]);
-
-  // Track depth for nested navigation
+  // Track depth for nested navigation — asset-detail only manages the depth counter.
+  // Resume logic is handled exclusively by assets.tsx (the screen that paused the game).
   useFocusEffect(
     useCallback(() => {
       console.log('[AssetDetailScreen] ENTER - currentDepth:', assetsScreenDepthRef.current);
-
-      // Increment depth when entering asset-detail (the ref is updated by setAssetsScreenDepth in the context)
       setAssetsScreenDepth((prev: number) => prev + 1);
 
       return () => {
-        // Get current values from refs to avoid stale closures
-        const gameId = activeGameInstanceIdRef.current;
-        const currentUser = userRef.current;
-        const pendingCompletion = pendingEventCompletionRef.current;
-
-        console.log('[AssetDetailScreen] EXIT - gameId:', gameId, 'user:', currentUser?.id, 'currentDepth:', assetsScreenDepthRef.current);
-
-        // Decrement depth when leaving asset-detail (the ref is updated by setAssetsScreenDepth in the context)
         const newDepth = Math.max(0, assetsScreenDepthRef.current - 1);
         setAssetsScreenDepth(newDepth);
-
         console.log('[AssetDetailScreen] EXIT - newDepth:', newDepth);
-
-        // If we're leaving all assets screens (depth = 0), wait a bit then check if we should resume
-        // The delay allows assets.tsx to increment depth if we're navigating back there
-        if (newDepth === 0 && gameId && currentUser) {
-          console.log('[AssetDetailScreen] EXIT - Depth is 0, scheduling resume check in 150ms');
-
-          setTimeout(async () => {
-            console.log('[AssetDetailScreen] EXIT - Resume check executing, current depth:', assetsScreenDepthRef.current);
-
-            // Check if depth is still 0 after the delay (no other assets screen took focus)
-            if (assetsScreenDepthRef.current > 0) {
-              console.log('[AssetDetailScreen] ⏸️  Another assets screen took focus (depth=' + assetsScreenDepthRef.current + '), not resuming');
-              return;
-            }
-
-            console.log('[AssetDetailScreen] EXIT - No other assets screen, proceeding with resume');
-
-            try {
-              // Check current game state before resuming
-              console.log('[AssetDetailScreen] EXIT - Fetching game state...');
-              const gameInstance = await trpcClient.gameInstance.getById.query({ id: gameId });
-              const isCurrentlyPaused = gameInstance?.isPaused ?? false;
-
-              console.log('[AssetDetailScreen] EXIT - Game state: isPaused=', isCurrentlyPaused);
-
-              // Resume if game is currently paused
-              if (isCurrentlyPaused) {
-                console.log('[AssetDetailScreen] 🎮 Resuming game', gameId);
-                await trpcClient.gameInstance.resume.mutate({ id: gameId });
-                console.log('[AssetDetailScreen] ✅ Game resumed successfully');
-              } else {
-                console.log('[AssetDetailScreen] ⚠️  Game is not paused, nothing to resume');
-              }
-
-              // Complete pending event if any
-              if (pendingCompletion && pendingCompletion === gameId) {
-                console.log('[AssetDetailScreen] 📋 Completing pending event for game', gameId);
-                await trpcClient.gameInstance.completeEvent.mutate({ id: gameId });
-                setPendingEventCompletion(null);
-                console.log('[AssetDetailScreen] ✅ Event completed');
-              }
-
-              setPausedByAssets(false);
-              setIsOnAssetsScreen(false);
-            } catch (error) {
-              console.error('[AssetDetailScreen] ❌ Failed to resume game or complete event:', error);
-              if (pendingCompletion === gameId) {
-                setPendingEventCompletion(null);
-              }
-              setPausedByAssets(false);
-              setIsOnAssetsScreen(false);
-            }
-          }, 150); // Wait 150ms to see if another assets screen takes focus
-        } else {
-          console.log('[AssetDetailScreen] EXIT - Not leaving all assets (newDepth=' + newDepth + ' or no game/user)');
-          setIsOnAssetsScreen(newDepth > 0);
-        }
       };
-    }, [setAssetsScreenDepth, setPendingEventCompletion, setIsOnAssetsScreen, setPausedByAssets, assetsScreenDepthRef])
+    }, [setAssetsScreenDepth, assetsScreenDepthRef])
   );
 
   useEffect(() => {
@@ -155,16 +70,43 @@ export default function AssetDetailScreen() {
         const data = await trpcClient.asset.getById.query({ id: parseInt(assetId) });
         setAsset(data);
 
-        // Fetch current holding if walletId is provided
-        if (walletId) {
+        // Fetch price history with event coefs applied
+        try {
+          if (gameInstanceId) {
+            const history = await trpcClient.assetHistory.getForGame.query({
+              assetId: parseInt(assetId),
+              gameInstanceId: parseInt(gameInstanceId),
+            });
+            setPriceHistory(history);
+          } else if (data?.assetHistories) {
+            // No game context — show raw history
+            setPriceHistory(data.assetHistories);
+          }
+        } catch (e) {
+          console.error('[AssetDetail] Failed to load price history:', e);
+          // Fallback to raw included data
+          if (data?.assetHistories) setPriceHistory(data.assetHistories);
+        }
+
+        // Fetch current holding value (price-based) via portfolio endpoint
+        if (walletId && gameInstanceId) {
           try {
-            const holdings = await trpcClient.holding.getByWallet.query({ walletId: parseInt(walletId) });
-            const holding = holdings.find((h: any) => h.assetId === parseInt(assetId));
-            if (holding) {
-              setCurrentHolding(Number(holding.quantity) || 0);
+            const portfolio = await trpcClient.investment.getPortfolio.query({
+              walletId: parseInt(walletId),
+              gameInstanceId: parseInt(gameInstanceId),
+            });
+            const item = portfolio.items.find((i: any) => i.holding.assetId === parseInt(assetId));
+            if (item) {
+              setCurrentHolding(Math.round(item.totalValue));
             }
           } catch (e) {
-            console.error('[AssetDetail] Failed to load holding:', e);
+            console.error('[AssetDetail] Failed to load portfolio:', e);
+            // Fallback to raw holding quantity
+            try {
+              const holdings = await trpcClient.holding.getByWallet.query({ walletId: parseInt(walletId) });
+              const holding = holdings.find((h: any) => h.assetId === parseInt(assetId));
+              if (holding) setCurrentHolding(Number(holding.quantity) || 0);
+            } catch {}
           }
         }
       } catch (e: any) {
@@ -176,7 +118,7 @@ export default function AssetDetailScreen() {
     };
 
     fetchAsset();
-  }, [assetId, walletId]);
+  }, [assetId, walletId, gameInstanceId]);
 
   const handleBuy = () => {
     router.push({
@@ -203,6 +145,9 @@ export default function AssetDetailScreen() {
   };
 
   const canTrade = gameInstanceId && walletId;
+  const submarketType = asset?.submarket?.type; // 'SAVINGS' | 'INSURANCE' | 'STOCK'
+  const isSavings = submarketType === 'SAVINGS';
+  const isStock = submarketType === 'STOCK';
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -251,24 +196,93 @@ export default function AssetDetailScreen() {
               </View>
             )}
 
-            {/* Rate Section */}
-            {typeof asset.rate === 'number' && (
+            {/* Savings: Rate & Cap info instead of chart */}
+            {isSavings && (
               <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
                 <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
-                  Taux
+                  Conditions
                 </Text>
-                <View style={styles.rateContainer}>
-                  <Ionicons
-                    name={asset.rate >= 0 ? 'caret-up' : 'caret-down'}
-                    size={24}
-                    color="#FFB472"
-                  />
-                  <Text style={[styles.rateValue, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>
-                    {Math.abs(asset.rate)}%
-                  </Text>
-                </View>
+                {asset.rate != null && (
+                  <View style={styles.infoRow}>
+                    <Text style={[styles.infoLabel, { color: theme.text, opacity: 0.7, fontFamily: CashouTheme.fonts.body }]}>
+                      Taux annuel garanti
+                    </Text>
+                    <Text style={[styles.infoValue, { color: '#4CAF50', fontFamily: CashouTheme.fonts.heading }]}>
+                      {asset.rate}%
+                    </Text>
+                  </View>
+                )}
+                {asset.maxAmount != null && (
+                  <View style={[styles.infoRow, { marginTop: 8 }]}>
+                    <Text style={[styles.infoLabel, { color: theme.text, opacity: 0.7, fontFamily: CashouTheme.fonts.body }]}>
+                      Plafond
+                    </Text>
+                    <Text style={[styles.infoValue, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>
+                      {Number(asset.maxAmount).toLocaleString('fr-FR')} EUR
+                    </Text>
+                  </View>
+                )}
+                {asset.minAmount != null && (
+                  <View style={[styles.infoRow, { marginTop: 8 }]}>
+                    <Text style={[styles.infoLabel, { color: theme.text, opacity: 0.7, fontFamily: CashouTheme.fonts.body }]}>
+                      Dépôt minimum
+                    </Text>
+                    <Text style={[styles.infoValue, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>
+                      {Number(asset.minAmount).toLocaleString('fr-FR')} EUR
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
+
+            {/* Price Chart Section — only for non-savings assets */}
+            {!isSavings && priceHistory.length >= 2 && (
+              <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
+                  Cours
+                </Text>
+                <PriceChart data={priceHistory} isDark={isDark} theme={theme} />
+              </View>
+            )}
+
+            {/* Current Price Section — only for non-savings assets */}
+            {!isSavings && priceHistory.length >= 2 && (() => {
+              const sorted = [...priceHistory].sort((a: any, b: any) =>
+                new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+              );
+              const currentPrice = Number(sorted[sorted.length - 1].value) / 100;
+              const previousPrice = Number(sorted[sorted.length - 2].value) / 100;
+              const dailyChange = currentPrice - previousPrice;
+              const dailyChangePercent = (dailyChange / previousPrice) * 100;
+              const isUp = dailyChange >= 0;
+              return (
+                <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
+                    Prix actuel
+                  </Text>
+                  <View style={styles.rateContainer}>
+                    <Text style={[styles.rateValue, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>
+                      {currentPrice.toFixed(2)} EUR
+                    </Text>
+                  </View>
+                  <View style={[styles.rateContainer, { marginTop: 4 }]}>
+                    <Ionicons
+                      name={isUp ? 'caret-up' : 'caret-down'}
+                      size={16}
+                      color={isUp ? '#4CAF50' : '#F44336'}
+                    />
+                    <Text style={[{
+                      fontSize: 14,
+                      marginLeft: 4,
+                      color: isUp ? '#4CAF50' : '#F44336',
+                      fontFamily: CashouTheme.fonts.body,
+                    }]}>
+                      {isUp ? '+' : ''}{dailyChange.toFixed(2)} EUR ({isUp ? '+' : ''}{dailyChangePercent.toFixed(1)}%)
+                    </Text>
+                  </View>
+                </View>
+              );
+            })()}
 
             {/* Description Section */}
             {asset.description && (
@@ -404,8 +418,8 @@ export default function AssetDetailScreen() {
             onPress={handleBuy}
             activeOpacity={0.8}
           >
-            <Ionicons name="arrow-down-circle" size={24} color="#FFFFFF" />
-            <Text style={styles.actionButtonText}>Acheter</Text>
+            <Ionicons name={isSavings ? 'download-outline' : 'arrow-down-circle'} size={24} color="#FFFFFF" />
+            <Text style={styles.actionButtonText}>{isSavings ? 'Déposer' : 'Acheter'}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -418,8 +432,8 @@ export default function AssetDetailScreen() {
             activeOpacity={0.8}
             disabled={currentHolding === 0}
           >
-            <Ionicons name="arrow-up-circle" size={24} color="#FFFFFF" />
-            <Text style={styles.actionButtonText}>Vendre</Text>
+            <Ionicons name={isSavings ? 'upload-outline' : 'arrow-up-circle'} size={24} color="#FFFFFF" />
+            <Text style={styles.actionButtonText}>{isSavings ? 'Retirer' : 'Vendre'}</Text>
           </TouchableOpacity>
         </View>
       )}

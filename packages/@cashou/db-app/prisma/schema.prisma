@@ -26,6 +26,12 @@ enum NotificationType {
   GAME_END @map("GameEnd")
 }
 
+enum SubmarketType {
+  SAVINGS   @map("Savings")
+  INSURANCE @map("Insurance")
+  STOCK     @map("Stock")
+}
+
 // Modèle User avec better-auth + relations Cashou
 model User {
   id            String    @id @default(cuid())
@@ -118,9 +124,10 @@ model Level {
   duration       Int?
   speed          Int?
   startBalance   Int?     @map("start_balance")
-  pointsRequired Int?     @map("points_required")
-  description    String?
-  createdAt      DateTime @default(now()) @map("created_at")
+  pointsRequired  Int?     @map("points_required")
+  historyStartDay Int?     @map("history_start_day") // Day index in AssetHistory where the game begins
+  description     String?
+  createdAt       DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   // Relations
@@ -237,13 +244,14 @@ model Market {
 }
 
 model Submarket {
-  id             Int      @id @default(autoincrement())
-  marketId       Int?     @map("market_id")
-  gameInstanceId Int?     @map("game_instance_id")
+  id             Int            @id @default(autoincrement())
+  marketId       Int?           @map("market_id")
+  gameInstanceId Int?           @map("game_instance_id")
   title          String?
   description    String?
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  type           SubmarketType  @default(STOCK) @map("type")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
 
   // Relations
   market       Market?       @relation(fields: [marketId], references: [id])

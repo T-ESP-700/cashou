@@ -1,0 +1,1440 @@
+# Cashou - 50 niveaux detailles (sans changer la DB)
+
+Ce document definit 50 niveaux exploitables en seed avec la DB actuelle.
+Perimetre respecte: `Level`, `Goal`, `LevelGoal`, `Event`, `LevelEvent`, `Impact`, `Quiz`, `Question`, `Answer`, `QuizQuestion`.
+
+## Conventions
+- Types de goals autorises: `wallet_gte_start`, `wallet_gt_start`, `wallet_min`, `profit_min`.
+- Chaque niveau contient: 2 goals (G1 obligatoire, G2 bonus), 1 a 3 events, 1 quiz MCQ de 3 questions.
+- Parametres communs Level: `duration=1825`, `speed=1314000`.
+- Formules:
+  - `startBalance = 2000 + (n-1)*40`
+  - `pointsRequired = (n-1)*15`
+
+## Catalogue des events (reutilisables)
+- `EVT_01` taux_livret_baisse: `LIVRET_A:0.94`, `LIVRET_DDS:0.96`
+- `EVT_02` taux_livret_hausse: `LIVRET_A:1.05`, `LIVRET_DDS:1.04`
+- `EVT_03` choc_tech_leger: `ETF_TECH:0.86`, `ETF_MONDE:0.93`
+- `EVT_04` rebond_tech_leger: `ETF_TECH:1.10`, `ETF_MONDE:1.05`
+- `EVT_05` rotation_sectorielle: `ETF_TECH:0.90`, `ETF_ENERGIE:1.08`
+- `EVT_06` inflation_moderate: `LIVRET_A:0.90`, `OBLIG_FR:0.92`
+- `EVT_07` stabilisation_marche: `ETF_MONDE:1.01`, `OBLIG_FR:1.00`
+- `EVT_08` faux_signal: `ETF_TECH:0.82`, `ETF_MONDE:0.95`
+- `EVT_09` micro_krach: `ETF_TECH:0.74`, `ETF_MONDE:0.80`, `OBLIG_FR:0.92`
+- `EVT_10` reprise_progressive: `ETF_MONDE:1.08`, `ETF_TECH:1.10`, `OBLIG_FR:1.02`
+- `EVT_11` choc_obligataire: `OBLIG_FR:0.85`, `FONDS_EURO:0.94`
+- `EVT_12` rotation_durable: `ETF_DURABLE:1.08`, `ETF_MONDE:0.98`
+
+---
+
+## Niveau 1 - Capital initial et securite
+- Level:
+  - `number: 1`
+  - `title: Capital initial et securite`
+  - `description: Decouvrir le capital de depart et la regle de base: finir sans perte.`
+  - `startBalance: 2000`
+  - `pointsRequired: 0`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Decouvrir le capital de depart et la regle de base: finir sans perte.
+- Events:
+  - E1: `EVT_01` / `taux_livret_baisse`
+    - `triggerPercent: 50`
+    - Impacts: `LIVRET_A:0.94, LIVRET_DDS:0.96`
+    - Effet concret joueur: baisse legere des rendements defensifs.
+- Goals:
+  - G1 (obligatoire): `wallet_gte_start`, `goalValue: 0`
+  - G2 (bonus): `wallet_gt_start`, `goalValue: 20`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "epargne de base" ?
+  - Q2 (event): Quand l'evenement (taux_livret_baisse) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 2 - Routine d'epargne de base
+- Level:
+  - `number: 2`
+  - `title: Routine d'epargne de base`
+  - `description: Installer une habitude d'epargne reguliere sans pression.`
+  - `startBalance: 2040`
+  - `pointsRequired: 15`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Installer une habitude d'epargne reguliere sans pression.
+- Events:
+  - E1: `EVT_07` / `stabilisation_marche`
+    - `triggerPercent: 50`
+    - Impacts: `ETF_MONDE:1.01, OBLIG_FR:1.00`
+    - Effet concret joueur: marche quasi stable pour consolider.
+- Goals:
+  - G1 (obligatoire): `wallet_gte_start`, `goalValue: 5`
+  - G2 (bonus): `wallet_gt_start`, `goalValue: 25`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "regularite" ?
+  - Q2 (event): Quand l'evenement (stabilisation_marche) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 3 - Reserve debutante
+- Level:
+  - `number: 3`
+  - `title: Reserve debutante`
+  - `description: Construire une petite reserve de securite dans le wallet.`
+  - `startBalance: 2080`
+  - `pointsRequired: 30`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Construire une petite reserve de securite dans le wallet.
+- Events:
+  - E1: `EVT_02` / `taux_livret_hausse`
+    - `triggerPercent: 50`
+    - Impacts: `LIVRET_A:1.05, LIVRET_DDS:1.04`
+    - Effet concret joueur: hausse legere des rendements defensifs.
+- Goals:
+  - G1 (obligatoire): `wallet_gte_start`, `goalValue: 10`
+  - G2 (bonus): `wallet_gt_start`, `goalValue: 30`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "reserve" ?
+  - Q2 (event): Quand l'evenement (taux_livret_hausse) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 4 - Premier imprevu controle
+- Level:
+  - `number: 4`
+  - `title: Premier imprevu controle`
+  - `description: Gerer un alea simple sans casser la progression.`
+  - `startBalance: 2120`
+  - `pointsRequired: 45`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Gerer un alea simple sans casser la progression.
+- Events:
+  - E1: `EVT_01` / `taux_livret_baisse`
+    - `triggerPercent: 50`
+    - Impacts: `LIVRET_A:0.94, LIVRET_DDS:0.96`
+    - Effet concret joueur: baisse legere des rendements defensifs.
+- Goals:
+  - G1 (obligatoire): `wallet_gte_start`, `goalValue: 15`
+  - G2 (bonus): `wallet_gt_start`, `goalValue: 35`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "imprevu" ?
+  - Q2 (event): Quand l'evenement (taux_livret_baisse) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 5 - Regularite sous contrainte
+- Level:
+  - `number: 5`
+  - `title: Regularite sous contrainte`
+  - `description: Continuer a epargner avec une legere volatilite.`
+  - `startBalance: 2160`
+  - `pointsRequired: 60`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Continuer a epargner avec une legere volatilite.
+- Events:
+  - E1: `EVT_03` / `choc_tech_leger`
+    - `triggerPercent: 50`
+    - Impacts: `ETF_TECH:0.86, ETF_MONDE:0.93`
+    - Effet concret joueur: correction ciblee sur la poche dynamique.
+- Goals:
+  - G1 (obligatoire): `wallet_gte_start`, `goalValue: 20`
+  - G2 (bonus): `wallet_gt_start`, `goalValue: 40`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "discipline" ?
+  - Q2 (event): Quand l'evenement (choc_tech_leger) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 6 - Court terme vs moyen terme
+- Level:
+  - `number: 6`
+  - `title: Court terme vs moyen terme`
+  - `description: Separer la poche de securite de la poche de progression.`
+  - `startBalance: 2200`
+  - `pointsRequired: 75`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Separer la poche de securite de la poche de progression.
+- Events:
+  - E1: `EVT_07` / `stabilisation_marche`
+    - `triggerPercent: 50`
+    - Impacts: `ETF_MONDE:1.01, OBLIG_FR:1.00`
+    - Effet concret joueur: marche quasi stable pour consolider.
+- Goals:
+  - G1 (obligatoire): `wallet_gte_start`, `goalValue: 25`
+  - G2 (bonus): `wallet_gt_start`, `goalValue: 45`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "horizon" ?
+  - Q2 (event): Quand l'evenement (stabilisation_marche) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 7 - Diversification a 2 poches
+- Level:
+  - `number: 7`
+  - `title: Diversification a 2 poches`
+  - `description: Ne plus rester concentre sur un seul type d'actif.`
+  - `startBalance: 2240`
+  - `pointsRequired: 90`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Ne plus rester concentre sur un seul type d'actif.
+- Events:
+  - E1: `EVT_05` / `rotation_sectorielle`
+    - `triggerPercent: 50`
+    - Impacts: `ETF_TECH:0.90, ETF_ENERGIE:1.08`
+    - Effet concret joueur: rotation entre secteurs gagnants et perdants.
+- Goals:
+  - G1 (obligatoire): `wallet_gte_start`, `goalValue: 30`
+  - G2 (bonus): `wallet_gt_start`, `goalValue: 50`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "diversification" ?
+  - Q2 (event): Quand l'evenement (rotation_sectorielle) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 8 - Diversification a 3 poches
+- Level:
+  - `number: 8`
+  - `title: Diversification a 3 poches`
+  - `description: Ajouter une troisieme poche et lisser le risque.`
+  - `startBalance: 2280`
+  - `pointsRequired: 105`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Ajouter une troisieme poche et lisser le risque.
+- Events:
+  - E1: `EVT_03` / `choc_tech_leger`
+    - `triggerPercent: 35`
+    - Impacts: `ETF_TECH:0.86, ETF_MONDE:0.93`
+    - Effet concret joueur: correction ciblee sur la poche dynamique.
+  - E2: `EVT_04` / `rebond_tech_leger`
+    - `triggerPercent: 70`
+    - Impacts: `ETF_TECH:1.10, ETF_MONDE:1.05`
+    - Effet concret joueur: rebond technique sur la poche dynamique.
+- Goals:
+  - G1 (obligatoire): `wallet_gte_start`, `goalValue: 35`
+  - G2 (bonus): `wallet_gt_start`, `goalValue: 55`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "diversification avancee" ?
+  - Q2 (event): Quand l'evenement (choc_tech_leger, rebond_tech_leger) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 9 - Baisse puis reprise simple
+- Level:
+  - `number: 9`
+  - `title: Baisse puis reprise simple`
+  - `description: Comprendre qu'une baisse peut etre suivie d'un rebond.`
+  - `startBalance: 2320`
+  - `pointsRequired: 120`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Comprendre qu'une baisse peut etre suivie d'un rebond.
+- Events:
+  - E1: `EVT_03` / `choc_tech_leger`
+    - `triggerPercent: 35`
+    - Impacts: `ETF_TECH:0.86, ETF_MONDE:0.93`
+    - Effet concret joueur: correction ciblee sur la poche dynamique.
+  - E2: `EVT_10` / `reprise_progressive`
+    - `triggerPercent: 70`
+    - Impacts: `ETF_MONDE:1.08, ETF_TECH:1.10, OBLIG_FR:1.02`
+    - Effet concret joueur: phase de reprise graduelle.
+- Goals:
+  - G1 (obligatoire): `wallet_gte_start`, `goalValue: 40`
+  - G2 (bonus): `wallet_gt_start`, `goalValue: 60`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "volatilite" ?
+  - Q2 (event): Quand l'evenement (choc_tech_leger, reprise_progressive) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 10 - Consolidation des bases
+- Level:
+  - `number: 10`
+  - `title: Consolidation des bases`
+  - `description: Valider les fondamentaux avant la suite.`
+  - `startBalance: 2360`
+  - `pointsRequired: 135`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Valider les fondamentaux avant la suite.
+- Events:
+  - E1: `EVT_07` / `stabilisation_marche`
+    - `triggerPercent: 50`
+    - Impacts: `ETF_MONDE:1.01, OBLIG_FR:1.00`
+    - Effet concret joueur: marche quasi stable pour consolider.
+- Goals:
+  - G1 (obligatoire): `wallet_gte_start`, `goalValue: 45`
+  - G2 (bonus): `wallet_gt_start`, `goalValue: 65`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "validation bases" ?
+  - Q2 (event): Quand l'evenement (stabilisation_marche) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 11 - Inflation simplifiee
+- Level:
+  - `number: 11`
+  - `title: Inflation simplifiee`
+  - `description: Comprendre l'effet de l'inflation sur les supports defensifs.`
+  - `startBalance: 2400`
+  - `pointsRequired: 150`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Comprendre l'effet de l'inflation sur les supports defensifs.
+- Events:
+  - E1: `EVT_06` / `inflation_moderate`
+    - `triggerPercent: 50`
+    - Impacts: `LIVRET_A:0.90, OBLIG_FR:0.92`
+    - Effet concret joueur: pression inflationniste sur supports prudents.
+- Goals:
+  - G1 (obligatoire): `wallet_gt_start`, `goalValue: 50`
+  - G2 (bonus): `wallet_min`, `goalValue: 2480`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "inflation" ?
+  - Q2 (event): Quand l'evenement (inflation_moderate) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 12 - Compensation de l'inflation
+- Level:
+  - `number: 12`
+  - `title: Compensation de l'inflation`
+  - `description: Ajuster l'allocation pour conserver le pouvoir d'achat.`
+  - `startBalance: 2440`
+  - `pointsRequired: 165`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Ajuster l'allocation pour conserver le pouvoir d'achat.
+- Events:
+  - E1: `EVT_06` / `inflation_moderate`
+    - `triggerPercent: 35`
+    - Impacts: `LIVRET_A:0.90, OBLIG_FR:0.92`
+    - Effet concret joueur: pression inflationniste sur supports prudents.
+  - E2: `EVT_02` / `taux_livret_hausse`
+    - `triggerPercent: 70`
+    - Impacts: `LIVRET_A:1.05, LIVRET_DDS:1.04`
+    - Effet concret joueur: hausse legere des rendements defensifs.
+- Goals:
+  - G1 (obligatoire): `wallet_gt_start`, `goalValue: 55`
+  - G2 (bonus): `wallet_min`, `goalValue: 2530`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "inflation pratique" ?
+  - Q2 (event): Quand l'evenement (inflation_moderate, taux_livret_hausse) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 13 - Support selon horizon
+- Level:
+  - `number: 13`
+  - `title: Support selon horizon`
+  - `description: Choisir le support selon la date d'objectif.`
+  - `startBalance: 2480`
+  - `pointsRequired: 180`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Choisir le support selon la date d'objectif.
+- Events:
+  - E1: `EVT_05` / `rotation_sectorielle`
+    - `triggerPercent: 50`
+    - Impacts: `ETF_TECH:0.90, ETF_ENERGIE:1.08`
+    - Effet concret joueur: rotation entre secteurs gagnants et perdants.
+- Goals:
+  - G1 (obligatoire): `wallet_gt_start`, `goalValue: 60`
+  - G2 (bonus): `wallet_min`, `goalValue: 2580`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "horizon pratique" ?
+  - Q2 (event): Quand l'evenement (rotation_sectorielle) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 14 - Securite vs rendement debut
+- Level:
+  - `number: 14`
+  - `title: Securite vs rendement debut`
+  - `description: Faire un premier arbitrage prudent entre stabilite et croissance.`
+  - `startBalance: 2520`
+  - `pointsRequired: 195`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Faire un premier arbitrage prudent entre stabilite et croissance.
+- Events:
+  - E1: `EVT_03` / `choc_tech_leger`
+    - `triggerPercent: 50`
+    - Impacts: `ETF_TECH:0.86, ETF_MONDE:0.93`
+    - Effet concret joueur: correction ciblee sur la poche dynamique.
+- Goals:
+  - G1 (obligatoire): `wallet_gt_start`, `goalValue: 65`
+  - G2 (bonus): `wallet_min`, `goalValue: 2630`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "arbitrage" ?
+  - Q2 (event): Quand l'evenement (choc_tech_leger) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 15 - Allocation stable
+- Level:
+  - `number: 15`
+  - `title: Allocation stable`
+  - `description: Tenir son allocation choisie sur la duree.`
+  - `startBalance: 2560`
+  - `pointsRequired: 210`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Tenir son allocation choisie sur la duree.
+- Events:
+  - E1: `EVT_07` / `stabilisation_marche`
+    - `triggerPercent: 50`
+    - Impacts: `ETF_MONDE:1.01, OBLIG_FR:1.00`
+    - Effet concret joueur: marche quasi stable pour consolider.
+- Goals:
+  - G1 (obligatoire): `wallet_gt_start`, `goalValue: 70`
+  - G2 (bonus): `wallet_min`, `goalValue: 2680`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "allocation" ?
+  - Q2 (event): Quand l'evenement (stabilisation_marche) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 16 - Choc sectoriel
+- Level:
+  - `number: 16`
+  - `title: Choc sectoriel`
+  - `description: Encaisser un choc cible sans tout remettre en cause.`
+  - `startBalance: 2600`
+  - `pointsRequired: 225`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Encaisser un choc cible sans tout remettre en cause.
+- Events:
+  - E1: `EVT_03` / `choc_tech_leger`
+    - `triggerPercent: 50`
+    - Impacts: `ETF_TECH:0.86, ETF_MONDE:0.93`
+    - Effet concret joueur: correction ciblee sur la poche dynamique.
+- Goals:
+  - G1 (obligatoire): `wallet_gt_start`, `goalValue: 75`
+  - G2 (bonus): `wallet_min`, `goalValue: 2730`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "risque specifique" ?
+  - Q2 (event): Quand l'evenement (choc_tech_leger) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 17 - Amortir par diversification
+- Level:
+  - `number: 17`
+  - `title: Amortir par diversification`
+  - `description: Mesurer l'effet protecteur d'une bonne repartition.`
+  - `startBalance: 2640`
+  - `pointsRequired: 240`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Mesurer l'effet protecteur d'une bonne repartition.
+- Events:
+  - E1: `EVT_03` / `choc_tech_leger`
+    - `triggerPercent: 35`
+    - Impacts: `ETF_TECH:0.86, ETF_MONDE:0.93`
+    - Effet concret joueur: correction ciblee sur la poche dynamique.
+  - E2: `EVT_07` / `stabilisation_marche`
+    - `triggerPercent: 70`
+    - Impacts: `ETF_MONDE:1.01, OBLIG_FR:1.00`
+    - Effet concret joueur: marche quasi stable pour consolider.
+- Goals:
+  - G1 (obligatoire): `wallet_gt_start`, `goalValue: 80`
+  - G2 (bonus): `wallet_min`, `goalValue: 2780`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "protection" ?
+  - Q2 (event): Quand l'evenement (choc_tech_leger, stabilisation_marche) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 18 - Hausse puis normalisation
+- Level:
+  - `number: 18`
+  - `title: Hausse puis normalisation`
+  - `description: Eviter de surreagir a une hausse temporaire.`
+  - `startBalance: 2680`
+  - `pointsRequired: 255`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Eviter de surreagir a une hausse temporaire.
+- Events:
+  - E1: `EVT_04` / `rebond_tech_leger`
+    - `triggerPercent: 35`
+    - Impacts: `ETF_TECH:1.10, ETF_MONDE:1.05`
+    - Effet concret joueur: rebond technique sur la poche dynamique.
+  - E2: `EVT_07` / `stabilisation_marche`
+    - `triggerPercent: 70`
+    - Impacts: `ETF_MONDE:1.01, OBLIG_FR:1.00`
+    - Effet concret joueur: marche quasi stable pour consolider.
+- Goals:
+  - G1 (obligatoire): `wallet_gt_start`, `goalValue: 85`
+  - G2 (bonus): `wallet_min`, `goalValue: 2830`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "normalisation" ?
+  - Q2 (event): Quand l'evenement (rebond_tech_leger, stabilisation_marche) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 19 - Priorite objectif principal
+- Level:
+  - `number: 19`
+  - `title: Priorite objectif principal`
+  - `description: Conserver le cap sur l'objectif obligatoire.`
+  - `startBalance: 2720`
+  - `pointsRequired: 270`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Conserver le cap sur l'objectif obligatoire.
+- Events:
+  - E1: `EVT_11` / `choc_obligataire`
+    - `triggerPercent: 50`
+    - Impacts: `OBLIG_FR:0.85, FONDS_EURO:0.94`
+    - Effet concret joueur: tension sur la poche obligataire.
+- Goals:
+  - G1 (obligatoire): `wallet_gt_start`, `goalValue: 90`
+  - G2 (bonus): `wallet_min`, `goalValue: 2880`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "priorisation" ?
+  - Q2 (event): Quand l'evenement (choc_obligataire) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 20 - Validation bloc intermediaire
+- Level:
+  - `number: 20`
+  - `title: Validation bloc intermediaire`
+  - `description: Passer un scenario mixte avant le bloc performance.`
+  - `startBalance: 2760`
+  - `pointsRequired: 285`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Passer un scenario mixte avant le bloc performance.
+- Events:
+  - E1: `EVT_03` / `choc_tech_leger`
+    - `triggerPercent: 35`
+    - Impacts: `ETF_TECH:0.86, ETF_MONDE:0.93`
+    - Effet concret joueur: correction ciblee sur la poche dynamique.
+  - E2: `EVT_10` / `reprise_progressive`
+    - `triggerPercent: 70`
+    - Impacts: `ETF_MONDE:1.08, ETF_TECH:1.10, OBLIG_FR:1.02`
+    - Effet concret joueur: phase de reprise graduelle.
+- Goals:
+  - G1 (obligatoire): `wallet_gt_start`, `goalValue: 95`
+  - G2 (bonus): `wallet_min`, `goalValue: 2930`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "validation intermediaire" ?
+  - Q2 (event): Quand l'evenement (choc_tech_leger, reprise_progressive) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 21 - Introduction DCA
+- Level:
+  - `number: 21`
+  - `title: Introduction DCA`
+  - `description: Demarrer un investissement regulier progressif.`
+  - `startBalance: 2800`
+  - `pointsRequired: 300`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Demarrer un investissement regulier progressif.
+- Events:
+  - E1: `EVT_03` / `choc_tech_leger`
+    - `triggerPercent: 35`
+    - Impacts: `ETF_TECH:0.86, ETF_MONDE:0.93`
+    - Effet concret joueur: correction ciblee sur la poche dynamique.
+  - E2: `EVT_10` / `reprise_progressive`
+    - `triggerPercent: 70`
+    - Impacts: `ETF_MONDE:1.08, ETF_TECH:1.10, OBLIG_FR:1.02`
+    - Effet concret joueur: phase de reprise graduelle.
+- Goals:
+  - G1 (obligatoire): `profit_min`, `goalValue: 1.50`
+  - G2 (bonus): `profit_min`, `goalValue: 2.30`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "dca" ?
+  - Q2 (event): Quand l'evenement (choc_tech_leger, reprise_progressive) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 22 - DCA avec volatilite legere
+- Level:
+  - `number: 22`
+  - `title: DCA avec volatilite legere`
+  - `description: Rester regulier meme quand le marche secoue.`
+  - `startBalance: 2840`
+  - `pointsRequired: 315`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Rester regulier meme quand le marche secoue.
+- Events:
+  - E1: `EVT_03` / `choc_tech_leger`
+    - `triggerPercent: 50`
+    - Impacts: `ETF_TECH:0.86, ETF_MONDE:0.93`
+    - Effet concret joueur: correction ciblee sur la poche dynamique.
+- Goals:
+  - G1 (obligatoire): `profit_min`, `goalValue: 1.75`
+  - G2 (bonus): `profit_min`, `goalValue: 2.55`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "dca discipline" ?
+  - Q2 (event): Quand l'evenement (choc_tech_leger) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 23 - DCA et reprise decalee
+- Level:
+  - `number: 23`
+  - `title: DCA et reprise decalee`
+  - `description: Voir l'interet du lissage sur un cycle incomplet.`
+  - `startBalance: 2880`
+  - `pointsRequired: 330`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Voir l'interet du lissage sur un cycle incomplet.
+- Events:
+  - E1: `EVT_03` / `choc_tech_leger`
+    - `triggerPercent: 35`
+    - Impacts: `ETF_TECH:0.86, ETF_MONDE:0.93`
+    - Effet concret joueur: correction ciblee sur la poche dynamique.
+  - E2: `EVT_04` / `rebond_tech_leger`
+    - `triggerPercent: 70`
+    - Impacts: `ETF_TECH:1.10, ETF_MONDE:1.05`
+    - Effet concret joueur: rebond technique sur la poche dynamique.
+- Goals:
+  - G1 (obligatoire): `profit_min`, `goalValue: 2.00`
+  - G2 (bonus): `profit_min`, `goalValue: 2.80`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "dca cycle" ?
+  - Q2 (event): Quand l'evenement (choc_tech_leger, rebond_tech_leger) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 24 - Interets composes simple
+- Level:
+  - `number: 24`
+  - `title: Interets composes simple`
+  - `description: Observer la croissance cumulative dans le temps.`
+  - `startBalance: 2920`
+  - `pointsRequired: 345`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Observer la croissance cumulative dans le temps.
+- Events:
+  - E1: `EVT_07` / `stabilisation_marche`
+    - `triggerPercent: 50`
+    - Impacts: `ETF_MONDE:1.01, OBLIG_FR:1.00`
+    - Effet concret joueur: marche quasi stable pour consolider.
+- Goals:
+  - G1 (obligatoire): `profit_min`, `goalValue: 2.25`
+  - G2 (bonus): `profit_min`, `goalValue: 3.05`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "composes" ?
+  - Q2 (event): Quand l'evenement (stabilisation_marche) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 25 - Composes plus discipline
+- Level:
+  - `number: 25`
+  - `title: Composes plus discipline`
+  - `description: Renforcer l'effet du temps par la constance.`
+  - `startBalance: 2960`
+  - `pointsRequired: 360`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Renforcer l'effet du temps par la constance.
+- Events:
+  - E1: `EVT_07` / `stabilisation_marche`
+    - `triggerPercent: 35`
+    - Impacts: `ETF_MONDE:1.01, OBLIG_FR:1.00`
+    - Effet concret joueur: marche quasi stable pour consolider.
+  - E2: `EVT_02` / `taux_livret_hausse`
+    - `triggerPercent: 70`
+    - Impacts: `LIVRET_A:1.05, LIVRET_DDS:1.04`
+    - Effet concret joueur: hausse legere des rendements defensifs.
+- Goals:
+  - G1 (obligatoire): `profit_min`, `goalValue: 2.50`
+  - G2 (bonus): `profit_min`, `goalValue: 3.30`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "composes pratique" ?
+  - Q2 (event): Quand l'evenement (stabilisation_marche, taux_livret_hausse) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 26 - Performance nette
+- Level:
+  - `number: 26`
+  - `title: Performance nette`
+  - `description: Distinguer performance brute et performance nette.`
+  - `startBalance: 3000`
+  - `pointsRequired: 375`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Distinguer performance brute et performance nette.
+- Events:
+  - E1: `EVT_08` / `faux_signal`
+    - `triggerPercent: 50`
+    - Impacts: `ETF_TECH:0.82, ETF_MONDE:0.95`
+    - Effet concret joueur: normalisation apres faux signal de marche.
+- Goals:
+  - G1 (obligatoire): `profit_min`, `goalValue: 2.75`
+  - G2 (bonus): `profit_min`, `goalValue: 3.55`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "net vs brut" ?
+  - Q2 (event): Quand l'evenement (faux_signal) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 27 - Limiter les actions inutiles
+- Level:
+  - `number: 27`
+  - `title: Limiter les actions inutiles`
+  - `description: Reduire les changements trop frequents qui coutent.`
+  - `startBalance: 3040`
+  - `pointsRequired: 390`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Reduire les changements trop frequents qui coutent.
+- Events:
+  - E1: `EVT_08` / `faux_signal`
+    - `triggerPercent: 35`
+    - Impacts: `ETF_TECH:0.82, ETF_MONDE:0.95`
+    - Effet concret joueur: normalisation apres faux signal de marche.
+  - E2: `EVT_07` / `stabilisation_marche`
+    - `triggerPercent: 70`
+    - Impacts: `ETF_MONDE:1.01, OBLIG_FR:1.00`
+    - Effet concret joueur: marche quasi stable pour consolider.
+- Goals:
+  - G1 (obligatoire): `profit_min`, `goalValue: 3.00`
+  - G2 (bonus): `profit_min`, `goalValue: 3.80`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "couts implicites" ?
+  - Q2 (event): Quand l'evenement (faux_signal, stabilisation_marche) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 28 - Cohérence en sequence mixte
+- Level:
+  - `number: 28`
+  - `title: Cohérence en sequence mixte`
+  - `description: Rester coherent quand les signaux se contredisent.`
+  - `startBalance: 3080`
+  - `pointsRequired: 405`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Rester coherent quand les signaux se contredisent.
+- Events:
+  - E1: `EVT_05` / `rotation_sectorielle`
+    - `triggerPercent: 35`
+    - Impacts: `ETF_TECH:0.90, ETF_ENERGIE:1.08`
+    - Effet concret joueur: rotation entre secteurs gagnants et perdants.
+  - E2: `EVT_10` / `reprise_progressive`
+    - `triggerPercent: 70`
+    - Impacts: `ETF_MONDE:1.08, ETF_TECH:1.10, OBLIG_FR:1.02`
+    - Effet concret joueur: phase de reprise graduelle.
+- Goals:
+  - G1 (obligatoire): `profit_min`, `goalValue: 3.25`
+  - G2 (bonus): `profit_min`, `goalValue: 4.05`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "coherence" ?
+  - Q2 (event): Quand l'evenement (rotation_sectorielle, reprise_progressive) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 29 - Progression stable sous contrainte
+- Level:
+  - `number: 29`
+  - `title: Progression stable sous contrainte`
+  - `description: Conserver une trajectoire dans un contexte obligataire tendu.`
+  - `startBalance: 3120`
+  - `pointsRequired: 420`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Conserver une trajectoire dans un contexte obligataire tendu.
+- Events:
+  - E1: `EVT_11` / `choc_obligataire`
+    - `triggerPercent: 50`
+    - Impacts: `OBLIG_FR:0.85, FONDS_EURO:0.94`
+    - Effet concret joueur: tension sur la poche obligataire.
+- Goals:
+  - G1 (obligatoire): `profit_min`, `goalValue: 3.50`
+  - G2 (bonus): `profit_min`, `goalValue: 4.30`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "stabilite" ?
+  - Q2 (event): Quand l'evenement (choc_obligataire) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 30 - Validation DCA net composes
+- Level:
+  - `number: 30`
+  - `title: Validation DCA net composes`
+  - `description: Verifier la maitrise des mecanismes de performance.`
+  - `startBalance: 3160`
+  - `pointsRequired: 435`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Verifier la maitrise des mecanismes de performance.
+- Events:
+  - E1: `EVT_03` / `choc_tech_leger`
+    - `triggerPercent: 35`
+    - Impacts: `ETF_TECH:0.86, ETF_MONDE:0.93`
+    - Effet concret joueur: correction ciblee sur la poche dynamique.
+  - E2: `EVT_10` / `reprise_progressive`
+    - `triggerPercent: 70`
+    - Impacts: `ETF_MONDE:1.08, ETF_TECH:1.10, OBLIG_FR:1.02`
+    - Effet concret joueur: phase de reprise graduelle.
+- Goals:
+  - G1 (obligatoire): `profit_min`, `goalValue: 3.75`
+  - G2 (bonus): `profit_min`, `goalValue: 4.55`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "validation performance" ?
+  - Q2 (event): Quand l'evenement (choc_tech_leger, reprise_progressive) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 31 - Lecture produit avancee
+- Level:
+  - `number: 31`
+  - `title: Lecture produit avancee`
+  - `description: Evaluer un actif au-dela du discours marketing.`
+  - `startBalance: 3200`
+  - `pointsRequired: 450`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Evaluer un actif au-dela du discours marketing.
+- Events:
+  - E1: `EVT_08` / `faux_signal`
+    - `triggerPercent: 50`
+    - Impacts: `ETF_TECH:0.82, ETF_MONDE:0.95`
+    - Effet concret joueur: normalisation apres faux signal de marche.
+- Goals:
+  - G1 (obligatoire): `profit_min`, `goalValue: 3.80`
+  - G2 (bonus): `wallet_gt_start`, `goalValue: 120`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "lecture produit" ?
+  - Q2 (event): Quand l'evenement (faux_signal) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 32 - Premier reequilibrage
+- Level:
+  - `number: 32`
+  - `title: Premier reequilibrage`
+  - `description: Introduire une regle simple de retour a l'allocation cible.`
+  - `startBalance: 3240`
+  - `pointsRequired: 465`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Introduire une regle simple de retour a l'allocation cible.
+- Events:
+  - E1: `EVT_05` / `rotation_sectorielle`
+    - `triggerPercent: 50`
+    - Impacts: `ETF_TECH:0.90, ETF_ENERGIE:1.08`
+    - Effet concret joueur: rotation entre secteurs gagnants et perdants.
+- Goals:
+  - G1 (obligatoire): `profit_min`, `goalValue: 4.00`
+  - G2 (bonus): `wallet_gt_start`, `goalValue: 130`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "reequilibrage" ?
+  - Q2 (event): Quand l'evenement (rotation_sectorielle) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 33 - Reequilibrage apres rallye
+- Level:
+  - `number: 33`
+  - `title: Reequilibrage apres rallye`
+  - `description: Corriger une derive apres surperformance d'une poche.`
+  - `startBalance: 3280`
+  - `pointsRequired: 480`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Corriger une derive apres surperformance d'une poche.
+- Events:
+  - E1: `EVT_04` / `rebond_tech_leger`
+    - `triggerPercent: 50`
+    - Impacts: `ETF_TECH:1.10, ETF_MONDE:1.05`
+    - Effet concret joueur: rebond technique sur la poche dynamique.
+- Goals:
+  - G1 (obligatoire): `profit_min`, `goalValue: 4.20`
+  - G2 (bonus): `wallet_gt_start`, `goalValue: 140`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "derive allocation" ?
+  - Q2 (event): Quand l'evenement (rebond_tech_leger) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 34 - Eviter la sur-concentration
+- Level:
+  - `number: 34`
+  - `title: Eviter la sur-concentration`
+  - `description: Limiter le poids excessif d'un actif devenu dominant.`
+  - `startBalance: 3320`
+  - `pointsRequired: 495`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Limiter le poids excessif d'un actif devenu dominant.
+- Events:
+  - E1: `EVT_03` / `choc_tech_leger`
+    - `triggerPercent: 50`
+    - Impacts: `ETF_TECH:0.86, ETF_MONDE:0.93`
+    - Effet concret joueur: correction ciblee sur la poche dynamique.
+- Goals:
+  - G1 (obligatoire): `profit_min`, `goalValue: 4.40`
+  - G2 (bonus): `wallet_gt_start`, `goalValue: 150`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "concentration" ?
+  - Q2 (event): Quand l'evenement (choc_tech_leger) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 35 - Decision sans impulsivite
+- Level:
+  - `number: 35`
+  - `title: Decision sans impulsivite`
+  - `description: Prendre des decisions avec methode en phase de stress.`
+  - `startBalance: 3360`
+  - `pointsRequired: 510`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Prendre des decisions avec methode en phase de stress.
+- Events:
+  - E1: `EVT_09` / `micro_krach`
+    - `triggerPercent: 50`
+    - Impacts: `ETF_TECH:0.74, ETF_MONDE:0.80, OBLIG_FR:0.92`
+    - Effet concret joueur: choc simultane multi-actifs.
+- Goals:
+  - G1 (obligatoire): `profit_min`, `goalValue: 4.60`
+  - G2 (bonus): `wallet_gt_start`, `goalValue: 160`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "biais" ?
+  - Q2 (event): Quand l'evenement (micro_krach) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 36 - Tenir le plan en correction
+- Level:
+  - `number: 36`
+  - `title: Tenir le plan en correction`
+  - `description: Traverser une correction sans rupture de strategie.`
+  - `startBalance: 3400`
+  - `pointsRequired: 525`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Traverser une correction sans rupture de strategie.
+- Events:
+  - E1: `EVT_09` / `micro_krach`
+    - `triggerPercent: 35`
+    - Impacts: `ETF_TECH:0.74, ETF_MONDE:0.80, OBLIG_FR:0.92`
+    - Effet concret joueur: choc simultane multi-actifs.
+  - E2: `EVT_10` / `reprise_progressive`
+    - `triggerPercent: 70`
+    - Impacts: `ETF_MONDE:1.08, ETF_TECH:1.10, OBLIG_FR:1.02`
+    - Effet concret joueur: phase de reprise graduelle.
+- Goals:
+  - G1 (obligatoire): `profit_min`, `goalValue: 4.80`
+  - G2 (bonus): `wallet_gt_start`, `goalValue: 170`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "resilience" ?
+  - Q2 (event): Quand l'evenement (micro_krach, reprise_progressive) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 37 - Baisse forte puis rebond
+- Level:
+  - `number: 37`
+  - `title: Baisse forte puis rebond`
+  - `description: Eviter la panique et capter la reprise.`
+  - `startBalance: 3440`
+  - `pointsRequired: 540`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Eviter la panique et capter la reprise.
+- Events:
+  - E1: `EVT_09` / `micro_krach`
+    - `triggerPercent: 35`
+    - Impacts: `ETF_TECH:0.74, ETF_MONDE:0.80, OBLIG_FR:0.92`
+    - Effet concret joueur: choc simultane multi-actifs.
+  - E2: `EVT_04` / `rebond_tech_leger`
+    - `triggerPercent: 70`
+    - Impacts: `ETF_TECH:1.10, ETF_MONDE:1.05`
+    - Effet concret joueur: rebond technique sur la poche dynamique.
+- Goals:
+  - G1 (obligatoire): `profit_min`, `goalValue: 5.00`
+  - G2 (bonus): `wallet_gt_start`, `goalValue: 180`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "emotion" ?
+  - Q2 (event): Quand l'evenement (micro_krach, rebond_tech_leger) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 38 - Deux chocs consecutifs
+- Level:
+  - `number: 38`
+  - `title: Deux chocs consecutifs`
+  - `description: Piloter une sequence difficile sans perte de controle.`
+  - `startBalance: 3480`
+  - `pointsRequired: 555`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Piloter une sequence difficile sans perte de controle.
+- Events:
+  - E1: `EVT_11` / `choc_obligataire`
+    - `triggerPercent: 35`
+    - Impacts: `OBLIG_FR:0.85, FONDS_EURO:0.94`
+    - Effet concret joueur: tension sur la poche obligataire.
+  - E2: `EVT_09` / `micro_krach`
+    - `triggerPercent: 70`
+    - Impacts: `ETF_TECH:0.74, ETF_MONDE:0.80, OBLIG_FR:0.92`
+    - Effet concret joueur: choc simultane multi-actifs.
+- Goals:
+  - G1 (obligatoire): `profit_min`, `goalValue: 5.20`
+  - G2 (bonus): `wallet_gt_start`, `goalValue: 190`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "gestion crise" ?
+  - Q2 (event): Quand l'evenement (choc_obligataire, micro_krach) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 39 - Defensive avant reprise
+- Level:
+  - `number: 39`
+  - `title: Defensive avant reprise`
+  - `description: Renforcer la protection avant la phase de rebond.`
+  - `startBalance: 3520`
+  - `pointsRequired: 570`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Renforcer la protection avant la phase de rebond.
+- Events:
+  - E1: `EVT_11` / `choc_obligataire`
+    - `triggerPercent: 35`
+    - Impacts: `OBLIG_FR:0.85, FONDS_EURO:0.94`
+    - Effet concret joueur: tension sur la poche obligataire.
+  - E2: `EVT_10` / `reprise_progressive`
+    - `triggerPercent: 70`
+    - Impacts: `ETF_MONDE:1.08, ETF_TECH:1.10, OBLIG_FR:1.02`
+    - Effet concret joueur: phase de reprise graduelle.
+- Goals:
+  - G1 (obligatoire): `profit_min`, `goalValue: 5.40`
+  - G2 (bonus): `wallet_gt_start`, `goalValue: 200`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "defensif" ?
+  - Q2 (event): Quand l'evenement (choc_obligataire, reprise_progressive) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 40 - Validation pilotage actif
+- Level:
+  - `number: 40`
+  - `title: Validation pilotage actif`
+  - `description: Confirmer la maitrise du pilotage en contexte variable.`
+  - `startBalance: 3560`
+  - `pointsRequired: 585`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Confirmer la maitrise du pilotage en contexte variable.
+- Events:
+  - E1: `EVT_05` / `rotation_sectorielle`
+    - `triggerPercent: 35`
+    - Impacts: `ETF_TECH:0.90, ETF_ENERGIE:1.08`
+    - Effet concret joueur: rotation entre secteurs gagnants et perdants.
+  - E2: `EVT_10` / `reprise_progressive`
+    - `triggerPercent: 70`
+    - Impacts: `ETF_MONDE:1.08, ETF_TECH:1.10, OBLIG_FR:1.02`
+    - Effet concret joueur: phase de reprise graduelle.
+- Goals:
+  - G1 (obligatoire): `profit_min`, `goalValue: 5.60`
+  - G2 (bonus): `wallet_gt_start`, `goalValue: 210`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "validation pilotage" ?
+  - Q2 (event): Quand l'evenement (rotation_sectorielle, reprise_progressive) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 41 - Deux objectifs simultanes
+- Level:
+  - `number: 41`
+  - `title: Deux objectifs simultanes`
+  - `description: Gerer un objectif proche et un objectif lointain.`
+  - `startBalance: 3600`
+  - `pointsRequired: 600`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Gerer un objectif proche et un objectif lointain.
+- Events:
+  - E1: `EVT_07` / `stabilisation_marche`
+    - `triggerPercent: 50`
+    - Impacts: `ETF_MONDE:1.01, OBLIG_FR:1.00`
+    - Effet concret joueur: marche quasi stable pour consolider.
+- Goals:
+  - G1 (obligatoire): `wallet_gte_start`, `goalValue: 140`
+  - G2 (bonus): `profit_min`, `goalValue: 5.80`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "multi objectifs" ?
+  - Q2 (event): Quand l'evenement (stabilisation_marche) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 42 - Arbitrage proche lointain
+- Level:
+  - `number: 42`
+  - `title: Arbitrage proche lointain`
+  - `description: Prioriser sans abandonner la croissance long terme.`
+  - `startBalance: 3640`
+  - `pointsRequired: 615`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Prioriser sans abandonner la croissance long terme.
+- Events:
+  - E1: `EVT_03` / `choc_tech_leger`
+    - `triggerPercent: 35`
+    - Impacts: `ETF_TECH:0.86, ETF_MONDE:0.93`
+    - Effet concret joueur: correction ciblee sur la poche dynamique.
+  - E2: `EVT_07` / `stabilisation_marche`
+    - `triggerPercent: 70`
+    - Impacts: `ETF_MONDE:1.01, OBLIG_FR:1.00`
+    - Effet concret joueur: marche quasi stable pour consolider.
+- Goals:
+  - G1 (obligatoire): `wallet_gte_start`, `goalValue: 150`
+  - G2 (bonus): `profit_min`, `goalValue: 6.00`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "arbitrage objectifs" ?
+  - Q2 (event): Quand l'evenement (choc_tech_leger, stabilisation_marche) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 43 - Long terme marche calme
+- Level:
+  - `number: 43`
+  - `title: Long terme marche calme`
+  - `description: Stabiliser une strategie durable en environnement neutre.`
+  - `startBalance: 3680`
+  - `pointsRequired: 630`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Stabiliser une strategie durable en environnement neutre.
+- Events:
+  - E1: `EVT_07` / `stabilisation_marche`
+    - `triggerPercent: 35`
+    - Impacts: `ETF_MONDE:1.01, OBLIG_FR:1.00`
+    - Effet concret joueur: marche quasi stable pour consolider.
+  - E2: `EVT_02` / `taux_livret_hausse`
+    - `triggerPercent: 70`
+    - Impacts: `LIVRET_A:1.05, LIVRET_DDS:1.04`
+    - Effet concret joueur: hausse legere des rendements defensifs.
+- Goals:
+  - G1 (obligatoire): `wallet_gte_start`, `goalValue: 160`
+  - G2 (bonus): `profit_min`, `goalValue: 6.20`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "long terme" ?
+  - Q2 (event): Quand l'evenement (stabilisation_marche, taux_livret_hausse) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 44 - Long terme en ralentissement
+- Level:
+  - `number: 44`
+  - `title: Long terme en ralentissement`
+  - `description: Conserver le cap pendant une phase economique molle.`
+  - `startBalance: 3720`
+  - `pointsRequired: 645`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Conserver le cap pendant une phase economique molle.
+- Events:
+  - E1: `EVT_06` / `inflation_moderate`
+    - `triggerPercent: 35`
+    - Impacts: `LIVRET_A:0.90, OBLIG_FR:0.92`
+    - Effet concret joueur: pression inflationniste sur supports prudents.
+  - E2: `EVT_11` / `choc_obligataire`
+    - `triggerPercent: 70`
+    - Impacts: `OBLIG_FR:0.85, FONDS_EURO:0.94`
+    - Effet concret joueur: tension sur la poche obligataire.
+- Goals:
+  - G1 (obligatoire): `wallet_gte_start`, `goalValue: 170`
+  - G2 (bonus): `profit_min`, `goalValue: 6.40`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "long terme crise douce" ?
+  - Q2 (event): Quand l'evenement (inflation_moderate, choc_obligataire) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 45 - Long terme en reprise
+- Level:
+  - `number: 45`
+  - `title: Long terme en reprise`
+  - `description: Revenir progressivement au risque cible apres tension.`
+  - `startBalance: 3760`
+  - `pointsRequired: 660`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Revenir progressivement au risque cible apres tension.
+- Events:
+  - E1: `EVT_10` / `reprise_progressive`
+    - `triggerPercent: 50`
+    - Impacts: `ETF_MONDE:1.08, ETF_TECH:1.10, OBLIG_FR:1.02`
+    - Effet concret joueur: phase de reprise graduelle.
+- Goals:
+  - G1 (obligatoire): `wallet_gte_start`, `goalValue: 180`
+  - G2 (bonus): `profit_min`, `goalValue: 6.60`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "long terme reprise" ?
+  - Q2 (event): Quand l'evenement (reprise_progressive) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 46 - Introduction poche durable
+- Level:
+  - `number: 46`
+  - `title: Introduction poche durable`
+  - `description: Ajouter une poche responsable sans desequilibrer l'ensemble.`
+  - `startBalance: 3800`
+  - `pointsRequired: 675`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Ajouter une poche responsable sans desequilibrer l'ensemble.
+- Events:
+  - E1: `EVT_12` / `rotation_durable`
+    - `triggerPercent: 50`
+    - Impacts: `ETF_DURABLE:1.08, ETF_MONDE:0.98`
+    - Effet concret joueur: surperformance durable avec normalisation relative.
+- Goals:
+  - G1 (obligatoire): `wallet_gte_start`, `goalValue: 190`
+  - G2 (bonus): `profit_min`, `goalValue: 6.80`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "durable debut" ?
+  - Q2 (event): Quand l'evenement (rotation_durable) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 47 - Augmenter la poche durable
+- Level:
+  - `number: 47`
+  - `title: Augmenter la poche durable`
+  - `description: Monter l'exposition durable en gardant la robustesse.`
+  - `startBalance: 3840`
+  - `pointsRequired: 690`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Monter l'exposition durable en gardant la robustesse.
+- Events:
+  - E1: `EVT_12` / `rotation_durable`
+    - `triggerPercent: 35`
+    - Impacts: `ETF_DURABLE:1.08, ETF_MONDE:0.98`
+    - Effet concret joueur: surperformance durable avec normalisation relative.
+  - E2: `EVT_05` / `rotation_sectorielle`
+    - `triggerPercent: 70`
+    - Impacts: `ETF_TECH:0.90, ETF_ENERGIE:1.08`
+    - Effet concret joueur: rotation entre secteurs gagnants et perdants.
+- Goals:
+  - G1 (obligatoire): `wallet_gte_start`, `goalValue: 200`
+  - G2 (bonus): `profit_min`, `goalValue: 7.00`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "durable allocation" ?
+  - Q2 (event): Quand l'evenement (rotation_durable, rotation_sectorielle) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 48 - Impact risque rendement
+- Level:
+  - `number: 48`
+  - `title: Impact risque rendement`
+  - `description: Arbitrer convictions et contraintes de performance.`
+  - `startBalance: 3880`
+  - `pointsRequired: 705`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Arbitrer convictions et contraintes de performance.
+- Events:
+  - E1: `EVT_12` / `rotation_durable`
+    - `triggerPercent: 35`
+    - Impacts: `ETF_DURABLE:1.08, ETF_MONDE:0.98`
+    - Effet concret joueur: surperformance durable avec normalisation relative.
+  - E2: `EVT_09` / `micro_krach`
+    - `triggerPercent: 70`
+    - Impacts: `ETF_TECH:0.74, ETF_MONDE:0.80, OBLIG_FR:0.92`
+    - Effet concret joueur: choc simultane multi-actifs.
+- Goals:
+  - G1 (obligatoire): `wallet_gte_start`, `goalValue: 210`
+  - G2 (bonus): `profit_min`, `goalValue: 7.20`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "impact arbitrage" ?
+  - Q2 (event): Quand l'evenement (rotation_durable, micro_krach) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 49 - Expansion puis choc
+- Level:
+  - `number: 49`
+  - `title: Expansion puis choc`
+  - `description: Gerer un cycle court avec changement brutal de regime.`
+  - `startBalance: 3920`
+  - `pointsRequired: 720`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Gerer un cycle court avec changement brutal de regime.
+- Events:
+  - E1: `EVT_10` / `reprise_progressive`
+    - `triggerPercent: 35`
+    - Impacts: `ETF_MONDE:1.08, ETF_TECH:1.10, OBLIG_FR:1.02`
+    - Effet concret joueur: phase de reprise graduelle.
+  - E2: `EVT_09` / `micro_krach`
+    - `triggerPercent: 70`
+    - Impacts: `ETF_TECH:0.74, ETF_MONDE:0.80, OBLIG_FR:0.92`
+    - Effet concret joueur: choc simultane multi-actifs.
+- Goals:
+  - G1 (obligatoire): `wallet_gte_start`, `goalValue: 220`
+  - G2 (bonus): `profit_min`, `goalValue: 7.40`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "cycle court" ?
+  - Q2 (event): Quand l'evenement (reprise_progressive, micro_krach) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+## Niveau 50 - Cycle economique complet
+- Level:
+  - `number: 50`
+  - `title: Cycle economique complet`
+  - `description: Valider l'autonomie complete sur expansion, choc et reprise.`
+  - `startBalance: 3960`
+  - `pointsRequired: 735`
+  - `duration: 1825`
+  - `speed: 1314000`
+- Objectif pedagogique: Valider l'autonomie complete sur expansion, choc et reprise.
+- Events:
+  - E1: `EVT_10` / `reprise_progressive`
+    - `triggerPercent: 20`
+    - Impacts: `ETF_MONDE:1.08, ETF_TECH:1.10, OBLIG_FR:1.02`
+    - Effet concret joueur: phase de reprise graduelle.
+  - E2: `EVT_09` / `micro_krach`
+    - `triggerPercent: 50`
+    - Impacts: `ETF_TECH:0.74, ETF_MONDE:0.80, OBLIG_FR:0.92`
+    - Effet concret joueur: choc simultane multi-actifs.
+  - E3: `EVT_04` / `rebond_tech_leger`
+    - `triggerPercent: 80`
+    - Impacts: `ETF_TECH:1.10, ETF_MONDE:1.05`
+    - Effet concret joueur: rebond technique sur la poche dynamique.
+- Goals:
+  - G1 (obligatoire): `wallet_gte_start`, `goalValue: 230`
+  - G2 (bonus): `profit_min`, `goalValue: 7.60`
+- Quiz fin de niveau (MCQ - 3 questions):
+  - Q1 (concept): Quelle competence principale ce niveau valide-t-il sur "final" ?
+  - Q2 (event): Quand l'evenement (reprise_progressive, micro_krach, rebond_tech_leger) se declenche, quel impact concret dois-tu anticiper ?
+  - Q3 (decision): Quelle decision permet de valider G1 sans compromettre G2 ?
+- Acceptance:
+  - Reussite: G1 valide en fin de partie.
+  - Bonus: G2 valide pour etoile supplementaire.
+
+---
+
+## Checklist seed (execution)
+- Pour chaque niveau `n`:
+  - upsert `Level` via `number`
+  - upsert 2 `Goal` + liens `LevelGoal`
+  - upsert events + liens `LevelEvent` (position, triggerPercent)
+  - upsert impacts par `eventId + assetId`
+  - upsert `Quiz` MCQ + 3 questions + reponses + liens `QuizQuestion`
+- Garder `pointsRequired` croissant et `number` unique.
+- Seed dans l'ordre 1 -> 50.

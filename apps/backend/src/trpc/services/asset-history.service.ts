@@ -89,6 +89,160 @@ export class AssetHistoryService {
     }
 
     /**
+     * Retrieve asset history for a game, with event coefs applied on-the-fly.
+     *
+     * Returns: past history (before game start) + game history up to current day.
+     * Event impacts are applied progressively (5-day transition) without modifying DB.
+     * All players on the same level see the same prices.
+     */
+    async findForGame(assetId: number, gameInstanceId: number) {
+        // Load game instance with level + level events + impacts
+        const gameInstance = await this.prisma.gameInstance.findUnique({
+            where: { id: gameInstanceId },
+            include: {
+                level: {
+                    include: {
+                        levelEvents: {
+                            include: {
+                                event: {
+                                    include: { impacts: true }
+                                }
+                            },
+                            orderBy: { position: 'asc' as const }
+                        }
+                    }
+                }
+            },
+        });
+
+        if (!gameInstance || !gameInstance.level) {
+            return [];
+        }
+
+        const level = gameInstance.level;
+        const speed = level.speed ?? 1;
+        const duration = level.duration ?? 365;
+        const historyStartDay = level.historyStartDay ?? 0;
+
+        // Calculate current game day
+        // If game is paused without pausedAt (e.g. created in preparation mode), game day = 0
+        let currentGameDay = 0;
+        if (gameInstance.isPaused && !gameInstance.pausedAt) {
+            currentGameDay = 0;
+        } else {
+            const now = gameInstance.isPaused && gameInstance.pausedAt
+                ? gameInstance.pausedAt.getTime()
+                : Date.now();
+            const elapsedMs = now - gameInstance.createdAt.getTime();
+            const elapsedRealSeconds = Math.max(0, elapsedMs / 1000 - (gameInstance.totalPausedDuration ?? 0));
+            currentGameDay = Math.min(
+                duration,
+                Math.floor((elapsedRealSeconds * speed) / 86400)
+            );
+        }
+
+        // Total days to fetch: all past history + game days played so far
+        const lastDayIndex = historyStartDay + currentGameDay;
+
+        // Fetch raw DB data from day 0 to lastDayIndex
+        const rawHistory = await this.prisma.assetHistory.findMany({
+            where: { assetId },
+            orderBy: { timestamp: 'asc' },
+            take: lastDayIndex + 1,
+        });
+
+        if (rawHistory.length === 0) return [];
+
+        // Build event timeline: when does each event trigger (as day index in history)?
+        const TRANSITION_DAYS = 3;
+        const eventImpacts: { historyDay: number; coef: number }[] = [];
+
+        for (const le of level.levelEvents) {
+            const eventGameDay = Math.floor(duration * (le.triggerPercent / 100));
+            const eventHistoryDay = historyStartDay + eventGameDay;
+
+            // Find the coef for this specific asset
+            const impact = le.event.impacts.find(
+                (imp: any) => imp.assetId === assetId
+            );
+            if (impact?.coef != null) {
+                eventImpacts.push({
+                    historyDay: eventHistoryDay,
+                    coef: impact.coef,
+                });
+            }
+        }
+
+        // Apply coefs on-the-fly to the returned data
+        // Past history (before historyStartDay) is untouched.
+        // Game history has coefs applied progressively.
+        const result = rawHistory.map((point: AssetHistory, dayIndex: number) => {
+            if (dayIndex < historyStartDay || !point.value) {
+                return point; // Past history — raw DB values
+            }
+
+            // Calculate cumulative coef at this day
+            let cumulativeCoef = 1.0;
+            for (const evt of eventImpacts) {
+                if (dayIndex >= evt.historyDay + TRANSITION_DAYS) {
+                    // Fully applied
+                    cumulativeCoef *= evt.coef;
+                } else if (dayIndex >= evt.historyDay) {
+                    // Transitioning: linear interpolation over TRANSITION_DAYS
+                    const progress = (dayIndex - evt.historyDay) / TRANSITION_DAYS;
+                    const partialCoef = 1 + (evt.coef - 1) * progress;
+                    cumulativeCoef *= partialCoef;
+                }
+                // else: event hasn't happened yet, no impact
+            }
+
+            if (cumulativeCoef === 1.0) return point;
+
+            // Return modified point WITHOUT changing DB
+            const rawValue = Number(point.value);
+            return {
+                ...point,
+                value: Math.round(rawValue * cumulativeCoef),
+            };
+        });
+
+        return result;
+    }
+
+    /**
+     * Get the current virtual price of an asset in a game (DB price × cumulative coefs).
+     * Used by buy/sell operations.
+     */
+    async getCurrentPrice(assetId: number, gameInstanceId: number): Promise<number | null> {
+        const history = await this.findForGame(assetId, gameInstanceId);
+        if (history.length === 0) return null;
+        const lastPoint = history[history.length - 1];
+        return lastPoint.value ? Number(lastPoint.value) : null;
+    }
+
+    /**
+     * Get current price + daily change % for an asset in a game context.
+     * Returns both values in a single call to avoid N+1 queries.
+     */
+    async getCurrentPriceWithChange(assetId: number, gameInstanceId: number): Promise<{ price: number; changePct: number } | null> {
+        const history = await this.findForGame(assetId, gameInstanceId);
+        if (history.length === 0) return null;
+        const lastPoint = history[history.length - 1];
+        const price = lastPoint.value ? Number(lastPoint.value) : null;
+        if (price == null) return null;
+
+        let changePct = 0;
+        if (history.length >= 2) {
+            const prevPoint = history[history.length - 2];
+            const prevPrice = prevPoint.value ? Number(prevPoint.value) : price;
+            if (prevPrice > 0) {
+                changePct = ((price - prevPrice) / prevPrice) * 100;
+            }
+        }
+        return { price, changePct };
+    }
+
+    /**
      * Crée un nouvel historique d'actif
      * @param data - Données de l'historique validées par le schéma Zod
      * @returns Promise<AssetHistory> - L'historique créé avec son ID généré

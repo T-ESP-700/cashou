@@ -6,6 +6,7 @@ import defaultPrisma from "../../database.ts";
 import { HoldingService } from "./holding.service.ts";
 import { WalletService } from "./wallet.service.ts";
 import { GameTimeService } from "./game-time.service.ts";
+import { AssetHistoryService } from "./asset-history.service.ts";
 import type { BuySchema, SellSchema } from "../schemas-zod/investment-schema.ts";
 
 type HoldingWithAsset = Holding & {
@@ -37,12 +38,14 @@ export class InvestmentService {
   private holdingService: HoldingService;
   private walletService: WalletService;
   private gameTimeService: GameTimeService;
+  private assetHistoryService: AssetHistoryService;
 
   constructor(prismaClient?: PrismaClient) {
     this.prisma = prismaClient || defaultPrisma;
     this.holdingService = new HoldingService(this.prisma);
     this.walletService = new WalletService(this.prisma);
     this.gameTimeService = new GameTimeService();
+    this.assetHistoryService = new AssetHistoryService(this.prisma);
   }
 
   /**
@@ -102,9 +105,13 @@ export class InvestmentService {
       });
     }
 
-    // 5. Exécuter la transaction dans une transaction Prisma
+    // 5. Get current market price for this asset
+    const currentPrice = await this.assetHistoryService.getCurrentPrice(assetId, gameInstanceId);
+    const marketPrice = currentPrice ?? 10000; // fallback 100€ in cents
+
+    // 6. Exécuter la transaction dans une transaction Prisma
     return await this.prisma.$transaction(async (tx) => {
-      // 5.1 Débiter le wallet
+      // 6.1 Débiter le wallet
       await tx.wallet.update({
         where: { id: walletId },
         data: {
@@ -112,7 +119,7 @@ export class InvestmentService {
         },
       });
 
-      // 5.2 Créer ou mettre à jour le holding
+      // 6.2 Créer ou mettre à jour le holding
       let holding: Holding;
       if (existingHolding) {
         holding = await tx.holding.update({
@@ -143,15 +150,15 @@ export class InvestmentService {
         });
       }
 
-      // 5.3 Créer la transaction (historique)
+      // 6.3 Créer la transaction (historique) avec le vrai prix du marché
       await tx.transaction.create({
         data: {
           walletId,
           assetId,
           gameInstanceId,
           type: "BUY",
-          quantity: Math.floor(amount), // Pour livrets, quantity = montant en €
-          unitPrice: new Prisma.Decimal(1), // Pour livrets, unitPrice = 1
+          quantity: Math.floor(amount),
+          unitPrice: new Prisma.Decimal(marketPrice), // prix du marché en centimes
           totalValue: new Prisma.Decimal(amount),
           transactionDate: new Date(),
           source: "investment_service",
@@ -201,7 +208,7 @@ export class InvestmentService {
 
     // 3. Calculer les intérêts proportionnels au montant retiré
     const holdingWithAsset = existingHolding as HoldingWithAsset;
-    const totalInterests = this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
+    const totalInterests = await this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
     const proportionalInterests = (amount / currentQuantity) * totalInterests;
     // Arrondi supérieur pour éviter les centimes perdus qui resteraient en cash
     const amountReceived = Math.ceil(amount + proportionalInterests);
@@ -265,34 +272,87 @@ export class InvestmentService {
   }
 
   /**
-   * Calcule les intérêts générés par un holding (pour les livrets à taux fixe)
-   * Formule: montant × (taux/365) × jours_de_jeu_écoulés
+   * Calcule les intérêts/gains basés sur l'évolution du prix du marché.
+   * Formule: quantity × (prixActuel / prixMoyenAchat - 1)
+   * Le prix moyen d'achat est calculé à partir des transactions BUY.
+   * Fallback sur le rate fixe si pas de données de prix.
    */
-  calculateInterests(holding: HoldingWithAsset, gameInstance: GameInstanceWithLevel): number {
+  async calculateInterests(holding: HoldingWithAsset, gameInstance: GameInstanceWithLevel): Promise<number> {
     const asset = holding.asset;
     const level = gameInstance.level;
+    const quantity = holding.quantity ? Number(holding.quantity) : 0;
 
-    if (!level || !asset.rate) {
+    if (!level || quantity === 0) {
       return 0;
     }
 
-    const annualRate = asset.rate; // Ex: 1.7 pour 1.7%
-
-    // Temps réel écoulé depuis l'acquisition
-    const elapsedRealSeconds = this.gameTimeService.calculateElapsedTimeSince(
-      gameInstance,
-      new Date(holding.acquiredAt)
+    // Try price-based calculation first
+    const currentPrice = await this.assetHistoryService.getCurrentPrice(
+      asset.id,
+      gameInstance.id
     );
 
-    // Conversion en jours de jeu
-    const elapsedGameDays = this.gameTimeService.convertRealSecondsToGameDays(level, elapsedRealSeconds);
+    if (currentPrice) {
+      // Get average acquisition price from BUY transactions for this holding
+      const buyTransactions = await this.prisma.transaction.findMany({
+        where: {
+          assetId: asset.id,
+          gameInstanceId: gameInstance.id,
+          walletId: holding.walletId,
+          type: "BUY",
+        },
+        orderBy: { transactionDate: 'asc' },
+      });
 
-    // Calcul des intérêts: montant × (taux/100/365) × jours écoulés
-    const quantity = holding.quantity ? Number(holding.quantity) : 0;
-    const dailyRate = annualRate / 100 / 365;
-    const interests = quantity * dailyRate * elapsedGameDays;
+      if (buyTransactions.length > 0) {
+        // Weighted average acquisition price
+        let totalSpent = 0;
+        let totalQty = 0;
+        for (const tx of buyTransactions) {
+          const txQty = tx.quantity ? Number(tx.quantity) : 0;
+          const txPrice = tx.unitPrice ? Number(tx.unitPrice) : 0;
+          if (txPrice > 0 && txQty > 0) {
+            totalSpent += txQty * txPrice;
+            totalQty += txQty;
+          }
+        }
 
-    return Math.max(0, interests);
+        if (totalQty > 0 && totalSpent > 0) {
+          const avgAcquisitionPrice = totalSpent / totalQty;
+          // Return = quantity × (currentPrice / acquisitionPrice - 1)
+          const returnRate = (currentPrice - avgAcquisitionPrice) / avgAcquisitionPrice;
+          return Math.round(quantity * returnRate);
+        }
+      }
+
+      // No buy transactions with price — estimate from history at acquisition time
+      // Use the game start price as fallback acquisition price
+      const history = await this.assetHistoryService.findForGame(asset.id, gameInstance.id);
+      if (history.length > 0) {
+        const historyStartDay = level.historyStartDay ?? 0;
+        // Price at game start (when holdings could first be acquired)
+        const startPoint = history[Math.min(historyStartDay, history.length - 1)];
+        const startPrice = startPoint?.value ? Number(startPoint.value) : currentPrice;
+        if (startPrice > 0) {
+          const returnRate = (currentPrice - startPrice) / startPrice;
+          return Math.round(quantity * returnRate);
+        }
+      }
+    }
+
+    // Fallback: rate-based calculation (for levels without price history)
+    if (asset.rate) {
+      const annualRate = asset.rate;
+      const elapsedRealSeconds = this.gameTimeService.calculateElapsedTimeSince(
+        gameInstance,
+        new Date(holding.acquiredAt)
+      );
+      const elapsedGameDays = this.gameTimeService.convertRealSecondsToGameDays(level, elapsedRealSeconds);
+      const dailyRate = annualRate / 100 / 365;
+      return Math.max(0, quantity * dailyRate * elapsedGameDays);
+    }
+
+    return 0;
   }
 
   /**
@@ -325,19 +385,20 @@ export class InvestmentService {
     const holdings = await this.holdingService.findByWallet(walletId);
 
     // 4. Calculer les valeurs pour chaque holding
-    const items: PortfolioItem[] = holdings.map((holding) => {
+    const items: PortfolioItem[] = [];
+    for (const holding of holdings) {
       const holdingWithAsset = holding as HoldingWithAsset;
       const currentValue = holdingWithAsset.quantity ? Number(holdingWithAsset.quantity) : 0;
-      const interests = this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
+      const interests = await this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
       const totalValue = currentValue + interests;
 
-      return {
+      items.push({
         holding: holdingWithAsset,
         currentValue,
         interests,
         totalValue,
-      };
-    });
+      });
+    }
 
     // 5. Calculer les totaux
     const totalInvested = items.reduce((sum, item) => sum + item.currentValue, 0);
@@ -379,7 +440,7 @@ export class InvestmentService {
 
     const holdingWithAsset = holding as HoldingWithAsset;
     const currentValue = holdingWithAsset.quantity ? Number(holdingWithAsset.quantity) : 0;
-    const interests = this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
+    const interests = await this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
     const totalValue = currentValue + interests;
 
     return {
@@ -408,7 +469,7 @@ export class InvestmentService {
 
     for (const holding of holdings) {
       const holdingWithAsset = holding as HoldingWithAsset;
-      const interests = this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
+      const interests = await this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
 
       if (interests > 0) {
         const currentQuantity = holdingWithAsset.quantity ? Number(holdingWithAsset.quantity) : 0;

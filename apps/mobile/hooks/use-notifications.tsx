@@ -84,6 +84,8 @@ interface NotificationContextValue {
   eventNotification: EventNotificationData | null;
   clearEventNotification: () => void;
   registerForPushNotifications: () => Promise<string | null>;
+  /** Manually trigger a pending event check (used by game screen as backup) */
+  triggerPendingEventCheck: () => Promise<void>;
   pendingEventCompletion: number | null;
   setPendingEventCompletion: (gameInstanceId: number | null) => void;
   isOnAssetsScreen: boolean;
@@ -223,14 +225,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     // - Not authenticated
     // - Already showing an event notification
     // - Already have a pending event completion (user clicked "Plus tard" or "Voir mes assets")
-    // - Currently on assets screen
-    if (!isAuthenticated || eventNotification || pendingEventCompletion || assetsScreenDepthRef.current > 0) {
-      console.log('[Notifications] Skipping pending event check:', {
-        isAuthenticated,
-        hasEventNotification: !!eventNotification,
-        hasPendingCompletion: !!pendingEventCompletion,
-        assetsScreenDepth: assetsScreenDepthRef.current,
-      });
+    // Note: we no longer block polling on assets screen — the modal overlays everything
+    if (!isAuthenticated || eventNotification || pendingEventCompletion) {
       return;
     }
 
@@ -250,6 +246,33 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       console.error('[Notifications] Error checking pending event:', error);
     }
   }, [isAuthenticated, eventNotification, pendingEventCompletion]);
+
+  // Forced event check — bypasses guards, used by game screen as direct backup detection
+  const triggerPendingEventCheck = useCallback(async () => {
+    // Only skip if already showing a notification or pending completion
+    if (eventNotification || pendingEventCompletion) {
+      console.log('[Notifications] ⏭️ triggerCheck skipped:', { hasEvent: !!eventNotification, hasPending: !!pendingEventCompletion });
+      return;
+    }
+
+    try {
+      console.log('[Notifications] 🔍 triggerPendingEventCheck calling getPendingEvent...');
+      const pendingEvent = await trpcClient.auth.getPendingEvent.query();
+      console.log('[Notifications] 🔍 triggerPendingEventCheck result:', pendingEvent);
+      if (pendingEvent) {
+        console.log('[Notifications] 🔔 FOUND EVENT! Setting notification:', pendingEvent);
+        setEventNotification({
+          type: 'EVENT',
+          gameInstanceId: pendingEvent.gameInstanceId,
+          eventId: pendingEvent.eventId,
+          title: pendingEvent.title,
+          body: pendingEvent.body,
+        });
+      }
+    } catch (error) {
+      console.error('[Notifications] ❌ triggerPendingEventCheck error:', error);
+    }
+  }, [eventNotification, pendingEventCompletion]);
 
   // Check for pending events on initial mount when authenticated
   useEffect(() => {
@@ -277,6 +300,18 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       subscription.remove();
     };
   }, [isAuthenticated, checkPendingEvent]);
+
+  // Poll for pending events during active gameplay
+  // Fallback for Expo Go where push notifications don't work
+  useEffect(() => {
+    if (!isAuthenticated || !activeGameInstanceId || eventNotification || pendingEventCompletion) return;
+
+    const pollInterval = setInterval(() => {
+      checkPendingEvent();
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [isAuthenticated, activeGameInstanceId, eventNotification, pendingEventCompletion, checkPendingEvent]);
 
   // Register global setters so the handler can update state directly
   useEffect(() => {
@@ -353,6 +388,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         eventNotification,
         clearEventNotification,
         registerForPushNotifications,
+        triggerPendingEventCheck,
         pendingEventCompletion,
         setPendingEventCompletion,
         isOnAssetsScreen,

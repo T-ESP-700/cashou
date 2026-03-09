@@ -131,6 +131,10 @@ export class GameEventProcessorService {
           },
         });
 
+        // Event impacts are now applied on-the-fly to prices (not holdings).
+        // The AssetHistoryService.findForGame() applies coefs when returning price data.
+        // Holdings quantities remain unchanged — gains/losses come from price evolution.
+
         // Mark the event as triggered
         await tx.gameInstanceEvent.update({
           where: { id: gameInstanceEventId },

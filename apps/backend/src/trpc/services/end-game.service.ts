@@ -6,6 +6,7 @@ import type { PrismaClient, Holding, Asset, Level, GameInstance } from "@cashou/
 import defaultPrisma from "../../database.ts";
 import { GameTimeService } from "./game-time.service.ts";
 import { LevelCompletionService } from "./level-completion.service.ts";
+import { AssetHistoryService } from "./asset-history.service.ts";
 
 type HoldingWithAsset = Holding & {
     asset: Asset;
@@ -56,41 +57,52 @@ export class EndGameService {
     private prisma: PrismaClient;
     private gameTimeService: GameTimeService;
     private levelCompletionService: LevelCompletionService;
+    private assetHistoryService: AssetHistoryService;
 
     constructor(prismaClient?: PrismaClient) {
         this.prisma = prismaClient || defaultPrisma;
         this.gameTimeService = new GameTimeService();
         this.levelCompletionService = new LevelCompletionService(prismaClient);
+        this.assetHistoryService = new AssetHistoryService(this.prisma);
     }
 
     /**
-     * Calcule les interets pour un holding
+     * Calcule les gains/pertes d'un holding bases sur l'evolution du prix.
+     * Fallback sur le rate fixe si pas de donnees de prix.
      */
-    private calculateInterests(holding: HoldingWithAsset, gameInstance: GameInstanceWithLevel): number {
+    private async calculateInterests(holding: HoldingWithAsset, gameInstance: GameInstanceWithLevel): Promise<number> {
         const asset = holding.asset;
         const level = gameInstance.level;
+        const quantity = holding.quantity ? Number(holding.quantity) : 0;
 
-        if (!level || !asset.rate) {
-            return 0;
+        if (!level || quantity === 0) return 0;
+
+        // Price-based calculation
+        const currentPrice = await this.assetHistoryService.getCurrentPrice(asset.id, gameInstance.id);
+        if (currentPrice) {
+            const history = await this.assetHistoryService.findForGame(asset.id, gameInstance.id);
+            const historyStartDay = level.historyStartDay ?? 0;
+            if (history.length > historyStartDay) {
+                const startPoint = history[historyStartDay];
+                const startPrice = startPoint?.value ? Number(startPoint.value) : currentPrice;
+                if (startPrice > 0) {
+                    const returnRate = (currentPrice - startPrice) / startPrice;
+                    return Math.round(quantity * returnRate);
+                }
+            }
         }
 
-        const annualRate = asset.rate;
+        // Fallback: rate-based
+        if (asset.rate) {
+            const elapsedRealSeconds = this.gameTimeService.calculateElapsedTimeSince(
+                gameInstance, new Date(holding.acquiredAt)
+            );
+            const elapsedGameDays = this.gameTimeService.convertRealSecondsToGameDays(level, elapsedRealSeconds);
+            const dailyRate = asset.rate / 100 / 365;
+            return Math.max(0, quantity * dailyRate * elapsedGameDays);
+        }
 
-        // Temps reel ecoule depuis l'acquisition
-        const elapsedRealSeconds = this.gameTimeService.calculateElapsedTimeSince(
-            gameInstance,
-            new Date(holding.acquiredAt)
-        );
-
-        // Conversion en jours de jeu
-        const elapsedGameDays = this.gameTimeService.convertRealSecondsToGameDays(level, elapsedRealSeconds);
-
-        // Calcul des interets
-        const quantity = holding.quantity ? Number(holding.quantity) : 0;
-        const dailyRate = annualRate / 100 / 365;
-        const interests = quantity * dailyRate * elapsedGameDays;
-
-        return Math.max(0, interests);
+        return 0;
     }
 
     /**
@@ -148,7 +160,7 @@ export class EndGameService {
         for (const holding of gameInstance.holdings) {
             const holdingWithAsset = holding as HoldingWithAsset;
             const quantity = holdingWithAsset.quantity ? Number(holdingWithAsset.quantity) : 0;
-            const interests = this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
+            const interests = await this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
 
             totalInterests += interests;
             totalAssetsValue += quantity + interests;
@@ -165,7 +177,7 @@ export class EndGameService {
             const goal = levelGoal.goal;
             if (!goal) continue;
 
-            const validated = this.validateGoal(goal.goalType, goal.goalValue, totalValue, startBalance);
+            const validated = this.validateGoal(goal.goalType, goal.goalValue, totalValue, startBalance, gameInstance.holdings as HoldingWithAsset[]);
 
             goalResults.push({
                 id: goal.id,
@@ -371,7 +383,8 @@ export class EndGameService {
         goalType: string | null,
         goalValue: number | null,
         finalBalance: number,
-        startBalance: number
+        startBalance: number,
+        holdings: HoldingWithAsset[]
     ): boolean {
         if (!goalType) {
             // Pas de type défini = objectif validé par défaut
@@ -397,6 +410,16 @@ export class EndGameService {
                 // profit >= value (en %)
                 const profit = ((finalBalance - startBalance) / startBalance) * 100;
                 return profit >= value;
+
+            case 'min_submarkets_invested':
+                // Nombre minimum de submarkets distincts dans les holdings
+                const distinctSubmarkets = new Set(
+                    holdings
+                        .filter(h => Number(h.quantity) > 0)
+                        .map(h => h.asset.submarketId)
+                        .filter(Boolean)
+                );
+                return distinctSubmarkets.size >= value;
 
             default:
                 // Type inconnu = objectif validé par défaut
