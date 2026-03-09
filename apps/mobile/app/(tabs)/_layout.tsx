@@ -147,6 +147,7 @@ export default function TabLayout() {
         name="daily-quiz"
         options={{
           href: null,
+          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen

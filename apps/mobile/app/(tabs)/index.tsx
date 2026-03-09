@@ -373,14 +373,14 @@ export default function HomeScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120 }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingBottom: 120 }}>
         {isLoadingHomeData ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl * 1.5 }}>
             <ActivityIndicator size="large" color={colors.accent} />
           </View>
         ) : (
           <>
-            <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.lg, gap: 8 }}>
+            <View style={{ flex: 1, justifyContent: 'flex-end', paddingHorizontal: spacing.md, paddingTop: spacing.lg, gap: 8 }}>
               {/* Greeting bubble */}
               <Card variant="default" padding="md">
                 <Text

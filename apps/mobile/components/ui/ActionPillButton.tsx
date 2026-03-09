@@ -29,7 +29,7 @@ export function ActionPillButton({
 
   return (
     <TouchableOpacity
-      style={StyleSheet.flatten([styles.button, { backgroundColor: colors.accent }, isDisabled && styles.buttonDisabled, { flex: 1 }, style])}
+      style={StyleSheet.flatten([styles.button, { backgroundColor: colors.accent }, isDisabled && styles.buttonDisabled, style])}
       onPress={onPress}
       activeOpacity={0.85}
       disabled={isDisabled}
@@ -50,14 +50,13 @@ export function ActionPillButton({
 
 const styles = StyleSheet.create({
   button: {
-    maxWidth: 100,
     height: 44,
     borderRadius: 80,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingHorizontal: 0,
+    paddingHorizontal: 16,
   },
   buttonDisabled: {
     opacity: 0.7,
