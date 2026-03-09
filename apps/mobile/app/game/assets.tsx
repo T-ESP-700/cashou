@@ -66,6 +66,58 @@ export default function AssetsScreen() {
     pendingEventCompletionRef.current = pendingEventCompletion;
   }, [pendingEventCompletion]);
 
+  const fetchAssets = useCallback(async () => {
+    let localError: unknown = null;
+    try {
+      setLoading(true);
+      setError(null);
+      const data: any[] = await trpcClient.asset.getAll.query();
+
+      // Fetch current prices + daily change in one call per asset
+      const priceData: Record<number, { price: number; changePct: number } | null> = {};
+      if (gameInstanceId) {
+        await Promise.all(
+          (data || []).map(async (a: any) => {
+            try {
+              priceData[a.id] = await trpcClient.assetHistory.getPriceWithChange.query({
+                assetId: a.id,
+                gameInstanceId: parseInt(gameInstanceId),
+              });
+            } catch {
+              priceData[a.id] = null;
+            }
+          })
+        );
+      }
+
+      // Map backend Asset to UI AssetItem
+      const mapped: AssetItem[] = (data || []).map((a: any) => {
+        const pd = priceData[a.id];
+        const changePct = pd?.changePct ?? (typeof a?.rate === 'number' ? a.rate : 0);
+        const displayPrice = pd ? (pd.price / 100).toFixed(2) + ' EUR' : undefined;
+
+        return {
+          id: String(a.id ?? a.symbol ?? a.title ?? Math.random()),
+          name: String(a.title ?? a.symbol ?? 'Asset'),
+          tags: [
+            a?.symbol ? String(a.symbol) : null,
+            a?.market?.title ? String(a.market.title) : null,
+            displayPrice ?? null,
+          ].filter(Boolean) as string[],
+          changePct,
+        };
+      });
+      setAssets(mapped);
+    } catch (e: any) {
+      localError = e;
+      console.error('[AssetsScreen] Failed to load assets from', API_URL, e);
+      setError(e?.message ? String(e.message) : 'Impossible de charger les assets');
+    } finally {
+      setLoading(false);
+    }
+    return localError;
+  }, [gameInstanceId]);
+
   // Pause game when entering assets screen, resume when leaving (only if no nested screens)
   useFocusEffect(
     useCallback(() => {
@@ -114,6 +166,9 @@ export default function AssetsScreen() {
         }
 
         if (isMounted) setIsOnAssetsScreen(true);
+
+        // Refresh prices after pause is effective (so backend uses paused time)
+        await fetchAssets();
       };
 
       pauseGame();
@@ -192,41 +247,9 @@ export default function AssetsScreen() {
           setIsOnAssetsScreen(newDepth > 0);
         }
       };
-    }, [setIsOnAssetsScreen, setPendingEventCompletion, setAssetsScreenDepth, setPausedByAssets, assetsScreenDepthRef])
+    }, [setIsOnAssetsScreen, setPendingEventCompletion, setAssetsScreenDepth, setPausedByAssets, assetsScreenDepthRef, fetchAssets])
   );
 
-  const fetchAssets = useCallback(async () => {
-    let localError: unknown = null;
-    try {
-      setLoading(true);
-      setError(null);
-      const data: any[] = await trpcClient.asset.getAll.query();
-      // Map backend Asset to UI AssetItem
-      const mapped: AssetItem[] = (data || []).map((a: any) => ({
-        id: String(a.id ?? a.symbol ?? a.title ?? Math.random()),
-        name: String(a.title ?? a.symbol ?? 'Asset'),
-        // Basic tags mapping (extend later if backend exposes richer fields)
-        tags: [
-          a?.symbol ? String(a.symbol) : null,
-          a?.market?.title ? String(a.market.title) : null,
-        ].filter(Boolean) as string[],
-        // Map 'taux' field from database to 'changePct' for UI display
-        changePct: typeof a?.rate === 'number' ? a.rate : 0,
-      }));
-      setAssets(mapped);
-    } catch (e: any) {
-      localError = e;
-      console.error('[AssetsScreen] Failed to load assets from', API_URL, e);
-      setError(e?.message ? String(e.message) : 'Impossible de charger les assets');
-    } finally {
-      setLoading(false);
-    }
-    return localError;
-  }, []);
-
-  useEffect(() => {
-    fetchAssets();
-  }, [fetchAssets]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -344,7 +367,7 @@ function AssetCard({ asset, isDark, router, gameInstanceId, walletId }: AssetCar
       </View>
       <View style={styles.changeRow}>
         <Ionicons name={positive ? 'caret-up' : 'caret-down'} size={18} color="#FFB472" />
-        <Text style={{ marginLeft: 4, color: theme.text, fontFamily: CashouTheme.fonts.subheading }}>{Math.abs(asset.changePct)}%</Text>
+        <Text style={{ marginLeft: 4, color: theme.text, fontFamily: CashouTheme.fonts.subheading }}>{Math.abs(asset.changePct).toFixed(2)}%</Text>
       </View>
     </TouchableOpacity>
   );

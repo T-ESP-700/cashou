@@ -107,6 +107,8 @@ export class GameInstanceService {
       currentEventIndex: 0,
       isEnded: false,
       isPaused: isPausedValue,
+      // Set pausedAt so time calculations work correctly when game starts paused
+      pausedAt: isPausedValue ? new Date() : null,
     };
 
     const gameInstance = await this.prisma.gameInstance.create({ data: sanitizedData });

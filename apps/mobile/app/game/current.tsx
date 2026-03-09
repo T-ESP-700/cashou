@@ -132,6 +132,7 @@ export default function GameCurrentScreen() {
   const [isResetting, setIsResetting] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [holdings, setHoldings] = useState<HoldingData[]>([]);
+  const [holdingValues, setHoldingValues] = useState<Record<number, number>>({});
   const [showNoInvestmentModal, setShowNoInvestmentModal] = useState(false);
   const [isEndingGame, setIsEndingGame] = useState(false);
   const [showEndGameModal, setShowEndGameModal] = useState(false);
@@ -244,11 +245,29 @@ export default function GameCurrentScreen() {
     return gameDate;
   }, [calculateEndDate]);
 
-  // Helper function to load holdings for a game instance
-  const loadHoldings = async (gInstanceId: number) => {
+  // Helper function to load holdings + price-based values for a game instance
+  const loadHoldings = async (gInstanceId: number, wId?: number | null) => {
+    const effectiveWalletId = wId ?? walletId;
     try {
       const holdingsData = await trpcClient.holding.getByGameInstance.query({ gameInstanceId: gInstanceId });
       setHoldings((holdingsData as HoldingData[]) ?? []);
+
+      // Load price-based portfolio values if wallet is available
+      if (effectiveWalletId) {
+        try {
+          const portfolio = await trpcClient.investment.getPortfolio.query({
+            walletId: effectiveWalletId,
+            gameInstanceId: gInstanceId,
+          });
+          const values: Record<number, number> = {};
+          for (const item of portfolio.items) {
+            values[item.holding.assetId ?? 0] = Math.round(item.totalValue);
+          }
+          setHoldingValues(values);
+        } catch (e) {
+          console.error('Error fetching portfolio values:', e);
+        }
+      }
     } catch (err) {
       console.error('Error fetching holdings:', err);
       setHoldings([]);
@@ -371,9 +390,11 @@ export default function GameCurrentScreen() {
               }
 
               // Load the wallet associated with this instance
+              let loadedWalletId: number | null = null;
               try {
                 const wallets = await trpcClient.wallet.getByGameInstance.query({ gameInstanceId: gameInstance.id });
                 if (wallets && wallets.length > 0) {
+                  loadedWalletId = wallets[0].id;
                   setWalletId(wallets[0].id);
                   await loadWalletBalance(wallets[0].id);
                 }
@@ -381,8 +402,8 @@ export default function GameCurrentScreen() {
                 console.error('Error fetching wallet:', walletErr);
               }
 
-              // Load holdings
-              await loadHoldings(gameInstance.id);
+              // Load holdings (pass walletId directly since setState is async)
+              await loadHoldings(gameInstance.id, loadedWalletId);
 
               // Initialize game time state
               if (gameInstance.level) {
@@ -1036,16 +1057,25 @@ export default function GameCurrentScreen() {
                     {holding.asset?.title ?? 'Asset'}
                   </Text>
                   <Text style={[styles.holdingQuantity, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
-                    {Number(holding.quantity ?? 0).toFixed(2)}€
+                    {(holdingValues[holding.assetId ?? 0] ?? Number(holding.quantity ?? 0)).toFixed(2)}€
                   </Text>
-                  <View style={styles.assetRateContainer}>
-                    <Text style={[styles.assetRateArrow, { color: (holding.asset?.rate ?? 0) >= 0 ? '#4CAF50' : '#F44336' }]}>
-                      {(holding.asset?.rate ?? 0) >= 0 ? '▲' : '▼'}
-                    </Text>
-                    <Text style={[styles.assetRate, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
-                      {holding.asset?.rate ?? 0}%
-                    </Text>
-                  </View>
+                  {(() => {
+                    const invested = Number(holding.quantity ?? 0);
+                    const currentVal = holdingValues[holding.assetId ?? 0] ?? invested;
+                    const gain = currentVal - invested;
+                    const gainPct = invested > 0 ? (gain / invested) * 100 : 0;
+                    const isUp = gain >= 0;
+                    return (
+                      <View style={styles.assetRateContainer}>
+                        <Text style={[styles.assetRateArrow, { color: isUp ? '#4CAF50' : '#F44336' }]}>
+                          {isUp ? '▲' : '▼'}
+                        </Text>
+                        <Text style={[styles.assetRate, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
+                          {gainPct >= 0 ? '+' : ''}{gainPct.toFixed(1)}%
+                        </Text>
+                      </View>
+                    );
+                  })()}
                 </TouchableOpacity>
               </View>
             ))}

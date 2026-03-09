@@ -16,6 +16,7 @@ import { trpcClient } from '@/lib/trpc';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useAuth } from '@/hooks/use-auth';
 import { useHeaderOptions } from '@/hooks/use-header';
+import { PriceChart } from '@/components/price-chart';
 
 export default function AssetDetailScreen() {
   const colorScheme = useRNColorScheme();
@@ -34,6 +35,7 @@ export default function AssetDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentHolding, setCurrentHolding] = useState(0);
+  const [priceHistory, setPriceHistory] = useState<any[]>([]);
 
   // Get params from URL
   const assetIdParam = params?.id;
@@ -155,16 +157,43 @@ export default function AssetDetailScreen() {
         const data = await trpcClient.asset.getById.query({ id: parseInt(assetId) });
         setAsset(data);
 
-        // Fetch current holding if walletId is provided
-        if (walletId) {
+        // Fetch price history with event coefs applied
+        try {
+          if (gameInstanceId) {
+            const history = await trpcClient.assetHistory.getForGame.query({
+              assetId: parseInt(assetId),
+              gameInstanceId: parseInt(gameInstanceId),
+            });
+            setPriceHistory(history);
+          } else if (data?.assetHistories) {
+            // No game context — show raw history
+            setPriceHistory(data.assetHistories);
+          }
+        } catch (e) {
+          console.error('[AssetDetail] Failed to load price history:', e);
+          // Fallback to raw included data
+          if (data?.assetHistories) setPriceHistory(data.assetHistories);
+        }
+
+        // Fetch current holding value (price-based) via portfolio endpoint
+        if (walletId && gameInstanceId) {
           try {
-            const holdings = await trpcClient.holding.getByWallet.query({ walletId: parseInt(walletId) });
-            const holding = holdings.find((h: any) => h.assetId === parseInt(assetId));
-            if (holding) {
-              setCurrentHolding(Number(holding.quantity) || 0);
+            const portfolio = await trpcClient.investment.getPortfolio.query({
+              walletId: parseInt(walletId),
+              gameInstanceId: parseInt(gameInstanceId),
+            });
+            const item = portfolio.items.find((i: any) => i.holding.assetId === parseInt(assetId));
+            if (item) {
+              setCurrentHolding(Math.round(item.totalValue));
             }
           } catch (e) {
-            console.error('[AssetDetail] Failed to load holding:', e);
+            console.error('[AssetDetail] Failed to load portfolio:', e);
+            // Fallback to raw holding quantity
+            try {
+              const holdings = await trpcClient.holding.getByWallet.query({ walletId: parseInt(walletId) });
+              const holding = holdings.find((h: any) => h.assetId === parseInt(assetId));
+              if (holding) setCurrentHolding(Number(holding.quantity) || 0);
+            } catch {}
           }
         }
       } catch (e: any) {
@@ -176,7 +205,7 @@ export default function AssetDetailScreen() {
     };
 
     fetchAsset();
-  }, [assetId, walletId]);
+  }, [assetId, walletId, gameInstanceId]);
 
   const handleBuy = () => {
     router.push({
@@ -251,24 +280,54 @@ export default function AssetDetailScreen() {
               </View>
             )}
 
-            {/* Rate Section */}
-            {typeof asset.rate === 'number' && (
+            {/* Price Chart Section */}
+            {priceHistory.length >= 2 && (
               <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
                 <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
-                  Taux
+                  Cours
                 </Text>
-                <View style={styles.rateContainer}>
-                  <Ionicons
-                    name={asset.rate >= 0 ? 'caret-up' : 'caret-down'}
-                    size={24}
-                    color="#FFB472"
-                  />
-                  <Text style={[styles.rateValue, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>
-                    {Math.abs(asset.rate)}%
-                  </Text>
-                </View>
+                <PriceChart data={priceHistory} isDark={isDark} theme={theme} />
               </View>
             )}
+
+            {/* Current Price Section — computed from price history */}
+            {priceHistory.length >= 2 && (() => {
+              const sorted = [...priceHistory].sort((a: any, b: any) =>
+                new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+              );
+              const currentPrice = Number(sorted[sorted.length - 1].value) / 100;
+              const previousPrice = Number(sorted[sorted.length - 2].value) / 100;
+              const dailyChange = currentPrice - previousPrice;
+              const dailyChangePercent = (dailyChange / previousPrice) * 100;
+              const isUp = dailyChange >= 0;
+              return (
+                <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
+                    Prix actuel
+                  </Text>
+                  <View style={styles.rateContainer}>
+                    <Text style={[styles.rateValue, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>
+                      {currentPrice.toFixed(2)} EUR
+                    </Text>
+                  </View>
+                  <View style={[styles.rateContainer, { marginTop: 4 }]}>
+                    <Ionicons
+                      name={isUp ? 'caret-up' : 'caret-down'}
+                      size={16}
+                      color={isUp ? '#4CAF50' : '#F44336'}
+                    />
+                    <Text style={[{
+                      fontSize: 14,
+                      marginLeft: 4,
+                      color: isUp ? '#4CAF50' : '#F44336',
+                      fontFamily: CashouTheme.fonts.body,
+                    }]}>
+                      {isUp ? '+' : ''}{dailyChange.toFixed(2)} EUR ({isUp ? '+' : ''}{dailyChangePercent.toFixed(1)}%)
+                    </Text>
+                  </View>
+                </View>
+              );
+            })()}
 
             {/* Description Section */}
             {asset.description && (

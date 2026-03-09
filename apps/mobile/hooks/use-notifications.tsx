@@ -278,6 +278,18 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     };
   }, [isAuthenticated, checkPendingEvent]);
 
+  // Poll for pending events during active gameplay
+  // Fallback for Expo Go where push notifications don't work
+  useEffect(() => {
+    if (!isAuthenticated || !activeGameInstanceId || eventNotification || pendingEventCompletion) return;
+
+    const pollInterval = setInterval(() => {
+      checkPendingEvent();
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [isAuthenticated, activeGameInstanceId, eventNotification, pendingEventCompletion, checkPendingEvent]);
+
   // Register global setters so the handler can update state directly
   useEffect(() => {
     setGlobalNotificationSetters(setEventNotification, setNotification);

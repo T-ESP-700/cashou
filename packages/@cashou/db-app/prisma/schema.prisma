@@ -118,9 +118,10 @@ model Level {
   duration       Int?
   speed          Int?
   startBalance   Int?     @map("start_balance")
-  pointsRequired Int?     @map("points_required")
-  description    String?
-  createdAt      DateTime @default(now()) @map("created_at")
+  pointsRequired  Int?     @map("points_required")
+  historyStartDay Int?     @map("history_start_day") // Day index in AssetHistory where the game begins
+  description     String?
+  createdAt       DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   // Relations
