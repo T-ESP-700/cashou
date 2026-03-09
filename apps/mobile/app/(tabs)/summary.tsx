@@ -43,6 +43,7 @@ interface GameInstanceData {
     title: string | null;
     number: number | null;
     startBalance: number | null;
+    description: string | null;
   } | null;
 }
 
@@ -83,27 +84,33 @@ function groupTransactionsBySubmarket(txs: any[]): TransactionGroup[] {
 }
 
 export default function GameSummaryScreen() {
-  const { gameId } = useLocalSearchParams<{ gameId: string }>();
+  const params = useLocalSearchParams<{ gameId?: string; levelId?: string; mode?: string }>();
+  const { gameId, levelId, mode } = params;
+  const isHistoryMode = mode === 'history';
   const { user } = useAuth();
   const colorScheme = useRNColorScheme();
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const insets = useSafeAreaInsets();
 
-  useHeaderOptions({ showBackButton: true });
+  useHeaderOptions({ showBackButton: true, title: 'Résumé' });
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [endGameResult, setEndGameResult] = useState<EndGameResult | null>(null);
   const [gameInstance, setGameInstance] = useState<GameInstanceData | null>(null);
   const [levelQuizId, setLevelQuizId] = useState<number | null>(null);
+  // statut du quiz pour CETTE partie spécifique (source de vérité) — mode normal uniquement
+  const [quizStatusForGame, setQuizStatusForGame] = useState<'notDone' | 'doneAndPassed' | 'doneAndFailed'>('notDone');
   const [nextLevel, setNextLevel] = useState<UserLevelEntry['level'] | null>(null);
   const [isReplaying, setIsReplaying] = useState(false);
   const [isDetailedView, setIsDetailedView] = useState(false);
   const [transactionGroups, setTransactionGroups] = useState<TransactionGroup[] | null>(null);
   const transactionsFetched = useRef(false);
 
+  // --- Chargement mode normal (depuis fin de partie ou quiz) ---
   useEffect(() => {
+    if (isHistoryMode) return;
     const fetchData = async () => {
       if (!gameId) {
         setError('ID de la partie manquant');
@@ -127,6 +134,15 @@ export default function GameSummaryScreen() {
             } catch (quizErr) {
               console.error('Error fetching level quiz:', quizErr);
             }
+
+            try {
+              const quizStatus = await trpcClient.userQuiz.getQuizStatusForGame.query({
+                gameInstanceId: gameInstanceId,
+              });
+              setQuizStatusForGame(quizStatus.status);
+            } catch {
+              setQuizStatusForGame('notDone');
+            }
           }
         }
 
@@ -141,9 +157,63 @@ export default function GameSummaryScreen() {
     };
 
     fetchData();
-  }, [gameId]);
+  }, [gameId, isHistoryMode]);
 
+  // --- Chargement mode history (depuis game-history) ---
   useEffect(() => {
+    if (!isHistoryMode) return;
+    const fetchHistoryData = async () => {
+      if (!levelId || !user?.id) {
+        setError('Données manquantes');
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const parsedLevelId = parseInt(levelId, 10);
+
+        // Trouver la meilleure gameInstance pour ce niveau
+        const bestInstance = await trpcClient.gameInstance.getBestForLevel.query({
+          levelId: parsedLevelId,
+          userId: user.id,
+        });
+
+        if (!bestInstance) {
+          setError('Aucune partie terminée pour ce niveau');
+          setIsLoading(false);
+          return;
+        }
+
+        const typedInstance = bestInstance as GameInstanceData;
+        setGameInstance(typedInstance);
+
+        // Charger le quiz du niveau pour l'afficher si quizPassed
+        if ((typedInstance as any).level?.id) {
+          try {
+            const quizzes = await trpcClient.quiz.getByLevel.query({ levelId: (typedInstance as any).level.id });
+            setLevelQuizId(quizzes?.[0]?.id ?? null);
+          } catch {}
+        }
+
+        // Récupérer le résultat en lecture seule
+        // getEndGameResult inclut mandatoryGoalsMet/bonusGoalsMet/quizPassed depuis UserLevelCompletion
+        const result = await trpcClient.gameInstance.getEndGameResult.query({ id: (bestInstance as any).id });
+        setEndGameResult(result as EndGameResult);
+      } catch (err) {
+        console.error('Error fetching history summary:', err);
+        setError('Erreur lors du chargement');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchHistoryData();
+  }, [levelId, user?.id, isHistoryMode]);
+
+  // --- Niveau suivant (mode normal uniquement) ---
+  useEffect(() => {
+    if (isHistoryMode) return;
     const fetchNextLevel = async () => {
       if (!user?.id || !gameInstance?.level?.id) return;
 
@@ -170,10 +240,11 @@ export default function GameSummaryScreen() {
     };
 
     fetchNextLevel();
-  }, [gameInstance?.level?.id, gameInstance?.level?.number, user?.id]);
+  }, [gameInstance?.level?.id, gameInstance?.level?.number, user?.id, isHistoryMode]);
 
+  // --- Transactions (mode normal uniquement) ---
   useEffect(() => {
-    if (!isDetailedView || transactionsFetched.current || !gameId) return;
+    if (isHistoryMode || !isDetailedView || transactionsFetched.current || !gameId) return;
     const gameInstanceId = parseInt(gameId, 10);
     transactionsFetched.current = true;
     trpcClient.transaction.getByGameInstance.query({ gameInstanceId })
@@ -182,38 +253,25 @@ export default function GameSummaryScreen() {
         console.error('Error fetching transactions:', err);
         setTransactionGroups([]);
       });
-  }, [isDetailedView, gameId]);
+  }, [isDetailedView, gameId, isHistoryMode]);
 
-  // Refresh stars/quiz status when returning from level quiz
+  // --- Rafraîchir le statut du quiz au retour de l'écran quiz (mode normal uniquement) ---
   useFocusEffect(
     useCallback(() => {
-      if (!gameInstance?.level?.id || !endGameResult?.success) return;
+      if (isHistoryMode || !gameInstance?.id) return;
       let cancelled = false;
 
-      trpcClient.auth.getHomeData.query()
-        .then((homeData: any) => {
+      trpcClient.userQuiz.getQuizStatusForGame.query({ gameInstanceId: gameInstance.id })
+        .then((result: any) => {
           if (cancelled) return;
-          const last = homeData?.lastCompletedGame;
-          if (last?.levelId === gameInstance.level?.id && last != null) {
-            setEndGameResult((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    stars: last.stars ?? prev.stars,
-                    mandatoryGoalsMet: last.mandatoryGoalsMet ?? prev.mandatoryGoalsMet,
-                    bonusGoalsMet: last.bonusGoalsMet ?? prev.bonusGoalsMet,
-                    quizPassed: last.quizPassed ?? prev.quizPassed,
-                  }
-                : prev
-            );
-          }
+          setQuizStatusForGame(result.status);
         })
         .catch(() => {});
 
       return () => {
         cancelled = true;
       };
-    }, [gameInstance?.level?.id, endGameResult?.success])
+    }, [gameInstance?.id, isHistoryMode])
   );
 
   const handleGoHome = () => {
@@ -224,7 +282,10 @@ export default function GameSummaryScreen() {
     if (!levelQuizId) return;
     router.push({
       pathname: '/(tabs)/daily-quiz',
-      params: { quizId: levelQuizId.toString() },
+      params: {
+        quizId: levelQuizId.toString(),
+        gameInstanceId: gameInstance?.id ? gameInstance.id.toString() : '',
+      },
     });
   };
 
@@ -238,6 +299,22 @@ export default function GameSummaryScreen() {
 
   const handleReplay = async () => {
     if (!user?.id || !gameInstance?.level?.id) return;
+
+    const activeGame = await trpcClient.gameInstance.getActiveByUser.query({ userId: user.id });
+    if (activeGame) {
+      const confirmed = await new Promise<boolean>((resolve) => {
+        Alert.alert(
+          'Partie en cours',
+          'Lancer cette partie va clôturer la partie en cours sans gagner de récompenses. Voulez-vous continuer ?',
+          [
+            { text: 'Annuler', style: 'cancel' as const, onPress: () => resolve(false) },
+            { text: 'Continuer', onPress: () => resolve(true) },
+          ]
+        );
+      });
+      if (!confirmed) return;
+      await trpcClient.gameInstance.abandon.mutate({ id: activeGame.id });
+    }
 
     setIsReplaying(true);
     try {
@@ -281,8 +358,9 @@ export default function GameSummaryScreen() {
   const bonusGoal = endGameResult?.goals.find((g) => g.isMandatory === false) ?? endGameResult?.goals[1] ?? null;
 
   const hasLevelQuiz = levelQuizId != null;
-  const isQuizDone = endGameResult?.quizPassed === true || !hasLevelQuiz;
-  const shouldShowQuizCta = endGameResult?.success === true && hasLevelQuiz && !isQuizDone;
+  const isQuizDoneForThisGame = quizStatusForGame !== 'notDone';
+  const isQuizPassedForThisGame = quizStatusForGame === 'doneAndPassed';
+  const shouldShowQuizCta = !isHistoryMode && endGameResult?.success === true && hasLevelQuiz && !isQuizDoneForThisGame;
 
   if (isLoading) {
     return (
@@ -313,7 +391,7 @@ export default function GameSummaryScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: '#E8E8E8' }]}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 112 }]}
@@ -321,96 +399,120 @@ export default function GameSummaryScreen() {
         <Text allowFontScaling={false} style={styles.screenTitle}>Récapitulatif</Text>
         <View style={styles.titleUnderline} />
 
-        <View style={styles.sectionHeaderRow}>
-          <Text allowFontScaling={false} style={styles.sectionTitle}>
-            {isDetailedView ? 'Transactions' : 'Bilan'}
-          </Text>
-          <View style={styles.simpleViewRow}>
-            <Text allowFontScaling={false} style={styles.simpleViewText}>
-              {isDetailedView ? 'Vue détaillée' : 'Vue simple'}
+        {isHistoryMode ? (
+          // Mode history : contexte du niveau (titre + description)
+          <>
+            <Text allowFontScaling={false} style={styles.sectionTitle}>
+              Niveau {gameInstance?.level?.number ?? ''}
             </Text>
-            <Switch
-              value={isDetailedView}
-              onValueChange={setIsDetailedView}
-              trackColor={{ false: '#D0D1D5', true: '#4CAF50' }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
-        </View>
-
-        {isDetailedView ? (
-          transactionGroups === null ? (
             <View style={styles.panel}>
-              <ActivityIndicator size="small" color="#2B2C48" />
+              {gameInstance?.level?.title ? (
+                <Text allowFontScaling={false} style={styles.levelContextTitle}>
+                  {gameInstance.level.title}
+                </Text>
+              ) : null}
+              {gameInstance?.level?.description ? (
+                <Text allowFontScaling={false} style={styles.levelContextDescription}>
+                  {gameInstance.level.description}
+                </Text>
+              ) : null}
             </View>
-          ) : transactionGroups.length === 0 ? (
-            <View style={styles.panel}>
-              <Text allowFontScaling={false} style={styles.summaryLabel}>Aucune transaction</Text>
-            </View>
-          ) : (
-            transactionGroups.map((group) => (
-              <View key={group.submarketTitle}>
-                <Text allowFontScaling={false} style={styles.transactionGroupTitle}>{group.submarketTitle}</Text>
-              <View style={styles.transactionGroupCard}>
-                {group.items.map((item) => {
-                  const isSell = item.type === 'SELL';
-                  const isInterest = item.type === 'INTEREST';
-                  const TypeIcon = isSell ? TxIconSell : TxIconBuy;
-                  return (
-                    <View key={item.id} style={styles.transactionRow}>
-                      <TypeIcon width={12} height={12} />
-                      {isInterest ? (
-                        <Text allowFontScaling={false} style={styles.transactionLabelFlex} numberOfLines={1}>
-                          Intérêts {item.assetTitle}
-                        </Text>
-                      ) : (
-                        <View style={styles.transactionLabelRow}>
-                          <Text allowFontScaling={false} style={styles.transactionLabel} numberOfLines={1}>
-                            {isSell ? item.assetTitle : 'Portefeuille'}
-                          </Text>
-                          <TxIconArrow width={12} height={12} />
-                          <Text allowFontScaling={false} style={styles.transactionLabel} numberOfLines={1}>
-                            {isSell ? 'Portefeuille' : item.assetTitle}
-                          </Text>
-                        </View>
-                      )}
-                      <Text allowFontScaling={false} style={styles.transactionAmount}>{formatAmount(item.totalValue)}</Text>
-                    </View>
-                  );
-                })}
-              </View>
-              </View>
-            ))
-          )
+          </>
         ) : (
-        <View style={styles.panel}>
-          <View style={styles.summaryRow}>
-            <Text allowFontScaling={false} style={styles.summaryLabel}>Capital initial</Text>
-            <Text allowFontScaling={false} style={styles.summaryValue}>{formatAmount(endGameResult.startBalance)}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text allowFontScaling={false} style={styles.summaryLabel}>Cash final</Text>
-            <Text allowFontScaling={false} style={styles.summaryValue}>{formatAmount(endGameResult.walletBalance)}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text allowFontScaling={false} style={styles.summaryLabel}>Valeur des actifs</Text>
-            <Text allowFontScaling={false} style={styles.summaryValue}>{formatAmount(endGameResult.assetsValue)}</Text>
-          </View>
-
-          <View style={styles.summaryDivider} />
-
-          <View style={styles.summaryRow}>
-            <View style={styles.finalPortfolioLabelRow}>
-              <Text allowFontScaling={false} style={[styles.summaryLabel, styles.finalPortfolioLabel]}>
-                Portefeuille final
+          // Mode normal : bilan financier avec switch vue simple/détaillée
+          <>
+            <View style={styles.sectionHeaderRow}>
+              <Text allowFontScaling={false} style={styles.sectionTitle}>
+                {isDetailedView ? 'Transactions' : 'Bilan'}
               </Text>
-              <View style={[styles.profitPill, { backgroundColor: profitChipColor }]}>
-                <Text allowFontScaling={false} style={styles.profitPillText}>{profitText}</Text>
+              <View style={styles.simpleViewRow}>
+                <Text allowFontScaling={false} style={styles.simpleViewText}>
+                  {isDetailedView ? 'Vue détaillée' : 'Vue simple'}
+                </Text>
+                <Switch
+                  value={isDetailedView}
+                  onValueChange={setIsDetailedView}
+                  trackColor={{ false: '#D0D1D5', true: '#4CAF50' }}
+                  thumbColor="#FFFFFF"
+                />
               </View>
             </View>
-            <Text allowFontScaling={false} style={styles.finalPortfolioValue}>{formatAmount(endGameResult.totalValue)}</Text>
-          </View>
-        </View>
+
+            {isDetailedView ? (
+              transactionGroups === null ? (
+                <View style={styles.panel}>
+                  <ActivityIndicator size="small" color="#2B2C48" />
+                </View>
+              ) : transactionGroups.length === 0 ? (
+                <View style={styles.panel}>
+                  <Text allowFontScaling={false} style={styles.summaryLabel}>Aucune transaction</Text>
+                </View>
+              ) : (
+                transactionGroups.map((group) => (
+                  <View key={group.submarketTitle}>
+                    <Text allowFontScaling={false} style={styles.transactionGroupTitle}>{group.submarketTitle}</Text>
+                    <View style={styles.transactionGroupCard}>
+                      {group.items.map((item) => {
+                        const isSell = item.type === 'SELL';
+                        const isInterest = item.type === 'INTEREST';
+                        const TypeIcon = isSell ? TxIconSell : TxIconBuy;
+                        return (
+                          <View key={item.id} style={styles.transactionRow}>
+                            <TypeIcon width={12} height={12} />
+                            {isInterest ? (
+                              <Text allowFontScaling={false} style={styles.transactionLabelFlex} numberOfLines={1}>
+                                Intérêts {item.assetTitle}
+                              </Text>
+                            ) : (
+                              <View style={styles.transactionLabelRow}>
+                                <Text allowFontScaling={false} style={styles.transactionLabel} numberOfLines={1}>
+                                  {isSell ? item.assetTitle : 'Portefeuille'}
+                                </Text>
+                                <TxIconArrow width={12} height={12} />
+                                <Text allowFontScaling={false} style={styles.transactionLabel} numberOfLines={1}>
+                                  {isSell ? 'Portefeuille' : item.assetTitle}
+                                </Text>
+                              </View>
+                            )}
+                            <Text allowFontScaling={false} style={styles.transactionAmount}>{formatAmount(item.totalValue)}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
+                ))
+              )
+            ) : (
+              <View style={styles.panel}>
+                <View style={styles.summaryRow}>
+                  <Text allowFontScaling={false} style={styles.summaryLabel}>Capital initial</Text>
+                  <Text allowFontScaling={false} style={styles.summaryValue}>{formatAmount(endGameResult.startBalance)}</Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Text allowFontScaling={false} style={styles.summaryLabel}>Cash final</Text>
+                  <Text allowFontScaling={false} style={styles.summaryValue}>{formatAmount(endGameResult.walletBalance)}</Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Text allowFontScaling={false} style={styles.summaryLabel}>Valeur des actifs</Text>
+                  <Text allowFontScaling={false} style={styles.summaryValue}>{formatAmount(endGameResult.assetsValue)}</Text>
+                </View>
+
+                <View style={styles.summaryDivider} />
+
+                <View style={styles.summaryRow}>
+                  <View style={styles.finalPortfolioLabelRow}>
+                    <Text allowFontScaling={false} style={[styles.summaryLabel, styles.finalPortfolioLabel]}>
+                      Portefeuille final
+                    </Text>
+                    <View style={[styles.profitPill, { backgroundColor: profitChipColor }]}>
+                      <Text allowFontScaling={false} style={styles.profitPillText}>{profitText}</Text>
+                    </View>
+                  </View>
+                  <Text allowFontScaling={false} style={styles.finalPortfolioValue}>{formatAmount(endGameResult.totalValue)}</Text>
+                </View>
+              </View>
+            )}
+          </>
         )}
 
         {!isDetailedView && (
@@ -423,12 +525,19 @@ export default function GameSummaryScreen() {
             <View style={styles.goalCardRow}>
               <Text
                 allowFontScaling={false}
-                style={[styles.goalCardSubtitle, primaryGoal.validated && styles.goalReachedText]}
+                style={[
+                  styles.goalCardSubtitle,
+                  (isHistoryMode ? endGameResult?.mandatoryGoalsMet : primaryGoal.validated) && styles.goalReachedText,
+                ]}
               >
                 {primaryGoal.title}
               </Text>
               <View style={styles.goalIconWrap}>
-                <GoalStarIcon filled={primaryGoal.validated} size={14} idSuffix={`summary-primary-${primaryGoal.id}`} />
+                <GoalStarIcon
+                  filled={isHistoryMode ? (endGameResult?.mandatoryGoalsMet ?? false) : primaryGoal.validated}
+                  size={14}
+                  idSuffix={`summary-primary-${primaryGoal.id}`}
+                />
               </View>
             </View>
           </View>
@@ -440,12 +549,19 @@ export default function GameSummaryScreen() {
             <View style={styles.goalCardRow}>
               <Text
                 allowFontScaling={false}
-                style={[styles.goalCardSubtitle, bonusGoal.validated && styles.goalReachedText]}
+                style={[
+                  styles.goalCardSubtitle,
+                  (isHistoryMode ? endGameResult?.bonusGoalsMet : bonusGoal.validated) && styles.goalReachedText,
+                ]}
               >
                 {bonusGoal.title}
               </Text>
               <View style={styles.goalIconWrap}>
-                <GoalStarIcon filled={bonusGoal.validated} size={14} idSuffix={`summary-bonus-${bonusGoal.id}`} />
+                <GoalStarIcon
+                  filled={isHistoryMode ? (endGameResult?.bonusGoalsMet ?? false) : bonusGoal.validated}
+                  size={14}
+                  idSuffix={`summary-bonus-${bonusGoal.id}`}
+                />
               </View>
             </View>
           </View>
@@ -464,16 +580,38 @@ export default function GameSummaryScreen() {
                 </View>
               </View>
             </TouchableOpacity>
-          ) : (
+          ) : isHistoryMode ? (
+            // Mode history : afficher le quiz avec l'état consolidé de UserLevelCompletion
             <View style={styles.goalCard}>
+              <Text allowFontScaling={false} style={styles.goalCardTitle}>Quizz</Text>
               <View style={styles.goalCardRow}>
-                <Text allowFontScaling={false} style={styles.goalCardTitle}>Quizz</Text>
+                <Text
+                  allowFontScaling={false}
+                  style={[styles.goalCardSubtitle, endGameResult?.quizPassed && styles.goalReachedText]}
+                >
+                  Question aléatoire
+                </Text>
                 <View style={styles.goalIconWrap}>
-                  <GoalStarIcon filled size={14} idSuffix="summary-quiz" />
+                  <GoalStarIcon filled={endGameResult?.quizPassed ?? false} size={14} idSuffix="summary-quiz" />
                 </View>
               </View>
             </View>
-          )
+          ) : isQuizDoneForThisGame ? (
+            <View style={styles.goalCard}>
+              <Text allowFontScaling={false} style={styles.goalCardTitle}>Quizz</Text>
+              <View style={styles.goalCardRow}>
+                <Text
+                  allowFontScaling={false}
+                  style={[styles.goalCardSubtitle, isQuizPassedForThisGame && styles.goalReachedText]}
+                >
+                  Question aléatoire
+                </Text>
+                <View style={styles.goalIconWrap}>
+                  <GoalStarIcon filled={isQuizPassedForThisGame} size={14} idSuffix="summary-quiz" />
+                </View>
+              </View>
+            </View>
+          ) : null
         )}
         </>
         )}
@@ -490,21 +628,23 @@ export default function GameSummaryScreen() {
             style={styles.bottomActionButton}
           />
 
-          {shouldShowQuizCta ? (
-            <ActionPillButton
-              label="Quiz"
-              customIcon={<QuizActionIcon width={18} height={18} />}
-              onPress={handleGoToQuiz}
-              style={styles.bottomActionButton}
-            />
-          ) : (
-            !!nextLevel?.id && (
+          {!isHistoryMode && (
+            shouldShowQuizCta ? (
               <ActionPillButton
-                label={`Niveau ${nextLevel.number ?? ''}`.trim()}
-                iconName="play"
-                onPress={handleGoToNextLevel}
+                label="Quiz"
+                customIcon={<QuizActionIcon width={18} height={18} />}
+                onPress={handleGoToQuiz}
                 style={styles.bottomActionButton}
               />
+            ) : (
+              !!nextLevel?.id && (
+                <ActionPillButton
+                  label={`Niveau ${nextLevel.number ?? ''}`.trim()}
+                  iconName="play"
+                  onPress={handleGoToNextLevel}
+                  style={styles.bottomActionButton}
+                />
+              )
             )
           )}
         </View>
@@ -575,6 +715,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 10,
+    paddingTop: 20,
   },
   sectionTitle: {
     fontSize: 20,
@@ -641,7 +782,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   panel: {
-    backgroundColor: '#F2F2F2',
+    backgroundColor: 'white',
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 14,
@@ -701,7 +842,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   goalCard: {
-    backgroundColor: '#F2F2F2',
+    backgroundColor: 'white',
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 14,
@@ -791,9 +932,22 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 18,
     paddingTop: 10,
-    backgroundColor: 'rgba(232,232,232,0.95)',
+    backgroundColor: 'transparent',
   },
   bottomActionButton: {
     flex: 1,
+  },
+  levelContextTitle: {
+    fontSize: 16,
+    color: '#2B2C48',
+    fontFamily: 'Anybody',
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  levelContextDescription: {
+    fontSize: 14,
+    color: '#2B2C48',
+    fontFamily: 'Roboto',
+    lineHeight: 20,
   },
 });

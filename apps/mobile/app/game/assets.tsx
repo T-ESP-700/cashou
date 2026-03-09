@@ -36,7 +36,7 @@ export default function AssetsScreen() {
   const { user } = useAuth();
 
   // Configure header for this screen
-  useHeaderOptions({ showBackButton: true });
+  useHeaderOptions({ showBackButton: true, title: 'Actifs' });
 
   const [query, setQuery] = useState('');
   const [assets, setAssets] = useState<AssetItem[]>([]);

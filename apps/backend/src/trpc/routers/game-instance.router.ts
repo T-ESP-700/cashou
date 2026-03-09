@@ -81,6 +81,18 @@ export const gameInstanceRouter = t.router({
       return await gameInstanceService.findByUser(input.userId);
     }),
 
+  getActiveByUser: t.procedure
+    .input(userIdSchema)
+    .query(async ({ input }) => {
+      return await gameInstanceService.findActiveByUser(input.userId);
+    }),
+
+  abandon: t.procedure
+    .input(gameInstanceIdSchema)
+    .mutation(async ({ input }) => {
+      return await gameInstanceService.abandon(input.id);
+    }),
+
   /**
    * Récupère les instances d’un niveau
    * Endpoint: GET http://localhost:3000/trpc/gameInstance.getByLevel?input={"levelId":1}
@@ -142,6 +154,29 @@ export const gameInstanceRouter = t.router({
     .input(gameInstanceIdSchema)
     .mutation(async ({ input }) => {
       return await endGameService.endGame(input.id);
+    }),
+
+  /**
+   * Retourne le résultat de fin de partie en lecture seule (sans modifier l'état).
+   * Endpoint: GET http://localhost:3000/trpc/gameInstance.getEndGameResult?input={"id":1}
+   */
+  getEndGameResult: t.procedure
+    .input(gameInstanceIdSchema)
+    .query(async ({ input }) => {
+      return await endGameService.getEndGameResult(input.id);
+    }),
+
+  /**
+   * Retourne la meilleure gameInstance terminée d'un utilisateur pour un niveau donné.
+   * Endpoint: GET http://localhost:3000/trpc/gameInstance.getBestForLevel?input={"levelId":1,"userId":"..."}
+   */
+  getBestForLevel: t.procedure
+    .input(z.object({
+      levelId: z.number().int().positive("L'ID du niveau est requis"),
+      userId: z.string().min(1, "L'ID de l'utilisateur est requis"),
+    }))
+    .query(async ({ input }) => {
+      return await gameInstanceService.findBestForLevel(input.levelId, input.userId);
     }),
 
   /**

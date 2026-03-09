@@ -1,6 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useCashouTheme } from '@/hooks/use-cashou-theme';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -23,21 +24,22 @@ export function ActionPillButton({
   isLoading = false,
   style,
 }: ActionPillButtonProps) {
+  const { colors } = useCashouTheme();
   const isDisabled = disabled || isLoading;
 
   return (
     <TouchableOpacity
-      style={StyleSheet.flatten([styles.button, isDisabled && styles.buttonDisabled, { flex: 1 }, style])}
+      style={StyleSheet.flatten([styles.button, { backgroundColor: colors.accent }, isDisabled && styles.buttonDisabled, { flex: 1 }, style])}
       onPress={onPress}
       activeOpacity={0.85}
       disabled={isDisabled}
     >
       {isLoading ? (
-        <ActivityIndicator size="small" color="#1C2440" />
+        <ActivityIndicator size="small" color={colors.text} />
       ) : (
         <>
-          {customIcon ?? (iconName ? <Ionicons name={iconName} size={17} color="#1C2440" /> : null)}
-          <Text allowFontScaling={false} style={styles.label}>
+          {customIcon ?? (iconName ? <Ionicons name={iconName} size={17} color={colors.text} /> : null)}
+          <Text allowFontScaling={false} style={[styles.label, { color: colors.text }]}>
             {label}
           </Text>
         </>
@@ -51,7 +53,6 @@ const styles = StyleSheet.create({
     maxWidth: 100,
     height: 44,
     borderRadius: 80,
-    backgroundColor: '#F7B167',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -63,7 +64,6 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 18,
-    color: '#1C2440',
     fontFamily: 'Roboto',
     paddingHorizontal: 0,
   },

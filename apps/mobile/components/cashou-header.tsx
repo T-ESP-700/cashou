@@ -1,27 +1,28 @@
-import { View, TouchableOpacity } from 'react-native';
+import { useState } from 'react';
+import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import CashouLogoLight from '@/assets/images/cashou_logo_light.svg';
-import CashouLogoDark from '@/assets/images/cashou_logo_dark.svg';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
+import { HeaderDropdownMenu } from '@/components/header-dropdown-menu';
 
 interface CashouHeaderProps {
+  title?: string;
   showBackButton?: boolean;
   onMenuPress?: () => void;
   onBackPress?: () => void;
-  additionalTopPadding?: number;
 }
 
 export function CashouHeader({
+  title = 'Cashou',
   showBackButton = true,
   onMenuPress,
   onBackPress,
-  additionalTopPadding = 0,
 }: CashouHeaderProps) {
   const router = useRouter();
-  const { colors, special, spacing, isDark } = useCashouTheme();
+  const { colors, isDark } = useCashouTheme();
   const insets = useSafeAreaInsets();
+  const [menuVisible, setMenuVisible] = useState(false);
 
   const handleBackPress = () => {
     if (onBackPress) {
@@ -31,47 +32,140 @@ export function CashouHeader({
     }
   };
 
-  const iconColor = isDark ? special.white : special.darkText;
+  const iconColor = '#1C1E33';
+  const pillBg = '#FFB472';
+  const pillBorder = 'rgba(0, 0, 0, 0.06)';
+  const pillTextColor = '#1C1E33';
 
   return (
     <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: colors.primary,
-        paddingTop: insets.top + additionalTopPadding,
-        paddingHorizontal: spacing.md,
-        paddingBottom: spacing.md,
-      }}
+      style={[
+        styles.container,
+        { paddingTop: insets.top + 8 },
+      ]}
     >
-      {/* Back Button */}
-      <TouchableOpacity
-        onPress={handleBackPress}
-        style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}
-        disabled={!showBackButton}
-      >
-        {showBackButton && (
-          <Ionicons name="chevron-back" size={28} color={iconColor} />
-        )}
-      </TouchableOpacity>
-
-      {/* Logo */}
-      <View style={{ flex: 1, alignItems: 'center' }}>
-        {isDark ? (
-          <CashouLogoDark width={120} height={40} />
+      <View style={styles.row}>
+        {/* Back Button */}
+        {showBackButton ? (
+          <TouchableOpacity
+            onPress={handleBackPress}
+            activeOpacity={0.7}
+            style={[
+              styles.floatingButton,
+              {
+                backgroundColor: pillBg,
+                borderColor: pillBorder,
+              },
+            ]}
+          >
+            <Ionicons name="chevron-back" size={22} color={iconColor} />
+          </TouchableOpacity>
         ) : (
-          <CashouLogoLight width={120} height={40} />
+          <View style={styles.buttonPlaceholder} />
         )}
+
+        {/* Title Pill */}
+        <View
+          style={[
+            styles.titlePill,
+            {
+              backgroundColor: pillBg,
+              borderColor: pillBorder,
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.titleText,
+              { color: pillTextColor },
+            ]}
+            numberOfLines={1}
+          >
+            {title}
+          </Text>
+        </View>
+
+        {/* Menu Button */}
+        <TouchableOpacity
+          onPress={onMenuPress ?? (() => setMenuVisible(true))}
+          activeOpacity={0.7}
+          style={[
+            styles.floatingButton,
+            {
+              backgroundColor: pillBg,
+              borderColor: pillBorder,
+            },
+          ]}
+        >
+          <Ionicons name="menu" size={22} color={iconColor} />
+        </TouchableOpacity>
       </View>
 
-      {/* Menu Button */}
-      <TouchableOpacity
-        onPress={onMenuPress}
-        style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}
-      >
-        <Ionicons name="menu" size={28} color={iconColor} />
-      </TouchableOpacity>
+      <HeaderDropdownMenu
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+      />
     </View>
   );
 }
+
+const BUTTON_SIZE = 44;
+
+const styles = StyleSheet.create({
+  container: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  floatingButton: {
+    width: BUTTON_SIZE,
+    height: BUTTON_SIZE,
+    borderRadius: BUTTON_SIZE / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  buttonPlaceholder: {
+    width: BUTTON_SIZE,
+    height: BUTTON_SIZE,
+  },
+  titlePill: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 22,
+    borderWidth: 1,
+    maxWidth: 200,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  titleText: {
+    fontSize: 24,
+    fontFamily: 'Anybody',
+    fontWeight: '400',
+    textAlign: 'center',
+  },
+});

@@ -57,12 +57,12 @@ export function Card({
       style={[
         {
           backgroundColor: backgroundColor || colors.card,
-          borderRadius: borderRadius.lg,
+          borderRadius: borderRadius.xl,
           padding: paddingValue,
         },
         variant === 'outlined' && {
           borderWidth: borderWidth.thin,
-          borderColor: colors.border,
+          borderColor: colors.borderLight,
         },
         getElevationStyle(),
         style,

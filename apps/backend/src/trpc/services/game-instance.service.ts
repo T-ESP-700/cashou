@@ -169,6 +169,28 @@ export class GameInstanceService {
   }
 
   /**
+   * Retourne la partie en cours de l'utilisateur (isEnded = false), ou null.
+   */
+  async findActiveByUser(userId: string): Promise<GameInstance | null> {
+    return this.prisma.gameInstance.findFirst({
+      where: { userId, isEnded: false },
+      orderBy: { createdAt: "desc" },
+      include: { level: true },
+    });
+  }
+
+  /**
+   * Abandonne une partie en cours : la clôture sans enregistrer de récompenses.
+   * Ne pas appeler endGame (qui calcule et enregistre les étoiles).
+   */
+  async abandon(id: number): Promise<GameInstance> {
+    return this.prisma.gameInstance.update({
+      where: { id },
+      data: { isEnded: true, endedAt: new Date() },
+    });
+  }
+
+  /**
    * Récupère toutes les instances d'un utilisateur
    */
   async findByUser(userId: string): Promise<GameInstance[]> {
@@ -191,6 +213,79 @@ export class GameInstanceService {
       orderBy: { createdAt: "desc" },
     });
   }
+
+  /**
+   * Retourne la meilleure gameInstance terminee d un utilisateur pour un niveau donne.
+   * Meilleure = max etoiles (mandatory + bonus), puis la plus ancienne en cas d egalite.
+   * Retourne null si aucune partie terminee n existe pour ce niveau.
+   */
+  async findBestForLevel(levelId: number, userId: string): Promise<GameInstance | null> {
+    const instances = await this.prisma.gameInstance.findMany({
+      where: { levelId, userId, isEnded: true },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        level: {
+          include: {
+            levelGoals: {
+              orderBy: { id: 'asc' },
+              include: { goal: true },
+            },
+          },
+        },
+        wallets: true,
+        holdings: { include: { asset: true } },
+      },
+    });
+
+    if (instances.length === 0) return null;
+    if (instances.length === 1) return instances[0];
+
+    const scored = instances.map((instance) => {
+      const level = instance.level as any;
+      if (!level) return { instance, score: 0 };
+
+      const startBalance = Number(instance.startBalance || level.startBalance || 0);
+      const wallet = instance.wallets[0];
+      const walletAmount = wallet ? Number((wallet as any).amount || 0) : 0;
+      const assetsValue = (instance.holdings as any[]).reduce((sum: number, h: any) => {
+        return sum + (h.quantity ? Number(h.quantity) : 0);
+      }, 0);
+      const totalValue = walletAmount + assetsValue;
+
+      let mandatoryMet = true;
+      let bonusMet = false;
+      for (const lg of level.levelGoals ?? []) {
+        const goal = lg.goal;
+        if (!goal) continue;
+        const validated = this.validateGoalSimple(goal.goalType, goal.goalValue, totalValue, startBalance);
+        if (lg.isMandatory && !validated) mandatoryMet = false;
+        if (!lg.isMandatory && validated) bonusMet = true;
+      }
+
+      return { instance, score: (mandatoryMet ? 1 : 0) + (bonusMet ? 1 : 0) };
+    });
+
+    scored.sort((a, b) => b.score - a.score);
+    return scored[0].instance;
+  }
+
+  private validateGoalSimple(
+    goalType: string | null,
+    goalValue: number | null,
+    finalBalance: number,
+    startBalance: number
+  ): boolean {
+    if (!goalType) return true;
+    const value = goalValue || 0;
+    switch (goalType) {
+      case 'wallet_gte_start': return finalBalance >= startBalance + value;
+      case 'wallet_gt_start': return finalBalance > startBalance + value;
+      case 'wallet_min': return finalBalance >= value;
+      case 'profit_min': return ((finalBalance - startBalance) / startBalance) * 100 >= value;
+      default: return true;
+    }
+  }
+
 
   /**
    * Met en pause une instance de jeu et annule les jobs schedulés
