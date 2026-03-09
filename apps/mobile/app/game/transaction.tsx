@@ -30,6 +30,7 @@ interface AssetData {
   rate: number | null;
   maxAmount: number | null;
   minAmount: number | null;
+  submarket?: { type: string } | null;
 }
 
 export default function TransactionScreen() {
@@ -307,6 +308,7 @@ export default function TransactionScreen() {
 
   const maxAvailable = type === 'buy' ? walletBalance : currentHolding;
   const isBuy = type === 'buy';
+  const isSavings = asset?.submarket?.type === 'SAVINGS';
 
   if (isLoading) {
     return (
@@ -343,12 +345,12 @@ export default function TransactionScreen() {
         {/* Header */}
         <View style={[styles.header, { backgroundColor: isBuy ? '#4CAF50' : '#FF9800' }]}>
           <Ionicons
-            name={isBuy ? 'arrow-down-circle' : 'arrow-up-circle'}
+            name={isSavings ? (isBuy ? 'download-outline' : 'upload-outline') : (isBuy ? 'arrow-down-circle' : 'arrow-up-circle')}
             size={48}
             color="#FFFFFF"
           />
           <Text style={styles.headerTitle}>
-            {isBuy ? 'Acheter' : 'Vendre'}
+            {isSavings ? (isBuy ? 'Déposer' : 'Retirer') : (isBuy ? 'Acheter' : 'Vendre')}
           </Text>
           <Text style={styles.headerSubtitle}>{asset.title}</Text>
           {asset.symbol && (
@@ -362,7 +364,7 @@ export default function TransactionScreen() {
         <View style={[styles.balanceCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.balanceRow}>
             <Text style={[styles.balanceLabel, { color: theme.text, opacity: 0.7 }]}>
-              {isBuy ? 'Solde disponible' : 'Quantite detenue'}
+              {isBuy ? 'Solde disponible' : (isSavings ? 'Montant déposé' : 'Quantité détenue')}
             </Text>
             <Text style={[styles.balanceValue, { color: theme.text }]}>
               {Math.round(maxAvailable)} EUR
@@ -468,7 +470,7 @@ export default function TransactionScreen() {
                 color="#FFFFFF"
               />
               <Text style={styles.submitButtonText}>
-                {isBuy ? 'Confirmer l\'achat' : 'Confirmer la vente'}
+                {isSavings ? (isBuy ? 'Confirmer le dépôt' : 'Confirmer le retrait') : (isBuy ? 'Confirmer l\'achat' : 'Confirmer la vente')}
               </Text>
             </>
           )}

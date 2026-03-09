@@ -62,9 +62,7 @@ export function EventNotificationModal() {
       return;
     }
 
-    // Don't complete the event yet - the game stays paused until the user
-    // goes to /assets and returns to /current.
-    // Mark that we need to complete it when returning from assets.
+    // Marquer l'event comme à compléter — current.tsx s'en chargera
     setPendingEventCompletion(eventNotification.gameInstanceId);
     clearEventNotification();
   };
@@ -187,7 +185,7 @@ export function EventNotificationModal() {
             <View style={{ flexDirection: 'row', width: '100%', gap: spacing.sm + 4 }}>
               <View style={{ flex: 1 }}>
                 <Button
-                  title="Plus tard"
+                  title="Continuer"
                   variant="outline"
                   onPress={handleClose}
                   fullWidth

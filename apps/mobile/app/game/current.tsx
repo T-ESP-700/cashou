@@ -120,7 +120,7 @@ export default function GameCurrentScreen() {
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { pendingEventCompletion, setPendingEventCompletion, isOnAssetsScreen, setActiveGameInstanceId, eventNotification } = useNotifications();
+  const { pendingEventCompletion, setPendingEventCompletion, isOnAssetsScreen, setActiveGameInstanceId, eventNotification, triggerPendingEventCheck } = useNotifications();
   // Configure header for this screen
   useHeaderOptions({ showBackButton: true, title: 'Partie' });
 
@@ -161,12 +161,13 @@ export default function GameCurrentScreen() {
   const [isAnimating, setIsAnimating] = useState(false); // Animation en cours
   const [targetDate, setTargetDate] = useState<Date | null>(null); // Date cible pour l'animation
   const [isGameEnded, setIsGameEnded] = useState(false); // Partie terminée
+  const [gameHasBeenStarted, setGameHasBeenStarted] = useState(false); // Le jeu a été démarré au moins une fois via start()
 
-  // Game has started if we have a game instance ID AND the timer is running (not paused)
-  const hasGameStarted = gameInstanceId !== null && !isPaused;
+  // Game has started if start() was called at least once (not just created in preparation mode)
+  const hasGameStarted = gameInstanceId !== null && gameHasBeenStarted;
 
-  // Game is in preparation mode (instance created but not yet started)
-  const isInPreparation = gameInstanceId !== null && isPaused && !isGameEnded;
+  // Game is in preparation mode (instance created but not yet started via "Démarrer")
+  const isInPreparation = gameInstanceId !== null && !gameHasBeenStarted && !isGameEnded;
 
   // Stats simulées pour la démo (à remplacer par de vraies données)
   const [stats, setStats] = useState<GameStats>({
@@ -205,8 +206,25 @@ export default function GameCurrentScreen() {
 
     try {
       setIsEndingGame(true);
-      console.log('Game time elapsed, ending game...');
+      console.log('Game time elapsed, checking for pending events before ending...');
 
+      // Safety net: check if the backend has a pending event we missed
+      // This prevents ending the game while an event should be displayed
+      try {
+        const pendingEvent = await trpcClient.auth.getPendingEvent.query();
+        if (pendingEvent) {
+          console.log('[GameCurrentScreen] Found pending event before game end, showing it instead:', pendingEvent);
+          setIsEndingGame(false);
+          setIsPaused(true);
+          // Let the notification system handle it — the poll will pick it up on next cycle
+          return;
+        }
+      } catch (checkErr) {
+        // If the check fails, proceed with ending the game
+        console.warn('[GameCurrentScreen] Could not check for pending events:', checkErr);
+      }
+
+      console.log('No pending events, ending game...');
       const result = await trpcClient.gameInstance.endGame.mutate({ id: gameInstanceId }) as EndGameResult;
 
       setEndGameResult(result);
@@ -399,6 +417,10 @@ export default function GameCurrentScreen() {
               setGameInstanceId(gameInstance.id);
               setIsPaused(gameInstance.isPaused ?? true);
               setIsGameEnded(gameInstance.isEnded ?? false);
+              // Si le jeu tourne, a avancé dans les events, ou a un event en cours, il a déjà été démarré
+              setGameHasBeenStarted(
+                !gameInstance.isPaused || (gameInstance.currentEventIndex ?? 0) > 0 || !!gameInstance.actionRequired
+              );
 
               // If we have level data from the gameInstance, fetch full level summary (includes goals)
               if (gameInstance.level) {
@@ -649,6 +671,41 @@ export default function GameCurrentScreen() {
     }
   }, [eventNotification, gameInstanceId]);
 
+  // Quand le modal d'event se ferme via "Continuer" (pendingEventCompletion set, pas sur assets),
+  // compléter l'event immédiatement et reprendre la partie.
+  useEffect(() => {
+    if (!pendingEventCompletion || !gameInstanceId || isOnAssetsScreen) return;
+    if (pendingEventCompletion !== gameInstanceId) return;
+
+    const completeAndResume = async () => {
+      try {
+        console.log('[GameCurrentScreen] ▶️ Completing event and resuming game', gameInstanceId);
+        await trpcClient.gameInstance.completeEvent.mutate({ id: gameInstanceId });
+        setPendingEventCompletion(null);
+        setIsPaused(false);
+
+        // Resync game state from backend
+        const instance = await trpcClient.gameInstance.getById.query({ id: gameInstanceId });
+        if (instance?.level) {
+          setGameTimeState({
+            createdAt: new Date(instance.createdAt),
+            totalPausedDuration: instance.totalPausedDuration ?? 0,
+            duration: instance.level.duration ?? 30,
+            speed: instance.level.speed ?? 1,
+            isEnded: instance.isEnded ?? false,
+            isPaused: instance.isPaused ?? false,
+            pausedAt: instance.pausedAt ? new Date(instance.pausedAt) : null,
+          });
+        }
+        console.log('[GameCurrentScreen] ✅ Event completed, game resumed');
+      } catch (err) {
+        console.error('[GameCurrentScreen] Error completing event:', err);
+      }
+    };
+
+    completeAndResume();
+  }, [pendingEventCompletion, gameInstanceId, isOnAssetsScreen, setPendingEventCompletion]);
+
   // Fetch triggered impacts on mount and when eventNotification changes
   useEffect(() => {
     if (!gameInstanceId) return;
@@ -665,6 +722,20 @@ export default function GameCurrentScreen() {
     setGameDate(currentDate);
     console.log('[GameCurrentScreen] 📅 Initial date calculated:', currentDate.toLocaleDateString('fr-FR'));
   }, [gameTimeState, calculateGameDate]);
+
+  // Backup event detection: periodically check backend for pending events during active gameplay.
+  // This complements the NotificationProvider polling — if push or provider polling fails,
+  // this ensures events are still detected while the game screen is active.
+  useEffect(() => {
+    if (!gameInstanceId || isPaused || isGameEnded || isEndingGame || eventNotification || pendingEventCompletion) return;
+
+    const EVENT_CHECK_INTERVAL_MS = 5000;
+    const eventCheckInterval = setInterval(() => {
+      triggerPendingEventCheck();
+    }, EVENT_CHECK_INTERVAL_MS);
+
+    return () => clearInterval(eventCheckInterval);
+  }, [gameInstanceId, isPaused, isGameEnded, isEndingGame, eventNotification, pendingEventCompletion, triggerPendingEventCheck]);
 
   // Animation locale de la date en temps réel (aucun appel backend)
   useEffect(() => {
@@ -727,6 +798,10 @@ export default function GameCurrentScreen() {
             });
             setIsPaused(nowPaused);
             setIsGameEnded(isEnded);
+            // Si le jeu tourne, a avancé dans les events, ou a un event en cours, il a été démarré
+            if (!nowPaused || (instance.currentEventIndex ?? 0) > 0 || !!instance.actionRequired) {
+              setGameHasBeenStarted(true);
+            }
 
             if (wasPaused && !nowPaused) {
               console.log('[GameCurrentScreen] ✅ Game was resumed, state updated');
@@ -911,13 +986,21 @@ export default function GameCurrentScreen() {
   // Handle assets sheet state changes (pause/resume game)
   const handleAssetsSheetChange = useCallback(async (index: number) => {
     if (!gameInstanceId) return;
+    // En mode préparation (avant "Démarrer"), pas de pause/resume
+    if (!gameHasBeenStarted) {
+      if (index < 0) {
+        setAssetsSearchQuery('');
+        setSelectedSubmarketId(null);
+      }
+      return;
+    }
     try {
       if (index >= 0) {
         await trpcClient.gameInstance.pause.mutate({ id: gameInstanceId });
         setIsPaused(true);
       } else {
-        await trpcClient.gameInstance.resume.mutate({ id: gameInstanceId });
-        setIsPaused(false);
+        const resumed = await trpcClient.gameInstance.resume.mutate({ id: gameInstanceId });
+        setIsPaused(resumed.isPaused ?? false);
         // Reset search and filter when closing
         setAssetsSearchQuery('');
         setSelectedSubmarketId(null);
@@ -925,7 +1008,7 @@ export default function GameCurrentScreen() {
     } catch (err) {
       console.error('Error pausing/resuming game from assets sheet:', err);
     }
-  }, [gameInstanceId]);
+  }, [gameInstanceId, gameHasBeenStarted]);
 
   const handleAddAsset = () => {
     if (!gameInstanceId || !walletId) {
@@ -965,6 +1048,7 @@ export default function GameCurrentScreen() {
       await trpcClient.gameInstance.start.mutate({ id: gameInstanceId });
 
       setActiveGameInstanceId(gameInstanceId); // Mettre à jour le contexte global
+      setGameHasBeenStarted(true); // Le jeu a été démarré
       setIsPaused(false); // Le jeu démarre
       setIsAnimating(false);
       setTargetDate(null);

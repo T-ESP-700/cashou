@@ -106,6 +106,7 @@ export class GameInstanceService {
       totalPausedDuration: 0,
       currentEventIndex: 0,
       isEnded: false,
+      actionRequired: false,
       isPaused: isPausedValue,
       // Set pausedAt so time calculations work correctly when game starts paused
       pausedAt: isPausedValue ? new Date() : null,
@@ -333,6 +334,19 @@ export class GameInstanceService {
       return gameInstance; // Not paused, nothing to do
     }
 
+    // If the game was never start()'d (preparation mode), don't unpause.
+    // The user must click "Démarrer" which calls start() to begin the game.
+    if (gameInstance.levelId) {
+      const eventCount = await this.prisma.gameInstanceEvent.count({
+        where: { gameInstanceId: id },
+      });
+
+      if (eventCount === 0) {
+        console.log(`[GameInstanceService] resume() skipped for game ${id}: still in preparation mode (0 events).`);
+        return gameInstance;
+      }
+    }
+
     // Calculate how long it was paused (in seconds for consistency)
     const pauseDurationSeconds = Math.floor(
       (Date.now() - new Date(gameInstance.pausedAt).getTime()) / 1000
@@ -396,14 +410,30 @@ export class GameInstanceService {
         createdAt: new Date(),
         isPaused: false,
         pausedAt: null,
+        actionRequired: false,
         totalPausedDuration: 0,
       },
     });
 
     // Schedule the first event
     if (gameInstance.levelId) {
-      await this.gameInstanceEventService.scheduleEventsForGameInstance(id);
-      await this.gameEventTriggerService.scheduleFirstEvent(id);
+      console.log(`[GameInstanceService] ▶️ start() scheduling events for game ${id}, levelId=${gameInstance.levelId}`);
+      try {
+        await this.gameInstanceEventService.scheduleEventsForGameInstance(id);
+        console.log(`[GameInstanceService] ✅ scheduleEventsForGameInstance done for game ${id}`);
+      } catch (err) {
+        console.error(`[GameInstanceService] ❌ scheduleEventsForGameInstance FAILED for game ${id}:`, err);
+        throw err;
+      }
+      try {
+        await this.gameEventTriggerService.scheduleFirstEvent(id);
+        console.log(`[GameInstanceService] ✅ scheduleFirstEvent done for game ${id}`);
+      } catch (err) {
+        console.error(`[GameInstanceService] ❌ scheduleFirstEvent FAILED for game ${id}:`, err);
+        // Don't throw — events are in DB, pg-boss is a bonus
+      }
+    } else {
+      console.log(`[GameInstanceService] ⚠️ start() no levelId for game ${id}, skipping event scheduling`);
     }
 
     return updated;

@@ -23,6 +23,7 @@ type AssetItem = {
   name: string;
   tags: string[];
   changePct: number;
+  submarketType?: string; // 'Savings' | 'Insurance' | 'Stock'
 };
 
 
@@ -52,6 +53,7 @@ export default function AssetsScreen() {
   const activeGameInstanceIdRef = useRef(activeGameInstanceId);
   const userRef = useRef(user);
   const pendingEventCompletionRef = useRef(pendingEventCompletion);
+  const pausedByAssetsRef = useRef(pausedByAssets);
 
   // Keep refs in sync with current values
   useEffect(() => {
@@ -65,6 +67,10 @@ export default function AssetsScreen() {
   useEffect(() => {
     pendingEventCompletionRef.current = pendingEventCompletion;
   }, [pendingEventCompletion]);
+
+  useEffect(() => {
+    pausedByAssetsRef.current = pausedByAssets;
+  }, [pausedByAssets]);
 
   const fetchAssets = useCallback(async () => {
     let localError: unknown = null;
@@ -93,18 +99,25 @@ export default function AssetsScreen() {
       // Map backend Asset to UI AssetItem
       const mapped: AssetItem[] = (data || []).map((a: any) => {
         const pd = priceData[a.id];
-        const changePct = pd?.changePct ?? (typeof a?.rate === 'number' ? a.rate : 0);
-        const displayPrice = pd ? (pd.price / 100).toFixed(2) + ' EUR' : undefined;
+        const subType = a?.submarket?.type as string | undefined;
+        const isSavingsAsset = subType === 'SAVINGS';
+
+        const changePct = isSavingsAsset
+          ? (typeof a?.rate === 'number' ? a.rate : 0)
+          : (pd?.changePct ?? (typeof a?.rate === 'number' ? a.rate : 0));
+        const displayTag = isSavingsAsset
+          ? (typeof a?.rate === 'number' ? `Taux: ${a.rate}%/an` : null)
+          : (pd ? (pd.price / 100).toFixed(2) + ' EUR' : undefined);
 
         return {
           id: String(a.id ?? a.symbol ?? a.title ?? Math.random()),
           name: String(a.title ?? a.symbol ?? 'Asset'),
           tags: [
-            a?.symbol ? String(a.symbol) : null,
-            a?.market?.title ? String(a.market.title) : null,
-            displayPrice ?? null,
+            a?.submarket?.title ? String(a.submarket.title) : null,
+            displayTag ?? null,
           ].filter(Boolean) as string[],
           changePct,
+          submarketType: subType,
         };
       });
       setAssets(mapped);
@@ -206,20 +219,13 @@ export default function AssetsScreen() {
             console.log('[AssetsScreen] EXIT - No other assets screen, proceeding with resume');
 
             try {
-              // Check current game state before resuming
-              console.log('[AssetsScreen] EXIT - Fetching game state...');
-              const gameInstance = await trpcClient.gameInstance.getById.query({ id: gameId });
-              const isCurrentlyPaused = gameInstance?.isPaused ?? false;
-
-              console.log('[AssetsScreen] EXIT - Game state: isPaused=', isCurrentlyPaused);
-
-              // Resume if game is currently paused
-              if (isCurrentlyPaused) {
-                console.log('[AssetsScreen] 🎮 Resuming game', gameId);
+              // Only resume if WE paused the game (not if paused by event or user)
+              if (pausedByAssetsRef.current) {
+                console.log('[AssetsScreen] 🎮 Resuming game (pausedByAssets=true)', gameId);
                 await trpcClient.gameInstance.resume.mutate({ id: gameId });
                 console.log('[AssetsScreen] ✅ Game resumed successfully');
               } else {
-                console.log('[AssetsScreen] ⚠️  Game is not paused, nothing to resume');
+                console.log('[AssetsScreen] ⏸️  Game was not paused by assets screen, not resuming');
               }
 
               // If there's a pending event completion, complete it now
@@ -366,8 +372,17 @@ function AssetCard({ asset, isDark, router, gameInstanceId, walletId }: AssetCar
         ))}
       </View>
       <View style={styles.changeRow}>
-        <Ionicons name={positive ? 'caret-up' : 'caret-down'} size={18} color="#FFB472" />
-        <Text style={{ marginLeft: 4, color: theme.text, fontFamily: CashouTheme.fonts.subheading }}>{Math.abs(asset.changePct).toFixed(2)}%</Text>
+        {asset.submarketType === 'SAVINGS' ? (
+          <>
+            <Ionicons name="lock-closed" size={16} color="#4CAF50" />
+            <Text style={{ marginLeft: 4, color: '#4CAF50', fontFamily: CashouTheme.fonts.subheading }}>{asset.changePct}%/an garanti</Text>
+          </>
+        ) : (
+          <>
+            <Ionicons name={positive ? 'caret-up' : 'caret-down'} size={18} color="#FFB472" />
+            <Text style={{ marginLeft: 4, color: theme.text, fontFamily: CashouTheme.fonts.subheading }}>{Math.abs(asset.changePct).toFixed(2)}%</Text>
+          </>
+        )}
       </View>
     </TouchableOpacity>
   );

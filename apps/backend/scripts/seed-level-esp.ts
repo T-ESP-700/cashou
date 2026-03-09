@@ -84,9 +84,9 @@ async function main() {
   console.log('🌐 Création des sous-marchés...');
 
   const submarketDefs = [
-    { title: 'Livret', description: 'Épargne sécurisée à taux garanti.' },
-    { title: 'Assurance Vie', description: 'Placement à moyen terme avec rendement modéré.' },
-    { title: 'Bourse - ETF', description: 'Fonds indiciels cotés en bourse, plus risqués mais plus rémunérateurs.' },
+    { title: 'Livret', description: 'Épargne sécurisée à taux garanti.', type: 'SAVINGS' as const },
+    { title: 'Assurance Vie', description: 'Placement à moyen terme avec rendement modéré.', type: 'INSURANCE' as const },
+    { title: 'Bourse - ETF', description: 'Fonds indiciels cotés en bourse, plus risqués mais plus rémunérateurs.', type: 'STOCK' as const },
   ];
 
   const submarkets: Record<string, Awaited<ReturnType<typeof prisma.submarket.create>>> = {};
@@ -98,11 +98,11 @@ async function main() {
     if (sub) {
       sub = await prisma.submarket.update({
         where: { id: sub.id },
-        data: { description: def.description, marketId: market.id },
+        data: { description: def.description, marketId: market.id, type: def.type },
       });
     } else {
       sub = await prisma.submarket.create({
-        data: { title: def.title, description: def.description, marketId: market.id },
+        data: { title: def.title, description: def.description, marketId: market.id, type: def.type },
       });
     }
     submarkets[def.title] = sub;
@@ -193,7 +193,7 @@ async function main() {
     LIVRET_CASHOU: {
       startPrice: 10000, // 100.00 EUR
       annualRate: 1.7,
-      dailyVolatility: 0.0005, // very low for livret
+      dailyVolatility: 0, // livret = taux fixe, zéro volatilité
     },
     ASSURANCE_SERENITE: {
       startPrice: 10000,

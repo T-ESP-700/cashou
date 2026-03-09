@@ -380,8 +380,11 @@ export const authRouter = router({
   }),
 
   // Get pending event that requires user action (fallback for when push notification didn't work)
+  // Also self-heals: if pg-boss missed an overdue event, processes it inline
   getPendingEvent: protectedProcedure.query(async ({ ctx }) => {
-    // Find the active game instance with actionRequired = true
+    console.log(`[getPendingEvent] Called for user ${ctx.session.user.id}`);
+
+    // 1. Check if there's already a triggered event waiting for user action
     const gameInstance = await prisma.gameInstance.findFirst({
       where: {
         userId: ctx.session.user.id,
@@ -395,43 +398,121 @@ export const authRouter = router({
       },
     });
 
-    if (!gameInstance) {
-      return null;
-    }
+    console.log(`[getPendingEvent] Path 1 — game with actionRequired:`, gameInstance ? `id=${gameInstance.id}` : 'null');
 
-    // Find the most recently triggered event for this game instance
-    // This is the event that requires user action
-    const triggeredEvent = await prisma.gameInstanceEvent.findFirst({
-      where: {
-        gameInstanceId: gameInstance.id,
-        triggeredAt: { not: null },
-      },
-      orderBy: {
-        triggeredAt: 'desc',
-      },
-      include: {
-        levelEvent: {
-          include: {
-            event: {
-              select: {
-                id: true,
-                title: true,
-                description: true,
+    if (gameInstance) {
+      // Find the most recently triggered event for this game instance
+      const triggeredEvent = await prisma.gameInstanceEvent.findFirst({
+        where: {
+          gameInstanceId: gameInstance.id,
+          triggeredAt: { not: null },
+        },
+        orderBy: {
+          triggeredAt: 'desc',
+        },
+        include: {
+          levelEvent: {
+            include: {
+              event: {
+                select: {
+                  id: true,
+                  title: true,
+                  description: true,
+                },
               },
             },
+          },
+        },
+      });
+
+      console.log(`[getPendingEvent] Triggered event:`, triggeredEvent ? `id=${triggeredEvent.id}, event=${triggeredEvent.levelEvent?.event?.title ?? 'NULL'}` : 'null');
+
+      if (triggeredEvent?.levelEvent?.event) {
+        const event = triggeredEvent.levelEvent.event;
+        return {
+          gameInstanceId: gameInstance.id,
+          eventId: event.id,
+          title: event.title ?? 'Nouvel événement',
+          body: event.description ?? 'Un événement requiert votre attention dans le jeu.',
+        };
+      }
+    }
+
+    // 2. Self-heal: check for overdue events that pg-boss missed
+    const now = new Date();
+    console.log(`[getPendingEvent] Path 2 — checking overdue events at ${now.toISOString()}`);
+    const overdueEvent = await prisma.gameInstanceEvent.findFirst({
+      where: {
+        scheduledAt: { lte: now },
+        triggeredAt: null,
+        gameInstance: {
+          userId: ctx.session.user.id,
+          isEnded: false,
+          // Don't process if already has a pending action (actionRequired can be null or false)
+          actionRequired: { not: true },
+        },
+      },
+      orderBy: { scheduledAt: 'asc' },
+      include: {
+        gameInstance: {
+          include: {
+            user: { select: { id: true, expoPushToken: true } },
+          },
+        },
+        levelEvent: {
+          include: {
+            event: { select: { id: true, title: true, description: true } },
           },
         },
       },
     });
 
-    if (!triggeredEvent?.levelEvent?.event) {
+    console.log(`[getPendingEvent] Path 2 — overdue event:`, overdueEvent ? `id=${overdueEvent.id}, scheduledAt=${overdueEvent.scheduledAt}` : 'null');
+
+    if (!overdueEvent?.levelEvent?.event || !overdueEvent.gameInstance) {
+      console.log(`[getPendingEvent] No pending event found — returning null`);
       return null;
     }
 
-    const event = triggeredEvent.levelEvent.event;
+    // Process the overdue event inline (same logic as GameEventProcessorService)
+    const gi = overdueEvent.gameInstance;
+    const event = overdueEvent.levelEvent.event;
+
+    const pauseTimestamp = gi.isPaused && gi.pausedAt ? gi.pausedAt : now;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.gameInstance.update({
+        where: { id: gi.id },
+        data: {
+          isPaused: true,
+          actionRequired: true,
+          pausedAt: pauseTimestamp,
+        },
+      });
+
+      await tx.notification.create({
+        data: {
+          userId: ctx.session.user.id,
+          title: event.title ?? 'Nouvel événement',
+          message: event.description ?? 'Un événement requiert votre attention dans le jeu.',
+          type: 'EVENT',
+          gameInstanceId: gi.id,
+          eventId: event.id,
+          isOpened: false,
+          sentAt: now,
+        },
+      });
+
+      await tx.gameInstanceEvent.update({
+        where: { id: overdueEvent.id },
+        data: { triggeredAt: now },
+      });
+    });
+
+    console.log(`[getPendingEvent] Self-healed overdue event ${overdueEvent.id} for game ${gi.id}`);
 
     return {
-      gameInstanceId: gameInstance.id,
+      gameInstanceId: gi.id,
       eventId: event.id,
       title: event.title ?? 'Nouvel événement',
       body: event.description ?? 'Un événement requiert votre attention dans le jeu.',

@@ -34,6 +34,8 @@ export class GameInstanceEventService {
    * @param gameInstanceId - The ID of the newly created GameInstance
    */
   async scheduleEventsForGameInstance(gameInstanceId: number): Promise<void> {
+    console.log(`[GameInstanceEventService] ▶️ scheduleEventsForGameInstance called for gameInstanceId=${gameInstanceId}`);
+
     // Fetch the game instance with level and level events
     const gameInstance = await this.prisma.gameInstance.findUnique({
       where: { id: gameInstanceId },
@@ -51,20 +53,24 @@ export class GameInstanceEventService {
       },
     });
 
+    console.log(`[GameInstanceEventService] gameInstance found:`, gameInstance ? `id=${gameInstance.id}, levelId=${gameInstance.levelId}, createdAt=${gameInstance.createdAt}` : 'null');
+
     if (!gameInstance) {
       throw new Error(`GameInstance ${gameInstanceId} not found`);
     }
 
     if (!gameInstance.level) {
-      console.log(`[GameInstanceEventService] GameInstance ${gameInstanceId} has no level, skipping event scheduling`);
+      console.log(`[GameInstanceEventService] ❌ GameInstance ${gameInstanceId} has no level, skipping event scheduling`);
       return;
     }
 
     const level = gameInstance.level;
     const levelEvents = level.levelEvents;
 
+    console.log(`[GameInstanceEventService] Level ${level.id}: found ${levelEvents.length} levelEvents`);
+
     if (levelEvents.length === 0) {
-      console.log(`[GameInstanceEventService] Level ${level.id} has no events to schedule`);
+      console.log(`[GameInstanceEventService] ❌ Level ${level.id} has no events to schedule`);
       return;
     }
 
