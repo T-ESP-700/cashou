@@ -4,6 +4,8 @@ import { useFocusEffect } from 'expo-router';
 interface HeaderOptions {
   title: string;
   showBackButton: boolean;
+  subtitle?: string;
+  onTitlePress?: () => void;
   onMenuPress?: () => void;
   onBackPress?: () => void;
 }

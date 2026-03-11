@@ -8,7 +8,6 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
-  useColorScheme as useRNColorScheme,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -16,6 +15,7 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
+import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useHeaderOptions } from '@/hooks/use-header';
 import { useNotifications } from '@/hooks/use-notifications';
@@ -33,9 +33,7 @@ interface AssetData {
 }
 
 export default function TransactionScreen() {
-  const colorScheme = useRNColorScheme();
-  const isDark = colorScheme === 'dark';
-  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const { colors: theme, isDark } = useCashouTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();

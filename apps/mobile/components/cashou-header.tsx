@@ -8,14 +8,18 @@ import { HeaderDropdownMenu } from '@/components/header-dropdown-menu';
 
 interface CashouHeaderProps {
   title?: string;
+  subtitle?: string;
   showBackButton?: boolean;
+  onTitlePress?: () => void;
   onMenuPress?: () => void;
   onBackPress?: () => void;
 }
 
 export function CashouHeader({
   title = 'Cashou',
+  subtitle,
   showBackButton = true,
+  onTitlePress,
   onMenuPress,
   onBackPress,
 }: CashouHeaderProps) {
@@ -65,7 +69,10 @@ export function CashouHeader({
         )}
 
         {/* Title Pill */}
-        <View
+        <TouchableOpacity
+          disabled={!onTitlePress}
+          onPress={onTitlePress}
+          activeOpacity={0.7}
           style={[
             styles.titlePill,
             {
@@ -74,16 +81,32 @@ export function CashouHeader({
             },
           ]}
         >
-          <Text
-            style={[
-              styles.titleText,
-              { color: pillTextColor },
-            ]}
-            numberOfLines={1}
-          >
-            {title}
-          </Text>
-        </View>
+          <View style={styles.titlePillInner}>
+            <View style={styles.titlePillTexts}>
+              <Text
+                style={[
+                  styles.titleText,
+                  { color: pillTextColor },
+                  subtitle ? { fontSize: 20 } : undefined,
+                ]}
+                numberOfLines={1}
+              >
+                {title}
+              </Text>
+              {!!subtitle && (
+                <Text
+                  style={[styles.subtitleText, { color: pillTextColor }]}
+                  numberOfLines={1}
+                >
+                  {subtitle}
+                </Text>
+              )}
+            </View>
+            {!!onTitlePress && (
+              <Ionicons name="information-circle-outline" size={18} color={pillTextColor} style={{ marginLeft: 6 }} />
+            )}
+          </View>
+        </TouchableOpacity>
 
         {/* Menu Button */}
         <TouchableOpacity
@@ -162,10 +185,24 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  titlePillInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  titlePillTexts: {
+    alignItems: 'center',
+  },
   titleText: {
     fontSize: 24,
     fontFamily: 'Anybody',
     fontWeight: '400',
     textAlign: 'center',
+  },
+  subtitleText: {
+    fontSize: 12,
+    fontFamily: 'Anybody',
+    fontWeight: '400',
+    textAlign: 'center',
+    marginTop: 1,
   },
 });

@@ -75,7 +75,9 @@ function RootNavigatorContent() {
       {showHeader && (
         <CashouHeader
           title={headerOptions.title}
+          subtitle={headerOptions.subtitle}
           showBackButton={headerOptions.showBackButton}
+          onTitlePress={headerOptions.onTitlePress}
           onMenuPress={headerOptions.onMenuPress}
           onBackPress={headerOptions.onBackPress}
         />

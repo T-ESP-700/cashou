@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, useColorScheme as useRNColorScheme, Alert, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,15 +7,13 @@ import { Ionicons } from '@expo/vector-icons';
 import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { CashouTheme } from '@/constants/cashou-theme';
+import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useAuth } from '@/hooks/use-auth';
-import { useHeaderOptions } from '@/hooks/use-header';
+import { useHeader } from '@/hooks/use-header';
 import { useNotifications } from '@/hooks/use-notifications';
 import { LevelInfoModal } from '@/components/level-info-modal';
 import { ActionPillButton, GoalStarIcon } from '@/components/ui';
-import FastForwardIcon from '@/assets/images/fast-forward.svg';
-import PauseIcon from '@/assets/images/pause.svg';
-import StopIcon from '@/assets/images/stop.svg';
 import QuizActionIcon from '@/assets/images/quiz-action.svg';
 import RecapActionIcon from '@/assets/images/recap-action.svg';
 
@@ -115,14 +113,11 @@ const MONTH_PAUSE_MS = 150; // Pause supplémentaire au changement de mois
 
 export default function GameCurrentScreen() {
   const { levelId, gameId } = useLocalSearchParams<{ levelId: string; gameId?: string }>();
-  const colorScheme = useRNColorScheme();
-  const isDark = colorScheme === 'dark';
-  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const { colors: theme, isDark } = useCashouTheme();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { pendingEventCompletion, setPendingEventCompletion, isOnAssetsScreen, setActiveGameInstanceId, eventNotification } = useNotifications();
-  // Configure header for this screen
-  useHeaderOptions({ showBackButton: true, title: 'Partie' });
+  const { setOptions: setHeaderOptions } = useHeader();
 
   const [levelData, setLevelData] = useState<LevelData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -153,8 +148,6 @@ export default function GameCurrentScreen() {
   const [assetsSearchQuery, setAssetsSearchQuery] = useState('');
   const [selectedSubmarketId, setSelectedSubmarketId] = useState<number | null>(null);
 
-  // Mode dev (a configurer selon l'environnement)
-  const __DEV__ = process.env.NODE_ENV === 'development' || true; // Force true pour le dev
   const [gameDate, setGameDate] = useState(GAME_START_DATE);
   const [gameTimeState, setGameTimeState] = useState<GameTimeState | null>(null);
   const [isAnimating, setIsAnimating] = useState(false); // Animation en cours
@@ -732,6 +725,25 @@ export default function GameCurrentScreen() {
     }, [gameInstanceId, calculateEndDate, isPaused, walletId])
   );
 
+  // Configure header: static options on focus
+  useFocusEffect(
+    useCallback(() => {
+      setHeaderOptions({
+        showBackButton: true,
+        title: `Niveau ${stats.level}`,
+        onTitlePress: () => setShowLevelInfoModal(true),
+      });
+    }, [setHeaderOptions, stats.level])
+  );
+
+  // Configure header: dynamic subtitle (date + game state)
+  useEffect(() => {
+    const statusIcon = isGameEnded ? ' ⏹' : isPaused ? '' : ' ►';
+    setHeaderOptions({
+      subtitle: gameInstanceId ? `${formatDate(gameDate)}${statusIcon}` : undefined,
+    });
+  }, [gameDate, isPaused, isGameEnded, gameInstanceId, setHeaderOptions]);
+
   // Auto-show level info modal for new games (when no gameId is passed)
   useEffect(() => {
     // Only show once per session, only for new games, and only after level data is loaded
@@ -846,6 +858,13 @@ export default function GameCurrentScreen() {
     }
   }, []);
 
+  // Fetch all assets on mount for submarket badges
+  useEffect(() => {
+    if (gameInstanceId) {
+      fetchAllAssets();
+    }
+  }, [gameInstanceId, fetchAllAssets]);
+
   // Extract unique submarkets from assets
   const submarkets = useMemo(() => {
     const map = new Map<number, string>();
@@ -872,6 +891,33 @@ export default function GameCurrentScreen() {
     }
     return result;
   }, [allAssets, selectedSubmarketId, assetsSearchQuery]);
+
+  // Map assetId → submarket info for badge display
+  const assetSubmarketMap = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const asset of allAssets) {
+      if (asset.id && asset.submarket?.title) {
+        map.set(asset.id, asset.submarket.title);
+      }
+    }
+    return map;
+  }, [allAssets]);
+
+  // Badge colors per submarket type
+  const getSubmarketBadgeStyle = useCallback((submarketTitle: string) => {
+    const lower = submarketTitle.toLowerCase();
+    if (lower.includes('epargne') || lower.includes('épargne')) return { bg: '#C8E6C9', text: '#388E3C' };
+    if (lower.includes('bourse') || lower.includes('action')) return { bg: '#E1D5F0', text: '#6A1B9A' };
+    if (lower.includes('crypto')) return { bg: '#FFE0B2', text: '#E65100' };
+    if (lower.includes('immobilier')) return { bg: '#B3E5FC', text: '#0277BD' };
+    return { bg: '#E0E0E0', text: '#616161' };
+  }, []);
+
+  // Total portfolio value (cash + all holdings)
+  const totalPortfolio = useMemo(() => {
+    const holdingsTotal = holdings.reduce((sum, h) => sum + Number(h.quantity ?? 0), 0);
+    return Math.round(stats.cash + holdingsTotal);
+  }, [stats.cash, holdings]);
 
   // Render backdrop for assets sheet
   const renderAssetsBackdrop = useCallback(
@@ -1077,199 +1123,99 @@ export default function GameCurrentScreen() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}>
-        <View style={styles.card}>
-          {/* Header */}
-          <View style={styles.titleRow}>
-            <Text style={[styles.title, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
-              Niveau {stats.level}
+      <ScrollView style={styles.scrollView} contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 }]}>
+        {/* Portfolio Total Card */}
+        <View style={[styles.portfolioCard, { backgroundColor: theme.card }]}>
+          <View style={styles.portfolioRow}>
+            <Text style={[styles.portfolioLabel, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
+              Portefeuille
             </Text>
-            <TouchableOpacity
-              style={[styles.infoButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-              onPress={() => setShowLevelInfoModal(true)}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="information-circle-outline" size={24} color={theme.text} />
-            </TouchableOpacity>
+            <Text style={[styles.portfolioTotal, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
+              {totalPortfolio.toLocaleString('fr-FR')}€
+            </Text>
           </View>
+          <View style={styles.portfolioSeparator} />
+        </View>
 
-          <View style={[styles.separator, { backgroundColor: theme.text }]} />
-
-          {/* Statistics Section */}
-          <Text style={[styles.sectionTitle, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
-            Statistiques
-          </Text>
-
-          <View style={styles.statsGrid}>
-            {/* Level */}
-            <View style={styles.statCardWrapper}>
-              <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <Text style={[styles.statLabel, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
-                  Niveau
-                </Text>
-                <Text style={[styles.statValue, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
-                  {stats.level}
-                </Text>
-              </View>
+        {/* Cash Row */}
+        <View style={[styles.assetRow, { backgroundColor: theme.card }]}>
+          <View style={styles.assetRowContent}>
+            <View style={styles.assetRowTopLine}>
+              <Text style={[styles.assetRowName, { color: theme.text, fontFamily: 'Anybody' }]}>
+                Portefeuille
+              </Text>
+              <Text style={[styles.assetRowAmount, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
+                {stats.cash.toLocaleString('fr-FR')}€
+              </Text>
             </View>
-
-            {/* Cash */}
-            <View style={styles.statCardWrapper}>
-              <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <Text style={[styles.statLabel, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
-                  Cash
-                </Text>
-                <Text style={[styles.statValue, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
-                  {stats.cash}€
-                </Text>
-              </View>
+            <View style={[styles.assetBadge, { backgroundColor: '#C8E6C9' }]}>
+              <Text style={[styles.assetBadgeText, { color: '#388E3C' }]}>Cash</Text>
             </View>
-
-            {/* Time Passed */}
-            <View style={styles.statCardWrapper}>
-              <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <Text style={[styles.statLabel, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
-                  Temps passé
-                </Text>
-                <Text style={[styles.statValue, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
-                  {stats.timePassed}
-                </Text>
-              </View>
-            </View>
-
-            {/* Successes */}
-            <View style={styles.statCardWrapper}>
-              <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <Text style={[styles.statLabel, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
-                  Réussites
-                </Text>
-                <Text style={[styles.statValue, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
-                  {stats.successes}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={[styles.separator, { backgroundColor: theme.text, marginTop: 16 }]} />
-
-          {/* Assets Section */}
-          <Text style={[styles.sectionTitle, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
-            List des assets
-          </Text>
-
-          <View style={styles.assetsGrid}>
-            {/* Add Asset Button */}
-            <View style={styles.assetCardWrapper}>
-              <TouchableOpacity
-                style={[styles.assetCard, styles.addAssetCard, { backgroundColor: theme.card, borderColor: theme.border }]}
-                onPress={handleAddAsset}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.addAssetIcon, { color: theme.text }]}>+</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Holding Cards */}
-            {holdings.map((holding) => (
-              <View key={holding.id} style={styles.assetCardWrapper}>
-                <TouchableOpacity
-                  style={[styles.assetCard, { backgroundColor: theme.card, borderColor: theme.border }]}
-                  onPress={() => handleHoldingPress(holding)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.assetTitle, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
-                    {holding.asset?.title ?? 'Asset'}
-                  </Text>
-                  <Text style={[styles.holdingQuantity, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
-                    {Number(holding.quantity ?? 0).toFixed(2)}€
-                  </Text>
-                  <View style={styles.assetRateContainer}>
-                    <Text style={[styles.assetRateArrow, { color: (getAdjustedRate(holding.asset?.id ?? 0, holding.asset?.rate ?? 0) ?? 0) >= 0 ? '#4CAF50' : '#F44336' }]}>
-                      {(getAdjustedRate(holding.asset?.id ?? 0, holding.asset?.rate ?? 0) ?? 0) >= 0 ? '▲' : '▼'}
-                    </Text>
-                    <Text style={[styles.assetRate, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
-                      {getAdjustedRate(holding.asset?.id ?? 0, holding.asset?.rate ?? 0) ?? 0}%
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
-            ))}
           </View>
         </View>
+
+        {/* Holdings */}
+        {holdings.map((holding) => {
+          const submarketTitle = assetSubmarketMap.get(holding.asset?.id ?? 0);
+          const badgeStyle = submarketTitle ? getSubmarketBadgeStyle(submarketTitle) : null;
+          return (
+            <TouchableOpacity
+              key={holding.id}
+              style={[styles.assetRow, { backgroundColor: theme.card }]}
+              onPress={() => handleHoldingPress(holding)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.assetRowContent}>
+                <View style={styles.assetRowTopLine}>
+                  <Text style={[styles.assetRowName, { color: theme.text, fontFamily: 'Anybody' }]}>
+                    {holding.asset?.title ?? 'Asset'}
+                  </Text>
+                  <Text style={[styles.assetRowAmount, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
+                    {Math.round(Number(holding.quantity ?? 0)).toLocaleString('fr-FR')}€
+                  </Text>
+                </View>
+                {badgeStyle && (
+                  <View style={[styles.assetBadge, { backgroundColor: badgeStyle.bg }]}>
+                    <Text style={[styles.assetBadgeText, { color: badgeStyle.text }]}>
+                      {submarketTitle}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
       {/* Bottom Game Controls */}
-      <View style={[styles.bottomControls, { paddingBottom: insets.bottom }]}>
-        {!hasGameStarted ? (
-          // Boutons avant que le jeu ne commence
-          <View style={styles.startButtonsContainer}>
-            <TouchableOpacity
-              style={[
-                {
-                  ...CashouTheme.button.primary,
-                  backgroundColor: theme.card,
-                  borderColor: theme.border,
-                  opacity: isStarting ? 0.6 : 1,
-                  minWidth: 140,
-                }
-              ]}
-              onPress={handleStartGame}
-              activeOpacity={CashouTheme.button.primary.activeOpacity}
-              disabled={isStarting}
-            >
-              {isStarting ? (
-                <ActivityIndicator size="small" color={theme.text} />
-              ) : (
-                <Text style={[
-                  {
-                    ...CashouTheme.button.primary.text,
-                    fontFamily: CashouTheme.fonts.subheading,
-                    color: theme.text,
-                  }
-                ]}>
-                  Demarrer
-                </Text>
-              )}
-            </TouchableOpacity>
-
-            {/* Bouton Reset (dev only) */}
-            {__DEV__ && (
-              <TouchableOpacity
-                style={[
-                  styles.resetButton,
-                  {
-                    backgroundColor: '#FF5252',
-                    opacity: isResetting ? 0.6 : 1,
-                  }
-                ]}
-                onPress={handleResetLevel}
-                activeOpacity={0.8}
-                disabled={isResetting}
-              >
-                {isResetting ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.resetButtonText}>Reset</Text>
-                )}
-              </TouchableOpacity>
-            )}
-          </View>
-        ) : (
-
-            <View style={[styles.dateContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              {isGameEnded ? (
-                <StopIcon width={28} height={28} stroke={theme.text} />
-              ) : isPaused ? (
-                <PauseIcon width={28} height={28} stroke={theme.text} />
-              ) : (
-                <FastForwardIcon width={28} height={28} fill={theme.text} />
-              )}
-              <Text style={[styles.dateText, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
-                {formatDate(gameDate)}
-              </Text>
+      {!isGameEnded && (
+        <View style={[styles.bottomControls, { paddingBottom: insets.bottom + 8 }]}>
+          {isInPreparation ? (
+            <View style={styles.startButtonsContainer}>
+              <ActionPillButton
+                label="Investir"
+                iconName="add"
+                onPress={handleAddAsset}
+                style={{ flex: 0, paddingHorizontal: 24, maxWidth: undefined }}
+              />
+              <ActionPillButton
+                label="Commencer"
+                iconName="play"
+                onPress={handleStartGame}
+                isLoading={isStarting}
+                style={{ flex: 0, paddingHorizontal: 24, maxWidth: undefined }}
+              />
             </View>
-        )}
-      </View>
+          ) : (
+            <ActionPillButton
+              label="Investir"
+              iconName="add"
+              onPress={handleAddAsset}
+              style={{ flex: 0, paddingHorizontal: 28, maxWidth: undefined }}
+            />
+          )}
+        </View>
+      )}
 
       {/* Modal de confirmation si aucun investissement */}
       <Modal
@@ -1412,7 +1358,7 @@ export default function GameCurrentScreen() {
         backdropComponent={renderAssetsBackdrop}
         backgroundStyle={{ backgroundColor: theme.background }}
         handleIndicatorStyle={{
-          backgroundColor: isDark ? '#4A4D65' : '#D0D0D0',
+          backgroundColor: theme.borderLight,
           width: 40,
         }}
       >
@@ -1421,11 +1367,11 @@ export default function GameCurrentScreen() {
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 24 }}
         >
           {/* Search */}
-          <View style={[styles.assetsSheetSearch, { backgroundColor: isDark ? theme.card : '#FFFFFF', borderColor: isDark ? theme.border : '#E0E0E0' }]}>
+          <View style={[styles.assetsSheetSearch, { backgroundColor: theme.card, borderColor: theme.borderLight }]}>
             <TextInput
               style={[styles.assetsSheetSearchInput, { color: theme.text, fontFamily: CashouTheme.fonts.body }]}
               placeholder="Rechercher"
-              placeholderTextColor={isDark ? '#9BA1A6' : '#9CA3AF'}
+              placeholderTextColor={theme.iconMuted}
               value={assetsSearchQuery}
               onChangeText={setAssetsSearchQuery}
               autoCapitalize="none"
@@ -1437,7 +1383,7 @@ export default function GameCurrentScreen() {
           <Text style={[styles.assetsSheetSectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
             Trendings
           </Text>
-          <View style={[styles.assetsSheetTabsBar, { backgroundColor: isDark ? theme.card : 'white', borderColor: isDark ? theme.border : '#E0E0E0' }]}>
+          <View style={[styles.assetsSheetTabsBar, { backgroundColor: theme.card, borderColor: theme.borderLight }]}>
             <TouchableOpacity
               style={[
                 styles.assetsSheetTab,
@@ -1480,20 +1426,22 @@ export default function GameCurrentScreen() {
                 }}
               >
                 <View style={styles.assetsSheetRowLeft}>
-                  <Text style={[styles.assetsSheetRowName, { color: theme.text, fontFamily: 'Anybody' }]}>
-                    {asset.title ?? asset.symbol ?? 'Asset'}
-                  </Text>
+                  <View style={styles.assetsSheetRowTopLine}>
+                    <Text style={[styles.assetsSheetRowName, { color: theme.text, fontFamily: 'Anybody' }]}>
+                      {asset.title ?? asset.symbol ?? 'Asset'}
+                    </Text>
+                    <Text style={[styles.assetsSheetRowPrice, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
+                      {asset.maxAmount != null ? `${Number(asset.maxAmount).toLocaleString('fr-FR')}€` : (getAdjustedRate(asset.id, asset.rate) != null ? `${getAdjustedRate(asset.id, asset.rate)}%` : '—')}
+                    </Text>
+                  </View>
                   {asset.submarket?.title && (
-                    <View style={[styles.assetsSheetBadge, { backgroundColor: isDark ? '#3D3358' : '#D8CCE8' }]}>
-                      <Text style={{ color: isDark ? '#E0D4F0' : '#4A3560', fontSize: 13, fontFamily: CashouTheme.fonts.body }}>
+                    <View style={[styles.assetsSheetBadge, { backgroundColor: getSubmarketBadgeStyle(asset.submarket.title).bg }]}>
+                      <Text style={[styles.assetBadgeText, { color: getSubmarketBadgeStyle(asset.submarket.title).text }]}>
                         {asset.submarket.title}
                       </Text>
                     </View>
                   )}
                 </View>
-                <Text style={[styles.assetsSheetRowPrice, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
-                  {asset.maxAmount != null ? `${Number(asset.maxAmount).toLocaleString('fr-FR')}€` : (getAdjustedRate(asset.id, asset.rate) != null ? `${getAdjustedRate(asset.id, asset.rate)}%` : '—')}
-                </Text>
               </TouchableOpacity>
             ))
           )}
@@ -1536,104 +1484,66 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
   },
-  card: {
-    flex: 1,
-    marginBottom: 32,
+  portfolioCard: {
+    borderRadius: 22,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 6,
+    marginBottom: 8,
   },
-  titleRow: {
+  portfolioRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  portfolioLabel: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  portfolioTotal: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  portfolioSeparator: {
+    height: 3,
+    backgroundColor: '#4A90D9',
+    borderRadius: 2,
+  },
+  assetRow: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 22,
+    marginBottom: 8,
+  },
+  assetRowContent: {
+    flexDirection: 'column',
+    gap: 8,
+  },
+  assetRowTopLine: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
   },
-  title: {
-    fontSize: 24,
-  },
-  infoButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  separator: {
-    height: 2,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    marginBottom: 16,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -6,
-  },
-  statCardWrapper: {
-    width: '50%',
-    padding: 6,
-  },
-  statCard: {
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 100,
-  },
-  statLabel: {
-    fontSize: 13,
-    opacity: 0.7,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  statValue: {
-    fontSize: 32,
-    textAlign: 'center',
-  },
-  assetsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -6,
-  },
-  assetCardWrapper: {
-    width: '50%',
-    padding: 6,
-  },
-  assetCard: {
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 2,
-    height: 120,
-  },
-  addAssetCard: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addAssetIcon: {
-    fontSize: 48,
-    fontWeight: '300',
-  },
-  assetTitle: {
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  holdingQuantity: {
+  assetRowName: {
     fontSize: 18,
     fontWeight: '600',
-    marginBottom: 8,
+    flex: 1,
   },
-  assetRateContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  assetBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 999,
   },
-  assetRateArrow: {
-    fontSize: 20,
-    marginRight: 4,
+  assetBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'Anybody',
   },
-  assetRate: {
-    fontSize: 24,
+  assetRowAmount: {
+    fontSize: 22,
+    fontWeight: '700',
   },
   bottomControls: {
     position: 'absolute',
@@ -1647,44 +1557,10 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     gap: 16,
   },
-  controlButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  dateContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 28,
-    borderWidth: 2,
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  dateText: {
-    fontSize: 18,
-  },
   startButtonsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  resetButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 12,
-    minWidth: 80,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  resetButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,
@@ -1841,27 +1717,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   assetsSheetRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 18,
+    paddingVertical: 14,
     borderRadius: 22,
     marginBottom: 10,
   },
   assetsSheetRowLeft: {
+    flexDirection: 'column',
+    gap: 8,
+  },
+  assetsSheetRowTopLine: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    flex: 1,
+    justifyContent: 'space-between',
   },
   assetsSheetRowName: {
     fontSize: 20,
     fontWeight: '600',
+    flex: 1,
   },
   assetsSheetBadge: {
+    alignSelf: 'flex-start',
     paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingVertical: 4,
     borderRadius: 999,
   },
   assetsSheetRowPrice: {
