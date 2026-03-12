@@ -36,10 +36,10 @@ export function CashouHeader({
     }
   };
 
-  const iconColor = '#1C1E33';
-  const pillBg = '#FFB472';
-  const pillBorder = 'rgba(0, 0, 0, 0.06)';
+  const pillBg = colors.accent;
+  const pillBorder = isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)';
   const pillTextColor = '#1C1E33';
+  const iconColor = pillTextColor;
 
   return (
     <View
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   subtitleText: {
-    fontSize: 12,
+    fontSize: 15,
     fontFamily: 'Anybody',
     fontWeight: '400',
     textAlign: 'center',

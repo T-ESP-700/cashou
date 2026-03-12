@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
+import { CashouTheme } from '@/constants/cashou-theme';
 import { Card, Badge } from '@/components/ui';
 
 interface LevelCardProps {
@@ -44,7 +45,7 @@ export function LevelCard({
 
   const badgeConfig = getBadgeConfig();
   const isPositiveReturn = currentReturn >= 0;
-  const returnColor = isPositiveReturn ? '#22C55E' : '#EF4444';
+  const returnColor = isPositiveReturn ? CashouTheme.colors.status.success : CashouTheme.colors.status.error;
   const returnArrow = isPositiveReturn ? '↑' : '↓';
 
   // Special display for not started level

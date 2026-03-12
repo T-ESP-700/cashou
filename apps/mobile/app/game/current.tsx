@@ -731,17 +731,24 @@ export default function GameCurrentScreen() {
       setHeaderOptions({
         showBackButton: true,
         title: `Niveau ${stats.level}`,
-        onTitlePress: () => setShowLevelInfoModal(true),
+        onTitlePress: isGameEnded ? undefined : () => setShowLevelInfoModal(true),
       });
-    }, [setHeaderOptions, stats.level])
+    }, [setHeaderOptions, stats.level, isGameEnded])
   );
 
   // Configure header: dynamic subtitle (date + game state)
   useEffect(() => {
-    const statusIcon = isGameEnded ? ' ⏹' : isPaused ? '' : ' ►';
-    setHeaderOptions({
-      subtitle: gameInstanceId ? `${formatDate(gameDate)}${statusIcon}` : undefined,
-    });
+    if (isGameEnded) {
+      setHeaderOptions({
+        subtitle: undefined,
+        onTitlePress: undefined,
+      });
+    } else {
+      const statusIcon = isPaused ? '' : ' ►';
+      setHeaderOptions({
+        subtitle: gameInstanceId ? `${formatDate(gameDate)}${statusIcon}` : undefined,
+      });
+    }
   }, [gameDate, isPaused, isGameEnded, gameInstanceId, setHeaderOptions]);
 
   // Auto-show level info modal for new games (when no gameId is passed)
@@ -1134,8 +1141,9 @@ export default function GameCurrentScreen() {
               {totalPortfolio.toLocaleString('fr-FR')}€
             </Text>
           </View>
-          <View style={styles.portfolioSeparator} />
         </View>
+
+        <View style={styles.portfolioSeparator} />
 
         {/* Cash Row */}
         <View style={[styles.assetRow, { backgroundColor: theme.card }]}>
@@ -1334,6 +1342,7 @@ export default function GameCurrentScreen() {
       <LevelInfoModal
         visible={showLevelInfoModal}
         onClose={() => setShowLevelInfoModal(false)}
+        fromCurrentScreen
         level={levelData?.level ? {
           ...levelData.level,
           description: levelData.level.description ?? null,
@@ -1507,8 +1516,10 @@ const styles = StyleSheet.create({
   },
   portfolioSeparator: {
     height: 3,
-    backgroundColor: '#4A90D9',
+    backgroundColor: '#3A3A3A',
     borderRadius: 2,
+    marginHorizontal: 20,
+    marginBottom: 8,
   },
   assetRow: {
     paddingHorizontal: 20,
