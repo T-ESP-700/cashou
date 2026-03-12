@@ -211,11 +211,12 @@ import Logo from '../assets/Frame 93.png';
       if (!messageDiv) return;
       messageDiv.classList.remove('hidden');
       messageDiv.textContent = text;
-      messageDiv.className = `mt-4 p-4 rounded-lg ${
-        type === 'success' 
-          ? 'bg-green-100 text-green-700' 
-          : 'bg-red-100 text-red-700'
-      }`;
+      const styleClasses = type === 'success' 
+        ? 'bg-green-100 text-green-700' 
+        : type === 'info' 
+          ? 'bg-yellow-100 text-yellow-800' 
+          : 'bg-red-100 text-red-700';
+      messageDiv.className = `mt-4 p-4 rounded-lg ${styleClasses}`;
     }
 
     // Fonction pour vérifier si l'email existe déjà
@@ -271,7 +272,7 @@ import Logo from '../assets/Frame 93.png';
         
         if (checkData.success && checkData.exists) {
           // L'email existe déjà dans la liste
-          showMessage(messageDiv, checkData.message || 'Vous êtes déjà inscrit !', 'success');
+          showMessage(messageDiv, checkData.message || 'Vous êtes déjà inscrit !', 'info');
           submitBtn.disabled = false;
           submitBtn.textContent = originalText || 'M\'inscrire';
           return;

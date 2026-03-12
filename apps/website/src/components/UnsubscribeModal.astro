@@ -60,11 +60,12 @@
     function showMessage(text, type) {
       unsubscribeMessageDiv.classList.remove('hidden');
       unsubscribeMessageDiv.textContent = text;
-      unsubscribeMessageDiv.className = `mt-4 p-4 rounded-lg ${
-        type === 'success' 
+      const styleClasses = type === 'unsubscribe' 
+        ? 'bg-red-100 text-red-700' 
+        : type === 'success' 
           ? 'bg-green-100 text-green-700' 
-          : 'bg-red-100 text-red-700'
-      }`;
+          : 'bg-red-100 text-red-700';
+      unsubscribeMessageDiv.className = `mt-4 p-4 rounded-lg ${styleClasses}`;
     }
 
     // Fonction pour ouvrir la modal
@@ -111,7 +112,7 @@
         const data = await response.json();
 
         if (data.success) {
-          showMessage(data.message || 'Vous avez été désinscrit avec succès.', 'success');
+          showMessage(data.message || 'Vous avez été désinscrit avec succès.', 'unsubscribe');
           unsubscribeForm.reset();
         } else {
           // Gérer les différents cas d'erreur
