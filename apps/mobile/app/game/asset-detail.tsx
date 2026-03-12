@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  useColorScheme as useRNColorScheme,
   ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
@@ -12,15 +11,14 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
+import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useHeaderOptions } from '@/hooks/use-header';
 import { PriceChart } from '@/components/price-chart';
 
 export default function AssetDetailScreen() {
-  const colorScheme = useRNColorScheme();
-  const isDark = colorScheme === 'dark';
-  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const { colors: theme, isDark, status } = useCashouTheme();
   const router = useRouter();
   const params = useLocalSearchParams();
   const insets = useSafeAreaInsets();
@@ -161,7 +159,7 @@ export default function AssetDetailScreen() {
           </View>
         ) : error ? (
           <View style={styles.centerContainer}>
-            <Text style={[styles.errorText, { color: '#DC2626', fontFamily: CashouTheme.fonts.body }]}>
+            <Text style={[styles.errorText, { color: status.error, fontFamily: CashouTheme.fonts.body }]}>
               {error}
             </Text>
           </View>

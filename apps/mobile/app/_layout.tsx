@@ -76,7 +76,9 @@ function RootNavigatorContent() {
       {showHeader && (
         <CashouHeader
           title={headerOptions.title}
+          subtitle={headerOptions.subtitle}
           showBackButton={headerOptions.showBackButton}
+          onTitlePress={headerOptions.onTitlePress}
           onMenuPress={headerOptions.onMenuPress}
           onBackPress={headerOptions.onBackPress}
         />
@@ -133,15 +135,15 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <BottomSheetModalProvider>
-        <ThemePreferenceProvider>
-          <AuthProvider>
-            <NotificationProvider>
+      <ThemePreferenceProvider>
+        <AuthProvider>
+          <NotificationProvider>
+            <BottomSheetModalProvider>
               <RootLayoutInner />
-            </NotificationProvider>
-          </AuthProvider>
-        </ThemePreferenceProvider>
-      </BottomSheetModalProvider>
+            </BottomSheetModalProvider>
+          </NotificationProvider>
+        </AuthProvider>
+      </ThemePreferenceProvider>
     </GestureHandlerRootView>
   );
 }

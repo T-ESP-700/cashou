@@ -1,6 +1,8 @@
-import { Tabs } from 'expo-router';
+
+import { Tabs, usePathname } from 'expo-router';
+import { BottomTabBarProps , BottomTabBar } from '@react-navigation/bottom-tabs';
 import React from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HapticTab } from '@/components/haptic-tab';
 import { CashouTheme } from '@/constants/cashou-theme';
@@ -23,10 +25,12 @@ export default function TabLayout() {
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const insets = useSafeAreaInsets();
 
-  const focusedIconColor = "#172D4E";
-  const unfocusedIconColor = isDark ? "rgba(255, 255, 255, 0.6)" : "rgba(0, 0, 0, 0.6)";
+  const focusedIconColor = isDark ? '#FFFFFF' : '#172D4E';
+  const unfocusedIconColor = isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)';
 
-  const bottomMargin = Math.max(TAB_BAR_MARGIN_BOTTOM, insets.bottom + 8);
+  const bottomMargin = Platform.OS === 'ios'
+    ? Math.max(TAB_BAR_MARGIN_BOTTOM, insets.bottom - 8)
+    : Math.max(TAB_BAR_MARGIN_BOTTOM, insets.bottom + 8);
 
   const renderTabIcon = (SvgIcon: React.FC<any>, focused: boolean) => (
     <View
@@ -49,11 +53,29 @@ export default function TabLayout() {
   );
 
   return (
-    <View style={{ flex: 1 }}>
-      <Tabs
+
+    <Tabs
+      tabBar={(props: BottomTabBarProps) => (
+        <View>
+          {/* Overlay: from mid-tabbar down to screen bottom */}
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: bottomMargin + TAB_BAR_HEIGHT / 2,
+              backgroundColor: theme.background,
+              opacity: 0.85,
+            }}
+          />
+          <BottomTabBar {...props} />
+        </View>
+      )}
       screenOptions={{
-        tabBarActiveTintColor: "#1C1E33",
-        tabBarInactiveTintColor: "rgba(0, 0, 0, 0.4)",
+        tabBarActiveTintColor: isDark ? '#FFFFFF' : '#1C1E33',
+        tabBarInactiveTintColor: isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)',
         tabBarStyle: {
           position: "absolute",
           bottom: bottomMargin,
@@ -163,6 +185,5 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
-    </View>
   );
 }

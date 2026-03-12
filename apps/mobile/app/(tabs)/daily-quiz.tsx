@@ -939,7 +939,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     marginBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+    borderBottomColor: 'rgba(128, 128, 128, 0.2)',
   },
   bottomSheetCloseButton: {
     padding: 8,

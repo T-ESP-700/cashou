@@ -154,18 +154,18 @@ export default function DicoScreen() {
   if (isLoading && entries.length === 0) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-          <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color={theme.accent} />
-            <Text
-              style={[
-                styles.loadingText,
-                { color: theme.text, fontFamily: CashouTheme.fonts.body },
-              ]}
-            >
-              Chargement du dictionnaire...
-            </Text>
-          </View>
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={theme.accent} />
+          <Text
+            style={[
+              styles.loadingText,
+              { color: theme.text, fontFamily: CashouTheme.fonts.body },
+            ]}
+          >
+            Chargement du dictionnaire...
+          </Text>
         </View>
+      </View>
     );
   }
 
@@ -173,39 +173,40 @@ export default function DicoScreen() {
   if (error && entries.length === 0) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-          <View style={styles.centerContainer}>
-            <Ionicons
-              name="cloud-offline-outline"
-              size={64}
-              color={theme.icon}
-            />
+        <View style={styles.centerContainer}>
+          <Ionicons
+            name="cloud-offline-outline"
+            size={64}
+            color={theme.iconMuted}
+          />
+          <Text
+            style={[
+              styles.errorText,
+              { color: theme.text, fontFamily: CashouTheme.fonts.body },
+            ]}
+          >
+            {error}
+          </Text>
+          <Pressable
+            style={[styles.retryButton, { backgroundColor: theme.accent }]}
+            onPress={() => fetchEntries()}
+          >
             <Text
               style={[
-                styles.errorText,
-                { color: theme.text, fontFamily: CashouTheme.fonts.body },
+                styles.retryButtonText,
+                { fontFamily: CashouTheme.fonts.body },
               ]}
             >
-              {error}
+              Réessayer
             </Text>
-            <Pressable
-              style={[styles.retryButton, { backgroundColor: theme.accent }]}
-              onPress={() => fetchEntries()}
-            >
-              <Text
-                style={[
-                  styles.retryButtonText,
-                  { fontFamily: CashouTheme.fonts.body },
-                ]}
-              >
-                Réessayer
-              </Text>
-            </Pressable>
-          </View>
+          </Pressable>
         </View>
+      </View>
     );
   }
 
   return (
+    <>
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         {/* Content */}
         <View style={styles.content}>
@@ -231,7 +232,7 @@ export default function DicoScreen() {
             <Ionicons
               name="search"
               size={20}
-              color={theme.icon}
+              color={theme.iconMuted}
               style={styles.searchIcon}
             />
             <TextInput
@@ -243,7 +244,7 @@ export default function DicoScreen() {
                 },
               ]}
               placeholder="Rechercher un terme..."
-              placeholderTextColor={theme.icon}
+              placeholderTextColor={theme.iconMuted}
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoCapitalize="none"
@@ -254,7 +255,7 @@ export default function DicoScreen() {
                 <Ionicons
                   name="close-circle"
                   size={20}
-                  color={theme.icon}
+                  color={theme.iconMuted}
                 />
               </TouchableOpacity>
             )}
@@ -279,7 +280,7 @@ export default function DicoScreen() {
                 <Ionicons
                   name="book-outline"
                   size={64}
-                  color={theme.icon}
+                  color={theme.iconMuted}
                 />
                 <Text
                   style={[
@@ -303,7 +304,7 @@ export default function DicoScreen() {
                 <Ionicons
                   name="search-outline"
                   size={48}
-                  color={theme.icon}
+                  color={theme.iconMuted}
                 />
                 <Text
                   style={[
@@ -357,64 +358,66 @@ export default function DicoScreen() {
           </ScrollView>
         </View>
 
-        {/* Bottom Sheet for Definition - rendered via portal above tab bar */}
-        <BottomSheetModal
-          ref={bottomSheetRef}
-          enableDynamicSizing
-          onChange={handleSheetChanges}
-          enablePanDownToClose
-          backdropComponent={renderBackdrop}
-          maxDynamicContentSize={600}
-          backgroundStyle={{
-            backgroundColor: theme.background,
-          }}
-          handleIndicatorStyle={{
-            backgroundColor: isDark ? '#4A4D65' : '#D0D0D0',
-            width: 40,
-          }}
+      </View>
+
+      {/* Bottom Sheet for Definition - Dynamic sizing (rendered via portal above tab bar) */}
+      <BottomSheetModal
+        ref={bottomSheetRef}
+        enableDynamicSizing
+        onChange={handleSheetChanges}
+        enablePanDownToClose
+        backdropComponent={renderBackdrop}
+        maxDynamicContentSize={600}
+        backgroundStyle={{
+          backgroundColor: theme.background,
+        }}
+        handleIndicatorStyle={{
+          backgroundColor: theme.borderLight,
+          width: 40,
+        }}
+      >
+        <BottomSheetView
+          style={[
+            styles.sheetContent,
+            { paddingBottom: insets.bottom + 24 },
+          ]}
         >
-          <BottomSheetView
-            style={[
-              styles.sheetContent,
-              { paddingBottom: insets.bottom + 24 },
-            ]}
-          >
-            {selectedEntry && (
-              <>
-                {/* Term Title */}
+          {selectedEntry && (
+            <>
+              {/* Term Title */}
+              <Text
+                style={[
+                  styles.sheetTitle,
+                  { color: theme.text, fontFamily: CashouTheme.fonts.heading },
+                ]}
+              >
+                {selectedEntry.term}
+              </Text>
+
+              {/* Definition Card */}
+              <View
+                style={[
+                  styles.definitionCard,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                  },
+                ]}
+              >
                 <Text
                   style={[
-                    styles.sheetTitle,
-                    { color: theme.text, fontFamily: CashouTheme.fonts.heading },
+                    styles.definitionText,
+                    { color: theme.text, fontFamily: CashouTheme.fonts.body },
                   ]}
                 >
-                  {selectedEntry.term}
+                  {selectedEntry.definition}
                 </Text>
-
-                {/* Definition Card */}
-                <View
-                  style={[
-                    styles.definitionCard,
-                    {
-                      backgroundColor: theme.card,
-                      borderColor: theme.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.definitionText,
-                      { color: theme.text, fontFamily: CashouTheme.fonts.body },
-                    ]}
-                  >
-                    {selectedEntry.definition}
-                  </Text>
-                </View>
-              </>
-            )}
-          </BottomSheetView>
-        </BottomSheetModal>
-      </View>
+              </View>
+            </>
+          )}
+        </BottomSheetView>
+      </BottomSheetModal>
+    </>
   );
 }
 

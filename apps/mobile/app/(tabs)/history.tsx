@@ -1,9 +1,8 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { CashouTheme } from '@/constants/cashou-theme';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
-import { Card } from '@/components/ui';
 import { trpcClient } from '@/lib/trpc';
 import { useAuth } from '@/hooks/use-auth';
 import { useHeaderOptions } from '@/hooks/use-header';
@@ -18,7 +17,7 @@ interface DayStatus {
 export default function HistoryScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { colors, fonts, spacing, borderRadius } = useCashouTheme();
+  const { colors: theme, isDark } = useCashouTheme();
 
   useHeaderOptions({ showBackButton: true, onBackPress: () => router.back(), title: 'Historique' });
 
@@ -221,7 +220,17 @@ export default function HistoryScreen() {
         disabled={!hasQuiz}
         activeOpacity={0.7}
       >
-        <Text style={[styles.dayNumber, { fontFamily: fonts.body, color: textColor }]}>{day}</Text>
+        <Text
+          style={[
+            styles.dayNumber,
+            {
+              fontFamily: CashouTheme.fonts.body,
+              color: hasQuiz ? CashouTheme.colors.special.white : theme.text,
+            },
+          ]}
+        >
+          {day}
+        </Text>
       </TouchableOpacity>
     );
   };
@@ -282,16 +291,19 @@ export default function HistoryScreen() {
             </View>
           )}
 
-          {/* Légende */}
-          <View style={styles.legend}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#88D498' }]} />
-              <Text style={{ fontSize: 12, fontFamily: fonts.body, color: colors.text, opacity: 0.6 }}>Complété</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: colors.accent }]} />
-              <Text style={{ fontSize: 12, fontFamily: fonts.body, color: colors.text, opacity: 0.6 }}>À faire</Text>
-            </View>
+        {/* Légende */}
+        <View style={styles.legend}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendIcon, { backgroundColor: CashouTheme.colors.status.success }]} />
+            <Text style={[styles.legendText, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
+              Quiz complété
+            </Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendIcon, { backgroundColor: theme.accent }]} />
+            <Text style={[styles.legendText, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
+              Quiz à faire
+            </Text>
           </View>
         </Card>
       </ScrollView>
@@ -361,9 +373,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  legendIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(128, 128, 128, 0.15)',
+  },
+  legendText: {
+    fontSize: 14,
   },
 });

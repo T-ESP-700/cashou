@@ -5,12 +5,12 @@ import {
   TextInput,
   ScrollView,
   StyleSheet,
-  useColorScheme as useRNColorScheme,
   TouchableOpacity,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
+import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { API_URL } from '@/lib/api-config';
 import { useNotifications } from '@/hooks/use-notifications';
@@ -28,9 +28,7 @@ type AssetItem = {
 
 
 export default function AssetsScreen() {
-  const colorScheme = useRNColorScheme();
-  const isDark = colorScheme === 'dark';
-  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const { colors: theme, isDark, status } = useCashouTheme();
   const router = useRouter();
   const params = useLocalSearchParams();
   const { setIsOnAssetsScreen, activeGameInstanceId, pendingEventCompletion, setPendingEventCompletion, assetsScreenDepth, setAssetsScreenDepth, assetsScreenDepthRef, setPausedByAssets, pausedByAssets } = useNotifications();
@@ -272,16 +270,16 @@ export default function AssetsScreen() {
         {!isSearching && (
           <View style={[styles.sectionHeader, { backgroundColor: theme.secondary }]}>
             <Text style={[styles.title, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>Assets</Text>
-            <View style={[styles.separator, { backgroundColor: isDark ? '#2F324A' : '#D3D7E0' }]} />
+            <View style={[styles.separator, { backgroundColor: theme.borderLight }]} />
           </View>
         )}
 
         {/* Search bar */}
         <View style={[styles.searchWrapper, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <Ionicons name="search" size={20} color={isDark ? '#C7CAD1' : '#6B7280'} />
+          <Ionicons name="search" size={20} color={theme.iconMuted} />
           <TextInput
             placeholder="Rechercher"
-            placeholderTextColor={isDark ? '#9BA1A6' : '#9CA3AF'}
+            placeholderTextColor={theme.iconMuted}
             value={query}
             onChangeText={setQuery}
             style={[styles.input, { color: theme.text, fontFamily: CashouTheme.fonts.body }]}
@@ -295,19 +293,19 @@ export default function AssetsScreen() {
           )}
           {error && !loading && (
             <View style={{ marginTop: 4 }}>
-              <Text style={{ color: '#DC2626', fontFamily: CashouTheme.fonts.body }}>
+              <Text style={{ color: status.error, fontFamily: CashouTheme.fonts.body }}>
                 {error}
               </Text>
               {__DEV__ && (
-                <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 4 }}>
+                <Text style={{ color: theme.iconMuted, fontSize: 12, marginTop: 4 }}>
                   URL API: {API_URL}
                 </Text>
               )}
               <TouchableOpacity
                 onPress={fetchAssets}
-                style={{ marginTop: 8, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#FFB472' }}
+                style={{ marginTop: 8, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: theme.accent }}
               >
-                <Text style={{ color: '#1C1E33', fontFamily: CashouTheme.fonts.subheading }}>Réessayer</Text>
+                <Text style={{ color: theme.text, fontFamily: CashouTheme.fonts.subheading }}>Réessayer</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -366,7 +364,7 @@ function AssetCard({ asset, isDark, router, gameInstanceId, walletId }: AssetCar
       <Text style={[styles.cardTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>{asset.name}</Text>
       <View style={styles.tagsRow}>
         {asset.tags.map((t) => (
-          <View key={t} style={[styles.tag, { backgroundColor: isDark ? '#2A2D45' : '#EFF1F5', borderColor: theme.border }]}>
+          <View key={t} style={[styles.tag, { backgroundColor: theme.secondary, borderColor: theme.borderLight }]}>
             <Text style={{ color: theme.text, fontSize: 12, fontFamily: CashouTheme.fonts.body }}>{t}</Text>
           </View>
         ))}
