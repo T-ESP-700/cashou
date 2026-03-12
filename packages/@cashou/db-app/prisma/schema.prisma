@@ -120,6 +120,7 @@ model Level {
   startBalance   Int?     @map("start_balance")
   pointsRequired Int?     @map("points_required")
   description    String?
+  tip            String?  @map("tip")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
