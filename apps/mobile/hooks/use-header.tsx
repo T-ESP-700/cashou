@@ -4,6 +4,8 @@ import { useFocusEffect } from 'expo-router';
 interface HeaderOptions {
   title: string;
   showBackButton: boolean;
+  subtitle?: string;
+  onTitlePress?: () => void;
   onMenuPress?: () => void;
   onBackPress?: () => void;
 }
@@ -51,7 +53,7 @@ export function useHeader() {
 
 // Hook pour configurer le header à chaque focus d'un écran
 export function useHeaderOptions(options: Partial<HeaderOptions>) {
-  const { setOptions } = useHeader();
+  const { setOptions, resetOptions } = useHeader();
 
   // Utiliser une ref pour éviter les boucles infinies avec les fonctions callback
   const optionsRef = useRef(options);
@@ -59,7 +61,9 @@ export function useHeaderOptions(options: Partial<HeaderOptions>) {
 
   useFocusEffect(
     useCallback(() => {
+      // Reset to defaults first, then apply screen-specific options
+      resetOptions();
       setOptions(optionsRef.current);
-    }, [setOptions])
+    }, [setOptions, resetOptions])
   );
 }

@@ -1,17 +1,15 @@
 import React from 'react';
-import { StyleSheet, ScrollView, ActivityIndicator, View, useColorScheme as useRNColorScheme } from 'react-native';
+import { StyleSheet, ScrollView, ActivityIndicator, View } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { UserProfile } from '@/components/auth/user-profile';
 import { useAuth } from '@/hooks/use-auth';
 import { useHeaderOptions } from '@/hooks/use-header';
-import { CashouTheme } from '@/constants/cashou-theme';
+import { useCashouTheme } from '@/hooks/use-cashou-theme';
 
 export default function ProfileScreen() {
   const { isAuthenticated, isLoading } = useAuth();
-  const colorScheme = useRNColorScheme();
-  const isDark = colorScheme === 'dark';
-  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const { colors: theme } = useCashouTheme();
 
   // Configure header for this screen
   useHeaderOptions({ showBackButton: false, title: 'Profil' });

@@ -1,18 +1,16 @@
 import React, { useState } from 'react';
-import { StyleSheet, TouchableOpacity, ScrollView, View, KeyboardAvoidingView, Platform, useColorScheme as useRNColorScheme } from 'react-native';
+import { StyleSheet, TouchableOpacity, ScrollView, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { LoginForm } from '@/components/auth/login-form';
 import { SignupForm } from '@/components/auth/signup-form';
 import { useAuth } from '@/hooks/use-auth';
-import { CashouTheme } from '@/constants/cashou-theme';
+import { useCashouTheme } from '@/hooks/use-cashou-theme';
 
 export default function AuthScreen() {
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
   const { refreshUser } = useAuth();
-  const colorScheme = useRNColorScheme();
-  const isDark = colorScheme === 'dark';
-  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const { colors: theme } = useCashouTheme();
 
   return (
     <KeyboardAvoidingView

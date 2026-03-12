@@ -1,9 +1,9 @@
-import { View, Text, useColorScheme as useRNColorScheme, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
-// import { CashouHeader } from '@/components/cashou-header';
 import { CashouTheme } from '@/constants/cashou-theme';
+import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useAuth } from '@/hooks/use-auth';
 import { useHeaderOptions } from '@/hooks/use-header';
@@ -34,9 +34,7 @@ export default function DailyQuizScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { user, refreshUser } = useAuth();
-  const colorScheme = useRNColorScheme();
-  const isDark = colorScheme === 'dark';
-  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const { colors: theme, isDark } = useCashouTheme();
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -638,7 +636,7 @@ export default function DailyQuizScreen() {
                       styles.answerText,
                       {
                         fontFamily: CashouTheme.fonts.body,
-                        color: selectedAnswerId === answer.id ? '#1C1E33' : theme.text,
+                        color: selectedAnswerId === answer.id ? CashouTheme.colors.special.darkText : theme.text,
                       },
                     ]}
                   >
@@ -723,14 +721,14 @@ export default function DailyQuizScreen() {
                         styles.answerButton,
                         {
                           backgroundColor: showAsCorrect
-                            ? '#4CAF50'
+                            ? CashouTheme.colors.status.success
                             : showAsIncorrect
-                            ? '#F44336'
+                            ? CashouTheme.colors.status.error
                             : theme.card,
                           borderColor: showAsCorrect
-                            ? '#4CAF50'
+                            ? CashouTheme.colors.status.success
                             : showAsIncorrect
-                            ? '#F44336'
+                            ? CashouTheme.colors.status.error
                             : theme.border,
                           borderWidth: 2,
                           flexDirection: 'row',
@@ -783,7 +781,7 @@ export default function DailyQuizScreen() {
               <Text
                 style={[
                   styles.startButtonText,
-                  { fontFamily: CashouTheme.fonts.subheading, color: '#1C1E33' },
+                  { fontFamily: CashouTheme.fonts.subheading, color: CashouTheme.colors.special.darkText },
                 ]}
               >
                 {hasStartedQuiz ? 'Reprendre' : 'Commencer'}
@@ -805,12 +803,12 @@ export default function DailyQuizScreen() {
               disabled={!selectedAnswerId || isSubmitting}
             >
               {isSubmitting ? (
-                <ActivityIndicator size="small" color="#1C1E33" />
+                <ActivityIndicator size="small" color={CashouTheme.colors.special.darkText} />
               ) : (
                 <Text
                   style={[
                     styles.validateButtonText,
-                    { fontFamily: CashouTheme.fonts.subheading, color: '#1C1E33' },
+                    { fontFamily: CashouTheme.fonts.subheading, color: CashouTheme.colors.special.darkText },
                   ]}
                 >
                   Valider
@@ -833,7 +831,7 @@ export default function DailyQuizScreen() {
                 <Text
                   style={[
                     styles.correctionButtonText,
-                    { fontFamily: CashouTheme.fonts.subheading, color: '#1C1E33' },
+                    { fontFamily: CashouTheme.fonts.subheading, color: CashouTheme.colors.special.darkText },
                   ]}
                 >
                   Correction
@@ -908,7 +906,7 @@ export default function DailyQuizScreen() {
               <Text
                 style={[
                   styles.validateButtonText,
-                  { fontFamily: CashouTheme.fonts.subheading, color: '#1C1E33' },
+                  { fontFamily: CashouTheme.fonts.subheading, color: CashouTheme.colors.special.darkText },
                 ]}
               >
                 {correctionQuestionIndex < questions.length - 1 ? 'Suivant' : 'Retour'}
@@ -1017,7 +1015,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 32,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.1)',
+    borderTopColor: 'rgba(128, 128, 128, 0.2)',
   },
   startButton: {
     paddingVertical: 16,
@@ -1182,7 +1180,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     marginBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+    borderBottomColor: 'rgba(128, 128, 128, 0.2)',
   },
   bottomSheetTitle: {
     fontSize: 24,

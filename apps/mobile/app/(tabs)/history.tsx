@@ -1,7 +1,8 @@
-import { View, Text, useColorScheme as useRNColorScheme, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { CashouTheme } from '@/constants/cashou-theme';
+import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useAuth } from '@/hooks/use-auth';
 import { useHeaderOptions } from '@/hooks/use-header';
@@ -16,9 +17,7 @@ interface DayStatus {
 export default function HistoryScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const colorScheme = useRNColorScheme();
-  const isDark = colorScheme === 'dark';
-  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const { colors: theme, isDark } = useCashouTheme();
 
   // Configure header for this screen
   useHeaderOptions({ showBackButton: true, onBackPress: () => router.back(), title: 'Historique' });
@@ -299,7 +298,7 @@ export default function HistoryScreen() {
             styles.dayNumber,
             {
               fontFamily: CashouTheme.fonts.body,
-              color: hasQuiz ? '#FFFFFF' : theme.text,
+              color: hasQuiz ? CashouTheme.colors.special.white : theme.text,
             },
           ]}
         >
@@ -381,7 +380,7 @@ export default function HistoryScreen() {
         {/* Légende */}
         <View style={styles.legend}>
           <View style={styles.legendItem}>
-            <View style={[styles.legendIcon, { backgroundColor: '#4CAF50' }]} />
+            <View style={[styles.legendIcon, { backgroundColor: CashouTheme.colors.status.success }]} />
             <Text style={[styles.legendText, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
               Quiz complété
             </Text>
@@ -487,7 +486,7 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
+    borderColor: 'rgba(128, 128, 128, 0.15)',
   },
   legendText: {
     fontSize: 14,

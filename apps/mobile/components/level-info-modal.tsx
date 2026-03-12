@@ -8,9 +8,11 @@ import {
   Dimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import Svg, { Path } from 'react-native-svg';
+import { Ionicons } from '@expo/vector-icons';
 import { ActionPillButton } from '@/components/ui';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
 
@@ -18,6 +20,7 @@ const OVERLAY_PH = 18;
 const BACKDROP_PADDING = 6;
 const BACKDROP_MAX_WIDTH = 410;
 const BACKDROP_RATIO = 0.97;
+const TOTAL_PAGES = 2;
 
 interface LevelInfoData {
   id: number;
@@ -41,9 +44,10 @@ interface LevelInfoModalProps {
   onClose: () => void;
   level: LevelInfoData | null;
   goals: GoalData[];
+  fromCurrentScreen?: boolean;
 }
 
-export function LevelInfoModal({ visible, onClose, level, goals }: LevelInfoModalProps) {
+export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScreen = false }: LevelInfoModalProps) {
   const { colors, isDark } = useCashouTheme();
   const [currentPage, setCurrentPage] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
@@ -81,6 +85,35 @@ export function LevelInfoModal({ visible, onClose, level, goals }: LevelInfoModa
     setCurrentPage(page);
   };
 
+  const isLastPage = currentPage === TOTAL_PAGES - 1;
+
+  const handleButtonPress = () => {
+    if (!isLastPage) {
+      // Go to next slide
+      const nextPage = currentPage + 1;
+      scrollRef.current?.scrollTo({ x: nextPage * pageWidth, animated: true });
+      setCurrentPage(nextPage);
+    } else {
+      onClose();
+    }
+  };
+
+  const buttonLabel = isLastPage
+    ? (fromCurrentScreen ? 'Fermer' : 'Accéder au niveau')
+    : 'Suivant';
+
+  const buttonIcon = isLastPage
+    ? (fromCurrentScreen
+      ? <Ionicons name="close" size={17} color={colors.text} />
+      : <Svg width={17} height={17} viewBox="0 0 24 24" fill="none">
+          <Path
+            d="M21.4086 9.35258C23.5305 10.5065 23.5305 13.4935 21.4086 14.6474L8.59662 21.6145C6.53435 22.736 4 21.2763 4 18.9671L4 5.0329C4 2.72368 6.53435 1.26402 8.59661 2.38548L21.4086 9.35258Z"
+            fill={colors.text}
+          />
+        </Svg>
+    )
+    : <Ionicons name="chevron-forward" size={17} color={colors.text} />;
+
   return (
     <Modal
       visible={visible}
@@ -94,116 +127,115 @@ export function LevelInfoModal({ visible, onClose, level, goals }: LevelInfoModa
         tint={isDark ? 'dark' : 'light'}
         style={styles.levelInfoBlur}
       >
-        <View style={styles.levelInfoOverlay}>
-          <View style={[styles.levelInfoCardBackdrop, { backgroundColor: colors.secondary }]}>
-            <View style={[styles.levelInfoCard, { backgroundColor: colors.card, shadowColor: colors.border }]}>
-              <ScrollView
-                ref={scrollRef}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onMomentumScrollEnd={handleScroll}
-                style={styles.levelInfoScrollView}
-              >
-                {/* Page 0: Description */}
-                <View style={[styles.levelInfoPage, { width: pageWidth }]}>
-                  {/* Title */}
-                  <Text style={[styles.levelInfoTitle, { color: colors.text }]}>
-                    Niveau {level.number}
-                  </Text>
-
-                  {/* Subtitle */}
-                  <Text style={[styles.levelInfoSubtitle, { color: colors.text }]}>
-                    {level.title || 'Sans titre'}
-                  </Text>
-
-                  {/* Description */}
-                  <Text style={[styles.levelInfoDescription, { color: colors.text }]}>
-                    {level.description || 'Aucune description disponible pour ce niveau.'}
-                  </Text>
-
-                  {/* Info Cards */}
-                  <View style={styles.levelInfoCardsRow}>
-                    <View style={[styles.levelInfoInfoCard, { backgroundColor: colors.secondary }]}>
-                      <Text style={[styles.levelInfoInfoLabel, { color: colors.text }]}>Durée</Text>
-                      <Text style={[styles.levelInfoInfoValue, { color: colors.text }]}>
-                        {formatDuration(level.duration)}
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View style={styles.levelInfoOverlay}>
+            <View
+              onStartShouldSetResponder={() => true}
+              onResponderRelease={(e) => e.stopPropagation()}
+              style={[styles.levelInfoCardBackdrop, { backgroundColor: colors.secondary }]}
+            >
+                <View style={[styles.levelInfoCard, { backgroundColor: colors.card, shadowColor: colors.border }]}>
+                  <ScrollView
+                    ref={scrollRef}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    onMomentumScrollEnd={handleScroll}
+                    style={styles.levelInfoScrollView}
+                  >
+                    {/* Page 0: Description */}
+                    <View style={[styles.levelInfoPage, { width: pageWidth }]}>
+                      {/* Title */}
+                      <Text style={[styles.levelInfoTitle, { color: colors.text }]}>
+                        Niveau {level.number}
                       </Text>
-                    </View>
-                    <View style={[styles.levelInfoInfoCard, { backgroundColor: colors.secondary }]}>
-                      <Text style={[styles.levelInfoInfoLabel, { color: colors.text }]}>Capital</Text>
-                      <Text style={[styles.levelInfoInfoValue, { color: colors.text }]}>
-                        {level.startBalance ?? 1000}€
+
+                      {/* Subtitle */}
+                      <Text style={[styles.levelInfoSubtitle, { color: colors.text }]}>
+                        {level.title || 'Sans titre'}
                       </Text>
+
+                      {/* Description */}
+                      <Text style={[styles.levelInfoDescription, { color: colors.text }]}>
+                        {level.description || 'Aucune description disponible pour ce niveau.'}
+                      </Text>
+
+                      {/* Info Cards */}
+                      <View style={styles.levelInfoCardsRow}>
+                        <View style={[styles.levelInfoInfoCard, { backgroundColor: colors.secondary }]}>
+                          <Text style={[styles.levelInfoInfoLabel, { color: colors.text }]}>Durée</Text>
+                          <Text style={[styles.levelInfoInfoValue, { color: colors.text }]}>
+                            {formatDuration(level.duration)}
+                          </Text>
+                        </View>
+                        <View style={[styles.levelInfoInfoCard, { backgroundColor: colors.secondary }]}>
+                          <Text style={[styles.levelInfoInfoLabel, { color: colors.text }]}>Capital</Text>
+                          <Text style={[styles.levelInfoInfoValue, { color: colors.text }]}>
+                            {level.startBalance ?? 1000}€
+                          </Text>
+                        </View>
+                      </View>
                     </View>
+
+                    {/* Page 1: Goals */}
+                    <View style={[styles.levelInfoPage, { width: pageWidth }]}>
+                      {/* Title */}
+                      <Text style={[styles.levelInfoTitle, { color: colors.text }]}>
+                        Objectifs
+                      </Text>
+
+                      {/* Goals List */}
+                      {displayGoals.map((goal, index) => {
+                        const isMandatory = goal.isMandatory !== false;
+                        return (
+                          <View
+                            key={goal.id}
+                            style={[
+                              styles.levelInfoGoalCard,
+                              { backgroundColor: colors.secondary },
+                              index < displayGoals.length - 1 && { marginBottom: 8 },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.levelInfoGoalBadge,
+                                { color: colors.text },
+                                isMandatory && { color: colors.accent },
+                              ]}
+                            >
+                              {isMandatory ? 'Objectif principal' : 'Bonus'}
+                            </Text>
+                            <Text style={[styles.levelInfoGoalTitle, { color: colors.text }]}>
+                              {goal.title || `Objectif ${index + 1}`}
+                            </Text>
+                            <Text style={[styles.levelInfoGoalDescription, { color: colors.text }]}>
+                              {goal.description || 'À accomplir'}
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
+
+                  {/* Page Indicator */}
+                  <View style={styles.levelInfoDots}>
+                    <View style={[styles.levelInfoDot, { backgroundColor: colors.progressBarBackground }, currentPage === 0 && { backgroundColor: colors.accent }]} />
+                    <View style={[styles.levelInfoDot, { backgroundColor: colors.progressBarBackground }, currentPage === 1 && { backgroundColor: colors.accent }]} />
+                  </View>
+
+                  {/* Button */}
+                  <View style={styles.levelInfoActions}>
+                    <ActionPillButton
+                      label={buttonLabel}
+                      customIcon={buttonIcon}
+                      onPress={handleButtonPress}
+                      style={{ flex: 0, maxWidth: undefined, paddingHorizontal: 10 }}
+                    />
                   </View>
                 </View>
-
-                {/* Page 1: Goals */}
-                <View style={[styles.levelInfoPage, { width: pageWidth }]}>
-                  {/* Title */}
-                  <Text style={[styles.levelInfoTitle, { color: colors.text }]}>
-                    Objectifs
-                  </Text>
-
-                  {/* Goals List */}
-                  {displayGoals.map((goal, index) => {
-                    const isMandatory = goal.isMandatory !== false;
-                    return (
-                      <View
-                        key={goal.id}
-                        style={[
-                          styles.levelInfoGoalCard,
-                          { backgroundColor: colors.secondary },
-                          index < displayGoals.length - 1 && { marginBottom: 8 },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.levelInfoGoalBadge,
-                            { color: colors.text },
-                            isMandatory && { color: colors.accent },
-                          ]}
-                        >
-                          {isMandatory ? 'Objectif principal' : 'Bonus'}
-                        </Text>
-                        <Text style={[styles.levelInfoGoalTitle, { color: colors.text }]}>
-                          {goal.title || `Objectif ${index + 1}`}
-                        </Text>
-                        <Text style={[styles.levelInfoGoalDescription, { color: colors.text }]}>
-                          {goal.description || 'À accomplir'}
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </View>
-              </ScrollView>
-
-              {/* Page Indicator */}
-              <View style={styles.levelInfoDots}>
-                <View style={[styles.levelInfoDot, { backgroundColor: colors.progressBarBackground }, currentPage === 0 && { backgroundColor: colors.accent }]} />
-                <View style={[styles.levelInfoDot, { backgroundColor: colors.progressBarBackground }, currentPage === 1 && { backgroundColor: colors.accent }]} />
-              </View>
-
-              {/* Button */}
-              <View style={styles.levelInfoActions}>
-                <ActionPillButton
-                  label="Commencer"
-                  customIcon={
-                    <Svg width={17} height={17} viewBox="0 0 24 24" fill="none">
-                      <Path
-                        d="M21.4086 9.35258C23.5305 10.5065 23.5305 13.4935 21.4086 14.6474L8.59662 21.6145C6.53435 22.736 4 21.2763 4 18.9671L4 5.0329C4 2.72368 6.53435 1.26402 8.59661 2.38548L21.4086 9.35258Z"
-                        fill={colors.text}
-                      />
-                    </Svg>
-                  }
-                  onPress={onClose}
-                  style={{ flex: 0, maxWidth: undefined, paddingHorizontal: 10 }}
-                />
               </View>
             </View>
-          </View>
-        </View>
+        </TouchableWithoutFeedback>
       </BlurView>
     </Modal>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, useColorScheme as useRNColorScheme } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/hooks/use-auth';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
@@ -18,10 +18,8 @@ interface UserLevelEntry {
 export default function LevelsScreen() {
   const { user, isLoading: authLoading } = useAuth();
   const { colors, special, fonts, spacing, borderRadius } = useCashouTheme();
+  const theme = colors;
   const insets = useSafeAreaInsets();
-  const colorScheme = useRNColorScheme();
-  const isDark = colorScheme === 'dark';
-  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
 
   const [userLevels, setUserLevels] = useState<UserLevelEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -98,7 +96,7 @@ export default function LevelsScreen() {
                     Niveau {entry.level.number ?? entry.level.id}
                   </Text>
                   {!entry.unlocked && (
-                    <Ionicons name="lock-closed" size={18} color={colors.icon?.muted ?? '#9CA3AF'} />
+                    <Ionicons name="lock-closed" size={18} color={colors.iconMuted} />
                   )}
                 </View>
                 {entry.level.title && (
@@ -113,7 +111,7 @@ export default function LevelsScreen() {
                     key={i}
                     name={i <= entry.stars ? 'star' : 'star-outline'}
                     size={22}
-                    color={i <= entry.stars ? special.gold : (colors.icon?.muted ?? '#9CA3AF')}
+                    color={i <= entry.stars ? special.gold : (colors.iconMuted)}
                   />
                 ))}
               </View>
