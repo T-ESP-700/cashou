@@ -116,6 +116,7 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
                 body: JSON.stringify({
                     email: email.trim(),
                     password,
+                    name: username.trim(),
                     username: username.trim(),
                 }),
             });
