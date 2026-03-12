@@ -77,9 +77,10 @@ export class GameEventProcessorService {
       return { success: false, reason: "Game has ended" };
     }
 
-    // Check if game is already paused with action required (another event pending)
-    if (gameInstance.isPaused && gameInstance.actionRequired) {
-      return { success: false, reason: "Game already has pending action" };
+    // Check if game is paused (manual pause or another event pending)
+    // Events should not fire while the game is paused for any reason
+    if (gameInstance.isPaused) {
+      return { success: false, reason: gameInstance.actionRequired ? "Game already has pending action" : "Game is paused" };
     }
 
     const userId = gameInstance.userId;

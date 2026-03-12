@@ -656,14 +656,26 @@ export default function DailyQuizScreen() {
         visible={quizState === 'completed'}
         transparent
         animationType="fade"
-        onRequestClose={() => router.replace('/(tabs)/')}
+        onRequestClose={() => {
+          if (isLevelQuiz && gameInstanceId) {
+            router.push({ pathname: '/(tabs)/summary', params: { gameId: gameInstanceId.toString() } });
+          } else {
+            router.replace('/(tabs)/');
+          }
+        }}
       >
         <BlurView
           intensity={60}
           tint={isDark ? 'dark' : 'light'}
           style={styles.modalBlur}
         >
-          <Pressable style={styles.modalOverlay} onPress={() => router.replace('/(tabs)/')}>
+          <Pressable style={styles.modalOverlay} onPress={() => {
+            if (isLevelQuiz && gameInstanceId) {
+              router.push({ pathname: '/(tabs)/summary', params: { gameId: gameInstanceId.toString() } });
+            } else {
+              router.replace('/(tabs)/');
+            }
+          }}>
             <Pressable onPress={(e) => e.stopPropagation()} style={[styles.modalCardBackdrop, { backgroundColor: colors.secondary }]}>
               <View style={[styles.modalCard, { backgroundColor: colors.card, shadowColor: colors.border }]}>
                 <Text style={{ fontSize: 64, textAlign: 'center', marginBottom: 8 }}>{completedEmoji}</Text>
@@ -726,7 +738,7 @@ export default function DailyQuizScreen() {
 
       {/* Boutons flottants pour question et correction - style ActionPillButton */}
       {!isLoading && !error && (quizState === 'question' || quizState === 'correction') && (
-        <View style={[styles.bottomActions, { paddingBottom: insets.bottom + 16 }]}>
+        <View style={[styles.bottomActions, { paddingBottom: insets.bottom + 16, backgroundColor: colors.background }]}>
           {quizState === 'question' && (
             <ActionPillButton
               label="Valider"
@@ -740,18 +752,22 @@ export default function DailyQuizScreen() {
 
           {quizState === 'correction' && (
             <ActionPillButton
-              label={correctionQuestionIndex < questions.length - 1 ? 'Suivant' : 'Accueil'}
-              iconName={correctionQuestionIndex < questions.length - 1 ? 'arrow-forward' : 'home-outline'}
+              label={correctionQuestionIndex < questions.length - 1 ? 'Suivant' : (isLevelQuiz ? 'Recap' : 'Accueil')}
+              iconName={correctionQuestionIndex < questions.length - 1 ? 'arrow-forward' : (isLevelQuiz ? 'document-text-outline' : 'home-outline')}
               onPress={() => {
                 if (correctionQuestionIndex < questions.length - 1) {
                   setCorrectionQuestionIndex(correctionQuestionIndex + 1);
                   bottomSheetRef.current?.close();
                 } else {
                   bottomSheetRef.current?.close();
-                  router.push('/(tabs)/');
+                  if (isLevelQuiz && gameInstanceId) {
+                    router.push({ pathname: '/(tabs)/summary', params: { gameId: gameInstanceId.toString() } });
+                  } else {
+                    router.push('/(tabs)/');
+                  }
                 }
               }}
-              style={{ flex: 1, maxWidth: '100%' }}
+              style={{ alignSelf: 'center', paddingHorizontal: 20 }}
             />
           )}
         </View>
@@ -921,7 +937,6 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 18,
     paddingTop: 10,
-    backgroundColor: 'transparent',
   },
   infoButton: {
     marginLeft: 8,

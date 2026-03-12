@@ -52,27 +52,34 @@ export default function TabLayout() {
     </View>
   );
 
+  const pathname = usePathname();
+  const hiddenTabBarRoutes = ['/daily-quiz', '/summary'];
+  const isTabBarHidden = hiddenTabBarRoutes.some((route) => pathname.includes(route));
+
   return (
 
     <Tabs
-      tabBar={(props: BottomTabBarProps) => (
-        <View>
-          {/* Overlay: from mid-tabbar down to screen bottom */}
-          <View
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: bottomMargin + TAB_BAR_HEIGHT / 2,
-              backgroundColor: theme.background,
-              opacity: 0.85,
-            }}
-          />
-          <BottomTabBar {...props} />
-        </View>
-      )}
+      tabBar={(props: BottomTabBarProps) => {
+        if (isTabBarHidden) return null;
+        return (
+          <View>
+            {/* Overlay: from mid-tabbar down to screen bottom */}
+            <View
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: bottomMargin + TAB_BAR_HEIGHT / 2,
+                backgroundColor: theme.background,
+                opacity: 0.85,
+              }}
+            />
+            <BottomTabBar {...props} />
+          </View>
+        );
+      }}
       screenOptions={{
         tabBarActiveTintColor: isDark ? '#FFFFFF' : '#1C1E33',
         tabBarInactiveTintColor: isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)',

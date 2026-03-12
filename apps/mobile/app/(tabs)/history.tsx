@@ -305,6 +305,7 @@ export default function HistoryScreen() {
               Quiz à faire
             </Text>
           </View>
+        </View>
         </Card>
       </ScrollView>
     </View>

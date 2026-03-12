@@ -619,14 +619,13 @@ export default function GameSummaryScreen() {
       </ScrollView>
 
       {user && gameInstance?.level?.id && (
-        <View style={[styles.bottomActions, { paddingBottom: insets.bottom + 10 }]}>
+        <View style={[styles.bottomActions, { paddingBottom: insets.bottom + 10, backgroundColor: theme.background }]}>
           <ActionPillButton
             label={isReplaying ? '...' : 'Rejouer'}
             iconName="refresh-outline"
             onPress={handleReplay}
             disabled={isReplaying}
             isLoading={isReplaying}
-            style={styles.bottomActionButton}
           />
 
           {!isHistoryMode && (
@@ -635,7 +634,6 @@ export default function GameSummaryScreen() {
                 label="Quiz"
                 customIcon={<QuizActionIcon width={18} height={18} />}
                 onPress={handleGoToQuiz}
-                style={styles.bottomActionButton}
               />
             ) : (
               !!nextLevel?.id && (
@@ -643,7 +641,6 @@ export default function GameSummaryScreen() {
                   label={`Niveau ${nextLevel.number ?? ''}`.trim()}
                   iconName="play"
                   onPress={handleGoToNextLevel}
-                  style={styles.bottomActionButton}
                 />
               )
             )
@@ -914,10 +911,8 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 18,
     paddingTop: 10,
-    backgroundColor: 'transparent',
   },
   bottomActionButton: {
-    flex: 1,
   },
   levelContextTitle: {
     fontSize: 16,

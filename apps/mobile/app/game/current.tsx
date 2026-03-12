@@ -116,7 +116,7 @@ export default function GameCurrentScreen() {
   const { colors: theme, isDark } = useCashouTheme();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { pendingEventCompletion, setPendingEventCompletion, isOnAssetsScreen, setActiveGameInstanceId, eventNotification } = useNotifications();
+  const { pendingEventCompletion, setPendingEventCompletion, isOnAssetsScreen, setActiveGameInstanceId, eventNotification, triggerPendingEventCheck, shouldOpenAssetsSheet, setShouldOpenAssetsSheet } = useNotifications();
   const { setOptions: setHeaderOptions } = useHeader();
 
   const [levelData, setLevelData] = useState<LevelData | null>(null);
@@ -150,6 +150,7 @@ export default function GameCurrentScreen() {
   const [assetsLoading, setAssetsLoading] = useState(false);
   const [assetsSearchQuery, setAssetsSearchQuery] = useState('');
   const [selectedSubmarketId, setSelectedSubmarketId] = useState<number | null>(null);
+  const [isAssetsSheetOpen, setIsAssetsSheetOpen] = useState(false); // Track sheet visibility to freeze animations
 
   const [gameDate, setGameDate] = useState(GAME_START_DATE);
   const [gameTimeState, setGameTimeState] = useState<GameTimeState | null>(null);
@@ -672,6 +673,7 @@ export default function GameCurrentScreen() {
   useEffect(() => {
     if (!shouldOpenAssetsSheet) return;
     setShouldOpenAssetsSheet(false);
+    setIsAssetsSheetOpen(true); // Freeze date animation immediately
 
     const openAssetsFromEvent = async () => {
       if (pendingEventCompletion && gameInstanceId) {
@@ -780,7 +782,7 @@ export default function GameCurrentScreen() {
   // Animation locale de la date en temps réel (aucun appel backend)
   useEffect(() => {
     // Ne pas exécuter si on est en train d'animer ou si la partie est terminée
-    if (!gameTimeState || isPaused || isAnimating || isGameEnded || isEndingGame) return;
+    if (!gameTimeState || isPaused || isAnimating || isGameEnded || isEndingGame || isAssetsSheetOpen) return;
 
     // Vérifier immédiatement si le temps est écoulé
     if (checkIfTimeElapsed(gameTimeState)) {
@@ -803,7 +805,7 @@ export default function GameCurrentScreen() {
     }, UPDATE_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [gameTimeState, isPaused, isAnimating, isGameEnded, isEndingGame, isOnAssetsScreen, calculateGameDate, checkIfTimeElapsed, handleGameEnd]);
+  }, [gameTimeState, isPaused, isAnimating, isGameEnded, isEndingGame, isOnAssetsScreen, isAssetsSheetOpen, calculateGameDate, checkIfTimeElapsed, handleGameEnd]);
 
   // Resynchronisation quand on revient sur la page (sans animation)
   useFocusEffect(
@@ -1108,6 +1110,7 @@ export default function GameCurrentScreen() {
     try {
       if (index >= 0) {
         // Game is already paused by handleAddAsset or openAssetsFromEvent before expanding.
+        setIsAssetsSheetOpen(true);
         // Call pause again as a safety net (backend pause is idempotent).
         if (!isPaused) {
           console.log('[GameCurrentScreen] 🛒 Assets sheet OPENED → pausing game');
@@ -1140,7 +1143,8 @@ export default function GameCurrentScreen() {
           setIsPaused(false);
           console.log('[GameCurrentScreen] 🛒 Game resumed');
         }
-        // Reset search and filter when closing
+        // Reset search, filter and sheet state when closing
+        setIsAssetsSheetOpen(false);
         setAssetsSearchQuery('');
         setSelectedSubmarketId(null);
       }
@@ -1154,8 +1158,9 @@ export default function GameCurrentScreen() {
       Alert.alert('Erreur', 'Initialisation en cours, veuillez patienter...');
       return;
     }
-    // Pause the game immediately before opening the sheet to avoid race conditions
-    // (the onChange callback would pause too, but asynchronously during animation)
+    // Mark sheet as open immediately to freeze date animation
+    setIsAssetsSheetOpen(true);
+    // Pause the game before opening the sheet
     if (gameHasBeenStarted) {
       try {
         await trpcClient.gameInstance.pause.mutate({ id: gameInstanceId });
