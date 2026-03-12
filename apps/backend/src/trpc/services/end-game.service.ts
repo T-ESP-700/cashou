@@ -33,6 +33,7 @@ export interface EndGameModalContent {
     title: string;
     primaryMessage: string;
     secondaryMessage: string | null;
+    tip: string | null;
 }
 
 export interface EndGameResult {
@@ -237,12 +238,14 @@ export class EndGameService {
                 secondaryMessage: secondaryMessageFromGoal ?? (
                     firstBonusGoal ? "L'objectif secondaire n'a pas été atteint cette fois." : null
                 ),
+                tip: null,
             }
             : {
                 type: "PRIMARY_FAILURE",
                 title: "Dommage !",
                 primaryMessage: primaryMessageFromGoal ?? "Tu n'as pas atteint l'objectif principal.",
                 secondaryMessage: null,
+                tip: gameInstance.level?.tip ?? null,
             };
 
         // 6. Retourner le resultat (success = objectifs obligatoires atteints) + stars si enregistrement
@@ -349,6 +352,7 @@ export class EndGameService {
                 title: allMandatoryGoalsValidated ? "Bravo !" : "Dommage !",
                 primaryMessage: "",
                 secondaryMessage: null,
+                tip: null,
             },
             ...(completion && {
                 stars: completion.stars,

@@ -12,6 +12,7 @@ export const levelDataSchema = z.object({
     startBalance: z.number().int().min(0).nullish(),
     pointsRequired: z.number().int().min(0).nullish(),
     description: z.string().nullish(),
+    tip: z.string().nullish(),
 });
 export type LevelDataSchema = z.infer<typeof levelDataSchema>;
 

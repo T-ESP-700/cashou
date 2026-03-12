@@ -51,6 +51,13 @@ export const MODULE_CONFIGS: Record<BackofficeModule, ModuleConfig> = {
         placeholder: '500',
       },
       { key: 'description', label: 'Description', type: 'textarea', placeholder: 'Objectifs...' },
+      {
+        key: 'tip',
+        label: 'Conseil en cas d\'échec',
+        type: 'textarea',
+        placeholder: 'Conseil affiché si l\'objectif principal n\'est pas atteint...',
+        helperText: 'Affiché dans le modal de fin de partie en cas d\'échec uniquement',
+      },
     ],
   },
   goals: {
