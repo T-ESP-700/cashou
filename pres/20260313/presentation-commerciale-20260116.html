@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cashou - Présentation Commerciale</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            height: 100vh;
+            height: 100dvh; /* Dynamic viewport height pour Safari */
+            min-height: -webkit-fill-available;
+        }
+
+        body {
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #1C1E33;
+            color: #FFFFFF;
+            overflow: hidden;
+            height: 100vh;
+            height: 100dvh; /* Dynamic viewport height pour Safari */
+            min-height: -webkit-fill-available; /* Fallback pour Safari */
+        }
+
+        .slide {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh; /* Dynamic viewport height pour Safari */
+            min-height: -webkit-fill-available; /* Fallback pour Safari */
+            padding: 60px 80px;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .slide:not(.intro-slide):not(.demo-slide) {
+            padding-top: 0;
+        }
+
+        .slide:not(.intro-slide):not(.demo-slide) h2 {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 160px);
+            max-width: 1200px;
+            margin: 0;
+            padding: 0;
+        }
+
+        .slide:not(.intro-slide):not(.demo-slide) .content {
+            margin-top: 140px;
+        }
+
+        .slide.active {
+            display: flex;
+        }
+
+        h1 {
+            font-family: 'Rowdies', sans-serif;
+            font-size: 4rem;
+            font-weight: 700;
+            color: #FFB472;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .intro-slide h1 {
+            position: absolute;
+            top: 80px;
+            left: 0;
+            right: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0 80px;
+            text-align: center;
+        }
+
+        .intro-slide .intro-content {
+            margin-top: 140px;
+        }
+
+        h2 {
+            font-family: 'Roboto-Bold', sans-serif;
+            font-size: 3rem;
+            font-weight: 700;
+            color: #FFB472;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        h3 {
+            font-family: 'Roboto-Bold', sans-serif;
+            font-size: 1.5rem;
+            color: #FFFFFF;
+            margin-bottom: 10px;
+        }
+
+        .content {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        /* Animations */
+        .animate-item {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+
+        .animate-item.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Désactiver les transitions pour changement rapide */
+        body.no-transitions * {
+            transition: none !important;
+        }
+
+        .intro-slide {
+            justify-content: center;
+        }
+
+        .intro-content {
+            text-align: center;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .intro-logo {
+            max-width: 300px;
+            height: auto;
+            margin: 10px auto 30px auto;
+            display: block;
+            border-radius: 20px;
+        }
+
+        .intro-tagline {
+            font-size: 1.8rem;
+            color: #ECEDEE;
+            margin-top: 20px;
+            margin-bottom: 60px;
+            line-height: 1.6;
+        }
+
+        .intro-features {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            margin-top: 60px;
+            flex-wrap: wrap;
+        }
+
+        .intro-feature {
+            text-align: center;
+            flex: 0 0 auto;
+        }
+
+        .intro-feature-icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .intro-feature-title {
+            color: #FFB472;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .intro-feature-desc {
+            color: #9BA1A6;
+            font-size: 0.9rem;
+        }
+
+        .value-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .value-card {
+            background: #2A2D45;
+            border: 1px solid #3A3D55;
+            border-radius: 16px;
+            padding: 30px;
+        }
+
+        .value-card h3 {
+            color: #FFB472;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+
+        .value-card p {
+            color: #ECEDEE;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        .features-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .feature-card {
+            background: #2A2D45;
+            border: 1px solid #3A3D55;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .icon {
+            color: #FFB472;
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        .value-card h3 .icon,
+        .advantage-item h4 .icon {
+            font-size: 1.2em;
+            vertical-align: middle;
+        }
+
+        .feature-icon i {
+            color: #FFB472;
+        }
+
+        .roadmap-icon {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 2rem;
+            color: #FFB472;
+        }
+
+        .feature-card h3 {
+            color: #FFB472;
+            margin-bottom: 10px;
+        }
+
+        .feature-card p {
+            color: #ECEDEE;
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        .advantage-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+            margin-top: 40px;
+        }
+
+        .advantage-item {
+            background: #2A2D45;
+            border: 1px solid #3A3D55;
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+        }
+
+        .advantage-item h4 {
+            color: #FFB472;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+
+        .advantage-item p {
+            color: #9BA1A6;
+            font-size: 0.9rem;
+        }
+
+        .roadmap-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .roadmap-item {
+            background: #2A2D45;
+            border: 2px solid #172D4E;
+            border-radius: 16px;
+            padding: 30px;
+            position: relative;
+        }
+
+
+        .roadmap-item h3 {
+            color: #FFB472;
+            margin-bottom: 10px;
+        }
+
+        .roadmap-item p {
+            color: #ECEDEE;
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .metric-card {
+            background: #2A2D45;
+            border: 1px solid #3A3D55;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .metric-number {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #FFB472;
+            margin-bottom: 10px;
+        }
+
+        .metric-label {
+            color: #ECEDEE;
+            font-size: 1.1rem;
+        }
+
+        .demo-slide {
+            text-align: center;
+            background: linear-gradient(135deg, #1C1E33 0%, #172D4E 100%);
+            justify-content: center;
+        }
+
+        .demo-slide h1 {
+            font-size: 5rem;
+            margin-bottom: 40px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .demo-slide p {
+            font-size: 2rem;
+            color: #ECEDEE;
+            margin-top: 30px;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.05);
+                opacity: 0.9;
+            }
+        }
+
+        .slide-indicator {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #3A3D55;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .indicator.active {
+            background: #FFB472;
+            transform: scale(1.3);
+        }
+
+        .sommaire-slide {
+            text-align: left;
+        }
+
+        .sommaire-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 20px;
+        }
+
+        .sommaire-item {
+            background: #2A2D45;
+            border: 1px solid #3A3D55;
+            border-radius: 10px;
+            padding: 12px 20px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .sommaire-item:hover {
+            border-color: #FFB472;
+            transform: translateX(10px);
+        }
+
+        .sommaire-number {
+            background: #172D4E;
+            color: #FFB472;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .sommaire-text {
+            color: #ECEDEE;
+            font-size: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .slide {
+                padding: 40px 30px;
+            }
+
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            h2 {
+                font-size: 2rem;
+            }
+
+            .value-grid,
+            .features-list,
+            .roadmap-list,
+            .metrics-grid,
+            .advantage-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .intro-features {
+                gap: 30px;
+            }
+
+            .intro-feature-icon {
+                font-size: 3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Slide 1: Titre -->
+    <div class="slide active intro-slide" data-slide="0">
+        <div class="content">
+            <div class="intro-content">
+                <h1 class="animate-item">Cashou</h1>
+                <img src="cashou-logo.png" alt="Logo Cashou" class="intro-logo animate-item">
+                <p class="intro-tagline animate-item">
+                    L'app qui vous apprend à gérer votre argent<br>
+                    en toute sécurité !
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 2: Valeur ajoutée & Différenciation -->
+    <div class="slide" data-slide="1">
+        <div class="content">
+            <h2 class="animate-item">Une approche unique</h2>
+            <div class="value-grid">
+                <div class="value-card animate-item">
+                    <h3><i class="fas fa-gamepad icon"></i> Gamification</h3>
+                    <p>Transformation de l'apprentissage financier en expérience ludique et engageante pour maximiser l'adhésion des utilisateurs</p>
+                </div>
+                <div class="value-card animate-item">
+                    <h3><i class="fas fa-graduation-cap icon"></i> Pédagogie innovante</h3>
+                    <p>Approche progressive par niveaux avec quiz quotidiens et simulation de trading pour un apprentissage concret</p>
+                </div>
+                <div class="value-card animate-item">
+                    <h3><i class="fas fa-shield-alt icon"></i> Environnement sécurisé</h3>
+                    <p>Simulation complète sans risque financier réel, permettant l'expérimentation et l'apprentissage par l'erreur</p>
+                </div>
+                <div class="value-card animate-item">
+                    <h3><i class="fas fa-chart-line icon"></i> Engagement continu</h3>
+                    <p>Système de streaks, niveaux et progression pour maintenir la motivation et l'utilisation régulière</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 3: Fonctionnalités -->
+    <div class="slide" data-slide="2">
+        <div class="content">
+            <h2 class="animate-item">Fonctionnalités</h2>
+            <div class="features-list">
+                <div class="feature-card animate-item">
+                    <div class="feature-icon"><i class="fas fa-calendar-day"></i></div>
+                    <h3>Quiz quotidiens</h3>
+                    <p>Engagement quotidien avec suivi des streaks et historique des participations</p>
+                </div>
+                <div class="feature-card animate-item">
+                    <div class="feature-icon"><i class="fas fa-gamepad"></i></div>
+                    <h3>Système de niveaux</h3>
+                    <p>Progression structurée avec objectifs, balance de départ et déblocage progressif</p>
+                </div>
+                <div class="feature-card animate-item">
+                    <div class="feature-icon"><i class="fas fa-book-open"></i></div>
+                    <h3>Dictionnaire financier</h3>
+                    <p>Glossaire complet du vocabulaire financier</p>
+                </div>
+                <div class="feature-card animate-item">
+                    <div class="feature-icon"><i class="fas fa-chart-bar"></i></div>
+                    <h3>Suivi</h3>
+                    <p>Historique des quiz et des décisions d'investissement</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 4: Expérience utilisateur -->
+    <div class="slide" data-slide="3">
+        <div class="content">
+            <h2 class="animate-item">Expérience utilisateur</h2>
+            <div class="advantage-grid">
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-mobile-alt icon"></i> Mobile-first</h4>
+                    <p>Application en React Native optimisée mobile</p>
+                </div>
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-palette icon"></i> Interface moderne</h4>
+                    <p>Design épuré et intuitif pour une navigation fluide</p>
+                </div>
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-moon icon"></i> Mode sombre</h4>
+                    <p>Expérience visuelle confortable et moderne</p>
+                </div>
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-bell icon"></i> Notification intelligente</h4>
+                    <p>Rappel personnalisé pour ne pas perdre une miette des niveaux</p>
+                </div>
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-save icon"></i> Sauvegarde automatique</h4>
+                    <p>Vos données et progression sauvegardées en temps réel</p>
+                </div>
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-tools icon"></i> Backoffice complet</h4>
+                    <p>Interface d'administration pour gestion de contenu</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 5: Avantages techniques (business) -->
+    <div class="slide" data-slide="4">
+        <div class="content">
+            <h2 class="animate-item">Avantages techniques</h2>
+            <div class="value-grid">
+                <div class="value-card animate-item">
+                    <h3><i class="fas fa-bolt icon"></i> Développement rapide</h3>
+                    <p>Stack moderne (Bun, TypeScript, tRPC) permettant un développement et des déploiements plus rapides</p>
+                </div>
+                <div class="value-card animate-item">
+                    <h3><i class="fas fa-shield-alt icon"></i> Fiabilité</h3>
+                    <p>Type-safety end-to-end réduisant les bugs et garantissant la qualité du code</p>
+                </div>
+                <div class="value-card animate-item">
+                    <h3><i class="fas fa-chart-line icon"></i> Scalabilité</h3>
+                    <p>Architecture modulaire et monorepo facilitant l'évolution et la maintenance</p>
+                </div>
+                <div class="value-card animate-item">
+                    <h3><i class="fas fa-wrench icon"></i> Maintenabilité</h3>
+                    <p>Code structuré, tests automatisés et documentation complète pour une maintenance facilitée</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 6: Roadmap produit -->
+    <div class="slide" data-slide="5">
+        <div class="content">
+            <h2 class="animate-item">Roadmap produit</h2>
+            <div class="roadmap-list">
+                <div class="roadmap-item animate-item">
+                    <i class="fas fa-calendar-alt roadmap-icon"></i>
+                    <h3>Court terme</h3>
+                    <p>Expansion du contenu avec de nouveaux niveaux et enrichissement du dictionnaire financier</p>
+                </div>
+                <div class="roadmap-item animate-item">
+                    <i class="fas fa-calendar-alt roadmap-icon"></i>
+                    <h3>Moyen terme</h3>
+                    <p>Mise en place d'un système de succès avec badges, des titres et des avatars</p>
+                </div>
+                <div class="roadmap-item animate-item">
+                    <i class="fas fa-calendar-alt roadmap-icon"></i>
+                    <h3>Long terme</h3>
+                    <p>Fonctionnalités sociales avancées : défis entre amis, classements compétitifs entre utilisateurs</p>
+                </div>
+                <div class="roadmap-item animate-item">
+                    <i class="fas fa-calendar-alt roadmap-icon"></i>
+                    <h3>Évolution continue</h3>
+                    <p>Amélioration continue basée sur les retours utilisateurs et les besoins du marché</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 7: Maintenance -->
+    <div class="slide" data-slide="6">
+        <div class="content">
+            <h2 class="animate-item">Maintenance</h2>
+            <div class="advantage-grid">
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-book icon"></i> Documentation technique</h4>
+                    <p>Documentation complète API et guides techniques</p>
+                </div>
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-gamepad icon"></i> Documentation fonctionnelle</h4>
+                    <p>Documentation complète sur le game design et les fonctionnalités</p>
+                </div>
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-building icon"></i> Architecture maintenable</h4>
+                    <p>Code structuré et modulaire facilitant les évolutions</p>
+                </div>
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-sync-alt icon"></i> Mises à jour</h4>
+                    <p>Évolutions régulières et corrections continues</p>
+                </div>
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-vial icon"></i> Tests automatisés</h4>
+                    <p>Système de tests automatisés pour garantir la qualité du code et le bon fonctionnement de l'application</p>
+                </div>
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-ticket-alt icon"></i> Plan de gestion des risques et des incidents</h4>
+                    <p>Suivi des incidents et des problèmes avec historisations et base de connaissances</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 8: Chiffres clés / Métriques
+    <div class="slide" data-slide="7">
+        <div class="content">
+            <h2 class="animate-item">Chiffres clés</h2>
+            <div class="metrics-grid">
+                <div class="metric-card animate-item">
+                    <div class="metric-number">27</div>
+                    <div class="metric-label">Tables de données</div>
+                </div>
+                <div class="metric-card animate-item">
+                    <div class="metric-number">4</div>
+                    <div class="metric-label">Conteneurs Docker</div>
+                </div>
+                <div class="metric-card animate-item">
+                    <div class="metric-number">100%</div>
+                    <div class="metric-label">Type-safe (TypeScript)</div>
+                </div>
+                <div class="metric-card animate-item">
+                    <div class="metric-number">∞</div>
+                    <div class="metric-label">Un nombre infini d'idées pour alimenter le contenu</div>
+                </div>
+            </div>
+        </div>
+    </div> -->
+
+    <!-- Slide 9: Demo -->
+    <div class="slide demo-slide" data-slide="8">
+        <div class="content">
+            <h1 class="animate-item"><i class="fas fa-film" style="color: #FFB472;"></i></h1>
+            <h2 class="animate-item" style="color: #FFB472; font-size: 3.5rem;">Démo</h2>
+            <p class="animate-item">Passons à la démonstration</p>
+        </div>
+    </div>
+
+    <!-- Slide indicators -->
+    <div class="slide-indicator">
+        <span class="indicator active" onclick="goToSlide(0)"></span>
+        <span class="indicator" onclick="goToSlide(1)"></span>
+        <span class="indicator" onclick="goToSlide(2)"></span>
+        <span class="indicator" onclick="goToSlide(3)"></span>
+        <span class="indicator" onclick="goToSlide(4)"></span>
+        <span class="indicator" onclick="goToSlide(5)"></span>
+        <span class="indicator" onclick="goToSlide(6)"></span>
+        <span class="indicator" onclick="goToSlide(7)"></span>
+        <!-- <span class="indicator" onclick="goToSlide(8)"></span> -->
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        let slideAnimations = {}; // {slideIndex: currentAnimationIndex}
+        const slides = document.querySelectorAll('.slide');
+        const indicators = document.querySelectorAll('.indicator');
+        const totalSlides = slides.length;
+
+        // Initialiser les animations pour chaque slide
+        slides.forEach((slide, index) => {
+            slideAnimations[index] = 0;
+        });
+
+        function getAnimateItems(slideIndex) {
+            const slide = slides[slideIndex];
+            return slide ? slide.querySelectorAll('.animate-item') : [];
+        }
+
+        function revealNextItem(slideIndex) {
+            const items = getAnimateItems(slideIndex);
+            const currentAnim = slideAnimations[slideIndex];
+            
+            if (currentAnim < items.length) {
+                items[currentAnim].classList.add('visible');
+                slideAnimations[slideIndex] = currentAnim + 1;
+                return false; // Il reste des éléments à révéler
+            }
+            return true; // Tous les éléments sont révélés
+        }
+
+        function resetSlideAnimations(slideIndex) {
+            const items = getAnimateItems(slideIndex);
+            items.forEach(item => {
+                item.classList.remove('visible');
+            });
+            slideAnimations[slideIndex] = 0;
+        }
+
+        function showSlide(n, revealAll = false) {
+            // Désactiver les transitions pour changement rapide (avant tout changement)
+            if (revealAll) {
+                document.body.classList.add('no-transitions');
+            }
+            
+            // Cacher la slide actuelle
+            slides[currentSlide].classList.remove('active');
+            indicators[currentSlide].classList.remove('active');
+            
+            currentSlide = (n + totalSlides) % totalSlides;
+            
+            // Afficher la nouvelle slide
+            slides[currentSlide].classList.add('active');
+            indicators[currentSlide].classList.add('active');
+            
+            // Réinitialiser et révéler les animations
+            resetSlideAnimations(currentSlide);
+            
+            // Pour la slide demo, révéler tous les éléments en même temps
+            const isDemoSlide = slides[currentSlide].classList.contains('demo-slide');
+            
+            if (revealAll || isDemoSlide) {
+                // Révéler tous les éléments immédiatement (sans délai pour demo)
+                const items = getAnimateItems(currentSlide);
+                items.forEach((item) => {
+                    item.classList.add('visible');
+                });
+                slideAnimations[currentSlide] = items.length;
+                
+                // Réactiver les transitions après un très court délai
+                if (revealAll) {
+                    setTimeout(() => {
+                        document.body.classList.remove('no-transitions');
+                    }, 10);
+                }
+            } else {
+                // Révéler le premier élément
+                revealNextItem(currentSlide);
+            }
+        }
+
+        function nextSlide() {
+            const items = getAnimateItems(currentSlide);
+            const allRevealed = slideAnimations[currentSlide] >= items.length;
+            const isDemoSlide = slides[currentSlide].classList.contains('demo-slide');
+            
+            // Pour la slide demo, passer directement à la suivante
+            if (isDemoSlide || !allRevealed) {
+                if (!allRevealed) {
+                    // Révéler le prochain élément
+                    revealNextItem(currentSlide);
+                } else {
+                    // Passer à la slide suivante
+                    showSlide(currentSlide + 1);
+                }
+            } else {
+                // Passer à la slide suivante
+                showSlide(currentSlide + 1);
+            }
+        }
+
+        function previousSlide() {
+            const items = getAnimateItems(currentSlide);
+            const allRevealed = slideAnimations[currentSlide] >= items.length;
+            
+            if (!allRevealed && slideAnimations[currentSlide] > 0) {
+                // Masquer le dernier élément révélé
+                const currentAnim = slideAnimations[currentSlide] - 1;
+                items[currentAnim].classList.remove('visible');
+                slideAnimations[currentSlide] = currentAnim;
+            } else {
+                // Passer à la slide précédente
+                showSlide(currentSlide - 1, true);
+            }
+        }
+
+        function goToSlide(n) {
+            showSlide(n, true);
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') {
+                e.preventDefault();
+                nextSlide();
+            } 
+            else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
+                e.preventDefault();
+                previousSlide();
+            }
+        });
+
+        // Touch/swipe support
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            if (touchEndX > touchStartX + 50) {
+                // Swipe vers la droite = slide suivante
+                nextSlide();
+            }
+            if (touchEndX < touchStartX - 50) {
+                // Swipe vers la gauche = slide précédente
+                previousSlide();
+            }
+        }
+
+        // Verrouillage global pour éviter les changements multiples
+        let isChangingSlide = false;
+
+        // Trackpad/mouse swipe support
+        let mouseStartX = 0;
+        let mouseStartY = 0;
+        let mouseEndX = 0;
+        let mouseEndY = 0;
+        let isMouseDown = false;
+        let mouseMoveDistance = 0;
+
+        document.addEventListener('mousedown', (e) => {
+            if (isChangingSlide) return;
+            isMouseDown = true;
+            mouseStartX = e.clientX;
+            mouseStartY = e.clientY;
+            mouseMoveDistance = 0;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isMouseDown) {
+                mouseEndX = e.clientX;
+                mouseEndY = e.clientY;
+                const deltaX = Math.abs(mouseEndX - mouseStartX);
+                const deltaY = Math.abs(mouseEndY - mouseStartY);
+                mouseMoveDistance = Math.max(mouseMoveDistance, deltaX);
+            }
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (isMouseDown && !isChangingSlide) {
+                const deltaX = mouseEndX - mouseStartX;
+                const deltaY = Math.abs(mouseEndY - mouseStartY);
+                // Détecter un swipe horizontal (deltaX plus grand que deltaY et mouvement suffisant)
+                if (mouseMoveDistance > 500 && Math.abs(deltaX) > deltaY && Math.abs(deltaX) > 500) {
+                    isChangingSlide = true;
+                    if (deltaX > 0) {
+                        // Swipe vers la droite = slide suivante
+                        showSlide(currentSlide + 1, true);
+                    } else {
+                        // Swipe vers la gauche = slide précédente
+                        showSlide(currentSlide - 1, true);
+                    }
+                    setTimeout(() => {
+                        isChangingSlide = false;
+                    }, 300);
+                }
+                isMouseDown = false;
+            }
+        });
+
+        // Support pour les gestes trackpad avec wheel (scroll horizontal)
+        let wheelDeltaX = 0;
+        let lastWheelTime = 0;
+
+        document.addEventListener('wheel', (e) => {
+            // Ignorer si un changement de slide est en cours
+            if (isChangingSlide) {
+                e.preventDefault();
+                return;
+            }
+            
+            // Détecter le scroll horizontal (deltaX) sur trackpad
+            if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+                e.preventDefault();
+                const now = Date.now();
+                
+                // Réinitialiser si trop de temps entre les événements (nouveau geste)
+                if (now - lastWheelTime > 50) {
+                    wheelDeltaX = 0;
+                }
+                
+                wheelDeltaX += e.deltaX;
+                lastWheelTime = now;
+                
+                // Déclencher immédiatement si le seuil est atteint
+                if (Math.abs(wheelDeltaX) > 500) {
+                    isChangingSlide = true;
+                    if (wheelDeltaX > 0) {
+                        // Swipe vers la droite = slide suivante
+                        showSlide(currentSlide + 1, true);
+                    } else {
+                        // Swipe vers la gauche = slide précédente
+                        showSlide(currentSlide - 1, true);
+                    }
+                    wheelDeltaX = 0;
+                    
+                    // Déverrouiller après un délai pour éviter les déclenchements multiples
+                    setTimeout(() => {
+                        isChangingSlide = false;
+                    }, 400);
+                }
+            }
+        }, { passive: false });
+
+        // Initialiser la première slide
+        showSlide(0, true);
+    </script>
+</body>
+</html>
+
