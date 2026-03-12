@@ -1,11 +1,13 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useAuth } from '@/hooks/use-auth';
 import { useHeaderOptions } from '@/hooks/use-header';
+import { Card } from '@/components/ui';
 
 interface DayStatus {
   date: Date;
@@ -187,7 +189,7 @@ export default function HistoryScreen() {
     if (isFuture) {
       return (
         <View key={day} style={[styles.dayCell, { opacity: 0.25 }]}>
-          <Text style={[styles.dayNumber, { fontFamily: fonts.body, color: colors.text }]}>{day}</Text>
+          <Text style={[styles.dayNumber, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>{day}</Text>
         </View>
       );
     }
@@ -196,12 +198,12 @@ export default function HistoryScreen() {
     const isCompleted = dayStatus?.isCompleted || false;
 
     let bgColor = 'transparent';
-    let textColor = colors.text;
+    let textColor = theme.text;
     if (hasQuiz && isCompleted) {
       bgColor = '#88D498';
       textColor = '#FFFFFF';
     } else if (hasQuiz && !isCompleted) {
-      bgColor = colors.accent;
+      bgColor = theme.accent;
       textColor = '#FFFFFF';
     }
 
@@ -214,7 +216,7 @@ export default function HistoryScreen() {
             backgroundColor: bgColor,
             opacity: hasQuiz ? 1 : 0.3,
           },
-          isToday && !hasQuiz && { borderWidth: 2, borderColor: colors.text },
+          isToday && !hasQuiz && { borderWidth: 2, borderColor: theme.text },
         ]}
         onPress={() => dayStatus && handleDayPress(dayStatus)}
         disabled={!hasQuiz}
@@ -236,7 +238,7 @@ export default function HistoryScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView style={styles.scrollView} contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 }]}>
 
         {/* Calendrier */}
@@ -247,12 +249,12 @@ export default function HistoryScreen() {
               onPress={goToPreviousMonth}
               disabled={isAtMinDate}
               activeOpacity={0.7}
-              style={[styles.navButton, { backgroundColor: isAtMinDate ? colors.borderLight : colors.accent }]}
+              style={[styles.navButton, { backgroundColor: isAtMinDate ? theme.borderLight : theme.accent }]}
             >
-              <Ionicons name="chevron-back" size={18} color={isAtMinDate ? colors.text : '#1C1E33'} />
+              <Ionicons name="chevron-back" size={18} color={isAtMinDate ? theme.text : '#1C1E33'} />
             </TouchableOpacity>
 
-            <Text style={{ fontSize: 18, fontFamily: fonts.body, color: colors.text }}>
+            <Text style={{ fontSize: 18, fontFamily: CashouTheme.fonts.body, color: theme.text }}>
               {monthNames[currentMonth]} {currentYear}
             </Text>
 
@@ -260,9 +262,9 @@ export default function HistoryScreen() {
               onPress={goToNextMonth}
               disabled={isCurrentMonth}
               activeOpacity={0.7}
-              style={[styles.navButton, { backgroundColor: isCurrentMonth ? colors.borderLight : colors.accent }]}
+              style={[styles.navButton, { backgroundColor: isCurrentMonth ? theme.borderLight : theme.accent }]}
             >
-              <Ionicons name="chevron-forward" size={18} color={isCurrentMonth ? colors.text : '#1C1E33'} />
+              <Ionicons name="chevron-forward" size={18} color={isCurrentMonth ? theme.text : '#1C1E33'} />
             </TouchableOpacity>
           </View>
 
@@ -270,7 +272,7 @@ export default function HistoryScreen() {
           <View style={styles.weekDaysRow}>
             {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((day, i) => (
               <View key={i} style={styles.weekDayCell}>
-                <Text style={{ fontSize: 13, fontFamily: fonts.body, color: colors.text, opacity: 0.5 }}>
+                <Text style={{ fontSize: 13, fontFamily: CashouTheme.fonts.body, color: theme.text, opacity: 0.5 }}>
                   {day}
                 </Text>
               </View>
@@ -280,7 +282,7 @@ export default function HistoryScreen() {
           {/* Grille */}
           {isLoading ? (
             <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-              <ActivityIndicator size="small" color={colors.accent} />
+              <ActivityIndicator size="small" color={theme.accent} />
             </View>
           ) : (
             <View style={styles.calendarGrid}>

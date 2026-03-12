@@ -751,24 +751,37 @@ export default function DailyQuizScreen() {
           )}
 
           {quizState === 'correction' && (
-            <ActionPillButton
-              label={correctionQuestionIndex < questions.length - 1 ? 'Suivant' : (isLevelQuiz ? 'Recap' : 'Accueil')}
-              iconName={correctionQuestionIndex < questions.length - 1 ? 'arrow-forward' : (isLevelQuiz ? 'document-text-outline' : 'home-outline')}
-              onPress={() => {
-                if (correctionQuestionIndex < questions.length - 1) {
-                  setCorrectionQuestionIndex(correctionQuestionIndex + 1);
-                  bottomSheetRef.current?.close();
-                } else {
-                  bottomSheetRef.current?.close();
-                  if (isLevelQuiz && gameInstanceId) {
-                    router.push({ pathname: '/(tabs)/summary', params: { gameId: gameInstanceId.toString() } });
+            <>
+              {correctionQuestionIndex > 0 && (
+                <ActionPillButton
+                  label="Précédent"
+                  iconName="arrow-back"
+                  onPress={() => {
+                    setCorrectionQuestionIndex(correctionQuestionIndex - 1);
+                    bottomSheetRef.current?.close();
+                  }}
+                  style={{ alignSelf: 'center', paddingHorizontal: 20 }}
+                />
+              )}
+              <ActionPillButton
+                label={correctionQuestionIndex < questions.length - 1 ? 'Suivant' : (isLevelQuiz ? 'Recap' : 'Accueil')}
+                iconName={correctionQuestionIndex < questions.length - 1 ? 'arrow-forward' : (isLevelQuiz ? 'document-text-outline' : 'home-outline')}
+                onPress={() => {
+                  if (correctionQuestionIndex < questions.length - 1) {
+                    setCorrectionQuestionIndex(correctionQuestionIndex + 1);
+                    bottomSheetRef.current?.close();
                   } else {
-                    router.push('/(tabs)/');
+                    bottomSheetRef.current?.close();
+                    if (isLevelQuiz && gameInstanceId) {
+                      router.push({ pathname: '/(tabs)/summary', params: { gameId: gameInstanceId.toString() } });
+                    } else {
+                      router.push('/(tabs)/');
+                    }
                   }
-                }
-              }}
-              style={{ alignSelf: 'center', paddingHorizontal: 20 }}
-            />
+                }}
+                style={{ alignSelf: 'center', paddingHorizontal: 20 }}
+              />
+            </>
           )}
         </View>
       )}

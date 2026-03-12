@@ -109,10 +109,16 @@ export default function HomeScreen() {
   useHeaderOptions({ showBackButton: false, title: 'Cashou' });
   const [dailyQuizStatus, setDailyQuizStatus] = useState<'todo' | 'done'>('todo');
   const [homeData, setHomeData] = useState<HomeData | null>(null);
+  const homeDataRef = React.useRef<HomeData | null>(null);
   const [isLoadingHomeData, setIsLoadingHomeData] = useState(true);
   const [portfolioNetWorth, setPortfolioNetWorth] = useState<number>(0);
   const [portfolioReturn, setPortfolioReturn] = useState<number>(0);
   const [levelCardStatus, setLevelCardStatus] = useState<'not_started' | 'in_progress' | 'completed' | 'quiz_pending'>('not_started');
+
+  // Keep ref in sync for use in setInterval (avoids stale closure)
+  React.useEffect(() => {
+    homeDataRef.current = homeData;
+  }, [homeData]);
 
   // Générer le greeting une seule fois au montage (pour éviter les changements aléatoires)
   const greeting = useMemo(() => {
@@ -244,8 +250,9 @@ export default function HomeScreen() {
 
         // Poll portfolio every 10s while the page is focused
         const interval = setInterval(() => {
-          if (homeData?.activeGame) {
-            fetchPortfolio(homeData.activeGame, homeData.level ?? null);
+          const current = homeDataRef.current;
+          if (current?.activeGame) {
+            fetchPortfolio(current.activeGame, current.level ?? null);
           }
         }, 10000);
 
