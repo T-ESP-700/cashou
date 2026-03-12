@@ -409,10 +409,11 @@ import Logo from '../assets/Frame 93.png';
   let quizState = {
     currentQuiz: null,
     currentQuestionIndex: 0,
+    correctionQuestionIndex: 0, // Index de la question affichée dans la page de correction (une par une)
     selectedAnswer: null,
     answers: [],
     showExplanation: false,
-    explanationQuestionId: null, // ID de la question dont on affiche l'explication dans la correction
+    explanationQuestionId: null,
     completed: false,
     showDescription: false,
     showResults: false
@@ -1630,6 +1631,7 @@ import Logo from '../assets/Frame 93.png';
       quizState.showDescription = false;
       quizState.completed = true;
       quizState.currentQuestionIndex = 0;
+      quizState.correctionQuestionIndex = 0;
       showPage('quiz-correction');
     });
 
@@ -1878,177 +1880,93 @@ import Logo from '../assets/Frame 93.png';
     `;
   }
 
-  // Page de correction du quiz
+  // Page de correction du quiz (une question à la fois)
   function getQuizCorrectionPage() {
     const quiz = currentQuizData || todayQuiz;
-    
+    const idx = quizState.correctionQuestionIndex ?? 0;
+    const q = quiz.questions[idx];
+    if (!q) return '';
+
+    const userAnswer = quizState.answers.find(a => a.questionId === q.id);
+    const isCorrect = userAnswer?.isCorrect;
+    const selectedAnswer = q.answers.find(a => a.id === userAnswer?.answerId);
+    const totalQuestions = quiz.questions.length;
+    const isFirst = idx === 0;
+    const isLast = idx === totalQuestions - 1;
+
     return `
-      <div class="h-full bg-[#F2F2F2] px-1 py-4 overflow-y-auto">
-        <!-- Questions avec corrections (design comme Progress.svg) -->
-        <div class="space-y-3">
-          ${quiz.questions.map((q, idx) => {
-            const userAnswer = quizState.answers.find(a => a.questionId === q.id);
-            const isCorrect = userAnswer?.isCorrect;
-            const selectedAnswer = q.answers.find(a => a.id === userAnswer?.answerId);
-            const correctAnswer = q.answers.find(a => a.isCorrect);
-            const showExplanation = quizState.showExplanation && quizState.explanationQuestionId === q.id;
+      <div class="h-full flex flex-col bg-[#F2F2F2] min-h-0">
+        <div class="flex-1 min-h-0 overflow-hidden px-1 py-2 flex flex-col">
+          <div class="bg-white rounded-[14px] p-3 shadow-sm flex-shrink-0">
+            <div class="flex items-center gap-1.5 mb-1.5">
+              <span class="text-base">${isCorrect ? '✅' : '❌'}</span>
+              <h3 class="font-bold text-black text-xs">Question ${idx + 1}/${totalQuestions}</h3>
+            </div>
+            <p class="text-xs text-black mb-1.5">${q.text}</p>
             
-            return `
-              <div class="bg-white rounded-[18px] p-4 shadow-sm overflow-hidden">
-                <div class="flex items-center gap-2 mb-2">
-                  <span class="text-xl">${isCorrect ? '✅' : '❌'}</span>
-                  <h3 class="font-bold text-black text-sm">Question ${idx + 1}</h3>
-                </div>
-                <p class="text-sm text-black mb-3">${q.text}</p>
+            <div class="space-y-1.5 mb-2">
+              ${q.answers.map(answer => {
+                const isUserAnswer = selectedAnswer && answer.id === selectedAnswer.id;
+                const isCorrectAnswer = answer.isCorrect;
+                let bgColor = 'bg-gray-50';
+                let borderColor = '';
                 
-                <!-- Vos réponses -->
-                <div class="space-y-2 mb-3">
-                  ${q.answers.map(answer => {
-                    const isUserAnswer = selectedAnswer && answer.id === selectedAnswer.id;
-                    const isCorrectAnswer = answer.isCorrect;
-                    let bgColor = 'bg-gray-50';
-                    let borderColor = '';
-                    
-                    if (isUserAnswer && !isCorrect) {
-                      bgColor = 'bg-red-100';
-                      borderColor = 'border-2 border-red-300';
-                    } else if (isCorrectAnswer) {
-                      bgColor = 'bg-[#ABEDB0]';
-                      borderColor = 'border-2 border-green-300';
-                    }
-                    
-                    return `
-                      <div class="${bgColor} ${borderColor} rounded-[12px] p-2">
-                        <div class="flex items-center justify-between">
-                          <p class="text-xs text-black font-medium flex-1 min-w-0">${answer.text}</p>
-                          ${isUserAnswer && !isCorrect ? '<span class="text-xl flex-shrink-0">❌</span>' : ''}
-                          ${isCorrectAnswer ? `
-                            <button 
-                              class="correction-explanation-btn w-6 h-6 bg-white rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors shadow-sm flex-shrink-0"
-                              data-question-id="${q.id}"
-                            >
-                              <span class="text-xs text-gray-700 font-bold">i</span>
-                            </button>
-                          ` : ''}
-                        </div>
-                      </div>
-                    `;
-                  }).join('')}
-                </div>
+                if (isUserAnswer && !isCorrect) {
+                  bgColor = 'bg-red-100';
+                  borderColor = 'border border-red-300';
+                } else if (isCorrectAnswer) {
+                  bgColor = 'bg-[#ABEDB0]';
+                  borderColor = 'border border-green-300';
+                }
                 
-                <!-- Explication avec animation comme le dictionnaire -->
-                <div class="correction-explanation-container overflow-hidden transition-all duration-300 ease-out" style="max-height: ${showExplanation ? '500px' : '0px'};">
-                  <div class="bg-blue-50 border border-blue-200 rounded-[12px] p-3 mt-2">
-                    <h4 class="font-bold text-black text-xs mb-1">💡 Explication</h4>
-                    <p class="text-xs text-gray-700">${q.explanation}</p>
+                return `
+                  <div class="${bgColor} ${borderColor} rounded-[10px] p-1.5">
+                    <div class="flex items-center justify-between">
+                      <p class="text-xs text-black font-medium flex-1 min-w-0 leading-snug">${answer.text}</p>
+                      ${isUserAnswer && !isCorrect ? '<span class="text-base flex-shrink-0">❌</span>' : ''}
+                    </div>
                   </div>
-                </div>
-              </div>
-            `;
-          }).join('')}
+                `;
+              }).join('')}
+            </div>
+            
+            <div class="bg-blue-50 border border-blue-200 rounded-[10px] p-2">
+              <h4 class="font-bold text-black text-xs mb-0.5">💡 Explication</h4>
+              <p class="text-xs text-gray-700 leading-snug">${q.explanation || ''}</p>
+            </div>
+          </div>
         </div>
 
-        <button 
-          class="w-full bg-[#FFB472] text-white rounded-[18px] py-3 mt-4 font-bold shadow-sm"
-          id="back-to-results"
-        >
-          Retour aux résultats
-        </button>
+        <div class="flex-shrink-0 px-1 pt-2 pb-4 bg-[#F2F2F2]">
+          ${!isLast ? `
+            <button type="button" class="w-full bg-[#FFB472] text-white rounded-[16px] py-2.5 font-bold shadow-sm text-sm" id="correction-next-btn">
+              Suivant →
+            </button>
+          ` : `
+            <button type="button" class="w-full bg-[#FFB472] text-white rounded-[16px] py-2.5 font-bold shadow-sm text-sm" id="back-to-results">
+              Retour aux résultats
+            </button>
+          `}
+        </div>
       </div>
     `;
   }
 
-  // Fonction globale pour toggle l'explication du quiz (comme toggleDicoTerm)
-  window.toggleQuizExplanation = function(questionId) {
-    console.log('toggleQuizExplanation appelé avec:', questionId);
-    
-    // Trouver le conteneur de la question
-    const buttons = document.querySelectorAll(`.correction-explanation-btn[data-question-id="${questionId}"]`);
-    if (buttons.length === 0) return;
-    
-    const btn = buttons[0];
-    const questionContainer = btn.closest('.bg-white');
-    if (!questionContainer) return;
-    
-    const explanationContainer = questionContainer.querySelector('.correction-explanation-container');
-    
-    // Toggle l'explication pour cette question
-    if (quizState.explanationQuestionId === questionId) {
-      quizState.showExplanation = false;
-      quizState.explanationQuestionId = null;
-      // Fermer l'explication
-      if (explanationContainer) {
-        explanationContainer.style.maxHeight = '0px';
-      }
-    } else {
-      // Fermer les autres explications ouvertes
-      document.querySelectorAll('.correction-explanation-container').forEach(container => {
-        container.style.maxHeight = '0px';
-      });
-      
-      quizState.showExplanation = true;
-      quizState.explanationQuestionId = questionId;
-      // Ouvrir cette explication
-      if (explanationContainer) {
-        explanationContainer.style.maxHeight = '500px';
-      }
-    }
-  };
-
   function attachQuizCorrectionListeners() {
-    // Le bouton retour dans le header fixe gère déjà le retour
-    // Mais on peut aussi gérer le bouton spécifique de cette page
     document.getElementById('back-to-results')?.addEventListener('click', () => {
       quizState.showResults = true;
       quizState.showExplanation = false;
       quizState.explanationQuestionId = null;
       showPage('quiz');
     });
-    
-    // Initialiser l'état des explications et attacher les listeners
-    setTimeout(() => {
-      const buttons = document.querySelectorAll('.correction-explanation-btn');
-      buttons.forEach(btn => {
-        const questionId = parseInt(btn.getAttribute('data-question-id'));
-        const questionContainer = btn.closest('.bg-white');
-        if (!questionContainer) return;
-        
-        const explanationContainer = questionContainer.querySelector('.correction-explanation-container');
-        const isSelected = quizState.explanationQuestionId === questionId;
-        
-        if (explanationContainer) {
-          explanationContainer.style.maxHeight = isSelected ? '500px' : '0px';
-        }
-        
-        // Attacher le listener directement
-        btn.onclick = function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          // Toggle l'explication pour cette question
-          if (quizState.explanationQuestionId === questionId) {
-            quizState.showExplanation = false;
-            quizState.explanationQuestionId = null;
-            // Fermer l'explication
-            if (explanationContainer) {
-              explanationContainer.style.maxHeight = '0px';
-            }
-          } else {
-            // Fermer les autres explications ouvertes
-            document.querySelectorAll('.correction-explanation-container').forEach(container => {
-              container.style.maxHeight = '0px';
-            });
-            
-            quizState.showExplanation = true;
-            quizState.explanationQuestionId = questionId;
-            // Ouvrir cette explication
-            if (explanationContainer) {
-              explanationContainer.style.maxHeight = '500px';
-            }
-          }
-        };
-      });
-    }, 10);
+
+    document.getElementById('correction-next-btn')?.addEventListener('click', () => {
+      const quiz = currentQuizData || todayQuiz;
+      if (quizState.correctionQuestionIndex < quiz.questions.length - 1) {
+        quizState.correctionQuestionIndex++;
+        showPage('quiz-correction', true);
+      }
+    });
   }
 
   function attachHistoryListeners() {
