@@ -42,7 +42,7 @@ export default function DailyQuizScreen() {
   const [error, setError] = useState<string | null>(null);
 
   // Configure header for this screen
-  useHeaderOptions({ showBackButton: true, onBackPress: () => router.back() });
+  useHeaderOptions({ showBackButton: true, onBackPress: () => router.back(), title: 'Quiz du jour' });
 
   // Récupérer les paramètres depuis la navigation
   // useLocalSearchParams peut retourner un tableau ou une chaîne
@@ -51,11 +51,21 @@ export default function DailyQuizScreen() {
     ? showCompletedParam[0] === 'true'
     : showCompletedParam === 'true';
 
-  // Récupérer le quizId si fourni (pour les quiz depuis l'historique)
+  // Récupérer le quizId si fourni (pour les quiz depuis l'historique ou quiz de niveau)
   const quizIdParam = params?.quizId;
   const specificQuizId = Array.isArray(quizIdParam)
     ? quizIdParam[0]
     : quizIdParam;
+
+  // gameInstanceId est fourni uniquement pour les quiz de niveau (depuis current.tsx)
+  const gameInstanceIdParam = params?.gameInstanceId;
+  const gameInstanceIdStr = Array.isArray(gameInstanceIdParam)
+    ? gameInstanceIdParam[0]
+    : gameInstanceIdParam;
+  const gameInstanceId = gameInstanceIdStr ? parseInt(gameInstanceIdStr) : null;
+
+  // Un quiz est un "quiz de niveau" si on a à la fois un quizId ET un gameInstanceId
+  const isLevelQuiz = !!(specificQuizId && gameInstanceId && !isNaN(gameInstanceId));
 
   // Initialiser à null pour ne rien afficher tant que les données ne sont pas chargées
   const [quizState, setQuizState] = useState<QuizState | null>(null);
@@ -63,7 +73,8 @@ export default function DailyQuizScreen() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswerId, setSelectedAnswerId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // const [userQuizId, setUserQuizId] = useState<number | null>(null);
+  // userQuizId : ID du UserQuiz créé par startLevelQuiz (quiz de niveau uniquement)
+  const [levelUserQuizId, setLevelUserQuizId] = useState<number | null>(null);
   const [hasStartedQuiz, setHasStartedQuiz] = useState(false);
   const [userAnswers, setUserAnswers] = useState<Map<number, { answerId: number; isCorrect: boolean }>>(new Map());
   const [correctionQuestionIndex, setCorrectionQuestionIndex] = useState(0);
@@ -134,121 +145,118 @@ export default function DailyQuizScreen() {
         if (quizData && user) {
           setQuiz(quizData as Quiz);
 
-          // Charger les questions pour tous les cas
-          const questionsData = await trpcClient.quizQuestion.getQuestionsWithAnswers.query({
-            quizId: (quizData as Quiz).id,
-          });
-
-          // Transformer les données
-          const formattedQuestions: Question[] = questionsData.map((qq: any) => ({
-            id: qq.question.id,
-            text: qq.question.text,
-            explanation: qq.question.explanation,
-            answers: qq.question.answers.map((a: any) => ({
-              id: a.id,
-              text: a.text,
-              isCorrect: a.isCorrect,
-            })),
-          }));
-
-          setQuestions(formattedQuestions);
-
-          // Vérifier si le quiz est complété
-          // Pour un quiz depuis l'historique, on utilise showCompleted
-          // Sinon, on vérifie dans la base de données
-          let isQuizCompleted = false;
-
-          if (specificQuizId && showCompleted) {
-            // Si on vient de l'historique avec showCompleted=true, le quiz est complété
-            isQuizCompleted = true;
+          if (isLevelQuiz) {
+            // === MODE QUIZ DE NIVEAU ===
+            // On ne charge pas les questions ici : elles seront tirées aléatoirement
+            // au moment où l'utilisateur clique sur "Commencer" (handleStartQuiz).
+            // On affiche directement l'écran d'intro.
+            setHasStartedQuiz(false);
+            setQuizState('intro');
           } else {
-            // Vérifier dans la base de données si toutes les questions sont répondues
-            // et si le quiz est marqué comme complété
-            try {
-              const allAnswers = await Promise.all(
-                formattedQuestions.map(async (q) => {
-                  try {
-                    const userAnswer = await trpcClient.userAnswer.getByUserAndQuestion.query({
-                      userId: user.id,
-                      questionId: q.id,
-                    });
-                    return userAnswer !== null;
-                  } catch {
-                    return false;
-                  }
-                })
-              );
+            // === MODE QUIZ DAILY (comportement existant) ===
+            const questionsData = await trpcClient.quizQuestion.getQuestionsWithAnswers.query({
+              quizId: (quizData as Quiz).id,
+            });
 
-              const allAnswered = allAnswers.every((answered) => answered);
+            const formattedQuestions: Question[] = questionsData.map((qq: any) => ({
+              id: qq.question.id,
+              text: qq.question.text,
+              explanation: qq.question.explanation,
+              answers: qq.question.answers.map((a: any) => ({
+                id: a.id,
+                text: a.text,
+                isCorrect: a.isCorrect,
+              })),
+            }));
 
-              if (allAnswered) {
-                // Vérifier si le quiz est marqué comme complété
-                const participations = await trpcClient.userQuiz.getByQuiz.query({
-                  quizId: (quizData as Quiz).id,
-                });
+            setQuestions(formattedQuestions);
 
-                const userParticipation = (participations as any[]).find(
-                  (p: any) => p.userId === user.id && p.completedAt !== null
+            let isQuizCompleted = false;
+
+            if (specificQuizId && showCompleted) {
+              isQuizCompleted = true;
+            } else {
+              try {
+                const allAnswers = await Promise.all(
+                  formattedQuestions.map(async (q) => {
+                    try {
+                      const userAnswer = await trpcClient.userAnswer.getByUserAndQuestion.query({
+                        userId: user.id,
+                        questionId: q.id,
+                      });
+                      return userAnswer !== null;
+                    } catch {
+                      return false;
+                    }
+                  })
                 );
 
-                isQuizCompleted = userParticipation !== undefined;
+                const allAnswered = allAnswers.every((answered) => answered);
+
+                if (allAnswered) {
+                  const participations = await trpcClient.userQuiz.getByQuiz.query({
+                    quizId: (quizData as Quiz).id,
+                  });
+
+                  const userParticipation = (participations as any[]).find(
+                    (p: any) => p.userId === user.id && p.completedAt !== null
+                  );
+
+                  isQuizCompleted = userParticipation !== undefined;
+                }
+              } catch (err) {
+                console.error('Error checking quiz completion:', err);
               }
-            } catch (err) {
-              console.error('Error checking quiz completion:', err);
             }
-          }
 
-          // Charger les réponses de l'utilisateur pour la correction
-          const answersPromises = formattedQuestions.map(async (q) => {
-            try {
-              const userAnswer = await trpcClient.userAnswer.getByUserAndQuestion.query({
-                userId: user.id,
-                questionId: q.id,
-              });
-              if (userAnswer) {
-                return {
-                  questionId: q.id,
-                  answerId: (userAnswer as any).answerId,
-                  isCorrect: (userAnswer as any).accurate || false,
-                };
-              }
-            } catch {
-              // Ignorer les erreurs
-            }
-            return null;
-          });
-
-          const answersResults = await Promise.all(answersPromises);
-          const answersMap = new Map<number, { answerId: number; isCorrect: boolean }>();
-          answersResults.forEach((result) => {
-            if (result) {
-              answersMap.set(result.questionId, {
-                answerId: result.answerId,
-                isCorrect: result.isCorrect,
-              });
-            }
-          });
-          setUserAnswers(answersMap);
-
-          // Déterminer l'état initial du quiz
-          if (isQuizCompleted) {
-            // Le quiz est complété, afficher la page de félicitations
-            setQuizState('completed');
-          } else {
-            // Le quiz n'est pas complété, vérifier s'il a été commencé
-            const firstQuestionId = formattedQuestions[0]?.id;
-            if (firstQuestionId) {
+            const answersPromises = formattedQuestions.map(async (q) => {
               try {
                 const userAnswer = await trpcClient.userAnswer.getByUserAndQuestion.query({
                   userId: user.id,
-                  questionId: firstQuestionId,
+                  questionId: q.id,
                 });
-                setHasStartedQuiz(userAnswer !== null);
+                if (userAnswer) {
+                  return {
+                    questionId: q.id,
+                    answerId: (userAnswer as any).answerId,
+                    isCorrect: (userAnswer as any).accurate || false,
+                  };
+                }
               } catch {
-                setHasStartedQuiz(false);
+                // Ignorer les erreurs
               }
+              return null;
+            });
+
+            const answersResults = await Promise.all(answersPromises);
+            const answersMap = new Map<number, { answerId: number; isCorrect: boolean }>();
+            answersResults.forEach((result) => {
+              if (result) {
+                answersMap.set(result.questionId, {
+                  answerId: result.answerId,
+                  isCorrect: result.isCorrect,
+                });
+              }
+            });
+            setUserAnswers(answersMap);
+
+            if (isQuizCompleted) {
+              setQuizState('completed');
+            } else {
+              const firstQuestionId = formattedQuestions[0]?.id;
+              if (firstQuestionId) {
+                try {
+                  const userAnswer = await trpcClient.userAnswer.getByUserAndQuestion.query({
+                    userId: user.id,
+                    questionId: firstQuestionId,
+                  });
+                  setHasStartedQuiz(userAnswer !== null);
+                } catch {
+                  setHasStartedQuiz(false);
+                }
+              }
+              setQuizState('intro');
             }
-            setQuizState('intro');
           }
         } else if (quizData) {
           // Quiz chargé mais pas d'utilisateur
@@ -294,74 +302,81 @@ export default function DailyQuizScreen() {
     try {
       setIsLoading(true);
 
-      // Récupérer les questions avec réponses
-      const questionsData = await trpcClient.quizQuestion.getQuestionsWithAnswers.query({
-        quizId: quiz.id,
-      });
+      if (isLevelQuiz && gameInstanceId) {
+        // === MODE QUIZ DE NIVEAU ===
+        // Appel backend : crée un UserQuiz lié à la gameInstance + tire 1 question aléatoire
+        const result = await trpcClient.userQuiz.startLevelQuiz.mutate({
+          quizId: quiz.id,
+          gameInstanceId,
+        });
 
-      // Transformer les données
-      const formattedQuestions: Question[] = questionsData.map((qq: any) => ({
-        id: qq.question.id,
-        text: qq.question.text,
-        explanation: qq.question.explanation,
-        answers: qq.question.answers.map((a: any) => ({
-          id: a.id,
-          text: a.text,
-          isCorrect: a.isCorrect,
-        })),
-      }));
-
-      if (formattedQuestions.length === 0) {
-        Alert.alert('Erreur', 'Ce quiz n\'a pas de questions');
-        return;
-      }
-
-      // Vérifier quelles questions ont déjà été répondues
-      const answeredQuestions = await Promise.all(
-        formattedQuestions.map(async (q) => {
-          try {
-            const userAnswer = await trpcClient.userAnswer.getByUserAndQuestion.query({
-              userId: user.id,
-              questionId: q.id,
-            });
-            return userAnswer ? q.id : null;
-          } catch {
-            return null;
-          }
-        })
-      );
-
-      // Trouver la première question non répondue
-      const firstUnansweredIndex = answeredQuestions.findIndex((answeredId) => answeredId === null);
-
-      // Si toutes les questions sont répondues, vérifier si le quiz est complété
-      if (firstUnansweredIndex === -1) {
-        // Vérifier si le quiz est complété
-        const existingParticipations = await trpcClient.userQuiz.getByQuiz.query({
+        setLevelUserQuizId(result.userQuiz.id);
+        setQuestions([result.question as Question]);
+        setCurrentQuestionIndex(0);
+        setSelectedAnswerId(null);
+        setQuizState('question');
+      } else {
+        // === MODE QUIZ DAILY (comportement existant) ===
+        const questionsData = await trpcClient.quizQuestion.getQuestionsWithAnswers.query({
           quizId: quiz.id,
         });
 
-        const userParticipation = (existingParticipations as any[]).find(
-          (p: any) => p.userId === user.id && p.completedAt !== null
+        const formattedQuestions: Question[] = questionsData.map((qq: any) => ({
+          id: qq.question.id,
+          text: qq.question.text,
+          explanation: qq.question.explanation,
+          answers: qq.question.answers.map((a: any) => ({
+            id: a.id,
+            text: a.text,
+            isCorrect: a.isCorrect,
+          })),
+        }));
+
+        if (formattedQuestions.length === 0) {
+          Alert.alert('Erreur', 'Ce quiz n\'a pas de questions');
+          return;
+        }
+
+        const answeredQuestions = await Promise.all(
+          formattedQuestions.map(async (q) => {
+            try {
+              const userAnswer = await trpcClient.userAnswer.getByUserAndQuestion.query({
+                userId: user.id,
+                questionId: q.id,
+              });
+              return userAnswer ? q.id : null;
+            } catch {
+              return null;
+            }
+          })
         );
 
-        if (userParticipation) {
-          // Le quiz est déjà complété, afficher la page de félicitations
-          setQuestions(formattedQuestions);
-          setCurrentQuestionIndex(0);
-          setQuizState('completed');
+        const firstUnansweredIndex = answeredQuestions.findIndex((answeredId) => answeredId === null);
+
+        if (firstUnansweredIndex === -1) {
+          const existingParticipations = await trpcClient.userQuiz.getByQuiz.query({
+            quizId: quiz.id,
+          });
+
+          const userParticipation = (existingParticipations as any[]).find(
+            (p: any) => p.userId === user.id && p.completedAt !== null
+          );
+
+          if (userParticipation) {
+            setQuestions(formattedQuestions);
+            setCurrentQuestionIndex(0);
+            setQuizState('completed');
+          } else {
+            setQuestions(formattedQuestions);
+            setCurrentQuestionIndex(formattedQuestions.length - 1);
+            setQuizState('question');
+          }
         } else {
-          // Toutes les questions sont répondues mais le quiz n'est pas complété, aller à la fin
           setQuestions(formattedQuestions);
-          setCurrentQuestionIndex(formattedQuestions.length - 1);
+          setCurrentQuestionIndex(firstUnansweredIndex);
+          setSelectedAnswerId(null);
           setQuizState('question');
         }
-      } else {
-        // Reprendre à la première question non répondue
-        setQuestions(formattedQuestions);
-        setCurrentQuestionIndex(firstUnansweredIndex);
-        setSelectedAnswerId(null);
-        setQuizState('question');
       }
     } catch (err) {
       console.error('Error starting quiz:', err);
@@ -385,97 +400,100 @@ export default function DailyQuizScreen() {
       setIsSubmitting(true);
       const currentQuestion = questions[currentQuestionIndex];
 
-      // Vérifier si l'utilisateur a déjà répondu à cette question
-      let alreadyAnswered = false;
-      try {
-        const existingAnswer = await trpcClient.userAnswer.getByUserAndQuestion.query({
-          userId: user.id,
-          questionId: currentQuestion.id,
-        });
-        alreadyAnswered = existingAnswer !== null;
-      } catch {
-        // Si erreur, on considère que ce n'est pas encore répondu
-      }
-
-      // Si déjà répondu, mettre à jour la réponse
-      if (alreadyAnswered) {
-        // Pour l'instant, on ne peut pas mettre à jour une réponse existante
-        // On passe simplement à la question suivante
-        console.log('Question déjà répondue, passage à la suivante');
-      } else {
-        // Soumettre la nouvelle réponse
-        await trpcClient.userAnswer.submitAnswer.mutate({
-          userId: user.id,
+      if (isLevelQuiz && levelUserQuizId) {
+        // === MODE QUIZ DE NIVEAU ===
+        // Une seule question : on soumet directement via submitLevelQuizAnswer
+        // Le backend enregistre la UserAnswer, finalise le UserQuiz et met à jour l'étoile quiz
+        const result = await trpcClient.userQuiz.submitLevelQuizAnswer.mutate({
+          userQuizId: levelUserQuizId,
           questionId: currentQuestion.id,
           answerId: selectedAnswerId,
         });
-      }
 
-      // Passer à la question suivante ou terminer le quiz
-      if (currentQuestionIndex < questions.length - 1) {
-        setCurrentQuestionIndex(currentQuestionIndex + 1);
-        setSelectedAnswerId(null);
+        // Stocker la réponse pour l'affichage de correction
+        const answersMap = new Map<number, { answerId: number; isCorrect: boolean }>();
+        answersMap.set(currentQuestion.id, {
+          answerId: selectedAnswerId,
+          isCorrect: result.isCorrect,
+        });
+        setUserAnswers(answersMap);
+        setQuizState('completed');
       } else {
-        // Calculer le score (toutes les réponses correctes)
-        const allAnswers = await Promise.all(
-          questions.map(async (q) => {
+        // === MODE QUIZ DAILY (comportement existant) ===
+        let alreadyAnswered = false;
+        try {
+          const existingAnswer = await trpcClient.userAnswer.getByUserAndQuestion.query({
+            userId: user.id,
+            questionId: currentQuestion.id,
+          });
+          alreadyAnswered = existingAnswer !== null;
+        } catch {
+          // Si erreur, on considère que ce n'est pas encore répondu
+        }
+
+        if (alreadyAnswered) {
+          console.log('Question déjà répondue, passage à la suivante');
+        } else {
+          await trpcClient.userAnswer.submitAnswer.mutate({
+            userId: user.id,
+            questionId: currentQuestion.id,
+            answerId: selectedAnswerId,
+          });
+        }
+
+        if (currentQuestionIndex < questions.length - 1) {
+          setCurrentQuestionIndex(currentQuestionIndex + 1);
+          setSelectedAnswerId(null);
+        } else {
+          const allAnswers = await Promise.all(
+            questions.map(async (q) => {
+              try {
+                const userAnswer = await trpcClient.userAnswer.getByUserAndQuestion.query({
+                  userId: user.id,
+                  questionId: q.id,
+                });
+                return (userAnswer as any)?.accurate || false;
+              } catch {
+                return false;
+              }
+            })
+          );
+
+          const allCorrect = allAnswers.every((correct) => correct);
+
+          const answersMap = new Map<number, { answerId: number; isCorrect: boolean }>();
+          for (const q of questions) {
             try {
               const userAnswer = await trpcClient.userAnswer.getByUserAndQuestion.query({
                 userId: user.id,
                 questionId: q.id,
               });
-              return (userAnswer as any)?.accurate || false;
+              if (userAnswer) {
+                answersMap.set(q.id, {
+                  answerId: (userAnswer as any).answerId,
+                  isCorrect: (userAnswer as any).accurate || false,
+                });
+              }
             } catch {
-              return false;
+              // Ignorer les erreurs
             }
-          })
-        );
-
-        const allCorrect = allAnswers.every((correct) => correct);
-
-        // Récupérer toutes les réponses de l'utilisateur pour la correction
-        const answersMap = new Map<number, { answerId: number; isCorrect: boolean }>();
-        for (const q of questions) {
-          try {
-            const userAnswer = await trpcClient.userAnswer.getByUserAndQuestion.query({
-              userId: user.id,
-              questionId: q.id,
-            });
-            if (userAnswer) {
-              answersMap.set(q.id, {
-                answerId: (userAnswer as any).answerId,
-                isCorrect: (userAnswer as any).accurate || false,
-              });
-            }
-          } catch {
-            // Ignorer les erreurs
           }
+          setUserAnswers(answersMap);
+
+          try {
+            await trpcClient.userQuiz.createOrUpdateParticipation.mutate({
+              quizId: quiz.id,
+              isCorrect: allCorrect,
+            });
+
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await refreshUser();
+          } catch (err) {
+            console.error('[DailyQuiz] Error completing quiz:', err);
+          }
+
+          setQuizState('completed');
         }
-        setUserAnswers(answersMap);
-
-        // Créer ou mettre à jour la participation au quiz
-        try {
-          console.log('[DailyQuiz] Creating/updating participation...');
-          await trpcClient.userQuiz.createOrUpdateParticipation.mutate({
-            quizId: quiz.id,
-            isCorrect: allCorrect,
-          });
-          console.log('[DailyQuiz] Participation created/updated successfully');
-
-          // Attendre 1 seconde pour que le backend termine la mise à jour du streak
-          console.log('[DailyQuiz] Waiting 1 second before refreshing user data...');
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          console.log('[DailyQuiz] Wait completed, refreshing user...');
-
-          // Rafraîchir les données de l'utilisateur pour mettre à jour le currentStreak
-          await refreshUser();
-          console.log('[DailyQuiz] User refreshed, currentStreak should be updated');
-        } catch (err) {
-          console.error('[DailyQuiz] Error completing quiz:', err);
-          // Les réponses sont déjà enregistrées, on continue
-        }
-
-        setQuizState('completed');
       }
     } catch (err) {
       console.error('Error submitting answer:', err);
@@ -493,7 +511,9 @@ export default function DailyQuizScreen() {
     (answer) => answer.isCorrect
   ).length;
   const score = totalQuestions > 0 ? correctAnswers / totalQuestions : 0;
-  const hasPassed = score >= 2 / 3;
+  // Pour le quiz de niveau : réussi si la 1 question est correcte (score === 1)
+  // Pour le daily quiz : réussi si >= 2/3
+  const hasPassed = isLevelQuiz ? score === 1 : score >= 2 / 3;
 
   // Messages selon le score
   const encouragementMessages = [
@@ -847,7 +867,14 @@ export default function DailyQuizScreen() {
                 <TouchableOpacity
                   style={[styles.completedButton, { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border }]}
                   onPress={() => {
-                    router.push('/(tabs)/history');
+                    if (isLevelQuiz && gameInstanceId) {
+                      router.push({
+                        pathname: '/(tabs)/summary',
+                        params: { gameId: gameInstanceId.toString() },
+                      });
+                    } else {
+                      router.push('/(tabs)/history');
+                    }
                   }}
                   activeOpacity={0.8}
                 >
@@ -857,7 +884,7 @@ export default function DailyQuizScreen() {
                       { fontFamily: CashouTheme.fonts.subheading, color: theme.text },
                     ]}
                   >
-                    Historique
+                    {isLevelQuiz ? 'Recap' : 'Historique'}
                   </Text>
                 </TouchableOpacity>
               </View>

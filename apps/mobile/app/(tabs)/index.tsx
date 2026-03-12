@@ -7,6 +7,7 @@ import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { useAuth } from '@/hooks/use-auth';
 import { useHeaderOptions } from '@/hooks/use-header';
 import { trpcClient } from '@/lib/trpc';
+import { Card } from '@/components/ui';
 
 // Types pour les données de la home
 interface HomeData {
@@ -41,38 +42,16 @@ interface HomeData {
     levelNumber: number | null;
     levelTitle: string | null;
     endedAt: Date | null;
+    stars?: number;
+    mandatoryGoalsMet?: boolean;
+    bonusGoalsMet?: boolean;
+    quizPassed?: boolean;
   } | null;
 }
 
-// Messages de bienvenue créatifs selon l'heure et le contexte
-const getGreeting = (name: string | null, hour: number): string => {
+const getGreeting = (name: string | null): string => {
   const displayName = name || 'Investisseur';
-
-  if (hour >= 5 && hour < 12) {
-    const morningGreetings = [
-      `Salut ${displayName} !`,
-      `Belle matinée ${displayName} !`,
-      `Bonjour ${displayName} !`,
-      `Hey ${displayName} ! Prêt pour une nouvelle journée ?`,
-    ];
-    return morningGreetings[Math.floor(Math.random() * morningGreetings.length)];
-  } else if (hour >= 12 && hour < 18) {
-    const afternoonGreetings = [
-      `Bon après-midi ${displayName} !`,
-      `Hey ${displayName} !`,
-      `De retour ${displayName} ?`,
-      `Salut ${displayName} ! Les marchés t'attendent`,
-    ];
-    return afternoonGreetings[Math.floor(Math.random() * afternoonGreetings.length)];
-  } else {
-    const eveningGreetings = [
-      `Bonsoir ${displayName} !`,
-      `Encore là ${displayName} ?`,
-      `Salut ${displayName} ! Session nocturne ?`,
-      `Hey ${displayName} ! Dernière analyse du jour ?`,
-    ];
-    return eveningGreetings[Math.floor(Math.random() * eveningGreetings.length)];
-  }
+  return `Bonjour ${displayName} 👋`;
 };
 
 // Messages contextuels selon l'état du jeu
@@ -127,19 +106,18 @@ export default function HomeScreen() {
   const router = useRouter();
 
   // Configure header for this screen
-  useHeaderOptions({ showBackButton: false });
+  useHeaderOptions({ showBackButton: false, title: 'Cashou' });
   const [dailyQuizStatus, setDailyQuizStatus] = useState<'todo' | 'done'>('todo');
-  const [isLoadingDailyQuiz, setIsLoadingDailyQuiz] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState<string>('0h0m');
   const [homeData, setHomeData] = useState<HomeData | null>(null);
   const [isLoadingHomeData, setIsLoadingHomeData] = useState(true);
+  const [portfolioNetWorth, setPortfolioNetWorth] = useState<number>(0);
+  const [portfolioReturn, setPortfolioReturn] = useState<number>(0);
   const [levelCardStatus, setLevelCardStatus] = useState<'not_started' | 'in_progress' | 'completed' | 'quiz_pending'>('not_started');
 
   // Générer le greeting une seule fois au montage (pour éviter les changements aléatoires)
   const greeting = useMemo(() => {
-    const hour = new Date().getHours();
     const displayName = homeData?.user?.name || homeData?.user?.username || user?.name || null;
-    return getGreeting(displayName, hour);
+    return getGreeting(displayName);
   }, [homeData?.user?.name, homeData?.user?.username, user?.name]);
 
   // Messages contextuels
@@ -147,30 +125,50 @@ export default function HomeScreen() {
     return getContextualMessage(homeData, dailyQuizStatus === 'done');
   }, [homeData, dailyQuizStatus]);
 
-  // Calculer le temps restant avant minuit
-  const calculateTimeUntilMidnight = () => {
-    const now = new Date();
-    const midnight = new Date();
-    midnight.setHours(24, 0, 0, 0);
+  // Fetch portfolio (wallet + assets) for the active game
+  const fetchPortfolio = async (activeGame: HomeData['activeGame'], level: HomeData['level']) => {
+    if (!activeGame) {
+      setPortfolioNetWorth(0);
+      setPortfolioReturn(0);
+      return;
+    }
 
-    const diff = midnight.getTime() - now.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    try {
+      const wallets = await trpcClient.wallet.getByGameInstance.query({
+        gameInstanceId: activeGame.id,
+      });
 
-    return `${hours}h${minutes}m`;
+      if (wallets && Array.isArray(wallets) && wallets.length > 0) {
+        const walletId = wallets[0].id;
+
+        const portfolio = await trpcClient.investment.getPortfolio.query({
+          walletId,
+          gameInstanceId: activeGame.id,
+        });
+
+        setPortfolioNetWorth(Math.round(portfolio.netWorth));
+
+        const startBalance = level?.startBalance || 0;
+        if (startBalance > 0) {
+          const returnPct = ((portfolio.netWorth - startBalance) / startBalance) * 100;
+          setPortfolioReturn(Math.round(returnPct * 10) / 10);
+        } else {
+          setPortfolioReturn(0);
+        }
+      } else {
+        setPortfolioNetWorth(level?.startBalance || 0);
+        setPortfolioReturn(0);
+      }
+    } catch (error) {
+      console.error('Error fetching portfolio:', error);
+      setPortfolioNetWorth(level?.startBalance || 0);
+      setPortfolioReturn(0);
+    }
   };
 
-  // Mettre à jour le temps restant toutes les minutes
   useEffect(() => {
-    const updateTime = () => {
-      setTimeRemaining(calculateTimeUntilMidnight());
-    };
-
-    updateTime(); // Mise à jour immédiate
-    const interval = setInterval(updateTime, 60000); // Mise à jour toutes les minutes
-
-    return () => clearInterval(interval);
-  }, []);
+    fetchPortfolio(homeData?.activeGame ?? null, homeData?.level ?? null);
+  }, [homeData?.activeGame?.id]);
 
   // Fetch home data
   useEffect(() => {
@@ -204,14 +202,11 @@ export default function HomeScreen() {
       }
 
       try {
-        setIsLoadingDailyQuiz(true);
         const result = await trpcClient.userQuiz.hasDoneDailyTodayForCurrentUser.query();
         setDailyQuizStatus(result.hasDone ? 'done' : 'todo');
       } catch (error) {
         console.error('Error fetching daily quiz status:', error);
         setDailyQuizStatus('todo');
-      } finally {
-        setIsLoadingDailyQuiz(false);
       }
     };
 
@@ -222,23 +217,20 @@ export default function HomeScreen() {
   useFocusEffect(
     React.useCallback(() => {
       if (isAuthenticated) {
-        // Rafraîchir les données utilisateur
         refreshUser();
 
-        // Rafraîchir les données de la home
-        const fetchHomeData = async () => {
+        const refreshAll = async () => {
           try {
             const result = await trpcClient.auth.getHomeData.query();
-            setHomeData(result as HomeData);
+            const data = result as HomeData;
+            setHomeData(data);
+
+            // Refresh portfolio with fresh homeData
+            fetchPortfolio(data.activeGame, data.level);
           } catch (error) {
             console.error('Error fetching home data:', error);
           }
-        };
 
-        fetchHomeData();
-
-        // Rafraîchir aussi le statut du quiz
-        const fetchDailyQuizStatus = async () => {
           try {
             const result = await trpcClient.userQuiz.hasDoneDailyTodayForCurrentUser.query();
             setDailyQuizStatus(result.hasDone ? 'done' : 'todo');
@@ -248,7 +240,16 @@ export default function HomeScreen() {
           }
         };
 
-        fetchDailyQuizStatus();
+        refreshAll();
+
+        // Poll portfolio every 10s while the page is focused
+        const interval = setInterval(() => {
+          if (homeData?.activeGame) {
+            fetchPortfolio(homeData.activeGame, homeData.level ?? null);
+          }
+        }, 10000);
+
+        return () => clearInterval(interval);
       }
     }, [isAuthenticated, refreshUser])
   );
@@ -263,20 +264,15 @@ export default function HomeScreen() {
       const lastCompleted = homeData.lastCompletedGame;
       const currentLevel = homeData.level;
 
-      // Si on a terminé un niveau mais pas de niveau suivant, vérifier le quiz
       if (lastCompleted && !currentLevel) {
         try {
-          // Récupérer le quiz du niveau
           const quizzes = await trpcClient.quiz.getByLevel.query({ levelId: lastCompleted.levelId });
           if (!quizzes || quizzes.length === 0) {
-            // Pas de quiz = considéré comme complété
             setLevelCardStatus('completed');
             return;
           }
 
           const quizId = quizzes[0].id;
-
-          // Vérifier si l'utilisateur a complété ce quiz
           const participations = await trpcClient.userQuiz.getByQuiz.query({ quizId });
           const userParticipation = (participations as any[]).find(
             (p: any) => p.userId === user.id && p.completedAt !== null
@@ -285,10 +281,9 @@ export default function HomeScreen() {
           setLevelCardStatus(userParticipation ? 'completed' : 'quiz_pending');
         } catch (err) {
           console.error('Error checking quiz completion:', err);
-          setLevelCardStatus('quiz_pending'); // Par défaut quiz_pending en cas d'erreur
+          setLevelCardStatus('quiz_pending');
         }
       } else {
-        // Pas de niveau complété ou niveau suivant disponible
         setLevelCardStatus('not_started');
       }
     };
@@ -298,69 +293,67 @@ export default function HomeScreen() {
 
   // Données pour le LevelCard
   const levelCardData = useMemo(() => {
-    // Si une partie est en cours (non terminée)
     if (homeData?.activeGame) {
       return {
         level: homeData.activeGame.levelNumber,
         levelId: homeData.level?.id,
         title: homeData.activeGame.levelTitle,
-        progression: homeData.activeGame.progression,
-        currentReturn: homeData.activeGame.currentReturn,
+        cash: portfolioNetWorth,
+        currentReturn: portfolioReturn,
         status: 'in_progress' as const,
         hasGame: true,
         gameId: homeData.activeGame.id,
+        stars: 0,
       };
     }
 
-    // Pas de partie en cours
     const lastCompleted = homeData?.lastCompletedGame;
     const currentLevel = homeData?.level;
 
     if (lastCompleted && currentLevel) {
-      // L'utilisateur a un niveau suivant à faire
       return {
         level: currentLevel.number || 1,
         levelId: currentLevel.id,
         title: currentLevel.title,
-        progression: 0,
+        cash: 0,
         currentReturn: 0,
         status: 'not_started' as const,
         hasGame: false,
         gameId: null,
+        stars: 0,
       };
     }
 
-    // Si on a terminé un niveau mais pas de niveau suivant (tous les niveaux complétés)
     if (lastCompleted && !currentLevel) {
       return {
         level: lastCompleted.levelNumber || 1,
         levelId: lastCompleted.levelId ?? undefined,
         title: lastCompleted.levelTitle,
-        progression: 100,
+        cash: 0,
         currentReturn: 0,
         status: levelCardStatus,
         hasGame: true,
         gameId: lastCompleted.id,
+        stars: lastCompleted.stars ?? 0,
       };
     }
 
-    // Pas de partie en cours et aucune partie terminée → niveau prêt à commencer
     return {
       level: homeData?.level?.number || 1,
       levelId: homeData?.level?.id,
       title: homeData?.level?.title,
-      progression: 0,
+      cash: 0,
       currentReturn: 0,
       status: 'not_started' as const,
       hasGame: false,
       gameId: null,
+      stars: 0,
     };
-  }, [homeData, levelCardStatus]);
+  }, [homeData, levelCardStatus, portfolioNetWorth, portfolioReturn]);
 
   // Handler pour naviguer vers l'écran de jeu
   const handleLevelPress = () => {
     if (levelCardData.levelId) {
-      // Si une partie est en cours, inclure le gameId pour éviter la popup d'info
       if (levelCardData.hasGame && levelCardData.gameId) {
         router.push({
           pathname: '/game/current',
@@ -370,7 +363,6 @@ export default function HomeScreen() {
           }
         });
       } else {
-        // Nouvelle partie: aller directement à l'écran de jeu (la popup d'info s'affichera automatiquement)
         router.push({
           pathname: '/game/current',
           params: { levelId: levelCardData.levelId.toString() }
@@ -381,68 +373,67 @@ export default function HomeScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Content */}
-      <ScrollView style={{ flex: 1 }}>
-        {/* Loading State */}
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120 }}>
         {isLoadingHomeData ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl * 1.5 }}>
             <ActivityIndicator size="large" color={colors.accent} />
           </View>
         ) : (
           <>
-            {/* Greeting Section */}
-            <View style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.lg }}>
-              <Text
-                style={{
-                  fontSize: 28,
-                  fontFamily: fonts.heading,
-                  color: colors.text,
-                  marginBottom: spacing.sm + 4,
-                }}
-              >
-                {greeting}
-              </Text>
-              {contextualMessages.map((message, index) => (
+            {/* Greeting & Contextual Messages as chat bubbles */}
+            <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.lg, gap: spacing.sm }}>
+              {/* Greeting bubble */}
+              <Card variant="outlined" padding="md">
                 <Text
-                  key={index}
                   style={{
-                    fontSize: 15,
+                    fontSize: 22,
                     fontFamily: fonts.body,
                     color: colors.text,
-                    marginBottom: spacing.sm,
-                    lineHeight: 22,
-                    opacity: 0.9,
                   }}
                 >
-                  {message}
+                  {greeting}
                 </Text>
-              ))}
+              </Card>
+
+              {/* Contextual messages — all in one card */}
+              {contextualMessages.length > 0 && (
+                <Card variant="outlined" padding="md">
+                  {contextualMessages.map((message, index) => (
+                    <Text
+                      key={index}
+                      style={{
+                        fontSize: 15,
+                        fontFamily: fonts.body,
+                        color: colors.text,
+                        lineHeight: 22,
+                        marginBottom: index < contextualMessages.length - 1 ? spacing.md : 0,
+                      }}
+                    >
+                      {message}
+                    </Text>
+                  ))}
+                </Card>
+              )}
             </View>
 
-            {/* Level Card - only show if user has a game or level */}
+            <View style={{ height: spacing.md }} />
+
+            {/* Level Card */}
             {levelCardData.hasGame || homeData?.level ? (
               <LevelCard
                 level={levelCardData.level}
                 levelId={levelCardData.levelId}
                 title={levelCardData.title}
-                progression={levelCardData.progression}
+                cash={levelCardData.cash}
                 currentReturn={levelCardData.currentReturn}
                 status={levelCardData.status}
+                stars={levelCardData.stars}
                 onPress={handleLevelPress}
               />
             ) : null}
 
             {/* Daily Quiz Card */}
-            {(() => {
-              const streakValue = homeData?.user?.currentStreak ?? user?.currentStreak ?? 0;
-              return (
-                <DailyQuizCard
-                  winStreak={streakValue}
-                  timeRemaining={timeRemaining}
-                  status={dailyQuizStatus}
-                />
-              );
-            })()}
+            <DailyQuizCard status={dailyQuizStatus} />
           </>
         )}
       </ScrollView>

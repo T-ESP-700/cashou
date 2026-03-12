@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 export interface MultiSelectOption {
@@ -87,7 +86,7 @@ export function MultiSelect({
           </button>
 
           {isOpen && (
-            <div className="absolute z-10 mt-1 w-full rounded-md border overflow-hidden border-gray-300 bg-white shadow-lg">
+            <div className="absolute z-10 mt-1 w-full rounded-md overflow-hidden border-0 bg-white shadow-lg">
               <div className="max-h-60 overflow-auto py-1">
                 {availableOptions.length > 0 ? (
                   availableOptions.map((option) => (
@@ -95,7 +94,7 @@ export function MultiSelect({
                       key={option.value}
                       type="button"
                       onClick={() => addValue(option.value)}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
+                      className="w-full border-0 px-3 py-2 text-left text-sm hover:bg-gray-100 focus:ring-0"
                     >
                       {option.label}
                     </button>

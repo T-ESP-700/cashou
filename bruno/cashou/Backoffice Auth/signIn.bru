@@ -1,0 +1,22 @@
+meta {
+  name: signIn
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/api/trpc/backofficeAuth.signIn
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "email": "admin@cashou.com",
+    "password": "Admin123456!"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

@@ -1,0 +1,21 @@
+meta {
+  name: endGame
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{base_url}}/api/trpc/gameInstance.endGame
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 1
+  }
+}
+
+settings {
+  encodeUrl: true
+}

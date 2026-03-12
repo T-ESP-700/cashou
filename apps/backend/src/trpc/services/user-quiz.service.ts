@@ -1,15 +1,18 @@
 // Service métier pour la gestion des participations aux quiz (UserQuiz)
 // Couche d'abstraction entre les routers et la base de données
-import type { UserQuiz, Quiz, PrismaClient } from "@prisma/client";
+import type { UserQuiz, PrismaClient } from "@prisma/client";
 import defaultPrisma from "../../database.ts";
 import type {UserQuizCreateSchema, UserQuizDataSchema} from "../schemas-zod/user-quiz-schema.ts";
+import { LevelCompletionService } from "./level-completion.service.ts";
 
 export class UserQuizService {
     private prisma: PrismaClient;
+    private levelCompletionService: LevelCompletionService;
 
     // Permet d'injecter Prisma pour les tests
     constructor(prismaClient?: PrismaClient) {
         this.prisma = prismaClient || defaultPrisma;
+        this.levelCompletionService = new LevelCompletionService(prismaClient);
     }
 
     /**
@@ -165,6 +168,17 @@ export class UserQuizService {
         // Mettre à jour les streaks si c'est le quiz du jour
         await this.updateStreaksIfTodaysQuiz(quizId, userId);
 
+        // If quiz passed and quiz is linked to a level (end-of-level quiz), update level completion star
+        if (isCorrect === true) {
+            const quiz = await this.prisma.quiz.findUnique({
+                where: { id: quizId },
+                select: { levelId: true },
+            });
+            if (quiz?.levelId != null) {
+                await this.levelCompletionService.recordFromQuizComplete(userId, quiz.levelId);
+            }
+        }
+
         return participation;
     }
 
@@ -278,13 +292,21 @@ export class UserQuizService {
      * @returns Promise<UserQuiz> - La participation mise à jour
      */
     async completeQuiz(id: number, isCorrect: boolean): Promise<UserQuiz> {
-        return this.prisma.userQuiz.update({
+        const updated = await this.prisma.userQuiz.update({
             where: { id },
             data: {
                 isCorrect,
                 completedAt: new Date()
-            }
+            },
+            include: { quiz: true }
         });
+        if (isCorrect && updated.userId && updated.quiz?.levelId) {
+            await this.levelCompletionService.recordFromQuizComplete(
+                updated.userId,
+                updated.quiz.levelId
+            );
+        }
+        return updated;
     }
 
     /**
@@ -902,6 +924,175 @@ export class UserQuizService {
             },
             orderBy: { completedAt: 'desc' }
         });
+    }
+
+    /**
+     * Retourne le statut du quiz de niveau pour une gameInstance donnée.
+     * - notDone : aucun UserQuiz complété lié à cette partie
+     * - doneAndPassed : quiz fait et réussi
+     * - doneAndFailed : quiz fait mais raté
+     */
+    async getQuizStatusForGame(gameInstanceId: number, userId: string): Promise<{
+        status: 'notDone' | 'doneAndPassed' | 'doneAndFailed';
+        userQuizId: number | null;
+    }> {
+        const userQuiz = await this.prisma.userQuiz.findFirst({
+            where: {
+                gameInstanceId,
+                userId,
+                completedAt: { not: null },
+            },
+            orderBy: { completedAt: 'desc' },
+        });
+
+        if (!userQuiz) {
+            return { status: 'notDone', userQuizId: null };
+        }
+
+        return {
+            status: userQuiz.isCorrect ? 'doneAndPassed' : 'doneAndFailed',
+            userQuizId: userQuiz.id,
+        };
+    }
+
+    /**
+     * Démarre un quiz de niveau pour une instance de jeu donnée.
+     * Crée un UserQuiz lié à la gameInstance et tire 1 question aléatoire parmi celles du quiz.
+     * Chaque appel crée une nouvelle tentative indépendante.
+     *
+     * @param quizId - ID du quiz MCQ associé au niveau
+     * @param userId - ID de l'utilisateur (string)
+     * @param gameInstanceId - ID de l'instance de jeu (pour isoler les tentatives)
+     * @returns { userQuiz, question } - La participation créée et la question tirée
+     */
+    async startLevelQuiz(quizId: number, userId: string, gameInstanceId: number) {
+        // Vérifier que le quiz existe et est de type MCQ
+        const quiz = await this.prisma.quiz.findUnique({
+            where: { id: quizId },
+        });
+        if (!quiz) {
+            throw new Error(`Quiz ${quizId} introuvable`);
+        }
+
+        // Récupérer toutes les questions du quiz avec leurs réponses
+        const allQuizQuestions = await this.prisma.quizQuestion.findMany({
+            where: { quizId },
+            include: {
+                question: {
+                    include: {
+                        answers: { orderBy: { id: 'asc' } },
+                    },
+                },
+            },
+        });
+
+        if (allQuizQuestions.length === 0) {
+            throw new Error(`Aucune question trouvée pour le quiz ${quizId}`);
+        }
+
+        // Tirer 1 question aléatoire (Fisher-Yates sur 1 élément = simple random index)
+        const randomIndex = Math.floor(Math.random() * allQuizQuestions.length);
+        const pickedQuizQuestion = allQuizQuestions[randomIndex];
+
+        if (!pickedQuizQuestion.question) {
+            throw new Error(`La question tirée est invalide pour le quiz ${quizId}`);
+        }
+
+        // Créer un nouveau UserQuiz lié à cette gameInstance (une tentative = un UserQuiz)
+        const userQuiz = await this.prisma.userQuiz.create({
+            data: {
+                quizId,
+                userId,
+                gameInstanceId,
+            },
+        });
+
+        return {
+            userQuiz,
+            question: {
+                id: pickedQuizQuestion.question.id,
+                text: pickedQuizQuestion.question.text,
+                explanation: pickedQuizQuestion.question.explanation,
+                answers: pickedQuizQuestion.question.answers.map((a) => ({
+                    id: a.id,
+                    text: a.text,
+                    isCorrect: a.isCorrect,
+                })),
+            },
+        };
+    }
+
+    /**
+     * Soumet la réponse pour un quiz de niveau et finalise la participation.
+     * Met à jour UserQuiz avec isCorrect et completedAt.
+     * Déclenche la mise à jour de l'étoile quiz si la réponse est correcte.
+     *
+     * @param userQuizId - ID du UserQuiz créé par startLevelQuiz
+     * @param questionId - ID de la question à laquelle l'user a répondu
+     * @param answerId - ID de la réponse choisie
+     * @param userId - ID de l'utilisateur
+     * @returns { userQuiz, isCorrect }
+     */
+    async submitLevelQuizAnswer(
+        userQuizId: number,
+        questionId: number,
+        answerId: number,
+        userId: string
+    ) {
+        // Vérifier que la participation existe et appartient à l'utilisateur
+        const userQuiz = await this.prisma.userQuiz.findUnique({
+            where: { id: userQuizId },
+            include: { quiz: { select: { levelId: true } } },
+        });
+
+        if (!userQuiz || userQuiz.userId !== userId) {
+            throw new Error(`Participation au quiz ${userQuizId} introuvable`);
+        }
+
+        if (userQuiz.completedAt !== null) {
+            throw new Error(`Ce quiz a déjà été complété`);
+        }
+
+        // Vérifier si la réponse choisie est correcte
+        const answer = await this.prisma.answer.findUnique({
+            where: { id: answerId },
+            select: { isCorrect: true, questionId: true },
+        });
+
+        if (!answer || answer.questionId !== questionId) {
+            throw new Error(`Réponse ${answerId} invalide pour la question ${questionId}`);
+        }
+
+        const isCorrect = answer.isCorrect === true;
+
+        // Enregistrer la réponse de l'utilisateur
+        await this.prisma.userAnswer.create({
+            data: {
+                userId,
+                questionId,
+                answerId,
+                accurate: isCorrect,
+            },
+        });
+
+        // Finaliser la participation
+        const updatedUserQuiz = await this.prisma.userQuiz.update({
+            where: { id: userQuizId },
+            data: {
+                isCorrect,
+                completedAt: new Date(),
+            },
+        });
+
+        // Si réussi et quiz lié à un niveau, mettre à jour l'étoile quiz
+        if (isCorrect && userQuiz.quiz?.levelId != null) {
+            await this.levelCompletionService.recordFromQuizComplete(
+                userId,
+                userQuiz.quiz.levelId
+            );
+        }
+
+        return { userQuiz: updatedUserQuiz, isCorrect };
     }
 
     /**

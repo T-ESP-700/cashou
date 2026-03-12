@@ -1,0 +1,22 @@
+meta {
+  name: addQuantity
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{base_url}}/api/trpc/holding.addQuantity
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 1,
+    "amountToAdd": 50
+  }
+}
+
+settings {
+  encodeUrl: true
+}

@@ -25,13 +25,11 @@ export const trpcClient = createTRPCClient<AppRouter>({
       },
       fetch(url, options) {
         return fetch(url, options).then(async (response) => {
-          // Check for 401 Unauthorized
+          // Handle expired/invalid token — silently clear and redirect to login
           if (response.status === 401 && !isHandlingAuthError) {
-            console.log('[tRPC] 401 Unauthorized detected, clearing token...');
             isHandlingAuthError = true;
             await tokenStorage.removeToken();
 
-            // Trigger auth error handler to redirect to login
             if (authErrorHandler) {
               authErrorHandler();
             }

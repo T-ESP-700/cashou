@@ -265,6 +265,8 @@ export const backofficeApi = {
     list: async () => callApi(() => getClient().levelGoal.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
       callApi(() => getClient().levelGoal.create.mutate(payload)),
+    update: async (id: number, payload: Record<string, unknown>) =>
+      callApi(() => getClient().levelGoal.update.mutate({ id, data: payload })),
     delete: async (id: number) => callApi(() => getClient().levelGoal.delete.mutate({ id })),
   },
   levelEvent: {

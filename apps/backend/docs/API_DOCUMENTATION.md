@@ -19,7 +19,8 @@ The Cashou backend is built with **Bun** and uses **tRPC** for type-safe API cal
 5. [Quiz System](#5-quiz-system)
 6. [Wallet & Transactions](#6-wallet--transactions)
 7. [Notifications](#7-notifications)
-8. [Health Check](#8-health-check)
+8. [Dictionary](#8-dictionary)
+9. [Health Check](#9-health-check)
 
 ---
 
@@ -35,7 +36,8 @@ The Cashou backend is built with **Bun** and uses **tRPC** for type-safe API cal
 | `auth.me` | query | ✅ | Get current user with session |
 | `auth.forgotPassword` | mutation | ❌ | Request password reset email |
 | `auth.resetPassword` | mutation | ❌ | Reset password with token |
-| `auth.getHomeData` | query | ✅ | Get home screen data (user + game info) |
+| `auth.getHomeData` | query | ✅ | Get home screen data (user + game info + level completion) |
+| `auth.getPendingEvent` | query | ✅ | Get pending event requiring user action |
 
 #### `auth.register`
 ```typescript
@@ -73,7 +75,11 @@ output: {
 output: {
   user: { id, name, username, email, points, currentStreak, maxStreak },
   level: { id, number, title, description, startBalance },
-  activeGame: { id, isPaused, actionRequired, levelNumber, levelTitle, progression, currentReturn } | null
+  activeGame: { id, isPaused, actionRequired, levelNumber, levelTitle, progression, currentReturn } | null,
+  lastCompletedGame: {
+    id, levelId, levelNumber, levelTitle, endedAt,
+    stars, mandatoryGoalsMet, bonusGoalsMet, quizPassed
+  } | null
 }
 ```
 
@@ -84,6 +90,18 @@ output: {
 | `backofficeAuth.signIn` | mutation | ❌ | Backoffice admin login |
 | `backofficeAuth.verify` | query | ❌ | Verify backoffice token |
 
+#### `backofficeAuth.signIn`
+```typescript
+input: { email: string, password: string }
+output: { user: { id, email, name, roles }, token: string }
+```
+
+#### `backofficeAuth.verify`
+```typescript
+input: { token: string }
+output: { user: { id, email, name, roles } }
+```
+
 ---
 
 ## 2. User Management
@@ -92,13 +110,15 @@ output: {
 
 | Endpoint | Type | Auth | Description |
 |----------|------|------|-------------|
-| `user.getAll` | query | 🔐 Admin | Get all users (no pagination) |
+| `user.getAll` | query | ❌ | Get all users (no pagination) |
 | `user.list` | query | 🔐 Admin | Paginated user list with search |
 | `user.getById` | query | ✅ | Get user by ID (self or admin) |
+| `user.adminGetById` | query | 🔐 Admin | Get any user by ID (admin only) |
 | `user.create` | mutation | 🔐 Admin | Create new user |
 | `user.update` | mutation | ✅ | Update user (limited for non-admin) |
 | `user.delete` | mutation | 🔐 Admin | Delete user |
 | `user.updateProfile` | mutation | ✅ | Update own profile |
+| `user.updateExpoPushToken` | mutation | ✅ | Update Expo push token for notifications |
 
 #### `user.list`
 ```typescript
@@ -131,13 +151,19 @@ input: {
 | `level.getById` | query | Get level by ID |
 | `level.getGoals` | query | Get goals for a level |
 | `level.getEvents` | query | Get events for a level |
-| `level.getSummary` | query | Full level summary with goals/events |
-| `level.getUserLevels` | query | User progression across levels |
+| `level.getSummary` | query | Full level summary with goals, events, levelGoals (isMandatory) |
+| `level.getUserLevels` | query | User progression across levels (stars, points, unlocked) |
 | `level.getAvailability` | query | Check if user can unlock level |
 | `level.duplicate` | mutation | Duplicate an existing level |
 | `level.create` | mutation | Create new level |
 | `level.update` | mutation | Update existing level |
 | `level.delete` | mutation | Delete level |
+
+#### `level.getUserLevels`
+```typescript
+input: { userId: string }  // User CUID
+output: Array<{ level, stars, points, unlocked, mandatoryGoalsMet?, bonusGoalsMet?, quizPassed? }>
+```
 
 ### Event Router (`event.*`)
 
@@ -159,11 +185,52 @@ input: {
 | `goal.update` | mutation | Update goal |
 | `goal.delete` | mutation | Delete goal |
 
+#### `goal.create`
+```typescript
+input: {
+  title?: string | null,
+  description?: string | null,
+  successMessage?: string | null,
+  failureMessage?: string | null
+}
+```
+
+#### `goal.update`
+```typescript
+input: {
+  id: number,
+  data: {
+    title?: string | null,
+    description?: string | null,
+    successMessage?: string | null,
+    failureMessage?: string | null
+  }
+}
+```
+
 ### Level-Goal Router (`levelGoal.*`)
-Links levels to goals.
+
+| Endpoint | Type | Description |
+|----------|------|-------------|
+| `levelGoal.getAll` | query | Get all level-goal links |
+| `levelGoal.getById` | query | Get link by ID |
+| `levelGoal.getByLevelId` | query | Get goals for a level |
+| `levelGoal.getByGoalId` | query | Get levels for a goal |
+| `levelGoal.create` | mutation | Link goal to level (levelId, goalId, isMandatory) |
+| `levelGoal.update` | mutation | Update link (e.g. isMandatory) |
+| `levelGoal.delete` | mutation | Unlink goal from level |
 
 ### Level-Event Router (`levelEvent.*`)
-Links levels to events.
+
+| Endpoint | Type | Description |
+|----------|------|-------------|
+| `levelEvent.getAll` | query | Get all level-event links |
+| `levelEvent.getById` | query | Get link by ID |
+| `levelEvent.getByLevelId` | query | Get events for a level |
+| `levelEvent.getByEventId` | query | Get levels for an event |
+| `levelEvent.create` | mutation | Link event to level |
+| `levelEvent.update` | mutation | Update link |
+| `levelEvent.delete` | mutation | Unlink event from level |
 
 ### Game Instance Router (`gameInstance.*`)
 
@@ -178,10 +245,65 @@ Links levels to events.
 | `gameInstance.getByLevel` | query | Get instances for level |
 | `gameInstance.pause` | mutation | Pause game instance |
 | `gameInstance.resume` | mutation | Resume paused instance |
+| `gameInstance.start` | mutation | Start game (reset clock) |
 | `gameInstance.setActionRequired` | mutation | Set action required flag |
+| `gameInstance.endGame` | mutation | End game, validate goals, record level completion (stars) |
+| `gameInstance.completeEvent` | mutation | Complete current event, schedule next |
+| `gameInstance.getTimeInfo` | query | Get time info for instance |
+| `gameInstance.resetLevel` | mutation | Reset level for user (dev) |
+
+#### `gameInstance.endGame`
+```typescript
+input: { id: number }
+output: {
+  success: boolean,
+  gameInstanceId: number,
+  startBalance: number,
+  walletBalance: number,
+  assetsValue: number,
+  totalValue: number,
+  goals: Array<{
+    id: number,
+    title: string,
+    description: string | null,
+    isMandatory: boolean,
+    validated: boolean
+  }>,
+  message: string,
+  modal: {
+    type: "PRIMARY_AND_SECONDARY_SUCCESS" | "PRIMARY_SUCCESS_ONLY" | "PRIMARY_FAILURE",
+    title: string,
+    primaryMessage: string,
+    secondaryMessage: string | null
+  },
+  stars?: number,
+  mandatoryGoalsMet?: boolean,
+  bonusGoalsMet?: boolean,
+  quizPassed?: boolean
+}
+```
+
+### Game Instance Event Router (`gameInstanceEvent.*`)
+
+| Endpoint | Type | Description |
+|----------|------|-------------|
+| `gameInstanceEvent.findByGameInstance` | query | Get events for a game instance |
+| `gameInstanceEvent.findDue` | query | Get due events (scheduled) |
 
 ### Game User Router (`gameUser.*`)
-Manages user participation in game instances.
+
+| Endpoint | Type | Description |
+|----------|------|-------------|
+| `gameUser.create` | mutation | Create game user |
+| `gameUser.update` | mutation | Update game user |
+| `gameUser.findAll` | query | Get all game users |
+| `gameUser.findById` | query | Get game user by ID |
+| `gameUser.findByUser` | query | Get game users for user |
+| `gameUser.findByGameInstance` | query | Get game users for instance |
+| `gameUser.findByStatus` | query | Get by status |
+| `gameUser.findByCreator` | query | Get by creator |
+| `gameUser.updateStatus` | mutation | Update status |
+| `gameUser.delete` | mutation | Delete game user |
 
 ---
 
@@ -242,7 +364,15 @@ input: {
 | `submarket.delete` | mutation | Delete submarket |
 
 ### Field Router (`field.*`)
-Manages market fields/categories.
+
+| Endpoint | Type | Description |
+|----------|------|-------------|
+| `field.getAll` | query | Get all fields |
+| `field.getById` | query | Get field by ID |
+| `field.getByMarketId` | query | Get fields for a market |
+| `field.create` | mutation | Create field |
+| `field.update` | mutation | Update field |
+| `field.delete` | mutation | Delete field |
 
 ### Asset Router (`asset.*`)
 
@@ -257,10 +387,30 @@ Manages market fields/categories.
 | `asset.delete` | mutation | Delete asset |
 
 ### Asset History Router (`assetHistory.*`)
-Manages historical price data for assets.
+
+| Endpoint | Type | Description |
+|----------|------|-------------|
+| `assetHistory.getAll` | query | Get all asset histories |
+| `assetHistory.getById` | query | Get by ID |
+| `assetHistory.getByAssetId` | query | Get history for asset |
+| `assetHistory.getByAssetIdAndPeriod` | query | Get by asset and period |
+| `assetHistory.getLatestByAssetId` | query | Get latest for asset |
+| `assetHistory.create` | mutation | Create asset history |
+| `assetHistory.update` | mutation | Update asset history |
+| `assetHistory.delete` | mutation | Delete asset history |
 
 ### Event Asset Router (`eventAsset.*`)
-Links events to assets they affect.
+
+| Endpoint | Type | Description |
+|----------|------|-------------|
+| `eventAsset.getAll` | query | Get all event-asset links |
+| `eventAsset.getById` | query | Get by ID |
+| `eventAsset.getByAssetId` | query | Get events for asset |
+| `eventAsset.getByEventId` | query | Get assets for event |
+| `eventAsset.getByPeriod` | query | Get by period |
+| `eventAsset.create` | mutation | Link event to asset |
+| `eventAsset.update` | mutation | Update link |
+| `eventAsset.delete` | mutation | Unlink event from asset |
 
 ### Impact Router (`impact.*`)
 
@@ -308,7 +458,21 @@ Links events to assets they affect.
 | `question.search` | query | Search questions by keyword |
 
 ### Quiz Question Router (`quizQuestion.*`)
-Links questions to quizzes.
+
+| Endpoint | Type | Description |
+|----------|------|-------------|
+| `quizQuestion.getAll` | query | Get all quiz-question links |
+| `quizQuestion.getById` | query | Get by ID |
+| `quizQuestion.getByQuiz` | query | Get questions for quiz |
+| `quizQuestion.getByQuestion` | query | Get quizzes for question |
+| `quizQuestion.getQuestionsWithAnswers` | query | Get questions with answers for quiz |
+| `quizQuestion.create` | mutation | Add question to quiz |
+| `quizQuestion.update` | mutation | Update link |
+| `quizQuestion.delete` | mutation | Remove question from quiz |
+| `quizQuestion.shuffleQuizOrder` | mutation | Shuffle question order |
+| `quizQuestion.searchInQuiz` | query | Search keyword in quiz |
+| `quizQuestion.validateQuizStructure` | query | Validate quiz structure |
+| `quizQuestion.getRandomQuestions` | query | Get random questions for quiz |
 
 ### Answer Router (`answer.*`)
 
@@ -405,6 +569,48 @@ Links questions to quizzes.
 | `transaction.getByType` | query | Get transactions by type (BUY/SELL) |
 | `transaction.getTotalValueByWallet` | query | Calculate wallet total value |
 
+### Holding Router (`holding.*`)
+
+| Endpoint | Type | Description |
+|----------|------|-------------|
+| `holding.getAll` | query | Get all holdings |
+| `holding.getById` | query | Get holding by ID |
+| `holding.getByWalletAndAsset` | query | Get holding by wallet + asset |
+| `holding.getByWallet` | query | Get holdings for wallet |
+| `holding.getByGameInstance` | query | Get holdings for game instance |
+| `holding.getByAsset` | query | Get holdings for asset |
+| `holding.create` | mutation | Create holding |
+| `holding.update` | mutation | Update holding |
+| `holding.updateQuantity` | mutation | Set quantity |
+| `holding.addQuantity` | mutation | Add to quantity |
+| `holding.subtractQuantity` | mutation | Subtract from quantity |
+| `holding.delete` | mutation | Delete holding |
+
+### Investment Router (`investment.*`)
+
+| Endpoint | Type | Description |
+|----------|------|-------------|
+| `investment.buy` | mutation | Buy asset (deposit/order) |
+| `investment.sell` | mutation | Sell asset (withdraw/sell, interests applied) |
+| `investment.getPortfolio` | query | Get portfolio with interests (walletId, gameInstanceId) |
+| `investment.getHoldingWithInterests` | query | Get single holding with interests |
+| `investment.applyInterests` | mutation | Apply interests to all holdings of a game instance |
+
+#### `investment.buy` / `investment.sell`
+```typescript
+input: { walletId: number, assetId: number, amount: number, gameInstanceId: number }
+```
+
+#### `investment.getPortfolio`
+```typescript
+input: { walletId: number, gameInstanceId: number }
+```
+
+#### `investment.getHoldingWithInterests`
+```typescript
+input: { holdingId: number, gameInstanceId: number }
+```
+
 ---
 
 ## 7. Notifications
@@ -424,12 +630,30 @@ Links questions to quizzes.
 
 ---
 
-## 8. Health Check
+## 8. Dictionary
+
+### Dico Entry Router (`dicoEntry.*`)
 
 | Endpoint | Type | Description |
 |----------|------|-------------|
-| `GET /health` | HTTP | Health check endpoint |
-| `health` | query | tRPC health check |
+| `dicoEntry.getAll` | query | Get all dictionary entries |
+| `dicoEntry.getAllPaginated` | query | Get entries with pagination |
+| `dicoEntry.getById` | query | Get entry by ID |
+| `dicoEntry.getByTerm` | query | Get entry by exact term |
+| `dicoEntry.search` | query | Search by term or definition |
+| `dicoEntry.create` | mutation | Create entry |
+| `dicoEntry.createMany` | mutation | Create multiple entries |
+| `dicoEntry.update` | mutation | Update entry |
+| `dicoEntry.delete` | mutation | Delete entry |
+| `dicoEntry.count` | query | Count total entries |
+
+---
+
+## 9. Health Check
+
+| Endpoint | Type | Description |
+|----------|------|-------------|
+| `health` | query | tRPC health check (no input) |
 
 ```typescript
 output: {
@@ -498,8 +722,8 @@ const participation = await trpc.userQuiz.startQuiz.mutate({
 
 ### HTTP Requests
 ```http
-# Health check
-GET http://localhost:3000/health
+# Health check (tRPC)
+GET http://localhost:3000/api/trpc/health
 
 # Get all levels
 GET http://localhost:3000/api/trpc/level.getAll

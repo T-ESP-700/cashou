@@ -8,39 +8,38 @@ import { trpcClient } from '@/lib/trpc';
 import { useAuth } from '@/hooks/use-auth';
 import { useHeaderOptions } from '@/hooks/use-header';
 
-interface GameHistoryItem {
-  id: number;
-  createdAt: string;
-  endedAt: string | null;
-  isEnded: boolean;
-  level: {
-    id: number;
-    title: string | null;
-    number: number | null;
-    duration: number | null;
-  } | null;
-  wallet: {
-    id: number;
-    amount: string | number | null;
-  } | null;
-  levelQuizCompleted?: boolean; // Indique si le quiz du niveau est complété
+interface LevelStars {
+  mandatory: boolean; // Etoile 1 : objectif obligatoire rempli
+  bonus: boolean;     // Etoile 2 : objectif bonus rempli
+  quiz: boolean;      // Etoile 3 : quiz du niveau complete
 }
 
-export default function GameHistoryScreen() {
+interface LevelItem {
+  id: number;
+  number: number | null;
+  title: string | null;
+  unlocked: boolean;
+  status: 'completed' | 'current' | 'locked';
+  gameId?: number;
+  hasActiveGame: boolean;
+  stars: LevelStars;
+}
+
+export default function LevelsScreen() {
   const colorScheme = useRNColorScheme();
   const isDark = colorScheme === 'dark';
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
 
-  useHeaderOptions({ showBackButton: false });
+  useHeaderOptions({ showBackButton: false, title: 'Historique' });
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [gameHistory, setGameHistory] = useState<GameHistoryItem[]>([]);
+  const [levels, setLevels] = useState<LevelItem[]>([]);
 
   useEffect(() => {
-    const fetchHistory = async () => {
+    const fetchLevels = async () => {
       if (!user) {
         setError('Vous devez etre connecte');
         setIsLoading(false);
@@ -49,146 +48,197 @@ export default function GameHistoryScreen() {
 
       try {
         setIsLoading(true);
-        const instances = await trpcClient.gameInstance.getByUser.query({ userId: user.id });
-        // Trier par date de creation decroissante
-        const sorted = [...instances].sort((a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-        
-        // Pour chaque partie terminée, vérifier si le quiz du niveau est complété
-        const gamesWithQuizStatus = await Promise.all(
-          sorted.map(async (game: any) => {
-            if (!game.isEnded || !game.level?.id) {
-              return { ...game, levelQuizCompleted: false };
+
+        const [userLevels, gameInstances] = await Promise.all([
+          trpcClient.level.getUserLevels.query({ userId: user.id }),
+          trpcClient.gameInstance.getByUser.query({ userId: user.id }),
+        ]);
+
+        // Trouver les parties en cours par niveau
+        const activeGameByLevel = new Map<number, number>();
+        for (const g of gameInstances as any[]) {
+          if (!g.isEnded && g.levelId) {
+            activeGameByLevel.set(g.levelId, g.id);
+          }
+        }
+
+        // Pour les niveaux complétés (recap), garder une gameInstance de référence
+        const completedGamesMap = new Map<number, any>();
+        for (const g of gameInstances as any[]) {
+          if (g.isEnded && g.levelId) {
+            if (!completedGamesMap.has(g.levelId)) {
+              completedGamesMap.set(g.levelId, g);
+            }
+          }
+        }
+
+        // Un niveau est "complété" uniquement s'il a au moins 1 étoile (partie finie avec récompenses)
+        // 0 étoile = abandonné ou jamais validé = non terminé
+        // Trouver le premier niveau non complété et débloqué (= niveau courant)
+        let currentLevelId: number | null = null;
+        for (const ul of userLevels as any[]) {
+          if (ul.unlocked && (ul.stars ?? 0) < 1) {
+            currentLevelId = ul.level.id;
+            break;
+          }
+        }
+
+        // Construire la liste des niveaux avec les etoiles
+        const result: LevelItem[] = (userLevels as any[]).map((ul: any) => {
+            const isCompleted = (ul.stars ?? 0) >= 1;
+            const isCurrent = ul.level.id === currentLevelId;
+
+            let status: LevelItem['status'];
+            if (isCompleted) {
+              status = 'completed';
+            } else if (isCurrent) {
+              status = 'current';
+            } else {
+              status = 'locked';
             }
 
-            try {
-              // Récupérer le quiz du niveau
-              const quizzes = await trpcClient.quiz.getByLevel.query({ levelId: game.level.id });
-              if (!quizzes || quizzes.length === 0) {
-                return { ...game, levelQuizCompleted: true }; // Pas de quiz = considéré comme complété
-              }
+            // Les étoiles viennent directement de UserLevelCompletion via getUserLevels
+            const stars: LevelStars = {
+              mandatory: ul.mandatoryGoalsMet ?? false,
+              bonus: ul.bonusGoalsMet ?? false,
+              quiz: ul.quizPassed ?? false,
+            };
 
-              const quizId = quizzes[0].id;
-              
-              // Vérifier si l'utilisateur a complété ce quiz
-              const participations = await trpcClient.userQuiz.getByQuiz.query({ quizId });
-              const userParticipation = (participations as any[]).find(
-                (p: any) => p.userId === user.id && p.completedAt !== null
-              );
+            const completedGame = completedGamesMap.get(ul.level.id);
+            const activeGameId = activeGameByLevel.get(ul.level.id);
+            return {
+              id: ul.level.id,
+              number: ul.level.number,
+              title: ul.level.title,
+              unlocked: ul.unlocked,
+              status,
+              gameId: activeGameId ?? completedGame?.id,
+              hasActiveGame: !!activeGameId,
+              stars,
+            };
+        });
 
-              return { ...game, levelQuizCompleted: userParticipation !== undefined };
-            } catch (err) {
-              console.error('Error checking quiz completion for game', game.id, err);
-              return { ...game, levelQuizCompleted: false };
-            }
-          })
-        );
-
-        setGameHistory(gamesWithQuizStatus as GameHistoryItem[]);
+        setLevels(result);
       } catch (err) {
-        console.error('Error fetching game history:', err);
-        setError('Erreur lors du chargement de l\'historique');
+        console.error('Error fetching levels:', err);
+        setError('Erreur lors du chargement des niveaux');
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchHistory();
+    fetchLevels();
   }, [user]);
 
-  const formatDate = (dateStr: string): string => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  const handleLevelPress = (level: LevelItem) => {
+    if (level.status === 'locked') return;
 
-  const handleGamePress = (game: GameHistoryItem) => {
-    if (game.isEnded) {
-      // Partie terminee -> ecran de resume
-      router.push({
-        pathname: '/(tabs)/summary',
-        params: { gameId: game.id.toString() },
-      });
-    } else {
-      // Partie en cours -> ecran de jeu
+    // Partie en cours : aller sur la partie (même si niveau déjà complété)
+    if (level.hasActiveGame && level.gameId) {
       router.push({
         pathname: '/game/current',
         params: {
-          levelId: game.level?.id.toString() || '',
-          gameId: game.id.toString(),
+          levelId: level.id.toString(),
+          gameId: level.gameId.toString(),
+        },
+      });
+      return;
+    }
+
+    if (level.status === 'current') {
+      router.push({
+        pathname: '/game/current',
+        params: { levelId: level.id.toString() },
+      });
+    } else if (level.status === 'completed') {
+      router.push({
+        pathname: '/(tabs)/summary',
+        params: {
+          levelId: level.id.toString(),
+          mode: 'history',
         },
       });
     }
   };
 
-  const renderGameItem = ({ item }: { item: GameHistoryItem }) => {
-    const walletAmount = item.wallet?.amount ? Number(item.wallet.amount) : 0;
+  const renderStars = (stars: LevelStars) => {
+    const starData = [stars.mandatory, stars.bonus, stars.quiz];
+    return (
+      <View style={styles.starsContainer}>
+        {starData.map((filled, i) => (
+          <Ionicons
+            key={i}
+            name={filled ? 'star' : 'star-outline'}
+            size={12}
+            color={filled ? '#FFFFFF' : 'rgba(255,255,255,0.5)'}
+          />
+        ))}
+      </View>
+    );
+  };
+
+  const renderStatusIcon = (item: LevelItem) => {
+    // Partie en cours : orange + flèche, quel que soit le statut (même niveau déjà complété)
+    if (item.hasActiveGame) {
+      return (
+        <View style={styles.statusIconCurrent}>
+          <Ionicons name="arrow-forward" size={18} color="#2B2C48" />
+        </View>
+      );
+    }
+    switch (item.status) {
+      case 'completed':
+        return (
+          <Ionicons name="checkmark-circle" size={34} color="#88D498" />
+        );
+      case 'current':
+        return (
+          <View style={styles.statusIconUnlocked}>
+            <Ionicons name="lock-open-outline" size={16} color="#FFFFFF" />
+          </View>
+        );
+      case 'locked':
+        return (
+          <View style={styles.statusIconLocked}>
+            <Ionicons name="lock-closed" size={16} color="#FFFFFF" />
+          </View>
+        );
+    }
+  };
+
+  const renderLevelItem = ({ item }: { item: LevelItem }) => {
+    const isLocked = item.status === 'locked';
+    const isCurrent = item.status === 'current';
+    const isCompleted = item.status === 'completed';
+    const hasActiveGame = item.hasActiveGame;
+    const isCurrentUnlockedNoGame = isCurrent && !hasActiveGame;
 
     return (
       <TouchableOpacity
-        style={[styles.gameCard, { backgroundColor: theme.card, borderColor: theme.border }]}
-        onPress={() => handleGamePress(item)}
-        activeOpacity={0.8}
+        style={[
+          styles.levelRow,
+          isLocked && styles.levelRowLocked,
+          hasActiveGame && styles.levelRowCurrent,
+          isCurrentUnlockedNoGame && styles.levelRowUnlockedNoGame,
+          isCompleted && !hasActiveGame && styles.levelRowCompleted,
+        ]}
+        onPress={() => handleLevelPress(item)}
+        activeOpacity={isLocked ? 1 : 0.7}
+        disabled={isLocked}
       >
-        <View style={styles.gameHeader}>
-          <View style={styles.levelBadge}>
-            <Text style={[styles.levelNumber, { color: theme.text }]}>
-              Niveau {item.level?.number || '?'}
-            </Text>
-          </View>
-          <View style={[
-            styles.statusBadge,
-            { 
-              backgroundColor: item.isEnded 
-                ? (item.levelQuizCompleted ? '#4CAF50' : '#FF9800') // Vert si quiz complété, orange sinon
-                : '#FF9800' // Orange pour en cours
-            }
-          ]}>
-            <Text style={styles.statusText}>
-              {item.isEnded 
-                ? (item.levelQuizCompleted ? 'Termine' : 'Quiz') 
-                : 'En cours'}
-            </Text>
-          </View>
+        <View style={styles.levelInfo}>
+          <Text
+            style={[
+              styles.levelName,
+              isLocked && styles.levelNameLocked,
+            ]}
+          >
+            Niveau {item.number ?? '?'}
+          </Text>
+          {isCompleted && !item.hasActiveGame && renderStars(item.stars)}
         </View>
-
-        <Text style={[styles.levelTitle, { color: theme.text }]}>
-          {item.level?.title || 'Sans titre'}
-        </Text>
-
-        <View style={styles.gameInfo}>
-          <View style={styles.infoItem}>
-            <Ionicons name="calendar-outline" size={16} color={theme.text} style={{ opacity: 0.7 }} />
-            <Text style={[styles.infoText, { color: theme.text, opacity: 0.7 }]}>
-              {formatDate(item.createdAt)}
-            </Text>
-          </View>
-
-          {item.isEnded && item.endedAt && (
-            <View style={styles.infoItem}>
-              <Ionicons name="flag-outline" size={16} color={theme.text} style={{ opacity: 0.7 }} />
-              <Text style={[styles.infoText, { color: theme.text, opacity: 0.7 }]}>
-                Fin: {formatDate(item.endedAt)}
-              </Text>
-            </View>
-          )}
-
-          <View style={styles.infoItem}>
-            <Ionicons name="wallet-outline" size={16} color={theme.text} style={{ opacity: 0.7 }} />
-            <Text style={[styles.infoText, { color: theme.text, opacity: 0.7 }]}>
-              {walletAmount.toLocaleString('fr-FR')} EUR
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.arrowContainer}>
-          <Ionicons name="chevron-forward" size={24} color={theme.text} style={{ opacity: 0.5 }} />
+        <View style={styles.statusIcon}>
+          {renderStatusIcon(item)}
         </View>
       </TouchableOpacity>
     );
@@ -200,7 +250,7 @@ export default function GameHistoryScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.accent} />
           <Text style={[styles.loadingText, { color: theme.text }]}>
-            Chargement de l'historique...
+            Chargement des niveaux...
           </Text>
         </View>
       </View>
@@ -221,35 +271,14 @@ export default function GameHistoryScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>
-          Historique des parties
-        </Text>
-      </View>
-
-      {gameHistory.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="game-controller-outline" size={64} color={theme.text} style={{ opacity: 0.5 }} />
-          <Text style={[styles.emptyText, { color: theme.text }]}>
-            Aucune partie jouee pour le moment
-          </Text>
-          <TouchableOpacity
-            style={[styles.startButton, { backgroundColor: theme.accent }]}
-            onPress={() => router.push('/(tabs)')}
-          >
-            <Text style={styles.startButtonText}>Commencer une partie</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <FlatList
-          data={gameHistory}
-          renderItem={renderGameItem}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 16 }]}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <FlatList
+        data={levels}
+        renderItem={renderLevelItem}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 16 }]}
+        showsVerticalScrollIndicator={false}
+      />
     </View>
   );
 }
@@ -257,14 +286,6 @@ export default function GameHistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    padding: 16,
-    paddingBottom: 8,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
   },
   loadingContainer: {
     flex: 1,
@@ -275,6 +296,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
+    fontFamily: 'Anybody',
   },
   errorContainer: {
     flex: 1,
@@ -287,87 +309,93 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     textAlign: 'center',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    padding: 32,
-    paddingTop: 32,
-    gap: 16,
-  },
-  emptyText: {
-    fontSize: 16,
-    textAlign: 'center',
-    opacity: 0.7,
-  },
-  startButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginTop: 8,
-  },
-  startButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    fontFamily: 'Anybody',
   },
   listContent: {
-    flexGrow: 1,
-    justifyContent: 'flex-start',
     padding: 16,
     gap: 12,
   },
-  gameCard: {
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 2,
-    marginBottom: 12,
-  },
-  gameHeader: {
+  // Base level row
+  levelRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
   },
-  levelBadge: {
+  // Completed level: white bg, no border
+  levelRowCompleted: {
+    backgroundColor: '#FFFFFF',
+  },
+  // Current level with active game: white bg, orange border
+  levelRowCurrent: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#EFA667',
+    borderWidth: 2,
+  },
+  // Unlocked level without active game (next to play): white bg, blue border
+  levelRowUnlockedNoGame: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#9CD6FF',
+    borderWidth: 2,
+  },
+  // Locked level: gray bg
+  levelRowLocked: {
+    backgroundColor: '#D9D9D9',
+  },
+  levelInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+    flex: 1,
   },
-  levelNumber: {
-    fontSize: 14,
-    fontWeight: '600',
+  levelName: {
+    fontSize: 20,
+    fontFamily: 'Anybody',
+    color: '#2B2C48',
   },
-  statusBadge: {
-    paddingHorizontal: 10,
+  levelNameLocked: {
+    color: '#2B2C48',
+  },
+  starsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFA667',
+    borderRadius: 8,
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
+    gap: 4,
   },
-  statusText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
+  statusIcon: {
+    marginLeft: 12,
   },
-  levelTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  gameInfo: {
-    gap: 6,
-  },
-  infoItem: {
-    flexDirection: 'row',
+  // Orange rounded square for current
+  statusIconCurrent: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#FFB472',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
   },
-  infoText: {
-    fontSize: 13,
+  // Gray circle for locked
+  statusIconLocked: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#A0A0A0',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  arrowContainer: {
-    position: 'absolute',
-    right: 16,
-    top: '50%',
-    marginTop: -12,
+  // Blue circle for unlocked (no active game)
+  statusIconUnlocked: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#9CD6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

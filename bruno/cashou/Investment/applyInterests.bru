@@ -1,0 +1,21 @@
+meta {
+  name: applyInterests
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}/api/trpc/investment.applyInterests
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "gameInstanceId": 1
+  }
+}
+
+settings {
+  encodeUrl: true
+}

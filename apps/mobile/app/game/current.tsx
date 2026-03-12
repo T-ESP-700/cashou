@@ -1,17 +1,23 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, useColorScheme as useRNColorScheme, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, useColorScheme as useRNColorScheme, Alert, Modal, TextInput } from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
+import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useAuth } from '@/hooks/use-auth';
 import { useHeaderOptions } from '@/hooks/use-header';
 import { useNotifications } from '@/hooks/use-notifications';
 import { LevelInfoModal } from '@/components/level-info-modal';
+import { ActionPillButton, GoalStarIcon } from '@/components/ui';
 import FastForwardIcon from '@/assets/images/fast-forward.svg';
 import PauseIcon from '@/assets/images/pause.svg';
 import StopIcon from '@/assets/images/stop.svg';
+import QuizActionIcon from '@/assets/images/quiz-action.svg';
+import RecapActionIcon from '@/assets/images/recap-action.svg';
 
 interface GameStats {
   level: number;
@@ -38,6 +44,13 @@ interface GoalData {
   id: number;
   title: string | null;
   description: string | null;
+  isMandatory?: boolean;
+}
+
+interface LevelGoalData {
+  goalId: number;
+  isMandatory: boolean;
+  goal: { id: number; title: string | null; description: string | null };
 }
 
 interface LevelData {
@@ -51,6 +64,7 @@ interface LevelData {
     speed: number | null;
   } | null;
   goals?: GoalData[];
+  levelGoals?: LevelGoalData[];
 }
 
 interface GameTimeState {
@@ -61,6 +75,34 @@ interface GameTimeState {
   isEnded: boolean; // partie terminée
   isPaused: boolean; // partie en pause
   pausedAt: Date | null; // date de début de pause actuelle
+}
+
+type EndGameModalType =
+  | 'PRIMARY_AND_SECONDARY_SUCCESS'
+  | 'PRIMARY_SUCCESS_ONLY'
+  | 'PRIMARY_FAILURE';
+
+interface EndGameModalContent {
+  type: EndGameModalType;
+  title: string;
+  primaryMessage: string;
+  secondaryMessage: string | null;
+}
+
+interface EndGameGoalResult {
+  id: number;
+  title: string;
+  description: string | null;
+  isMandatory: boolean;
+  validated: boolean;
+}
+
+interface EndGameResult {
+  success: boolean;
+  gameInstanceId: number;
+  goals: EndGameGoalResult[];
+  message: string;
+  modal?: EndGameModalContent;
 }
 
 // Constantes pour l'animation de la date
@@ -80,7 +122,7 @@ export default function GameCurrentScreen() {
   const { user } = useAuth();
   const { pendingEventCompletion, setPendingEventCompletion, isOnAssetsScreen, setActiveGameInstanceId, eventNotification } = useNotifications();
   // Configure header for this screen
-  useHeaderOptions({ showBackButton: true });
+  useHeaderOptions({ showBackButton: true, title: 'Partie' });
 
   const [levelData, setLevelData] = useState<LevelData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -94,8 +136,22 @@ export default function GameCurrentScreen() {
   const [holdings, setHoldings] = useState<HoldingData[]>([]);
   const [showNoInvestmentModal, setShowNoInvestmentModal] = useState(false);
   const [isEndingGame, setIsEndingGame] = useState(false);
+  const [showEndGameModal, setShowEndGameModal] = useState(false);
+  const [endGameResult, setEndGameResult] = useState<EndGameResult | null>(null);
+  const [levelQuizId, setLevelQuizId] = useState<number | null>(null);
+  const [isReplayCreating, setIsReplayCreating] = useState(false);
   const [showLevelInfoModal, setShowLevelInfoModal] = useState(false);
   const hasShownLevelInfoRef = useRef(false);
+
+  // Impact coefficients: assetId → cumulated coef (frontend-only rate adjustment)
+  const [impactCoefs, setImpactCoefs] = useState<Record<number, number>>({});
+
+  // Assets bottom sheet state
+  const assetsSheetRef = useRef<BottomSheet>(null);
+  const [allAssets, setAllAssets] = useState<any[]>([]);
+  const [assetsLoading, setAssetsLoading] = useState(false);
+  const [assetsSearchQuery, setAssetsSearchQuery] = useState('');
+  const [selectedSubmarketId, setSelectedSubmarketId] = useState<number | null>(null);
 
   // Mode dev (a configurer selon l'environnement)
   const __DEV__ = process.env.NODE_ENV === 'development' || true; // Force true pour le dev
@@ -150,12 +206,11 @@ export default function GameCurrentScreen() {
       setIsEndingGame(true);
       console.log('Game time elapsed, ending game...');
 
-      // Appeler le backend pour terminer la partie
-      await trpcClient.gameInstance.endGame.mutate({ id: gameInstanceId });
+      const result = await trpcClient.gameInstance.endGame.mutate({ id: gameInstanceId }) as EndGameResult;
 
-      // Mettre à jour l'état local
+      setEndGameResult(result);
       setIsGameEnded(true);
-      // La redirection vers summary sera déclenchée par le useEffect qui surveille isGameEnded
+      setShowEndGameModal(true);
     } catch (err) {
       console.error('Error ending game:', err);
       Alert.alert('Erreur', 'Impossible de terminer la partie');
@@ -226,6 +281,39 @@ export default function GameCurrentScreen() {
       console.error('Error fetching wallet balance:', err);
     }
   };
+
+  // Fetch all triggered impacts for this game instance and build assetId → coef map
+  const fetchTriggeredImpacts = useCallback(async (gInstanceId: number) => {
+    try {
+      const events = await trpcClient.gameInstanceEvent.findByGameInstance.query({ gameInstanceId: gInstanceId });
+      const triggeredEvents = events.filter((e: any) => e.triggeredAt != null);
+
+      const coefs: Record<number, number> = {};
+      for (const gie of triggeredEvents) {
+        const eventId = gie.levelEvent?.eventId;
+        if (!eventId) continue;
+
+        const impacts = await trpcClient.impact.getByEventId.query({ eventId });
+        for (const impact of impacts) {
+          if (impact.assetId != null && impact.coef != null) {
+            // Cumulate coefficients multiplicatively
+            coefs[impact.assetId] = (coefs[impact.assetId] ?? 1) * impact.coef;
+          }
+        }
+      }
+
+      setImpactCoefs(coefs);
+    } catch (err) {
+      console.error('[GameCurrentScreen] Error fetching triggered impacts:', err);
+    }
+  }, []);
+
+  // Get adjusted rate for an asset (frontend-only, no DB change)
+  const getAdjustedRate = useCallback((assetId: number, rate: number | null): number | null => {
+    if (rate == null) return null;
+    const coef = impactCoefs[assetId];
+    return coef != null ? parseFloat((rate * coef).toFixed(2)) : rate;
+  }, [impactCoefs]);
 
   // Helper function to create game instance and wallet in preparation mode
   const createGameInstanceForPreparation = async (levelData: LevelData) => {
@@ -428,6 +516,25 @@ export default function GameCurrentScreen() {
           // 4. We don't already have a gameInstanceId set (from previous fetch)
           // This prevents creating a new instance when navigating from a notification
           if (!gameId && !gameInstanceId && user && data.level) {
+            const activeGame = await trpcClient.gameInstance.getActiveByUser.query({ userId: user.id });
+            if (activeGame) {
+              const confirmed = await new Promise<boolean>((resolve) => {
+                Alert.alert(
+                  'Partie en cours',
+                  'Lancer cette partie va clôturer la partie en cours sans gagner de récompenses. Voulez-vous continuer ?',
+                  [
+                    { text: 'Annuler', style: 'cancel' as const, onPress: () => resolve(false) },
+                    { text: 'Continuer', onPress: () => resolve(true) },
+                  ]
+                );
+              });
+              if (!confirmed) {
+                setIsLoading(false);
+                router.back();
+                return;
+              }
+              await trpcClient.gameInstance.abandon.mutate({ id: activeGame.id });
+            }
             await createGameInstanceForPreparation(data as LevelData);
           }
         }
@@ -520,6 +627,12 @@ export default function GameCurrentScreen() {
       syncFromBackend();
     }
   }, [eventNotification, gameInstanceId]);
+
+  // Fetch triggered impacts on mount and when eventNotification changes
+  useEffect(() => {
+    if (!gameInstanceId) return;
+    fetchTriggeredImpacts(gameInstanceId);
+  }, [gameInstanceId, eventNotification, fetchTriggeredImpacts]);
 
   // Calculate initial game date whenever gameTimeState changes
   // This ensures the correct date is shown even when paused
@@ -619,19 +732,6 @@ export default function GameCurrentScreen() {
     }, [gameInstanceId, calculateEndDate, isPaused, walletId])
   );
 
-  // Redirection vers l'écran de résumé quand la partie est terminée
-  useEffect(() => {
-    console.log('[GameCurrentScreen] 🎯 Redirect effect check: isGameEnded=', isGameEnded, 'gameInstanceId=', gameInstanceId);
-    if (isGameEnded && gameInstanceId) {
-      console.log('[GameCurrentScreen] 🚀 Redirecting to summary for game', gameInstanceId);
-      // Rediriger vers l'écran de résumé
-      router.replace({
-        pathname: '/(tabs)/summary',
-        params: { gameId: gameInstanceId.toString() },
-      });
-    }
-  }, [isGameEnded, gameInstanceId, router]);
-
   // Auto-show level info modal for new games (when no gameId is passed)
   useEffect(() => {
     // Only show once per session, only for new games, and only after level data is loaded
@@ -641,18 +741,181 @@ export default function GameCurrentScreen() {
     }
   }, [gameId, levelData, isLoading]);
 
+  useEffect(() => {
+    const fetchLevelQuizId = async () => {
+      if (!levelData?.level?.id) {
+        setLevelQuizId(null);
+        return;
+      }
+
+      try {
+        const quizzes = await trpcClient.quiz.getByLevel.query({ levelId: levelData.level.id });
+        setLevelQuizId(quizzes?.[0]?.id ?? null);
+      } catch (err) {
+        console.error('Error fetching level quiz for end-game modal:', err);
+        setLevelQuizId(null);
+      }
+    };
+
+    fetchLevelQuizId();
+  }, [levelData?.level?.id]);
+
+  const handleOpenRecap = () => {
+    if (!gameInstanceId) return;
+    setShowEndGameModal(false);
+    router.replace({
+      pathname: '/(tabs)/summary',
+      params: { gameId: gameInstanceId.toString() },
+    });
+  };
+
+  const handleOpenQuiz = () => {
+    if (!endGameResult?.success) return;
+    if (!levelQuizId) {
+      Alert.alert('Quiz indisponible', 'Aucun quiz n’est associé à ce niveau pour le moment.');
+      return;
+    }
+    setShowEndGameModal(false);
+    router.push({
+      pathname: '/(tabs)/daily-quiz',
+      params: {
+        quizId: levelQuizId.toString(),
+        gameInstanceId: gameInstanceId ? gameInstanceId.toString() : '',
+      },
+    });
+  };
+
+  const handleReplay = async () => {
+    if (!user?.id || !levelData?.level?.id) return;
+
+    try {
+      setIsReplayCreating(true);
+      const startBalance = levelData.level.startBalance ?? 1000;
+      const newGame = await trpcClient.gameInstance.create.mutate({
+        userId: user.id,
+        levelId: levelData.level.id,
+        startBalance,
+        isPaused: true,
+      });
+      const wallet = await trpcClient.wallet.create.mutate({
+        userId: user.id,
+        gameInstanceId: newGame.id,
+        amount: startBalance,
+      });
+
+      setShowEndGameModal(false);
+      router.replace({
+        pathname: '/game/current',
+        params: {
+          gameId: String(newGame.id),
+          levelId: String(levelData.level.id),
+        },
+      });
+
+      setGameInstanceId(newGame.id);
+      setWalletId(wallet.id);
+      setIsPaused(true);
+      setIsGameEnded(false);
+      setEndGameResult(null);
+      setGameTimeState(null);
+      setGameDate(GAME_START_DATE);
+      setHoldings([]);
+      setStats((prev) => ({
+        ...prev,
+        cash: startBalance,
+        timePassed: '0m',
+      }));
+    } catch (err) {
+      console.error('Error creating replay game:', err);
+      Alert.alert('Erreur', 'Impossible de créer la partie');
+    } finally {
+      setIsReplayCreating(false);
+    }
+  };
+
+  // Fetch all assets for the bottom sheet
+  const fetchAllAssets = useCallback(async () => {
+    try {
+      setAssetsLoading(true);
+      const data = await trpcClient.asset.getAll.query();
+      setAllAssets(data as any[]);
+    } catch (err) {
+      console.error('Error fetching assets:', err);
+    } finally {
+      setAssetsLoading(false);
+    }
+  }, []);
+
+  // Extract unique submarkets from assets
+  const submarkets = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const asset of allAssets) {
+      if (asset.submarket?.id && asset.submarket?.title) {
+        map.set(asset.submarket.id, asset.submarket.title);
+      }
+    }
+    return Array.from(map, ([id, title]) => ({ id, title }));
+  }, [allAssets]);
+
+  // Filter assets by submarket and search query
+  const filteredAssets = useMemo(() => {
+    let result = allAssets;
+    if (selectedSubmarketId !== null) {
+      result = result.filter((a: any) => a.submarket?.id === selectedSubmarketId);
+    }
+    const q = assetsSearchQuery.trim().toLowerCase();
+    if (q) {
+      result = result.filter((a: any) =>
+        (a.title ?? '').toLowerCase().includes(q) ||
+        (a.symbol ?? '').toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [allAssets, selectedSubmarketId, assetsSearchQuery]);
+
+  // Render backdrop for assets sheet
+  const renderAssetsBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.5}
+        pressBehavior="close"
+      />
+    ),
+    []
+  );
+
+  // Handle assets sheet state changes (pause/resume game)
+  const handleAssetsSheetChange = useCallback(async (index: number) => {
+    if (!gameInstanceId) return;
+    try {
+      if (index >= 0) {
+        await trpcClient.gameInstance.pause.mutate({ id: gameInstanceId });
+        setIsPaused(true);
+      } else {
+        await trpcClient.gameInstance.resume.mutate({ id: gameInstanceId });
+        setIsPaused(false);
+        // Reset search and filter when closing
+        setAssetsSearchQuery('');
+        setSelectedSubmarketId(null);
+      }
+    } catch (err) {
+      console.error('Error pausing/resuming game from assets sheet:', err);
+    }
+  }, [gameInstanceId]);
+
   const handleAddAsset = () => {
     if (!gameInstanceId || !walletId) {
       Alert.alert('Erreur', 'Initialisation en cours, veuillez patienter...');
       return;
     }
-    router.push({
-      pathname: '/game/assets',
-      params: {
-        gameInstanceId: gameInstanceId.toString(),
-        walletId: walletId.toString(),
-      },
-    });
+    // Fetch assets if not loaded yet
+    if (allAssets.length === 0) {
+      fetchAllAssets();
+    }
+    assetsSheetRef.current?.expand();
   };
 
   const handleHoldingPress = (holding: HoldingData) => {
@@ -781,6 +1044,14 @@ export default function GameCurrentScreen() {
     return `${day}/${month}/${year}`;
   };
 
+  const hasPrimaryGoalSuccess = endGameResult?.success === true;
+  const modalContent = endGameResult?.modal;
+  const modalStarFillCount = modalContent?.type === 'PRIMARY_AND_SECONDARY_SUCCESS'
+    ? 2
+    : modalContent?.type === 'PRIMARY_SUCCESS_ONLY'
+      ? 1
+      : 0;
+
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -804,6 +1075,7 @@ export default function GameCurrentScreen() {
   }
 
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView style={styles.scrollView} contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}>
         <View style={styles.card}>
@@ -912,11 +1184,11 @@ export default function GameCurrentScreen() {
                     {Number(holding.quantity ?? 0).toFixed(2)}€
                   </Text>
                   <View style={styles.assetRateContainer}>
-                    <Text style={[styles.assetRateArrow, { color: (holding.asset?.rate ?? 0) >= 0 ? '#4CAF50' : '#F44336' }]}>
-                      {(holding.asset?.rate ?? 0) >= 0 ? '▲' : '▼'}
+                    <Text style={[styles.assetRateArrow, { color: (getAdjustedRate(holding.asset?.id ?? 0, holding.asset?.rate ?? 0) ?? 0) >= 0 ? '#4CAF50' : '#F44336' }]}>
+                      {(getAdjustedRate(holding.asset?.id ?? 0, holding.asset?.rate ?? 0) ?? 0) >= 0 ? '▲' : '▼'}
                     </Text>
                     <Text style={[styles.assetRate, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
-                      {holding.asset?.rate ?? 0}%
+                      {getAdjustedRate(holding.asset?.id ?? 0, holding.asset?.rate ?? 0) ?? 0}%
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -1012,7 +1284,7 @@ export default function GameCurrentScreen() {
               Aucun investissement
             </Text>
             <Text style={[styles.modalMessage, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
-              Vous n'avez fait aucun investissement. Si vous demarrez maintenant, vous ne pourrez pas gagner d'argent pendant la partie.
+              {"Vous n'avez fait aucun investissement. Si vous demarrez maintenant, vous ne pourrez pas gagner d'argent pendant la partie."}
             </Text>
             <Text style={[styles.modalMessage, { fontFamily: CashouTheme.fonts.body, color: theme.text, marginTop: 8 }]}>
               Voulez-vous vraiment demarrer sans investir ?
@@ -1023,7 +1295,7 @@ export default function GameCurrentScreen() {
                 onPress={() => setShowNoInvestmentModal(false)}
               >
                 <Text style={[styles.modalButtonText, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
-                  Investir d'abord
+                  {"Investir d'abord"}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -1039,6 +1311,79 @@ export default function GameCurrentScreen() {
         </View>
       </Modal>
 
+      {/* Modale de fin de partie */}
+      <Modal
+        visible={showEndGameModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {}}
+      >
+        <BlurView
+          intensity={60}
+          tint={isDark ? 'dark' : 'light'}
+          style={styles.endGameBlur}
+        >
+          <View style={[styles.endGameOverlay, { backgroundColor: 'transparent' }]}>
+            <View style={[styles.endGameCardBackdrop, { backgroundColor: theme.secondary }]}>
+            <View style={[styles.endGameCard, { backgroundColor: theme.card, shadowColor: theme.border }]}>
+            <Text allowFontScaling={false} style={[styles.endGameTitle, { fontFamily: 'Anybody', color: theme.text }]}>
+              {modalContent?.title ?? (hasPrimaryGoalSuccess ? 'Bravo !' : 'Dommage !')}
+            </Text>
+
+            <Text allowFontScaling={false} style={[styles.endGameMessage, { fontFamily: 'Anybody', color: theme.text }]}>
+              {modalContent?.primaryMessage ?? endGameResult?.message}
+            </Text>
+
+            {!!modalContent?.secondaryMessage && (
+              <Text allowFontScaling={false} style={[styles.endGameMessage, styles.endGameSecondary, { fontFamily: 'Anybody', color: theme.text }]}>
+                {modalContent.secondaryMessage}
+              </Text>
+            )}
+
+            <View style={styles.endGameStarsRow}>
+              {[0, 1].map((index) => (
+                <GoalStarIcon
+                  key={index}
+                  filled={index < modalStarFillCount}
+                  size={16}
+                  idSuffix={`end-game-${index}`}
+                />
+              ))}
+            </View>
+
+            <View style={styles.endGameActions}>
+              {hasPrimaryGoalSuccess ? (
+                <>
+                  <ActionPillButton
+                    label="Récap"
+                    customIcon={<RecapActionIcon width={22} height={22} />}
+                    onPress={handleOpenRecap}
+                    style={styles.endGameActionButton}
+                  />
+                  <ActionPillButton
+                    label="Quiz"
+                    customIcon={<QuizActionIcon width={18} height={18} />}
+                    onPress={handleOpenQuiz}
+                    style={styles.endGameActionButton}
+                  />
+                </>
+              ) : (
+                <ActionPillButton
+                  label="Rejouer"
+                  iconName="refresh-outline"
+                  onPress={handleReplay}
+                  disabled={isReplayCreating}
+                  isLoading={isReplayCreating}
+                  style={StyleSheet.flatten([styles.endGameActionButton, styles.endGameSingleAction])}
+                />
+              )}
+            </View>
+            </View>
+          </View>
+          </View>
+        </BlurView>
+      </Modal>
+
       {/* Modal d'informations du niveau */}
       <LevelInfoModal
         visible={showLevelInfoModal}
@@ -1047,9 +1392,120 @@ export default function GameCurrentScreen() {
           ...levelData.level,
           description: levelData.level.description ?? null,
         } : null}
-        goals={levelData?.goals ?? []}
+        goals={
+          (levelData?.levelGoals?.map((lg) => ({
+            id: lg.goal.id,
+            title: lg.goal.title,
+            description: lg.goal.description,
+            isMandatory: lg.isMandatory,
+          })) ?? levelData?.goals) ?? []
+        }
       />
+
+      {/* Assets Bottom Sheet */}
+      <BottomSheet
+        ref={assetsSheetRef}
+        index={-1}
+        snapPoints={['85%']}
+        onChange={handleAssetsSheetChange}
+        enablePanDownToClose
+        backdropComponent={renderAssetsBackdrop}
+        backgroundStyle={{ backgroundColor: theme.background }}
+        handleIndicatorStyle={{
+          backgroundColor: isDark ? '#4A4D65' : '#D0D0D0',
+          width: 40,
+        }}
+      >
+        <BottomSheetScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 24 }}
+        >
+          {/* Search */}
+          <View style={[styles.assetsSheetSearch, { backgroundColor: isDark ? theme.card : '#FFFFFF', borderColor: isDark ? theme.border : '#E0E0E0' }]}>
+            <TextInput
+              style={[styles.assetsSheetSearchInput, { color: theme.text, fontFamily: CashouTheme.fonts.body }]}
+              placeholder="Rechercher"
+              placeholderTextColor={isDark ? '#9BA1A6' : '#9CA3AF'}
+              value={assetsSearchQuery}
+              onChangeText={setAssetsSearchQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+
+          {/* Submarket Tabs */}
+          <Text style={[styles.assetsSheetSectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
+            Trendings
+          </Text>
+          <View style={[styles.assetsSheetTabsBar, { backgroundColor: isDark ? theme.card : 'white', borderColor: isDark ? theme.border : '#E0E0E0' }]}>
+            <TouchableOpacity
+              style={[
+                styles.assetsSheetTab,
+                selectedSubmarketId === null && { backgroundColor: theme.accent },
+              ]}
+              onPress={() => setSelectedSubmarketId(null)}
+            >
+              <Text style={[styles.assetsSheetTabText, { color: selectedSubmarketId === null ? '#FFFFFF' : theme.text, fontFamily: CashouTheme.fonts.body }]}>
+                Tous
+              </Text>
+            </TouchableOpacity>
+            {submarkets.map((sm) => (
+              <TouchableOpacity
+                key={sm.id}
+                style={[
+                  styles.assetsSheetTab,
+                  selectedSubmarketId === sm.id && { backgroundColor: theme.accent },
+                ]}
+                onPress={() => setSelectedSubmarketId(sm.id)}
+              >
+                <Text style={[styles.assetsSheetTabText, { color: selectedSubmarketId === sm.id ? '#FFFFFF' : theme.text, fontFamily: CashouTheme.fonts.body }]}>
+                  {sm.title}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Asset List */}
+          {assetsLoading ? (
+            <ActivityIndicator size="large" color={theme.accent} style={{ marginTop: 24 }} />
+          ) : (
+            filteredAssets.map((asset: any) => (
+              <TouchableOpacity
+                key={asset.id}
+                style={[styles.assetsSheetRow, { backgroundColor: theme.card }]}
+                activeOpacity={0.7}
+                onPress={() => {
+                  assetsSheetRef.current?.close();
+                  router.push(`/game/asset-detail?id=${asset.id}&gameInstanceId=${gameInstanceId}&walletId=${walletId}`);
+                }}
+              >
+                <View style={styles.assetsSheetRowLeft}>
+                  <Text style={[styles.assetsSheetRowName, { color: theme.text, fontFamily: 'Anybody' }]}>
+                    {asset.title ?? asset.symbol ?? 'Asset'}
+                  </Text>
+                  {asset.submarket?.title && (
+                    <View style={[styles.assetsSheetBadge, { backgroundColor: isDark ? '#3D3358' : '#D8CCE8' }]}>
+                      <Text style={{ color: isDark ? '#E0D4F0' : '#4A3560', fontSize: 13, fontFamily: CashouTheme.fonts.body }}>
+                        {asset.submarket.title}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={[styles.assetsSheetRowPrice, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
+                  {asset.maxAmount != null ? `${Number(asset.maxAmount).toLocaleString('fr-FR')}€` : (getAdjustedRate(asset.id, asset.rate) != null ? `${getAdjustedRate(asset.id, asset.rate)}%` : '—')}
+                </Text>
+              </TouchableOpacity>
+            ))
+          )}
+          {!assetsLoading && filteredAssets.length === 0 && (
+            <Text style={{ color: theme.text, fontFamily: CashouTheme.fonts.body, textAlign: 'center', marginTop: 24, opacity: 0.6 }}>
+              Aucun asset trouvé
+            </Text>
+          )}
+        </BottomSheetScrollView>
+      </BottomSheet>
     </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -1271,5 +1727,145 @@ const styles = StyleSheet.create({
   },
   modalButtonText: {
     fontSize: 14,
+  },
+  endGameBlur: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  endGameOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+  },
+  endGameCardBackdrop: {
+    width: '97%',
+    maxWidth: 410,
+    borderRadius: 36,
+    padding: 6,
+  },
+  endGameCard: {
+    width: '100%',
+    borderRadius: 30,
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    paddingBottom: 12,
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
+  endGameTitle: {
+    fontSize: 28,
+    fontFamily: 'Anybody',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  endGameMessage: {
+    fontSize: 15,
+    fontFamily: 'Anybody',
+    fontWeight: 'normal',
+    lineHeight: 20,
+  },
+  endGameSecondary: {
+    marginTop: 9,
+  },
+  endGameStarsRow: {
+    alignSelf: 'center',
+    marginTop: 14,
+    marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: 30,
+    backgroundColor: '#F7B167',
+    paddingHorizontal: 7,
+    paddingVertical: 5,
+  },
+  endGameActions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  endGameActionButton: {
+  },
+  endGameSingleAction: {
+    flex: 0,
+    minWidth: 132,
+  },
+  // Assets Bottom Sheet styles
+  assetsSheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  assetsSheetTitle: {
+    fontSize: 24,
+  },
+  assetsSheetCash: {
+    fontSize: 20,
+  },
+  assetsSheetSearch: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    marginBottom: 20,
+  },
+  assetsSheetSearchInput: {
+    flex: 1,
+    fontSize: 17,
+    padding: 0,
+  },
+  assetsSheetSectionTitle: {
+    fontSize: 18,
+    marginBottom: 10,
+  },
+  assetsSheetTabsBar: {
+    flexDirection: 'row',
+    borderRadius: 999,
+    borderWidth: 1,
+    padding: 4,
+    marginBottom: 16,
+  },
+  assetsSheetTab: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  assetsSheetTabText: {
+    fontSize: 14,
+  },
+  assetsSheetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    borderRadius: 22,
+    marginBottom: 10,
+  },
+  assetsSheetRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  assetsSheetRowName: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  assetsSheetBadge: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  assetsSheetRowPrice: {
+    fontSize: 22,
+    fontWeight: '700',
   },
 });

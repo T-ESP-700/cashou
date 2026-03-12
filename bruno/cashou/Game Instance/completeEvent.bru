@@ -1,0 +1,21 @@
+meta {
+  name: completeEvent
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{base_url}}/api/trpc/gameInstance.completeEvent
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": 1
+  }
+}
+
+settings {
+  encodeUrl: true
+}

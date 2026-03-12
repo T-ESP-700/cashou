@@ -1,0 +1,15 @@
+meta {
+  name: getHomeData
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{base_url}}/api/trpc/auth.getHomeData
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}

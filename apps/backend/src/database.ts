@@ -1,6 +1,6 @@
 //backend/src/database.ts
 // Configuration et initialisation du client Prisma pour la base de données
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@cashou/db-app'
 
 // Récupération de l'URL de la base de données depuis les variables d'environnement
 const databaseUrl = process.env.CASHOU_DB_URL;
