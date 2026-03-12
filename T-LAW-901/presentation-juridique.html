@@ -19,6 +19,7 @@
       --cashou-text-muted: #5a5d6e;
       --cashou-success: #4CAF50;
       --cashou-warning: #FF9800;
+      --cashou-danger: #E53935;
       --cashou-border: #E0E0E0;
       --font-heading: 'Rowdies', cursive;
       --font-body: 'Inter', sans-serif;
@@ -47,7 +48,7 @@
       position: relative;
     }
 
-    .slide:not(.cover):not(.title) {
+    .slide:not(.cover):not(.title):not(.rappel) {
       text-align: left;
       align-items: stretch;
     }
@@ -130,10 +131,22 @@
     .badge.no { background: rgba(28,30,51,0.08); color: var(--cashou-text-muted); }
     .badge.zone { background: rgba(33,150,243,0.15); color: #1565c0; }
     .badge.org { background: rgba(156,39,176,0.12); color: #6a1b9a; }
+    .badge.critical { background: rgba(229,57,53,0.15); color: #c62828; }
+    .badge.high { background: rgba(255,152,0,0.15); color: #e65100; }
+    .badge.medium { background: rgba(33,150,243,0.15); color: #1565c0; }
+    .badge.low { background: rgba(28,30,51,0.08); color: var(--cashou-text-muted); }
     .law-card .reason {
       color: var(--cashou-text);
-      line-height: 1.5;
+      line-height: 1.6;
       margin-top: 0.5rem;
+    }
+    .law-card ul {
+      margin: 0.5rem 0 0 1.25rem;
+      line-height: 1.6;
+      color: var(--cashou-text);
+    }
+    .law-card ul li {
+      margin-bottom: 0.25rem;
     }
 
     .slide.rappel {
@@ -171,10 +184,37 @@
       border: 1px solid rgba(255, 180, 114, 0.25);
     }
     .feature-list-grid li::before {
-      content: "✓";
+      content: "\2713";
       color: var(--cashou-primary);
       font-weight: bold;
       font-size: 0.9rem;
+    }
+
+    .decisions-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.25rem;
+      margin-top: 0.5rem;
+    }
+    @media (max-width: 700px) { .decisions-grid { grid-template-columns: 1fr; } }
+    .decision-card {
+      background: var(--cashou-card);
+      border: 1px solid var(--cashou-border);
+      border-left: 4px solid var(--cashou-primary);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      box-shadow: var(--shadow);
+    }
+    .decision-card strong {
+      color: var(--cashou-primary);
+      display: block;
+      margin-bottom: 0.35rem;
+      font-size: 1rem;
+    }
+    .decision-card p {
+      color: var(--cashou-text);
+      font-size: 0.9rem;
+      line-height: 1.5;
     }
 
     .table-wrap {
@@ -193,6 +233,41 @@
       color: var(--cashou-text);
     }
     th { color: var(--cashou-primary); font-weight: 600; }
+
+    .timeline-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-top: 0.5rem;
+    }
+    @media (max-width: 700px) { .timeline-grid { grid-template-columns: 1fr; } }
+    .timeline-col h3 {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      margin-bottom: 0.75rem;
+    }
+    .timeline-col h3.before { color: var(--cashou-danger); }
+    .timeline-col h3.after { color: var(--cashou-warning); }
+    .timeline-col ul {
+      list-style: none;
+      padding: 0;
+    }
+    .timeline-col ul li {
+      padding: 0.4rem 0.75rem;
+      margin-bottom: 0.4rem;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      line-height: 1.4;
+      color: var(--cashou-text);
+    }
+    .timeline-col ul li.blocker {
+      background: rgba(229,57,53,0.08);
+      border-left: 3px solid var(--cashou-danger);
+    }
+    .timeline-col ul li.post {
+      background: rgba(255,152,0,0.08);
+      border-left: 3px solid var(--cashou-warning);
+    }
   </style>
 </head>
 <body>
@@ -202,104 +277,290 @@
       <img class="logo-img" src="../apps/mobile/assets/images/cashou-logo.png" alt="Cashou" />
       <div class="logo-text">Cashou</div>
     </div>
-    <p class="subtitle">Cadre juridique et réglementaire applicable</p>
+    <p class="subtitle">Mise en conformité réglementaire — Rapport de synthèse</p>
   </section>
 
   <!-- Slide 2 : Rappel de l'app -->
   <section class="slide rappel" id="s2">
-    <h2>Qu’est-ce que Cashou ?</h2>
-    <p class="intro">Une <strong>app gamifiée</strong> qui éduque à la finance : apprendre en jouant, sans risque.</p>
+    <h2>Qu'est-ce que Cashou ?</h2>
+    <p class="intro">Un <strong>jeu de simulation financière</strong> qui enseigne les mécanismes de l'épargne et de l'investissement dans un environnement fictif, <strong>sans prise de risque</strong>. Aucun fonds réel, aucun instrument financier.</p>
     <ul class="feature-list-grid">
       <li>Apprentissage par le jeu</li>
-      <li>Système de points</li>
-      <li>Dictionnaire financier</li>
       <li>Portefeuille virtuel</li>
       <li>Quiz quotidiens</li>
-      <li>100 % sécurisé</li>
+      <li>Simulation de marché</li>
+      <li>Système de niveaux</li>
+      <li>100 % éducatif</li>
     </ul>
   </section>
 
-  <!-- Slides 3+ : Détail par texte / autorité -->
+  <!-- Slide 3 : Décisions stratégiques -->
   <section class="slide" id="s3">
-    <h2>Règlement Général sur la Protection des Données & Loi Informatique et Libertés</h2>
-    <div class="law-card">
-      <h3>RGPD <span class="badge yes">Applicable</span><span class="badge zone">UE</span></h3>
-      <p class="reason">Données personnelles (compte, email, âge, progression) → politique de confidentialité, droits utilisateurs + consentement explicite de l'utilisateur pour le traitement de ses données (autorité parentale si mineur < 15 ans).</p>
-    </div>
-    <div class="law-card">
-      <h3>LIL <span class="badge yes">Applicable</span><span class="badge zone">France</span><span class="badge org">CNIL</span></h3>
-      <p class="reason">Mêmes données que pour le RGPD (compte, email, âge, progression). La LIL s’applique car on cible des utilisateurs en France → droit français en plus du RGPD (ex. transferts hors UE, autorité CNIL).</p>
+    <h2>Décisions stratégiques structurantes</h2>
+    <div class="decisions-grid">
+      <div class="decision-card">
+        <strong>Hébergement UE</strong>
+        <p>Base de données chez un prestataire européen (Scaleway, OVH ou Infomaniak). Élimine la problématique des transferts hors UE pour le stockage principal.</p>
+      </div>
+      <div class="decision-card">
+        <strong>Encadrement Expo (push)</strong>
+        <p>Transfert vers Expo (USA) encadré par un Data Processing Agreement intégrant les SCCs 2021, documenté par une Transfer Impact Assessment.</p>
+      </div>
+      <div class="decision-card">
+        <strong>Consentement granulaire</strong>
+        <p>4 catégories de notifications distinctes : rappels de quiz, actualités éducatives, rappels d'activité, communications promotionnelles.</p>
+      </div>
+      <div class="decision-card">
+        <strong>Seuil d'âge : 15 ans</strong>
+        <p>Conforme à l'article 45 de la LIL (transposition art. 8 RGPD).</p>
+      </div>
     </div>
   </section>
 
+  <!-- Slide 4 : RGPD & LIL -->
+  <section class="slide" id="s4">
+    <h2>RGPD &amp; Loi Informatique et Libertés</h2>
+    <div class="law-card">
+      <h3>Politique de confidentialité <span class="badge critical">Bloquant</span></h3>
+      <p class="reason">Article 13 RGPD — Fournir avant toute collecte : identité du responsable, finalités et base légale de chaque traitement, destinataires, transferts hors UE, durées de conservation, droits des personnes, réclamation CNIL.</p>
+      <ul>
+        <li>Tableau donnée / finalité / base légale / durée de conservation</li>
+        <li>Création de compte : exécution du contrat (art. 6.1.b)</li>
+        <li>Notifications push : consentement (art. 6.1.a)</li>
+        <li>IP / User-Agent : intérêt légitime sécurité (art. 6.1.f)</li>
+        <li>Accessible depuis : inscription, paramètres, stores</li>
+      </ul>
+    </div>
+    <div class="law-card">
+      <h3>LIL — Spécificités françaises <span class="badge yes">Applicable</span><span class="badge zone">France</span><span class="badge org">CNIL</span></h3>
+      <p class="reason">Seuil d'âge du consentement des mineurs (art. 45), modalités du consentement aux traceurs (art. 82), autorité de contrôle CNIL.</p>
+    </div>
+  </section>
 
+  <!-- Slide 5 : Système de consentement -->
   <section class="slide" id="s5">
-    <h2>Autorités Financières / Autorités de Contrôle</h2>
+    <h2>Système de consentement</h2>
     <div class="law-card">
-      <h3>AMF / ACPR <span class="badge partial">Vigilance</span><span class="badge zone">France</span><span class="badge org">AMF · ACPR</span></h3>
-      <p class="reason">Rester éducatif uniquement. Pas de conseil en investissement. Disclaimers.</p>
+      <h3>Consentement inscription <span class="badge critical">Bloquant</span></h3>
+      <p class="reason">Art. 7 RGPD + art. 5(3) ePrivacy + art. 82 LIL — Consentement libre, spécifique, éclairé, univoque.</p>
+      <ul>
+        <li>Deux cases distinctes : CGU et politique de confidentialité</li>
+        <li>Aucune case pré-cochée</li>
+        <li>Bouton de création actif uniquement après validation</li>
+      </ul>
+    </div>
+    <div class="law-card">
+      <h3>Consentement notifications <span class="badge critical">Bloquant</span></h3>
+      <p class="reason">4 catégories indépendantes sous forme de bascules : quiz, actualités, rappels, marketing.</p>
+      <ul>
+        <li>Description de la finalité pour chaque catégorie</li>
+        <li>Boutons « Tout activer » / « Tout désactiver » de taille et couleur identiques</li>
+        <li>Modification possible à tout moment depuis les paramètres</li>
+      </ul>
+    </div>
+    <div class="law-card">
+      <h3>Preuve de consentement <span class="badge yes">Requis</span></h3>
+      <p class="reason">Chaque acte enregistré en base : date/heure, version du document, IP, User-Agent. 6 types : CGU, politique de confidentialité, 4 catégories push.</p>
     </div>
   </section>
 
+  <!-- Slide 6 : Protection des mineurs -->
   <section class="slide" id="s6">
-    <h2>ePrivacy</h2>
+    <h2>Protection des mineurs</h2>
+    <div class="law-card">
+      <h3>Vérification d'âge <span class="badge critical">Bloquant</span></h3>
+      <p class="reason">Art. 8 RGPD / art. 45 LIL — Seuil à 15 ans en France.</p>
+      <ul>
+        <li>Écran demandant la date de naissance avec explication transparente</li>
+        <li>Si moins de 15 ans, il n'a pas accès à l'app</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Slide 7 : Droits des personnes -->
+  <section class="slide" id="s7">
+    <h2>Droits des personnes (art. 15-22 RGPD)</h2>
+    <div class="law-card">
+      <h3>Accès &amp; Portabilité <span class="badge yes">Requis</span></h3>
+      <p class="reason"><strong>Accès (art. 15)</strong> : endpoint API exportant toutes les données (profil, progression, quiz, transactions, consentements) en JSON sous 1 mois.<br>
+      <strong>Portabilité (art. 20 RGPD + art. 4-5 Data Act)</strong> : export étendu incluant les données générées par l'utilisation (badges, progression, transactions simulées). Gratuit, disponible en permanence, transfert direct possible.</p>
+    </div>
+    <div class="law-card">
+      <h3>Rectification, Effacement, Opposition <span class="badge yes">Requis</span></h3>
+      <ul>
+        <li><strong>Rectification (art. 16)</strong> : écran de modification du profil (nom, email, image)</li>
+        <li><strong>Effacement (art. 17)</strong> : bouton « Supprimer mon compte » avec confirmation en 2 étapes, suppression sous 30 jours, anonymisation des stats, révocation du push token Expo</li>
+        <li><strong>Opposition (art. 21)</strong> : désactivation par catégorie de notification + formulaire de contact pour IP/User-Agent</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Slide 8 : Conservation & registre -->
+  <section class="slide" id="s8">
+    <h2>Durées de conservation &amp; registre des traitements</h2>
+    <div class="law-card">
+      <h3>Politique de conservation <span class="badge yes">Art. 5(1)(e) RGPD</span></h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Donnée</th><th>Durée</th></tr></thead>
+          <tbody>
+            <tr><td>Comptes actifs</td><td>Durée d'utilisation</td></tr>
+            <tr><td>Comptes inactifs</td><td>Notification à 2 ans, suppression à 3 ans</td></tr>
+            <tr><td>Sessions expirées</td><td>Purge à 30 jours</td></tr>
+            <tr><td>Transactions de jeu</td><td>Anonymisation 1 an après suppression du compte</td></tr>
+            <tr><td>Logs sécurité (IP)</td><td>1 an (LCEN)</td></tr>
+            <tr><td>Preuves de consentement</td><td>5 ans</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="reason" style="margin-top: 0.75rem;">Tâches planifiées (CRON) quotidiennes pour application automatique.</p>
+    </div>
+    <div class="law-card">
+      <h3>Registre des traitements <span class="badge yes">Art. 30 RGPD</span></h3>
+      <p class="reason">6 traitements à documenter : gestion des comptes, authentification/sessions, progression/gamification, quiz/suivi pédagogique, notifications push, logs de sécurité. Disponible sur demande de la CNIL.</p>
+    </div>
+  </section>
+
+  <!-- Slide 9 : Transferts hors UE & ePrivacy -->
+  <section class="slide" id="s9">
+    <h2>ePrivacy &amp; transferts hors UE</h2>
     <div class="law-card">
       <h3>Directive ePrivacy / Art. 82 LIL <span class="badge yes">Applicable</span><span class="badge zone">UE / France</span><span class="badge org">CNIL</span></h3>
-      <p class="reason">Cookies → consentement opt-in explicite (Accepter / Refuser à égalité).</p>
+      <p class="reason">Encadre les communications électroniques, directement applicable aux notifications push. Consentement opt-in avec boutons Accepter / Refuser à égalité visuelle.</p>
     </div>
     <div class="law-card">
-      <h3>DPA/ TIA <span class="badge yes">Applicable</span><span class="badge zone">UE / France</span><span class="badge org">CNIL</span></h3>
-      <p class="reason">Push Expo USA → Data Processing Agreement + Transfert Impact Assessment.</p>
-    </div>
-    
-  </section>
-
-  <section class="slide" id="s7">
-    <h2>Loi Confiance Économie Numérique </h2>
-    <div class="law-card">
-      <h3>LCEN<span class="badge yes">Applicable</span><span class="badge zone">France</span></h3>
-      <p class="reason">Service en ligne → mentions légales (société, RCS, contact, hébergeur). Accessibles sur le site et dans l’app.</p>
+      <h3>Transfert Expo (USA) <span class="badge critical">Bloquant</span></h3>
+      <p class="reason">Push tokens transférés vers les États-Unis. Depuis l'arrêt Schrems II (2020), garanties renforcées exigées (art. 44-49 RGPD).</p>
+      <ul>
+        <li><strong>DPA</strong> : Data Processing Agreement avec SCCs 2021 — à signer et archiver</li>
+        <li><strong>TIA</strong> : Transfer Impact Assessment analysant la nature des données, la législation US (Cloud Act, FISA 702), les mesures d'atténuation (chiffrement TLS, absence de données sensibles)</li>
+      </ul>
     </div>
   </section>
 
-  <section class="slide" id="s8">
-    <h2>OMNIBUS / Code consommation</h2>
+  <!-- Slide 10 : AMF/ACPR -->
+  <section class="slide" id="s10">
+    <h2>Réglementation financière : AMF / ACPR</h2>
     <div class="law-card">
-      <h3>CGU, transparence <span class="badge yes">Applicable</span><span class="badge zone">UE / France</span></h3>
-      <p class="reason">CGU/CGV lisibles, information précontractuelle claire.</p>
+      <h3>Disclaimers financiers <span class="badge critical">Bloquant</span><span class="badge zone">France</span><span class="badge org">AMF / ACPR</span></h3>
+      <p class="reason">Risque de requalification en service de conseil en investissement non agréé. Avertissement obligatoire rappelant :</p>
+      <ul>
+        <li>Informations purement fictives et à but pédagogique</li>
+        <li>Ne constituent en aucun cas un conseil en investissement</li>
+        <li>Pas de recommandation d'achat/vente ni d'incitation à investir</li>
+        <li>Consulter un professionnel agréé AMF pour toute décision réelle</li>
+      </ul>
+      <p class="reason" style="margin-top: 0.75rem;"><strong>Emplacement :</strong> première utilisation, description sur les stores.</p>
     </div>
   </section>
 
-  <section class="slide" id="s9">
-    <h2>Data Act · Cyber Resilience Act · Digital Services Act</h2>
+  <!-- Slide 11 : LCEN -->
+  <section class="slide" id="s11">
+    <h2>LCEN — Mentions légales</h2>
+    <div class="law-card">
+      <h3>Mentions légales obligatoires <span class="badge yes">Applicable</span><span class="badge zone">France</span></h3>
+      <ul>
+        <li>Dénomination sociale, forme juridique, siège social, capital social</li>
+        <li>Numéro RCS ou SIRET</li>
+        <li>Téléphone et email de contact</li>
+        <li>Nom du directeur de publication</li>
+        <li>Coordonnées complètes de l'hébergeur (nom, adresse, téléphone)</li>
+        <li>Numéro de TVA intracommunautaire si assujetti</li>
+      </ul>
+      <p class="reason" style="margin-top: 0.5rem;">Accessible depuis le menu principal de l'app et la description des stores.</p>
+    </div>
+  </section>
+
+  <!-- Slide 12 : Code consommation / OMNIBUS -->
+  <section class="slide" id="s12">
+    <h2>Code de la consommation &amp; directive OMNIBUS</h2>
+    <div class="law-card">
+      <h3>CGU &amp; information précontractuelle <span class="badge yes">Applicable</span><span class="badge zone">UE / France</span></h3>
+      <p class="reason">Art. L111-1 et suivants du Code de la consommation. Même gratuit, Cashou constitue un contrat de service.</p>
+      <ul>
+        <li>Objet du service : caractère purement simulé et éducatif</li>
+        <li>Conditions d'âge</li>
+        <li>Renvoi vers la politique de confidentialité</li>
+        <li>Droit de résiliation à tout moment + procédure de suppression de compte</li>
+        <li>Nom du médiateur de la consommation désigné (obligation légale)</li>
+        <li>Si fonctionnalités payantes : droit de rétractation de 14 jours (art. L221-18)</li>
+      </ul>
+      <p class="reason" style="margin-top: 0.5rem;">Case à cocher dédiée à l'inscription. Accessible depuis les paramètres.</p>
+    </div>
+  </section>
+
+  <!-- Slide 13 : Sécurité -->
+  <section class="slide" id="s13">
+    <h2>Sécurité des données</h2>
+    <div class="law-card">
+      <h3>Mesures techniques <span class="badge yes">Art. 32 RGPD</span></h3>
+      <p class="reason">Mesures proportionnées au risque. Déjà en place : hachage mots de passe (Better-Auth), JWT signés avec expiration, sessions en base.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mesure</th><th>Priorité</th></tr></thead>
+          <tbody>
+            <tr><td>HTTPS obligatoire en production</td><td><span class="badge critical">Bloquant</span></td></tr>
+            <tr><td>Rate limiting sur authentification</td><td><span class="badge high">Haute</span></td></tr>
+            <tr><td>Validation systématique des entrées</td><td><span class="badge high">Haute</span></td></tr>
+            <tr><td>Journal d'audit des connexions</td><td><span class="badge medium">Moyenne</span></td></tr>
+            <tr><td>Politique de mots de passe robustes</td><td><span class="badge medium">Moyenne</span></td></tr>
+            <tr><td>2FA optionnel</td><td><span class="badge low">Recommandé</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="law-card">
+      <h3>Gestion des violations <span class="badge yes">Art. 33-34 RGPD</span></h3>
+      <p class="reason">Notification CNIL sous 72 h. Procédure interne documentée : détection, évaluation de gravité, notification CNIL, communication aux personnes, consignation de tout incident.</p>
+    </div>
+  </section>
+
+  <!-- Slide 14 : Data Act, CRA -->
+  <section class="slide" id="s14">
+    <h2>Data Act &middot; Cyber Resilience Act</h2>
     <div class="law-card">
       <h3>Data Act <span class="badge partial">Partiel</span><span class="badge zone">UE</span></h3>
-      <p class="reason">Portabilité des données (ex. export progression).</p>
+      <p class="reason">Obligation d'export incluant les données générées par l'utilisation (progression, badges, quiz, transactions simulées), pas seulement les données personnelles fournies.</p>
     </div>
     <div class="law-card">
-      <h3>CRA <span class="badge partial">Potentiel</span><span class="badge zone">UE</span></h3>
-      <p class="reason">Sécurité logicielle, gestion des vulnérabilités.</p>
-    </div>
-    <div class="law-card">
-      <h3>DSA <span class="badge partial">Exemption probable</span><span class="badge zone">UE</span></h3>
-      <p class="reason">Exempté si &lt; 50 sal. et &lt; 10 M€ CA.</p>
+      <h3>Cyber Resilience Act <span class="badge partial">Potentiel</span><span class="badge zone">UE</span></h3>
+      <p class="reason">Entrée en vigueur progressive. Obligations de sécurité renforcées pour les produits numériques. Les bonnes pratiques OWASP et l'architecture actuelle facilitent la transition.</p>
     </div>
   </section>
 
-  <section class="slide" id="s10">
-    <h2>Network and Information Security Directive · Digital Operational Resilience Act</h2>
-    <div class="law-card">
-      <h3>NIS2 <span class="badge no">Non applicable</span><span class="badge zone">UE</span><span class="badge org">ANSSI</span></h3>
-      <p class="reason">Secteurs vitaux (énergie, banque, santé…). Cashou = éducation.</p>
-    </div>
-    <div class="law-card">
-      <h3>DORA <span class="badge no">Non applicable</span><span class="badge zone">UE</span></h3>
-      <p class="reason">Entités financières régulées. Cashou = outil pédagogique, pas acteur financier.</p>
+  <!-- Slide 15 : Livrables & calendrier -->
+  <section class="slide" id="s15">
+    <h2>Livrables &amp; calendrier</h2>
+    <div class="timeline-grid">
+      <div class="timeline-col">
+        <h3 class="before">Avant lancement (bloquant)</h3>
+        <ul>
+          <li class="blocker">Politique de confidentialité</li>
+          <li class="blocker">CGU</li>
+          <li class="blocker">Mentions légales LCEN</li>
+          <li class="blocker">Disclaimers financiers AMF</li>
+          <li class="blocker">Écrans de consentement (inscription + notifications)</li>
+          <li class="blocker">DPA signé avec Expo + TIA</li>
+          <li class="blocker">Vérification d'âge</li>
+          <li class="blocker">HTTPS en production</li>
+        </ul>
+      </div>
+      <div class="timeline-col">
+        <h3 class="after">Dans les 30 jours post-lancement</h3>
+        <ul>
+          <li class="post">Endpoint d'export des données</li>
+          <li class="post">Bouton de suppression de compte</li>
+          <li class="post">Registre des traitements</li>
+          <li class="post">Tâches CRON de purge</li>
+          <li class="post">Rate limiting sur authentification</li>
+          <li class="post">Procédure de gestion des violations</li>
+        </ul>
+      </div>
     </div>
   </section>
 
-  <!-- Récap (fin) -->
-  <section class="slide" id="s11">
+  <!-- Slide 16 : Récap -->
+  <section class="slide" id="s16">
     <h2>Récap</h2>
     <div class="table-wrap">
       <table>
@@ -307,20 +568,26 @@
           <tr><th>Réglementation</th><th>Applicable</th><th>Priorité</th></tr>
         </thead>
         <tbody>
-          <tr><td>RGPD</td><td>✅ Oui</td><td>Critique</td></tr>
-          <tr><td>LIL</td><td>✅ Oui</td><td>Critique</td></tr>
-          <tr><td>AMF / ACPR</td><td>⚠️ À surveiller</td><td>Critique</td></tr>
-          <tr><td>ePrivacy</td><td>✅ Oui</td><td>Haute</td></tr>
-          <tr><td>LCEN</td><td>✅ Oui</td><td>Haute</td></tr>
-          <tr><td>OMNIBUS / Code conso</td><td>✅ Oui</td><td>Moyenne</td></tr>
-          <tr><td>Data Act</td><td>⚠️ Partiel</td><td>Moyenne</td></tr>
-          <tr><td>CRA</td><td>⚠️ Potentiel</td><td>Moyenne</td></tr>
-          <tr><td>DSA</td><td>⚠️ Exemption probable</td><td>Basse</td></tr>
-          <tr><td>NIS2</td><td>❌ Non</td><td>—</td></tr>
-          <tr><td>DORA</td><td>❌ Non</td><td>—</td></tr>
+          <tr><td>RGPD</td><td>Oui</td><td><span class="badge critical">Critique</span></td></tr>
+          <tr><td>LIL</td><td>Oui</td><td><span class="badge critical">Critique</span></td></tr>
+          <tr><td>AMF / ACPR</td><td>Vigilance</td><td><span class="badge critical">Critique</span></td></tr>
+          <tr><td>ePrivacy</td><td>Oui</td><td><span class="badge high">Haute</span></td></tr>
+          <tr><td>LCEN</td><td>Oui</td><td><span class="badge high">Haute</span></td></tr>
+          <tr><td>Code conso / OMNIBUS</td><td>Oui</td><td><span class="badge medium">Moyenne</span></td></tr>
+          <tr><td>Data Act</td><td>Partiel</td><td><span class="badge medium">Moyenne</span></td></tr>
+          <tr><td>CRA</td><td>Potentiel</td><td><span class="badge medium">Moyenne</span></td></tr>
         </tbody>
       </table>
     </div>
+  </section>
+
+  <!-- Slide 17 : Merci -->
+  <section class="slide cover" id="s17">
+    <div class="logo-block">
+      <img class="logo-img" src="../apps/mobile/assets/images/cashou-logo.png" alt="Cashou" />
+      <div class="logo-text">Merci</div>
+    </div>
+    <p class="subtitle">Des questions ?</p>
   </section>
 
   <script>
