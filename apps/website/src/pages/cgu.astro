@@ -1,0 +1,278 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import Logo from '../assets/Frame 93.png';
+
+// Détecter si on est en mode "coming soon"
+const showComingSoon = import.meta.env.PUBLIC_SHOW_COMING_SOON === 'true';
+---
+
+<Layout title="Conditions Générales d'Utilisation - Cashou" description="Conditions Générales d'Utilisation de l'application Cashou">
+  {showComingSoon ? (
+    <!-- Header simplifié pour mode Coming Soon -->
+    <header class="fixed top-0 left-0 right-0 z-50 bg-white border-b border-cashou-border-light/10">
+      <nav class="container mx-auto px-6 py-4 flex items-center justify-between">
+        <a href="/" class="flex items-center gap-3 hover:opacity-80 transition-opacity">
+          <img src={Logo.src} alt="Cashou Logo" class="h-10 w-auto" />
+          <span class="text-2xl font-heading font-bold text-cashou-text-light">Cashou</span>
+        </a>
+      </nav>
+    </header>
+  ) : (
+    <Header />
+  )}
+
+  <main class="pt-24 pb-16 min-h-screen bg-gradient-to-br from-cashou-background-light via-white to-cashou-secondary/10">
+    <div class="container mx-auto px-6 max-w-4xl">
+      <div class="bg-white rounded-2xl shadow-lg p-8 md:p-12 animate-fade-in">
+        <h1 class="text-3xl md:text-4xl font-heading font-bold text-cashou-text-light mb-2">
+          Conditions Générales d'Utilisation
+        </h1>
+        <p class="text-sm text-cashou-text-light/50 mb-8">Indice B — 12 mars 2026</p>
+
+        <div class="space-y-8 text-cashou-text-light">
+
+          <!-- Article 1 -->
+          <section>
+            <h2 class="text-2xl font-heading font-bold text-cashou-primary mb-4">
+              Article 1 – Objet du service
+            </h2>
+            <p class="text-base md:text-lg leading-relaxed mb-4">
+              L'application « Cashou » est une plateforme d'éducation financière gamifiée, développée dans le cadre d'un projet Epitech par Flavie Sola, Yohan Gouiran, Tom Gourdon, Clément Jaïs, Nafissatou Sylla, François Dinong et Chloé Veignal. Son objectif est d'enseigner de manière interactive et ludique comment gérer son argent, comprendre les mécanismes boursiers et sensibiliser aux risques liés aux investissements financiers.
+            </p>
+            <div class="bg-cashou-secondary/30 border-l-4 border-cashou-primary p-4 rounded-r-lg">
+              <p class="text-base md:text-lg leading-relaxed font-medium mb-1">
+                ⚠️ Simulation éducative uniquement
+              </p>
+              <p class="text-base md:text-lg leading-relaxed">
+                Les informations présentées dans Cashou sont purement fictives et à but pédagogique. Elles ne constituent en aucun cas un conseil en investissement, une recommandation d'achat ou de vente, ni une incitation à investir au sens du Code monétaire et financier. L'argent utilisé au sein de l'application est strictement virtuel et n'a aucune valeur réelle. Pour toute décision d'investissement réelle, consultez un professionnel agréé par l'AMF (<a href="https://www.amf-france.org" target="_blank" rel="noopener noreferrer" class="underline hover:text-cashou-primary/80">www.amf-france.org</a>).
+              </p>
+            </div>
+          </section>
+
+          <!-- Article 2 -->
+          <section>
+            <h2 class="text-2xl font-heading font-bold text-cashou-primary mb-4">
+              Article 2 – Acceptation des conditions
+            </h2>
+            <p class="text-base md:text-lg leading-relaxed mb-4">
+              L'utilisation de l'application « Cashou » implique l'acceptation entière et sans réserve des présentes Conditions Générales d'Utilisation. Lors de l'inscription, l'utilisateur valide la case suivante :
+            </p>
+            <div class="bg-cashou-secondary/20 border border-cashou-border-light/30 rounded-lg p-4">
+              <p class="text-base md:text-lg leading-relaxed italic">
+                « Je certifie avoir 15 ans ou plus (ou disposer de l'autorisation de mon représentant légal) et j'accepte les Conditions Générales d'Utilisation. »
+              </p>
+            </div>
+            <p class="text-base md:text-lg leading-relaxed mt-4">
+              En cochant cette case, l'utilisateur confirme avoir lu, compris et accepté les présentes CGU ainsi que la <a href="/politique-confidentialite" class="text-cashou-primary hover:text-cashou-primary/80 underline font-medium">Politique de confidentialité</a>.
+            </p>
+          </section>
+
+          <!-- Article 3 -->
+          <section>
+            <h2 class="text-2xl font-heading font-bold text-cashou-primary mb-4">
+              Article 3 – Accès au service et conditions d'âge
+            </h2>
+            <p class="text-base md:text-lg leading-relaxed mb-4">
+              L'accès au service est gratuit et réservé aux personnes âgées de <strong>15 ans et plus</strong>. En dessous de 15 ans, le consentement du titulaire de l'autorité parentale est requis, conformément à l'article 8 du RGPD transposé en droit français.
+            </p>
+            <p class="text-base md:text-lg leading-relaxed mb-4">
+              La création d'un compte personnel est nécessaire pour accéder aux fonctionnalités de l'application. L'utilisateur s'engage à fournir des informations exactes et à jour et à maintenir la confidentialité de ses identifiants de connexion.
+            </p>
+            <p class="text-base md:text-lg leading-relaxed">
+              L'équipe Cashou se réserve le droit de suspendre ou supprimer tout compte ne respectant pas les présentes CGU.
+            </p>
+          </section>
+
+          <!-- Article 4 -->
+          <section>
+            <h2 class="text-2xl font-heading font-bold text-cashou-primary mb-4">
+              Article 4 – Règles du jeu
+            </h2>
+            <p class="text-base md:text-lg leading-relaxed mb-4">
+              L'application « Cashou » propose un environnement d'apprentissage gamifié reposant sur les mécaniques suivantes :
+            </p>
+            <ul class="list-disc list-inside space-y-2 ml-4 text-base md:text-lg mb-4">
+              <li><strong>Niveaux et progression :</strong> l'utilisateur progresse à travers des niveaux pédagogiques couvrant différents thèmes financiers (épargne, bourse, investissement). Chaque niveau débloqué ouvre l'accès au suivant.</li>
+              <li><strong>Points, étoiles et badges :</strong> des récompenses virtuelles sont attribuées en fonction des performances aux quiz et de la régularité de l'engagement. Ces récompenses n'ont aucune valeur monétaire.</li>
+              <li><strong>Portefeuille virtuel :</strong> l'utilisateur dispose d'un portefeuille fictif lui permettant de simuler des transactions boursières. Les cours utilisés sont simulés à des fins pédagogiques et ne reflètent pas nécessairement les conditions réelles du marché. Aucun argent réel n'est engagé.</li>
+              <li><strong>Quiz quotidiens :</strong> des questionnaires à choix multiples sont proposés chaque jour pour renforcer les connaissances acquises. Les résultats sont enregistrés pour suivre la progression de l'utilisateur.</li>
+              <li><strong>Dictionnaire financier :</strong> un glossaire intégré permet de consulter les définitions des termes financiers rencontrés dans l'application.</li>
+            </ul>
+            <p class="text-base md:text-lg leading-relaxed">
+              L'ensemble de ces mécaniques est à vocation strictement pédagogique. Aucun gain réel ne peut être obtenu via l'utilisation de l'application.
+            </p>
+          </section>
+
+          <!-- Article 5 -->
+          <section>
+            <h2 class="text-2xl font-heading font-bold text-cashou-primary mb-4">
+              Article 5 – Limitations et exclusions de responsabilité
+            </h2>
+            <p class="text-base md:text-lg leading-relaxed mb-4">
+              Cashou décline toute responsabilité en cas de pertes financières réelles résultant de décisions prises par un utilisateur sur la base des connaissances acquises via l'application. Les contenus sont fournis « en l'état » et à titre strictement éducatif. Cashou ne garantit pas l'exactitude, l'exhaustivité ou l'actualité des informations financières présentées dans les simulations.
+            </p>
+            <p class="text-base md:text-lg leading-relaxed">
+              L'équipe Cashou ne saurait également être tenue responsable des interruptions ou dysfonctionnements techniques de l'application, ni des dommages indirects résultant de son utilisation ou de l'impossibilité d'y accéder.
+            </p>
+          </section>
+
+          <!-- Article 6 -->
+          <section>
+            <h2 class="text-2xl font-heading font-bold text-cashou-primary mb-4">
+              Article 6 – Comportements interdits
+            </h2>
+            <p class="text-base md:text-lg leading-relaxed mb-4">
+              Les utilisateurs s'engagent à ne pas :
+            </p>
+            <ul class="list-disc list-inside space-y-2 ml-4 text-base md:text-lg">
+              <li>Détourner l'application de sa vocation éducative initiale.</li>
+              <li>Utiliser l'application à des fins commerciales, publicitaires ou frauduleuses.</li>
+              <li>Diffuser des contenus inappropriés, offensants ou illégaux via l'application.</li>
+              <li>Utiliser des méthodes ou logiciels permettant la fraude, la triche ou toute forme de manipulation des résultats ou des fonctionnalités de l'application.</li>
+              <li>Exploiter toute faille ou faiblesse technique pour obtenir des avantages non autorisés.</li>
+            </ul>
+          </section>
+
+          <!-- Article 7 -->
+          <section>
+            <h2 class="text-2xl font-heading font-bold text-cashou-primary mb-4">
+              Article 7 – Propriété intellectuelle
+            </h2>
+            <p class="text-base md:text-lg leading-relaxed mb-4">
+              L'ensemble des contenus de l'application « Cashou » (textes, graphismes, interface, code source, bases de données, logo, marque) sont protégés par le droit de la propriété intellectuelle et appartiennent à leurs créateurs. Toute reproduction, représentation ou exploitation non autorisée est strictement interdite sans consentement préalable écrit.
+            </p>
+            <p class="text-base md:text-lg leading-relaxed">
+              Les contenus générés par l'utilisateur (pseudonyme, avatar) restent sa propriété. Toutefois, l'utilisateur concède à Cashou une licence d'utilisation non exclusive, à titre gratuit, pour le bon fonctionnement du service.
+            </p>
+          </section>
+
+          <!-- Article 8 -->
+          <section>
+            <h2 class="text-2xl font-heading font-bold text-cashou-primary mb-4">
+              Article 8 – Données personnelles
+            </h2>
+            <p class="text-base md:text-lg leading-relaxed">
+              Le traitement des données personnelles des utilisateurs est régi par le RGPD (Règlement UE 2016/679). Les modalités détaillées de collecte, traitement, conservation et exercice des droits sont décrites dans notre <a href="/politique-confidentialite" class="text-cashou-primary hover:text-cashou-primary/80 underline font-medium">Politique de confidentialité</a>. En utilisant l'application, l'utilisateur accepte les conditions de traitement de ses données telles que décrites dans ce document.
+            </p>
+          </section>
+
+          <!-- Article 9 -->
+          <section>
+            <h2 class="text-2xl font-heading font-bold text-cashou-primary mb-4">
+              Article 9 – Résiliation et suppression de compte
+            </h2>
+            <p class="text-base md:text-lg leading-relaxed mb-4">
+              L'utilisateur peut résilier son compte à tout moment depuis les paramètres de l'application. La suppression effective du compte et des données associées intervient dans un délai maximum de <strong>30 jours</strong> suivant la demande.
+            </p>
+            <p class="text-base md:text-lg leading-relaxed">
+              Pour le détail du traitement des données après suppression du compte, l'utilisateur est invité à consulter la <a href="/politique-confidentialite" class="text-cashou-primary hover:text-cashou-primary/80 underline font-medium">Politique de confidentialité</a>.
+            </p>
+          </section>
+
+          <!-- Article 10 -->
+          <section>
+            <h2 class="text-2xl font-heading font-bold text-cashou-primary mb-4">
+              Article 10 – Droit de rétractation
+            </h2>
+            <p class="text-base md:text-lg leading-relaxed mb-4">
+              Conformément à l'article L221-18 du Code de la consommation, l'utilisateur disposant de la qualité de consommateur bénéficie d'un délai de <strong>14 jours</strong> pour exercer son droit de rétractation à compter de la souscription à tout service payant proposé par Cashou, sans avoir à justifier de motifs ni à payer de pénalités.
+            </p>
+            <p class="text-base md:text-lg leading-relaxed">
+              Dans la mesure où l'application Cashou est actuellement proposée gratuitement, cette disposition s'appliquera à toute future offre payante. Pour exercer ce droit, l'utilisateur devra notifier sa décision à <a href="mailto:contact@cashou.app" class="text-cashou-primary hover:text-cashou-primary/80 underline font-medium">contact@cashou.app</a> avant l'expiration du délai de 14 jours.
+            </p>
+          </section>
+
+          <!-- Article 11 -->
+          <section>
+            <h2 class="text-2xl font-heading font-bold text-cashou-primary mb-4">
+              Article 11 – Modification des CGU
+            </h2>
+            <p class="text-base md:text-lg leading-relaxed">
+              Les créateurs de « Cashou » se réservent le droit de modifier les présentes CGU à tout moment. Les utilisateurs seront informés des modifications par notification dans l'application ou par courrier électronique. L'utilisation continue de l'application après notification des modifications constitue une acceptation implicite des nouvelles conditions.
+            </p>
+          </section>
+
+          <!-- Article 12 -->
+          <section>
+            <h2 class="text-2xl font-heading font-bold text-cashou-primary mb-4">
+              Article 12 – Médiation de la consommation
+            </h2>
+            <p class="text-base md:text-lg leading-relaxed mb-4">
+              Conformément aux articles L616-1 et R616-1 du Code de la consommation, en cas de litige entre un utilisateur et Cashou, l'utilisateur peut recourir gratuitement à un médiateur de la consommation en vue d'une résolution amiable du litige.
+            </p>
+            <p class="text-base md:text-lg leading-relaxed">
+              Les coordonnées du médiateur compétent seront communiquées à l'utilisateur sur simple demande à <a href="mailto:contact@cashou.app" class="text-cashou-primary hover:text-cashou-primary/80 underline font-medium">contact@cashou.app</a>.
+            </p>
+          </section>
+
+          <!-- Article 13 -->
+          <section>
+            <h2 class="text-2xl font-heading font-bold text-cashou-primary mb-4">
+              Article 13 – Droit applicable et juridiction compétente
+            </h2>
+            <p class="text-base md:text-lg leading-relaxed">
+              Les présentes Conditions Générales d'Utilisation sont régies par le droit français. Tout litige relatif à leur interprétation ou à leur exécution relèvera exclusivement de la compétence des tribunaux français compétents, après tentative de résolution amiable.
+            </p>
+          </section>
+
+          <!-- Article 14 -->
+          <section>
+            <h2 class="text-2xl font-heading font-bold text-cashou-primary mb-4">
+              Article 14 – Contact
+            </h2>
+            <p class="text-base md:text-lg leading-relaxed mb-2">
+              Pour toute question relative aux présentes CGU ou au fonctionnement de l'application :
+            </p>
+            <p class="text-base md:text-lg">
+              <a href="mailto:contact@cashou.app" class="text-cashou-primary hover:text-cashou-primary/80 underline font-medium">
+                contact@cashou.app
+              </a>
+            </p>
+            <p class="text-base md:text-lg leading-relaxed mt-4 italic">
+              En utilisant « Cashou », l'utilisateur déclare expressément accepter les présentes Conditions Générales d'Utilisation.
+            </p>
+          </section>
+
+          <!-- Copyright -->
+          <section class="pt-4 border-t border-cashou-border-light/20">
+            <p class="text-base md:text-lg text-cashou-text-light/70 text-center">
+              © {new Date().getFullYear()} Cashou - Projet scolaire Epitech. Tous droits réservés.
+            </p>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  {showComingSoon ? (
+    <!-- Footer simplifié pour mode Coming Soon -->
+    <footer class="bg-white/50 backdrop-blur-sm border-t border-cashou-border-light/10 py-6">
+      <div class="container mx-auto px-6">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-cashou-text-light/70">
+          <p>&copy; {new Date().getFullYear()} Cashou - Projet scolaire Epitech. Tous droits réservés.</p>
+          <div class="flex items-center gap-4">
+            <a href="/" class="hover:text-cashou-primary transition-colors">
+              Accueil
+            </a>
+            <a href="/mentions-legales" class="hover:text-cashou-primary transition-colors">
+              Mentions légales
+            </a>
+            <a href="/politique-confidentialite" class="hover:text-cashou-primary transition-colors">
+              Politique de confidentialité
+            </a>
+            <a href="/cgu" class="hover:text-cashou-primary transition-colors">
+              CGU
+            </a>
+            <a href="mailto:contact@cashou.app" class="hover:text-cashou-primary transition-colors">
+              Contact
+            </a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  ) : (
+    <Footer />
+  )}
+</Layout>
