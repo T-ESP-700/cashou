@@ -1352,7 +1352,7 @@ export default function GameCurrentScreen() {
         <View style={[styles.portfolioCard, { backgroundColor: theme.card }]}>
           <View style={styles.portfolioRow}>
             <Text style={[styles.portfolioLabel, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
-              Portefeuille
+              Total
             </Text>
             <Text style={[styles.portfolioTotal, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
               {totalPortfolio.toLocaleString('fr-FR')}€
@@ -1421,14 +1421,14 @@ export default function GameCurrentScreen() {
                 label="Investir"
                 iconName="add"
                 onPress={handleAddAsset}
-                style={{ flex: 0, paddingHorizontal: 24, maxWidth: undefined }}
+                // style={{ flex: 0, paddingHorizontal: 24, maxWidth: undefined }}
               />
               <ActionPillButton
                 label="Commencer"
                 iconName="play"
                 onPress={handleStartGame}
                 isLoading={isStarting}
-                style={{ flex: 0, paddingHorizontal: 24, maxWidth: undefined }}
+                // style={{ flex: 0, paddingHorizontal: 24, maxWidth: undefined }}
               />
             </View>
           ) : (
@@ -1436,7 +1436,7 @@ export default function GameCurrentScreen() {
               label="Investir"
               iconName="add"
               onPress={handleAddAsset}
-              style={{ flex: 0, paddingHorizontal: 28, maxWidth: undefined }}
+              // style={{ flex: 0, paddingHorizontal: 28, maxWidth: undefined }}
             />
           )}
         </View>
@@ -1559,13 +1559,13 @@ export default function GameCurrentScreen() {
                     label="Récap"
                     customIcon={<RecapActionIcon width={22} height={22} />}
                     onPress={handleOpenRecap}
-                    style={styles.endGameActionButton}
+                    // style={styles.endGameActionButton}
                   />
                   <ActionPillButton
                     label="Quiz"
                     customIcon={<QuizActionIcon width={18} height={18} />}
                     onPress={handleOpenQuiz}
-                    style={styles.endGameActionButton}
+                    // style={styles.endGameActionButton}
                   />
                 </>
               ) : (
@@ -1575,7 +1575,7 @@ export default function GameCurrentScreen() {
                   onPress={handleReplay}
                   disabled={isReplayCreating}
                   isLoading={isReplayCreating}
-                  style={StyleSheet.flatten([styles.endGameActionButton, styles.endGameSingleAction])}
+                  // style={StyleSheet.flatten([styles.endGameActionButton, styles.endGameSingleAction])}
                 />
               )}
             </View>
@@ -1765,7 +1765,7 @@ const styles = StyleSheet.create({
   },
   portfolioSeparator: {
     height: 3,
-    backgroundColor: '#3A3A3A',
+    backgroundColor: '#5A5A5A',
     borderRadius: 2,
     marginHorizontal: 20,
     marginBottom: 8,

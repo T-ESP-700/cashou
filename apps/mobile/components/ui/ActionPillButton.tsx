@@ -1,5 +1,13 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, ViewStyle } from 'react-native';
+import {
+  ActivityIndicator,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ViewStyle,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
 
@@ -35,35 +43,59 @@ export function ActionPillButton({
       disabled={isDisabled}
     >
       {isLoading ? (
-        <ActivityIndicator size="small" color={colors.text} />
+        <ActivityIndicator size="large" color={colors.text} />
       ) : (
-        <>
-          {customIcon ?? (iconName ? <Ionicons name={iconName} size={17} color={colors.text} /> : null)}
+        <View style={styles.contentRow}>
+          {(customIcon != null || iconName != null) && (
+            <View style={styles.iconWrapper}>
+              {customIcon ?? (iconName ? <Ionicons name={iconName} size={ICON_SIZE} color={colors.text} /> : null)}
+            </View>
+          )}
           <Text allowFontScaling={false} style={[styles.label, { color: colors.text }]}>
             {label}
           </Text>
-        </>
+        </View>
       )}
     </TouchableOpacity>
   );
 }
 
+const ICON_SIZE = 28;
+
 const styles = StyleSheet.create({
   button: {
-    height: 44,
-    borderRadius: 80,
+    height: 74,
+    borderRadius: 37,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 0,
+  },
+  contentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    flexShrink: 1,
+  },
+  iconWrapper: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: ICON_SIZE,
+    minWidth: ICON_SIZE,
   },
   buttonDisabled: {
     opacity: 0.7,
   },
   label: {
-    fontSize: 18,
+    fontSize: 22,
+    lineHeight: 28,
     fontFamily: 'Roboto',
     paddingHorizontal: 0,
+    paddingVertical: 0,
+    textAlignVertical: 'center',
+    ...(Platform.OS === 'android' && { includeFontPadding: false }),
   },
 });

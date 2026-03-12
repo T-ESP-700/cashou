@@ -103,7 +103,7 @@ export function CashouHeader({
               )}
             </View>
             {!!onTitlePress && (
-              <Ionicons name="information-circle-outline" size={18} color={pillTextColor} style={{ marginLeft: 6 }} />
+              <Ionicons name="information-circle-outline" size={24} color={pillTextColor} style={{ marginLeft: 12 }} />
             )}
           </View>
         </TouchableOpacity>
@@ -168,9 +168,10 @@ const styles = StyleSheet.create({
     height: BUTTON_SIZE,
   },
   titlePill: {
-    paddingHorizontal: 20,
+    paddingLeft: 20,
+    paddingRight: 12,
     paddingVertical: 10,
-    borderRadius: 22,
+    borderRadius: 999,
     borderWidth: 1,
     maxWidth: 200,
     ...Platform.select({
@@ -199,7 +200,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   subtitleText: {
-    fontSize: 15,
+    fontSize: 17,
     fontFamily: 'Anybody',
     fontWeight: '400',
     textAlign: 'center',

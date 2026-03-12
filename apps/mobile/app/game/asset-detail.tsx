@@ -5,7 +5,6 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
-  TouchableOpacity,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,6 +15,7 @@ import { trpcClient } from '@/lib/trpc';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useHeaderOptions } from '@/hooks/use-header';
 import { PriceChart } from '@/components/price-chart';
+import { ActionPillButton } from '@/components/ui/ActionPillButton';
 
 export default function AssetDetailScreen() {
   const { colors: theme, isDark, status } = useCashouTheme();
@@ -147,6 +147,19 @@ export default function AssetDetailScreen() {
   const isSavings = submarketType === 'SAVINGS';
   const isStock = submarketType === 'STOCK';
 
+  // Badge colors per submarket type (same as current.tsx)
+  const getSubmarketBadgeStyle = (submarketTitle: string) => {
+    const lower = submarketTitle.toLowerCase();
+    if (lower.includes('epargne') || lower.includes('épargne')) return { bg: '#C8E6C9', text: '#388E3C' };
+    if (lower.includes('bourse') || lower.includes('action')) return { bg: '#E1D5F0', text: '#6A1B9A' };
+    if (lower.includes('crypto')) return { bg: '#FFE0B2', text: '#E65100' };
+    if (lower.includes('immobilier')) return { bg: '#B3E5FC', text: '#0277BD' };
+    return { bg: '#E0E0E0', text: '#424242' };
+  };
+  const badgeStyle = asset?.submarket?.title
+    ? getSubmarketBadgeStyle(asset.submarket.title)
+    : { bg: theme.accent, text: '#1C1E33' };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: canTrade ? 100 : 32 }]}>
@@ -166,13 +179,13 @@ export default function AssetDetailScreen() {
         ) : asset ? (
           <>
             {/* Header Section with Title and Symbol */}
-            <View style={[styles.headerSection, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={[styles.headerSection, { backgroundColor: theme.card }]}>
               <Text style={[styles.assetTitle, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>
                 {asset.title || 'Sans titre'}
               </Text>
               {asset.symbol && (
-                <View style={[styles.symbolBadge, { backgroundColor: theme.accent }]}>
-                  <Text style={[styles.symbolText, { fontFamily: CashouTheme.fonts.subheading }]}>
+                <View style={[styles.assetBadge, { backgroundColor: badgeStyle.bg }]}>
+                  <Text style={[styles.assetBadgeText, { color: badgeStyle.text }]}>
                     {asset.symbol}
                   </Text>
                 </View>
@@ -181,7 +194,7 @@ export default function AssetDetailScreen() {
 
             {/* Current Holding Section */}
             {currentHolding > 0 && (
-              <View style={[styles.section, styles.holdingSection, { backgroundColor: '#4CAF5020', borderColor: '#4CAF50' }]}>
+              <View style={[styles.section, styles.holdingSection, { backgroundColor: '#4CAF5020' }]}>
                 <View style={styles.holdingHeader}>
                   <Ionicons name="wallet" size={24} color="#4CAF50" />
                   <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading, marginBottom: 0, marginLeft: 8 }]}>
@@ -196,7 +209,7 @@ export default function AssetDetailScreen() {
 
             {/* Savings: Rate & Cap info instead of chart */}
             {isSavings && (
-              <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={[styles.section, { backgroundColor: theme.card }]}>
                 <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
                   Conditions
                 </Text>
@@ -235,7 +248,7 @@ export default function AssetDetailScreen() {
 
             {/* Price Chart Section — only for non-savings assets */}
             {!isSavings && priceHistory.length >= 2 && (
-              <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={[styles.section, { backgroundColor: theme.card }]}>
                 <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
                   Cours
                 </Text>
@@ -254,7 +267,7 @@ export default function AssetDetailScreen() {
               const dailyChangePercent = (dailyChange / previousPrice) * 100;
               const isUp = dailyChange >= 0;
               return (
-                <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <View style={[styles.section, { backgroundColor: theme.card }]}>
                   <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
                     Prix actuel
                   </Text>
@@ -284,7 +297,7 @@ export default function AssetDetailScreen() {
 
             {/* Description Section */}
             {asset.description && (
-              <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={[styles.section, { backgroundColor: theme.card }]}>
                 <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
                   Description
                 </Text>
@@ -296,7 +309,7 @@ export default function AssetDetailScreen() {
 
             {/* Market Information */}
             {asset.market && (
-              <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={[styles.section, { backgroundColor: theme.card }]}>
                 <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
                   Marché
                 </Text>
@@ -313,7 +326,7 @@ export default function AssetDetailScreen() {
 
             {/* Submarket Information */}
             {asset.submarket && (
-              <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={[styles.section, { backgroundColor: theme.card }]}>
                 <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
                   Sous-marché
                 </Text>
@@ -330,7 +343,7 @@ export default function AssetDetailScreen() {
 
             {/* Field Information */}
             {asset.field && (
-              <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={[styles.section, { backgroundColor: theme.card }]}>
                 <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
                   Domaine
                 </Text>
@@ -341,7 +354,7 @@ export default function AssetDetailScreen() {
             )}
 
             {/* Additional Information Section */}
-            <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={[styles.section, { backgroundColor: theme.card }]}>
               <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
                 Informations complémentaires
               </Text>
@@ -371,7 +384,7 @@ export default function AssetDetailScreen() {
 
             {/* Asset History */}
             {asset.assetHistories && asset.assetHistories.length > 0 && (
-              <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={[styles.section, { backgroundColor: theme.card }]}>
                 <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
                   Historique
                 </Text>
@@ -383,7 +396,7 @@ export default function AssetDetailScreen() {
 
             {/* Transactions */}
             {asset.transactions && asset.transactions.length > 0 && (
-              <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={[styles.section, { backgroundColor: theme.card }]}>
                 <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
                   Transactions
                 </Text>
@@ -395,7 +408,7 @@ export default function AssetDetailScreen() {
 
             {/* Events */}
             {asset.eventAssets && asset.eventAssets.length > 0 && (
-              <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={[styles.section, { backgroundColor: theme.card }]}>
                 <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
                   Événements
                 </Text>
@@ -408,31 +421,22 @@ export default function AssetDetailScreen() {
         ) : null}
       </ScrollView>
 
-      {/* Bottom Buy/Sell Buttons */}
+      {/* Bottom Buy/Sell Floating Buttons */}
       {canTrade && asset && !loading && !error && (
-        <View style={[styles.bottomButtons, { paddingBottom: insets.bottom + 16, backgroundColor: theme.background }]}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.buyButton]}
+        <View style={[styles.bottomButtons, { paddingBottom: insets.bottom + 8 }]}>
+          <ActionPillButton
+            label={isSavings ? 'Déposer' : 'Acheter'}
+            iconName={isSavings ? 'download-outline' : 'arrow-down-circle'}
             onPress={handleBuy}
-            activeOpacity={0.8}
-          >
-            <Ionicons name={isSavings ? 'download-outline' : 'arrow-down-circle'} size={24} color="#FFFFFF" />
-            <Text style={styles.actionButtonText}>{isSavings ? 'Déposer' : 'Acheter'}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              styles.sellButton,
-              currentHolding === 0 && styles.actionButtonDisabled,
-            ]}
+            style={{ flex: 1 }}
+          />
+          <ActionPillButton
+            label={isSavings ? 'Retirer' : 'Vendre'}
+            iconName={isSavings ? 'upload-outline' : 'arrow-up-circle'}
             onPress={handleSell}
-            activeOpacity={0.8}
             disabled={currentHolding === 0}
-          >
-            <Ionicons name={isSavings ? 'upload-outline' : 'arrow-up-circle'} size={24} color="#FFFFFF" />
-            <Text style={styles.actionButtonText}>{isSavings ? 'Retirer' : 'Vendre'}</Text>
-          </TouchableOpacity>
+            style={{ flex: 1 }}
+          />
         </View>
       )}
     </View>
@@ -442,6 +446,7 @@ export default function AssetDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingBottom: 100,
   },
   scrollContent: {
     paddingHorizontal: 16,
@@ -464,9 +469,8 @@ const styles = StyleSheet.create({
   },
   headerSection: {
     padding: 20,
-    borderRadius: CashouTheme.borderRadius.lg,
-    borderWidth: 1,
-    marginBottom: 16,
+    borderRadius: 22,
+    marginBottom: 8,
     alignItems: 'center',
   },
   assetTitle: {
@@ -474,20 +478,21 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     textAlign: 'center',
   },
-  symbolBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+  assetBadge: {
+    alignSelf: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
     borderRadius: 999,
   },
-  symbolText: {
-    fontSize: 16,
-    color: '#1C1E33',
+  assetBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'Anybody',
   },
   section: {
     padding: 16,
-    borderRadius: CashouTheme.borderRadius.lg,
-    borderWidth: 1,
-    marginBottom: 16,
+    borderRadius: 22,
+    marginBottom: 8,
   },
   sectionTitle: {
     fontSize: 18,
@@ -544,30 +549,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     flexDirection: 'row',
-    padding: 16,
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  buyButton: {
-    backgroundColor: '#4CAF50',
-  },
-  sellButton: {
-    backgroundColor: '#FF9800',
-  },
-  actionButtonDisabled: {
-    opacity: 0.5,
-  },
-  actionButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    gap: 12,
   },
 });
