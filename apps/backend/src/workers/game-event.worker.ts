@@ -61,6 +61,13 @@ export async function startGameEventWorkers(): Promise<void> {
             console.log(
               `[Worker] Game event ${gameInstanceEventId} processed successfully`
             );
+          } else if (result.reason === "Game already has pending action") {
+            // Another event is pending user action — throw so pg-boss retries later
+            // This prevents the job from completing and becoming unschedulable
+            console.log(
+              `[Worker] Game event ${gameInstanceEventId} blocked by pending action, will retry`
+            );
+            throw new Error(`Game event ${gameInstanceEventId} blocked: ${result.reason}`);
           } else {
             console.log(
               `[Worker] Game event ${gameInstanceEventId} skipped: ${result.reason}`

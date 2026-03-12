@@ -728,9 +728,9 @@ export default function GameCurrentScreen() {
         console.log('[GameCurrentScreen] ▶️ Completing event and resuming game', gameInstanceId);
         await trpcClient.gameInstance.completeEvent.mutate({ id: gameInstanceId });
         setPendingEventCompletion(null);
-        setIsPaused(false);
 
-        // Resync game state from backend
+        // Resync game state from backend BEFORE unpausing to avoid stale totalPausedDuration
+        // causing checkIfTimeElapsed to incorrectly end the game
         const instance = await trpcClient.gameInstance.getById.query({ id: gameInstanceId });
         if (instance?.level) {
           setGameTimeState({
@@ -743,6 +743,7 @@ export default function GameCurrentScreen() {
             pausedAt: instance.pausedAt ? new Date(instance.pausedAt) : null,
           });
         }
+        setIsPaused(false);
         console.log('[GameCurrentScreen] ✅ Event completed, game resumed');
       } catch (err) {
         console.error('[GameCurrentScreen] Error completing event:', err);
@@ -1053,10 +1054,14 @@ export default function GameCurrentScreen() {
     }
     try {
       if (index >= 0) {
-        console.log('[GameCurrentScreen] 🛒 Assets sheet OPENED → pausing game');
-        await trpcClient.gameInstance.pause.mutate({ id: gameInstanceId });
-        setIsPaused(true);
-        console.log('[GameCurrentScreen] 🛒 Game paused (sheet open)');
+        // Game is already paused by handleAddAsset or openAssetsFromEvent before expanding.
+        // Call pause again as a safety net (backend pause is idempotent).
+        if (!isPaused) {
+          console.log('[GameCurrentScreen] 🛒 Assets sheet OPENED → pausing game');
+          await trpcClient.gameInstance.pause.mutate({ id: gameInstanceId });
+          setIsPaused(true);
+          console.log('[GameCurrentScreen] 🛒 Game paused (sheet open)');
+        }
       } else {
         // Sheet is closing
         if (skipResumeOnCloseRef.current) {
@@ -1065,9 +1070,22 @@ export default function GameCurrentScreen() {
           skipResumeOnCloseRef.current = false;
         } else {
           console.log('[GameCurrentScreen] 🛒 Assets sheet CLOSED → resuming game');
-          const resumed = await trpcClient.gameInstance.resume.mutate({ id: gameInstanceId });
-          setIsPaused(resumed.isPaused ?? false);
-          console.log('[GameCurrentScreen] 🛒 Game resumed, isPaused=', resumed.isPaused);
+          await trpcClient.gameInstance.resume.mutate({ id: gameInstanceId });
+          // Resync game state BEFORE unpausing to avoid stale totalPausedDuration
+          const instance = await trpcClient.gameInstance.getById.query({ id: gameInstanceId });
+          if (instance?.level) {
+            setGameTimeState({
+              createdAt: new Date(instance.createdAt),
+              totalPausedDuration: instance.totalPausedDuration ?? 0,
+              duration: instance.level.duration ?? 30,
+              speed: instance.level.speed ?? 1,
+              isEnded: instance.isEnded ?? false,
+              isPaused: instance.isPaused ?? false,
+              pausedAt: instance.pausedAt ? new Date(instance.pausedAt) : null,
+            });
+          }
+          setIsPaused(false);
+          console.log('[GameCurrentScreen] 🛒 Game resumed');
         }
         // Reset search and filter when closing
         setAssetsSearchQuery('');
@@ -1076,12 +1094,22 @@ export default function GameCurrentScreen() {
     } catch (err) {
       console.error('Error pausing/resuming game from assets sheet:', err);
     }
-  }, [gameInstanceId, gameHasBeenStarted]);
+  }, [gameInstanceId, gameHasBeenStarted, isPaused]);
 
-  const handleAddAsset = () => {
+  const handleAddAsset = async () => {
     if (!gameInstanceId || !walletId) {
       Alert.alert('Erreur', 'Initialisation en cours, veuillez patienter...');
       return;
+    }
+    // Pause the game immediately before opening the sheet to avoid race conditions
+    // (the onChange callback would pause too, but asynchronously during animation)
+    if (gameHasBeenStarted) {
+      try {
+        await trpcClient.gameInstance.pause.mutate({ id: gameInstanceId });
+        setIsPaused(true);
+      } catch (err) {
+        console.error('[GameCurrentScreen] Error pausing for assets sheet:', err);
+      }
     }
     // Fetch assets if not loaded yet
     if (allAssets.length === 0) {

@@ -56,10 +56,7 @@ export function DailyQuizCard({
 
   const handlePress = () => {
     if (status === 'done') {
-      router.push({
-        pathname: '/(tabs)/daily-quiz',
-        params: { showCompleted: 'true' },
-      });
+      router.push('/(tabs)/history');
     } else {
       router.push('/(tabs)/daily-quiz');
     }

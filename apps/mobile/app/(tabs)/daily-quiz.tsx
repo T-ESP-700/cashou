@@ -734,7 +734,7 @@ export default function DailyQuizScreen() {
               onPress={handleValidate}
               disabled={!selectedAnswerId || isSubmitting}
               isLoading={isSubmitting}
-              style={{ flex: 1, maxWidth: '100%' }}
+              style={{ alignSelf: 'center', paddingHorizontal: 20 }}
             />
           )}
 

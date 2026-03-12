@@ -586,6 +586,263 @@ async function main() {
   }
   console.log(`✅ ${createdQuestions.length} questions liées au quiz MCQ`);
 
+  // 10. Créer les Daily Quiz (hier et aujourd'hui)
+  console.log('📅 Création des Daily Quiz...');
+
+  const now = new Date();
+  const yesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1, 0, 0, 0, 0));
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+
+  // Questions pour le Daily Quiz d'hier (3 questions)
+  const dailyQuiz1Questions = [
+    {
+      text: 'Combien de temps faut-il généralement garder son épargne de précaution ?',
+      explanation: 'L\'épargne de précaution doit représenter l\'équivalent de 3 à 6 mois de dépenses courantes. Cette durée permet de couvrir la plupart des imprévus (perte d\'emploi temporaire, frais médicaux, réparations importantes) sans avoir à s\'endetter. Elle doit être conservée en permanence et reconstituée si elle est utilisée. Moins de 3 mois peut être insuffisant, et plus de 6 mois peut être excessif car cet argent pourrait être mieux investi ailleurs pour un meilleur rendement.',
+      answers: [
+        { text: '3 à 6 mois de dépenses courantes', isCorrect: true },
+        { text: '1 semaine de dépenses', isCorrect: false },
+        { text: '10 ans minimum', isCorrect: false },
+        { text: 'Pas besoin d\'épargne de précaution', isCorrect: false },
+      ],
+    },
+    {
+      text: 'Quel est le plafond maximum autorisé sur un Livret A en France ?',
+      explanation: 'Le plafond du Livret A est fixé à 22 950 € (hors intérêts capitalisés). Au-delà de ce montant, les intérêts ne sont plus versés sur la partie excédentaire. Ce plafond peut être modifié par décret, mais il est resté stable à 22 950 € depuis plusieurs années. Les intérêts générés peuvent dépasser ce plafond car ils sont capitalisés.',
+      answers: [
+        { text: '22 950 €', isCorrect: true },
+        { text: '10 000 €', isCorrect: false },
+        { text: '50 000 €', isCorrect: false },
+        { text: 'Aucun plafond', isCorrect: false },
+      ],
+    },
+    {
+      text: 'Quelle est la principale différence entre épargner et investir ?',
+      explanation: 'L\'épargne vise à préserver le capital avec un risque minimal et une disponibilité immédiate (livrets, comptes rémunérés). L\'investissement cherche la croissance du capital à long terme mais comporte un risque de perte (actions, obligations, immobilier). L\'épargne est idéale pour les objectifs à court terme et la réserve d\'urgence, tandis que l\'investissement est adapté aux objectifs à long terme avec une tolérance au risque.',
+      answers: [
+        { text: 'L\'épargne préserve le capital, l\'investissement cherche la croissance avec risque', isCorrect: true },
+        { text: 'Aucune différence, ce sont des synonymes', isCorrect: false },
+        { text: 'L\'épargne est risquée, l\'investissement est sécurisé', isCorrect: false },
+        { text: 'L\'épargne rapporte plus que l\'investissement', isCorrect: false },
+      ],
+    },
+  ];
+
+  const createdDailyQuestions1 = [];
+  for (const q of dailyQuiz1Questions) {
+    let question = await prisma.question.findFirst({
+      where: { text: q.text },
+    });
+
+    if (!question) {
+      question = await prisma.question.create({
+        data: { text: q.text, explanation: q.explanation },
+      });
+
+      if (question) {
+        await prisma.answer.createMany({
+          data: q.answers.map((a) => ({
+            questionId: question!.id,
+            text: a.text,
+            isCorrect: a.isCorrect,
+          })),
+        });
+      }
+    } else if (question) {
+      if (!question.explanation && q.explanation) {
+        question = await prisma.question.update({
+          where: { id: question.id },
+          data: { explanation: q.explanation },
+        });
+      }
+
+      const questionId = question.id;
+      const existingAnswers = await prisma.answer.findMany({
+        where: { questionId },
+      });
+
+      if (existingAnswers.length === 0) {
+        await prisma.answer.createMany({
+          data: q.answers.map((a) => ({
+            questionId,
+            text: a.text,
+            isCorrect: a.isCorrect,
+          })),
+        });
+      }
+    }
+
+    if (question) {
+      createdDailyQuestions1.push(question);
+    }
+  }
+
+  // Questions pour le Daily Quiz d'aujourd'hui (3 questions)
+  const dailyQuiz2Questions = [
+    {
+      text: 'Quel est le principal risque d\'un livret d\'épargne réglementé ?',
+      explanation: 'Le principal risque d\'un livret d\'épargne réglementé est que son rendement peut être inférieur au taux d\'inflation. Cela signifie que même si votre capital augmente en valeur nominale, son pouvoir d\'achat réel peut diminuer. Par exemple, si l\'inflation est à 2% et votre livret à 1,7%, vous perdez du pouvoir d\'achat. Cependant, contrairement aux autres options, il n\'y a aucun risque de perte en capital, pas de frais élevés, et votre argent n\'est pas bloqué.',
+      answers: [
+        { text: 'Le rendement peut être inférieur à l\'inflation', isCorrect: true },
+        { text: 'Vous pouvez perdre tout votre capital', isCorrect: false },
+        { text: 'Il y a des frais de gestion très élevés', isCorrect: false },
+        { text: 'Votre argent est bloqué pendant 5 ans', isCorrect: false },
+      ],
+    },
+    {
+      text: 'Si vous placez 1000€ sur un livret à 1,7% par an, combien aurez-vous après 2 ans (intérêts simples) ?',
+      explanation: 'Avec des intérêts simples, les intérêts sont calculés uniquement sur le capital initial chaque année. Pour 1000€ à 1,7% par an : première année = 1000€ × 1,7% = 17€, deuxième année = 1000€ × 1,7% = 17€. Total après 2 ans = 1000€ + 17€ + 17€ = 1034€. Les intérêts simples ne capitalisent pas les intérêts précédents, contrairement aux intérêts composés.',
+      answers: [
+        { text: '1034€', isCorrect: true },
+        { text: '1034,29€', isCorrect: false },
+        { text: '1170€', isCorrect: false },
+        { text: '1000€', isCorrect: false },
+      ],
+    },
+    {
+      text: 'Peut-on retirer son argent d\'un livret d\'épargne réglementé à tout moment ?',
+      explanation: 'Oui, l\'un des principaux avantages des livrets d\'épargne réglementés (Livret A, LED, etc.) est la disponibilité totale des fonds. Vous pouvez retirer votre argent à tout moment, sans frais, sans préavis et sans limite de montant. C\'est ce qui en fait des produits idéaux pour constituer une épargne de précaution. Contrairement aux placements bloqués ou aux investissements, votre liquidité est garantie.',
+      answers: [
+        { text: 'Oui, sans frais et sans préavis', isCorrect: true },
+        { text: 'Oui, mais avec des frais de retrait', isCorrect: false },
+        { text: 'Non, il faut attendre 1 an minimum', isCorrect: false },
+        { text: 'Non, l\'argent est bloqué jusqu\'à la retraite', isCorrect: false },
+      ],
+    },
+  ];
+
+  const createdDailyQuestions2 = [];
+  for (const q of dailyQuiz2Questions) {
+    let question = await prisma.question.findFirst({
+      where: { text: q.text },
+    });
+
+    if (!question) {
+      question = await prisma.question.create({
+        data: { text: q.text, explanation: q.explanation },
+      });
+
+      if (question) {
+        await prisma.answer.createMany({
+          data: q.answers.map((a) => ({
+            questionId: question!.id,
+            text: a.text,
+            isCorrect: a.isCorrect,
+          })),
+        });
+      }
+    } else if (question) {
+      if (!question.explanation && q.explanation) {
+        question = await prisma.question.update({
+          where: { id: question.id },
+          data: { explanation: q.explanation },
+        });
+      }
+
+      const questionId = question.id;
+      const existingAnswers = await prisma.answer.findMany({
+        where: { questionId },
+      });
+
+      if (existingAnswers.length === 0) {
+        await prisma.answer.createMany({
+          data: q.answers.map((a) => ({
+            questionId,
+            text: a.text,
+            isCorrect: a.isCorrect,
+          })),
+        });
+      }
+    }
+
+    if (question) {
+      createdDailyQuestions2.push(question);
+    }
+  }
+
+  // Daily Quiz d'hier
+  let dailyQuiz1 = await prisma.quiz.findFirst({
+    where: {
+      type: 'DAILY',
+      date: yesterday,
+      title: 'Daily Quiz - Épargne de précaution',
+    },
+  });
+
+  if (!dailyQuiz1) {
+    dailyQuiz1 = await prisma.quiz.create({
+      data: {
+        type: 'DAILY',
+        title: 'Daily Quiz - Épargne de précaution',
+        description: 'Questions du jour sur l\'épargne',
+        date: yesterday,
+        levelId: null,
+      },
+    });
+  }
+
+  // Lier les 3 questions au Daily Quiz 1
+  for (let i = 0; i < createdDailyQuestions1.length; i++) {
+    const existingLink = await prisma.quizQuestion.findFirst({
+      where: {
+        quizId: dailyQuiz1.id,
+        questionId: createdDailyQuestions1[i].id,
+      },
+    });
+
+    if (!existingLink) {
+      await prisma.quizQuestion.create({
+        data: {
+          quizId: dailyQuiz1.id,
+          questionId: createdDailyQuestions1[i].id,
+          position: i + 1,
+        },
+      });
+    }
+  }
+
+  // Daily Quiz d'aujourd'hui
+  let dailyQuiz2 = await prisma.quiz.findFirst({
+    where: {
+      type: 'DAILY',
+      date: today,
+      title: 'Daily Quiz - Risques de l\'épargne',
+    },
+  });
+
+  if (!dailyQuiz2) {
+    dailyQuiz2 = await prisma.quiz.create({
+      data: {
+        type: 'DAILY',
+        title: 'Daily Quiz - Risques de l\'épargne',
+        description: 'Questions du jour sur les risques',
+        date: today,
+        levelId: null,
+      },
+    });
+  }
+
+  // Lier les 3 questions au Daily Quiz 2
+  for (let i = 0; i < createdDailyQuestions2.length; i++) {
+    const existingLink = await prisma.quizQuestion.findFirst({
+      where: {
+        quizId: dailyQuiz2.id,
+        questionId: createdDailyQuestions2[i].id,
+      },
+    });
+
+    if (!existingLink) {
+      await prisma.quizQuestion.create({
+        data: {
+          quizId: dailyQuiz2.id,
+          questionId: createdDailyQuestions2[i].id,
+          position: i + 1,
+        },
+      });
+    }
+  }
+
+  console.log(`✅ 2 Daily Quiz créés (hier et aujourd'hui) avec 3 questions chacun`);
+
   // Résumé
   console.log('\n✨ ========================================');
   console.log('✅ Seeding du niveau ESP terminé avec succès !');
@@ -600,6 +857,7 @@ async function main() {
   console.log(`   - 5 Impacts sur les assets`);
   console.log(`   - 3 Goals: 2 obligatoires + 1 bonus`);
   console.log(`   - 1 Quiz MCQ: ${createdQuestions.length} questions`);
+  console.log(`   - 2 Daily Quiz (hier et aujourd'hui) avec 3 questions chacun`);
   console.log('========================================\n');
 }
 
