@@ -1,8 +1,13 @@
+import { LogBox } from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, Redirect, useSegments, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import '../global.css';
+
+// Suppress expo-notifications warning in Expo Go (remote notifications removed in SDK 53)
+LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
+
 import { useFonts } from 'expo-font';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';

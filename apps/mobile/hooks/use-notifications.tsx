@@ -4,6 +4,8 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { trpcClient } from '@/lib/trpc';
+
+const isExpoGo = Constants.executionEnvironment === 'storeClient';
 import { useAuth } from '@/hooks/use-auth';
 
 export interface EventNotificationData {
@@ -27,7 +29,8 @@ export function setGlobalNotificationSetters(
 }
 
 // Configure how notifications are displayed when the app is in foreground
-Notifications.setNotificationHandler({
+// Skip in Expo Go where remote notifications are not supported (SDK 53+)
+if (!isExpoGo) Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
     const data = notification.request.content.data as Record<string, unknown>;
     console.log('[Notifications] Foreground notification handled', {
@@ -112,7 +115,7 @@ export function useNotifications() {
 }
 
 async function registerForPushNotificationsAsync(): Promise<string | null> {
-  if (!Device.isDevice) {
+  if (!Device.isDevice || isExpoGo) {
     return null;
   }
 
@@ -170,9 +173,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const notificationListener = useRef<Notifications.Subscription | null>(null);
   const responseListener = useRef<Notifications.Subscription | null>(null);
 
-  // Configure channel for Android
+  // Configure channel for Android (skip in Expo Go)
   useEffect(() => {
-    if (Platform.OS === 'android') {
+    if (Platform.OS === 'android' && !isExpoGo) {
       Notifications.setNotificationChannelAsync('default', {
         name: 'default',
         importance: Notifications.AndroidImportance.MAX,
@@ -357,8 +360,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
   }, [setNotification, setEventNotification]);
 
-  // Handle incoming notifications
+  // Handle incoming notifications (skip in Expo Go)
   useEffect(() => {
+    if (isExpoGo) return;
+
     // Notification received while app is foregrounded
     notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
       handleIncomingNotification(notification);
