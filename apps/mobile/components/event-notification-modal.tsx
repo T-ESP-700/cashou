@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, usePathname, useLocalSearchParams } from 'expo-router';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { useNotifications } from '@/hooks/use-notifications';
-import { trpcClient } from '@/lib/trpc';
 import { Card, Button } from '@/components/ui';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -21,8 +20,7 @@ export function EventNotificationModal() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useLocalSearchParams<{ gameId?: string }>();
-  const { eventNotification, clearEventNotification, setPendingEventCompletion } = useNotifications();
-  const [isOpeningAssets, setIsOpeningAssets] = useState(false);
+  const { eventNotification, clearEventNotification, setPendingEventCompletion, setShouldOpenAssetsSheet } = useNotifications();
   const hasNavigatedRef = useRef<number | null>(null);
 
   const isVisible = eventNotification !== null;
@@ -67,10 +65,9 @@ export function EventNotificationModal() {
     clearEventNotification();
   };
 
-  const handleGoToAssets = async () => {
+  const handleGoToAssets = () => {
     if (!eventNotification?.gameInstanceId) {
       clearEventNotification();
-      router.push('/game/assets');
       return;
     }
 
@@ -81,34 +78,8 @@ export function EventNotificationModal() {
     setPendingEventCompletion(gameInstanceId);
     clearEventNotification();
 
-    try {
-      setIsOpeningAssets(true);
-
-      // Fetch the wallet tied to this game instance to navigate with the same context
-      let walletId: string | null = null;
-      try {
-        const wallets = await trpcClient.wallet.getByGameInstance.query({ gameInstanceId });
-        if (Array.isArray(wallets) && wallets.length > 0 && wallets[0]?.id) {
-          walletId = wallets[0].id.toString();
-        }
-      } catch (err) {
-        console.error(`[EventNotificationModal] Failed to fetch wallet for game ${gameInstanceId}:`, err);
-      }
-
-      const navigationParams: Record<string, string> = {
-        gameInstanceId: gameInstanceId.toString(),
-      };
-      if (walletId) {
-        navigationParams.walletId = walletId;
-      }
-
-      router.push({
-        pathname: '/game/assets',
-        params: navigationParams,
-      });
-    } finally {
-      setIsOpeningAssets(false);
-    }
+    // Signal current.tsx to open the assets bottom sheet
+    setShouldOpenAssetsSheet(true);
   };
 
   if (!eventNotification) {
@@ -196,7 +167,6 @@ export function EventNotificationModal() {
                   title="Voir mes assets"
                   variant="primary"
                   onPress={handleGoToAssets}
-                  isLoading={isOpeningAssets}
                   fullWidth
                 />
               </View>

@@ -293,7 +293,7 @@ async function main() {
         { symbol: 'ETF_PS501', coef: 0.6 },
         { symbol: 'ASSURANCE_SERENITE', coef: 0.95 },
       ],
-      triggerPercent: 88,
+      triggerPercent: 60,
       position: 2,
     },
   ];
@@ -439,6 +439,153 @@ async function main() {
     console.log(`  🔗 LevelGoal: Level ${level.number} ↔ "${goal.title}" (${def.isMandatory ? 'obligatoire' : 'bonus'})`);
   }
 
+  // 7. Quiz MCQ pour le niveau ESP
+  console.log('❓ Création des questions et réponses pour le quiz MCQ...');
+
+  const quizQuestions = [
+    {
+      text: 'Pourquoi est-il important de diversifier ses placements ?',
+      explanation: 'La diversification consiste à répartir son argent sur plusieurs types de placements (livret, assurance vie, bourse) pour réduire le risque global. Si un placement perd de la valeur — par exemple les ETF lors d\'une crise — les autres peuvent compenser. C\'est le principe du « ne pas mettre tous ses œufs dans le même panier ». Un portefeuille diversifié est plus résistant aux aléas du marché.',
+      answers: [
+        { text: 'Pour réduire le risque en répartissant sur plusieurs types de placements', isCorrect: true },
+        { text: 'Pour payer moins d\'impôts', isCorrect: false },
+        { text: 'Pour avoir plus de comptes bancaires', isCorrect: false },
+        { text: 'Parce que c\'est obligatoire par la loi', isCorrect: false },
+      ],
+    },
+    {
+      text: 'Lors d\'une crise géopolitique, quels placements sont généralement les plus touchés ?',
+      explanation: 'Les placements boursiers comme les ETF (fonds indiciels) sont directement liés à la performance des entreprises cotées. En cas de crise géopolitique, les marchés actions chutent souvent fortement car les investisseurs craignent l\'incertitude. À l\'inverse, les livrets réglementés sont protégés par l\'État et leur taux est garanti, ils ne sont pas impactés par les fluctuations de marché.',
+      answers: [
+        { text: 'Les placements en bourse (actions, ETF)', isCorrect: true },
+        { text: 'Les livrets d\'épargne réglementés', isCorrect: false },
+        { text: 'Tous les placements perdent la même chose', isCorrect: false },
+        { text: 'Aucun placement n\'est impacté', isCorrect: false },
+      ],
+    },
+    {
+      text: 'Qu\'est-ce qu\'un ETF (Exchange Traded Fund) ?',
+      explanation: 'Un ETF, ou fonds indiciel coté en bourse, est un placement qui réplique la performance d\'un indice boursier (par exemple les 40 plus grandes entreprises françaises). Il permet d\'investir sur un large panier d\'entreprises en une seule opération, offrant ainsi une diversification automatique au sein du marché boursier. Les ETF sont plus risqués qu\'un livret mais offrent un potentiel de rendement plus élevé sur le long terme.',
+      answers: [
+        { text: 'Un fonds qui réplique un indice boursier et regroupe de nombreuses entreprises', isCorrect: true },
+        { text: 'Un compte d\'épargne avec un taux garanti', isCorrect: false },
+        { text: 'Une assurance contre les pertes en bourse', isCorrect: false },
+        { text: 'Un type de cryptomonnaie', isCorrect: false },
+      ],
+    },
+    {
+      text: 'Quelle est la différence principale entre un livret d\'épargne et une assurance vie en fonds euros ?',
+      explanation: 'Le livret d\'épargne offre un taux garanti par l\'État avec une disponibilité immédiate et zéro risque, mais un rendement modeste (ex: 1,7%). L\'assurance vie en fonds euros propose un rendement légèrement supérieur (ex: 2,5%) avec une très faible volatilité, mais l\'argent est moins immédiatement disponible et les frais peuvent réduire le rendement réel. Les deux sont des placements sécurisés, mais avec des niveaux de rendement et de liquidité différents.',
+      answers: [
+        { text: 'Le livret est garanti par l\'État avec accès immédiat, l\'assurance vie a un meilleur rendement mais moins de liquidité', isCorrect: true },
+        { text: 'Il n\'y a aucune différence, ce sont les mêmes produits', isCorrect: false },
+        { text: 'L\'assurance vie est un placement boursier à haut risque', isCorrect: false },
+        { text: 'Le livret rapporte toujours plus que l\'assurance vie', isCorrect: false },
+      ],
+    },
+    {
+      text: 'Après un boom technologique qui fait monter les ETF, quelle stratégie est la plus prudente ?',
+      explanation: 'Après une forte hausse des marchés boursiers, il est souvent prudent de sécuriser une partie de ses gains en vendant une portion de ses ETF et en plaçant cet argent sur des produits plus sûrs (livret, assurance vie). Les marchés peuvent corriger à la baisse après un boom. Garder tous ses gains en bourse expose au risque de les perdre lors d\'une correction. Emprunter pour investir davantage (effet de levier) est très risqué et déconseillé aux débutants.',
+      answers: [
+        { text: 'Sécuriser une partie des gains en les transférant vers des placements plus sûrs', isCorrect: true },
+        { text: 'Investir encore plus en bourse pour maximiser les profits', isCorrect: false },
+        { text: 'Retirer tout son argent et le garder en liquide', isCorrect: false },
+        { text: 'Emprunter pour investir davantage en bourse', isCorrect: false },
+      ],
+    },
+  ];
+
+  const createdQuestions = [];
+  for (const q of quizQuestions) {
+    let question = await prisma.question.findFirst({
+      where: { text: q.text },
+    });
+
+    if (!question) {
+      question = await prisma.question.create({
+        data: { text: q.text, explanation: q.explanation },
+      });
+
+      await prisma.answer.createMany({
+        data: q.answers.map((a) => ({
+          questionId: question!.id,
+          text: a.text,
+          isCorrect: a.isCorrect,
+        })),
+      });
+    } else {
+      if (!question.explanation && q.explanation) {
+        question = await prisma.question.update({
+          where: { id: question.id },
+          data: { explanation: q.explanation },
+        });
+      }
+
+      const existingAnswers = await prisma.answer.findMany({
+        where: { questionId: question.id },
+      });
+
+      if (existingAnswers.length === 0) {
+        await prisma.answer.createMany({
+          data: q.answers.map((a) => ({
+            questionId: question!.id,
+            text: a.text,
+            isCorrect: a.isCorrect,
+          })),
+        });
+      }
+    }
+
+    createdQuestions.push(question);
+  }
+  console.log(`✅ ${createdQuestions.length} questions vérifiées/créées avec leurs réponses`);
+
+  // 8. Créer le Quiz MCQ lié au niveau
+  console.log('🧠 Création du quiz MCQ...');
+  let mcqQuiz = await prisma.quiz.findFirst({
+    where: {
+      type: 'MCQ',
+      title: 'Quiz diversification et gestion du risque',
+      levelId: level.id,
+    },
+  });
+
+  if (!mcqQuiz) {
+    mcqQuiz = await prisma.quiz.create({
+      data: {
+        type: 'MCQ',
+        title: 'Quiz diversification et gestion du risque',
+        description: 'Teste tes connaissances sur la diversification, les enveloppes financières et la gestion des événements de marché',
+        levelId: level.id,
+      },
+    });
+    console.log(`✅ Quiz MCQ créé: ${mcqQuiz.title}`);
+  } else {
+    console.log(`✅ Quiz MCQ existe déjà: ${mcqQuiz.title}`);
+  }
+
+  // 9. Lier les questions au quiz MCQ
+  console.log('🔗 Liaison questions-quiz MCQ...');
+  for (let i = 0; i < createdQuestions.length; i++) {
+    const existingLink = await prisma.quizQuestion.findFirst({
+      where: {
+        quizId: mcqQuiz.id,
+        questionId: createdQuestions[i].id,
+      },
+    });
+
+    if (!existingLink) {
+      await prisma.quizQuestion.create({
+        data: {
+          quizId: mcqQuiz.id,
+          questionId: createdQuestions[i].id,
+          position: i + 1,
+        },
+      });
+    }
+  }
+  console.log(`✅ ${createdQuestions.length} questions liées au quiz MCQ`);
+
   // Résumé
   console.log('\n✨ ========================================');
   console.log('✅ Seeding du niveau ESP terminé avec succès !');
@@ -452,6 +599,7 @@ async function main() {
   console.log(`   - 2 Events: Boom technologique, Crise géopolitique`);
   console.log(`   - 5 Impacts sur les assets`);
   console.log(`   - 3 Goals: 2 obligatoires + 1 bonus`);
+  console.log(`   - 1 Quiz MCQ: ${createdQuestions.length} questions`);
   console.log('========================================\n');
 }
 

@@ -156,7 +156,8 @@ export default function TransactionScreen() {
   const [asset, setAsset] = useState<AssetData | null>(null);
   const [amount, setAmount] = useState('');
   const [walletBalance, setWalletBalance] = useState(0);
-  const [currentHolding, setCurrentHolding] = useState(0);
+  const [currentHolding, setCurrentHolding] = useState(0); // raw quantity (invested amount)
+  const [currentHoldingValue, setCurrentHoldingValue] = useState(0); // total value (invested + interests)
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -186,15 +187,29 @@ export default function TransactionScreen() {
         }
 
         // Fetch current holding for this asset (for sell)
-        if (type === 'sell') {
+        if (type === 'sell' && gameInstanceId) {
           try {
-            const holdings = await trpcClient.holding.getByWallet.query({ walletId });
-            const holding = holdings.find((h: any) => h.assetId === assetId);
-            if (holding) {
-              setCurrentHolding(Number(holding.quantity) || 0);
+            const portfolio = await trpcClient.investment.getPortfolio.query({
+              walletId,
+              gameInstanceId: parseInt(gameInstanceId as string, 10),
+            });
+            const item = portfolio.items.find((i: any) => i.holding.assetId === assetId);
+            if (item) {
+              setCurrentHolding(Math.round(item.currentValue)); // raw quantity (for backend)
+              setCurrentHoldingValue(Math.round(item.totalValue)); // with interests (for display)
             }
           } catch (e) {
-            console.error('Error fetching holdings:', e);
+            console.error('Error fetching portfolio for sell:', e);
+            // Fallback to raw holding quantity
+            try {
+              const holdings = await trpcClient.holding.getByWallet.query({ walletId });
+              const holding = holdings.find((h: any) => h.assetId === assetId);
+              if (holding) {
+                const qty = Number(holding.quantity) || 0;
+                setCurrentHolding(qty);
+                setCurrentHoldingValue(qty);
+              }
+            } catch {}
           }
         }
       } catch (e: any) {
@@ -212,9 +227,16 @@ export default function TransactionScreen() {
     setAmount(value.toString());
   };
 
+  // Convert a user-entered value amount to raw quantity for the backend
+  const valueToRawQuantity = (valueAmount: number): number => {
+    if (currentHoldingValue <= 0 || currentHolding <= 0) return valueAmount;
+    // Proportional: if user wants to sell X out of totalValue, send (X / totalValue) * rawQuantity
+    const ratio = valueAmount / currentHoldingValue;
+    return Math.min(Math.floor(ratio * currentHolding), currentHolding);
+  };
+
   const handleMaxAmount = () => {
     if (type === 'buy') {
-      // For buy: use wallet balance, respecting asset max if set
       let maxBuy = walletBalance;
       if (asset?.maxAmount) {
         const remaining = Number(asset.maxAmount) - currentHolding;
@@ -222,8 +244,8 @@ export default function TransactionScreen() {
       }
       setAmount(Math.floor(maxBuy).toString());
     } else {
-      // For sell: use current holding
-      setAmount(Math.floor(currentHolding).toString());
+      // For sell: show total value (invested + interests)
+      setAmount(Math.floor(currentHoldingValue).toString());
     }
   };
 
@@ -248,8 +270,8 @@ export default function TransactionScreen() {
         }
       }
     } else {
-      if (numAmount > currentHolding) {
-        return `Quantite insuffisante. Disponible: ${Math.round(currentHolding)} EUR`;
+      if (numAmount > currentHoldingValue) {
+        return `Montant insuffisant. Disponible: ${Math.round(currentHoldingValue)} EUR`;
       }
     }
 
@@ -286,15 +308,17 @@ export default function TransactionScreen() {
           [{ text: 'OK', onPress: () => router.back() }]
         );
       } else {
+        // Convert user-entered value to raw quantity for backend
+        const rawAmount = valueToRawQuantity(numAmount);
         const result = await trpcClient.investment.sell.mutate({
           walletId,
           assetId,
-          amount: numAmount,
+          amount: rawAmount,
           gameInstanceId,
         });
         Alert.alert(
-          'Vente effectuee',
-          `Vous avez recupere ${Math.round(result.amountReceived)} EUR (dont ${Math.round(result.interests)} EUR d'interets)`,
+          'Vente effectuée',
+          `Vous avez récupéré ${Math.round(result.amountReceived)} EUR (dont ${Math.round(result.interests)} EUR d'intérêts)`,
           [{ text: 'OK', onPress: () => router.back() }]
         );
       }
@@ -306,7 +330,8 @@ export default function TransactionScreen() {
     }
   };
 
-  const maxAvailable = type === 'buy' ? walletBalance : currentHolding;
+  const maxAvailable = type === 'buy' ? walletBalance : currentHoldingValue;
+  const displayValue = maxAvailable;
   const isBuy = type === 'buy';
   const isSavings = asset?.submarket?.type === 'SAVINGS';
 
@@ -364,10 +389,10 @@ export default function TransactionScreen() {
         <View style={[styles.balanceCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.balanceRow}>
             <Text style={[styles.balanceLabel, { color: theme.text, opacity: 0.7 }]}>
-              {isBuy ? 'Solde disponible' : (isSavings ? 'Montant déposé' : 'Quantité détenue')}
+              {isBuy ? 'Solde disponible' : (isSavings ? 'Valeur actuelle' : 'Valeur actuelle')}
             </Text>
             <Text style={[styles.balanceValue, { color: theme.text }]}>
-              {Math.round(maxAvailable)} EUR
+              {Math.round(displayValue)} EUR
             </Text>
           </View>
           {isBuy && asset.maxAmount && (

@@ -396,8 +396,6 @@ export default function GameSummaryScreen() {
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 112 }]}
       >
-        <Text allowFontScaling={false} style={styles.screenTitle}>Récapitulatif</Text>
-        <View style={styles.titleUnderline} />
 
         {isHistoryMode ? (
           // Mode history : contexte du niveau (titre + description)
@@ -663,6 +661,8 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 10,
+    flexGrow: 1,
+    justifyContent: 'center',
   },
   loadingContainer: {
     flex: 1,

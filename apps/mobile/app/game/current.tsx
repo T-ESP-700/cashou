@@ -120,7 +120,7 @@ export default function GameCurrentScreen() {
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { pendingEventCompletion, setPendingEventCompletion, isOnAssetsScreen, setActiveGameInstanceId, eventNotification, triggerPendingEventCheck } = useNotifications();
+  const { pendingEventCompletion, setPendingEventCompletion, isOnAssetsScreen, setActiveGameInstanceId, eventNotification, triggerPendingEventCheck, shouldOpenAssetsSheet, setShouldOpenAssetsSheet } = useNotifications();
   // Configure header for this screen
   useHeaderOptions({ showBackButton: true, title: 'Partie' });
 
@@ -149,6 +149,8 @@ export default function GameCurrentScreen() {
 
   // Assets bottom sheet state
   const assetsSheetRef = useRef<BottomSheet>(null);
+  const skipResumeOnCloseRef = useRef(false); // Don't resume game when closing sheet to navigate to asset-detail
+  const navigatedToAssetDetailRef = useRef(false); // Track if we navigated away to asset-detail
   const [allAssets, setAllAssets] = useState<any[]>([]);
   const [assetsLoading, setAssetsLoading] = useState(false);
   const [assetsSearchQuery, setAssetsSearchQuery] = useState('');
@@ -671,10 +673,54 @@ export default function GameCurrentScreen() {
     }
   }, [eventNotification, gameInstanceId]);
 
+  // Quand la modale d'event demande d'ouvrir le sheet assets:
+  // Compléter l'event SANS reprendre le jeu, puis ouvrir le bottom sheet.
+  // Le jeu reste en pause tant que le sheet est ouvert (handleAssetsSheetChange gère le resume à la fermeture).
+  useEffect(() => {
+    if (!shouldOpenAssetsSheet) return;
+    setShouldOpenAssetsSheet(false);
+
+    const openAssetsFromEvent = async () => {
+      if (pendingEventCompletion && gameInstanceId) {
+        try {
+          console.log('[GameCurrentScreen] 📋 Completing event and opening assets sheet (game stays paused)');
+          await trpcClient.gameInstance.completeEvent.mutate({ id: gameInstanceId });
+          console.log('[GameCurrentScreen] 📋 completeEvent done → re-pausing immediately');
+          // completeEvent unpauses on backend → immediately re-pause
+          await trpcClient.gameInstance.pause.mutate({ id: gameInstanceId });
+          console.log('[GameCurrentScreen] 📋 re-pause done → game is paused');
+          setPendingEventCompletion(null);
+
+          // Resync game state (game is paused)
+          const instance = await trpcClient.gameInstance.getById.query({ id: gameInstanceId });
+          console.log('[GameCurrentScreen] 📋 backend state: isPaused=', instance?.isPaused, 'totalPausedDuration=', instance?.totalPausedDuration);
+          if (instance?.level) {
+            setGameTimeState({
+              createdAt: new Date(instance.createdAt),
+              totalPausedDuration: instance.totalPausedDuration ?? 0,
+              duration: instance.level.duration ?? 30,
+              speed: instance.level.speed ?? 1,
+              isEnded: instance.isEnded ?? false,
+              isPaused: instance.isPaused ?? false,
+              pausedAt: instance.pausedAt ? new Date(instance.pausedAt) : null,
+            });
+          }
+          setIsPaused(true);
+        } catch (err) {
+          console.error('[GameCurrentScreen] Error completing event for assets:', err);
+        }
+      }
+      handleAddAsset();
+    };
+
+    openAssetsFromEvent();
+  }, [shouldOpenAssetsSheet, pendingEventCompletion, gameInstanceId]);
+
   // Quand le modal d'event se ferme via "Continuer" (pendingEventCompletion set, pas sur assets),
   // compléter l'event immédiatement et reprendre la partie.
+  // Skip si shouldOpenAssetsSheet est actif (le cas "Voir mes assets" est géré par l'effect ci-dessus).
   useEffect(() => {
-    if (!pendingEventCompletion || !gameInstanceId || isOnAssetsScreen) return;
+    if (!pendingEventCompletion || !gameInstanceId || isOnAssetsScreen || shouldOpenAssetsSheet) return;
     if (pendingEventCompletion !== gameInstanceId) return;
 
     const completeAndResume = async () => {
@@ -704,7 +750,7 @@ export default function GameCurrentScreen() {
     };
 
     completeAndResume();
-  }, [pendingEventCompletion, gameInstanceId, isOnAssetsScreen, setPendingEventCompletion]);
+  }, [pendingEventCompletion, gameInstanceId, isOnAssetsScreen, shouldOpenAssetsSheet, setPendingEventCompletion]);
 
   // Fetch triggered impacts on mount and when eventNotification changes
   useEffect(() => {
@@ -773,6 +819,17 @@ export default function GameCurrentScreen() {
       const resync = async () => {
         try {
           console.log('[GameCurrentScreen] 🔄 Resyncing game state for gameInstanceId:', gameInstanceId);
+
+          // If returning from asset-detail, resume the game first
+          if (navigatedToAssetDetailRef.current) {
+            console.log('[GameCurrentScreen] 🔄 Returning from asset-detail → resuming game');
+            navigatedToAssetDetailRef.current = false;
+            try {
+              await trpcClient.gameInstance.resume.mutate({ id: gameInstanceId });
+            } catch (err) {
+              console.error('[GameCurrentScreen] Error resuming after asset-detail:', err);
+            }
+          }
 
           // Add a delay to let the backend process any pending operations
           // /assets has a 150ms delay before calling completeEvent, plus execution time
@@ -996,11 +1053,22 @@ export default function GameCurrentScreen() {
     }
     try {
       if (index >= 0) {
+        console.log('[GameCurrentScreen] 🛒 Assets sheet OPENED → pausing game');
         await trpcClient.gameInstance.pause.mutate({ id: gameInstanceId });
         setIsPaused(true);
+        console.log('[GameCurrentScreen] 🛒 Game paused (sheet open)');
       } else {
-        const resumed = await trpcClient.gameInstance.resume.mutate({ id: gameInstanceId });
-        setIsPaused(resumed.isPaused ?? false);
+        // Sheet is closing
+        if (skipResumeOnCloseRef.current) {
+          // Navigating to asset-detail — keep game paused
+          console.log('[GameCurrentScreen] 🛒 Assets sheet CLOSED → navigating to asset-detail, keeping game paused');
+          skipResumeOnCloseRef.current = false;
+        } else {
+          console.log('[GameCurrentScreen] 🛒 Assets sheet CLOSED → resuming game');
+          const resumed = await trpcClient.gameInstance.resume.mutate({ id: gameInstanceId });
+          setIsPaused(resumed.isPaused ?? false);
+          console.log('[GameCurrentScreen] 🛒 Game resumed, isPaused=', resumed.isPaused);
+        }
         // Reset search and filter when closing
         setAssetsSearchQuery('');
         setSelectedSubmarketId(null);
@@ -1022,9 +1090,18 @@ export default function GameCurrentScreen() {
     assetsSheetRef.current?.expand();
   };
 
-  const handleHoldingPress = (holding: HoldingData) => {
+  const handleHoldingPress = async (holding: HoldingData) => {
     if (!gameInstanceId || !walletId || !holding.asset) return;
-    // Naviguer vers la fiche détaillée de l'asset
+    // Pause the game while on asset-detail
+    if (gameHasBeenStarted) {
+      try {
+        await trpcClient.gameInstance.pause.mutate({ id: gameInstanceId });
+        setIsPaused(true);
+        navigatedToAssetDetailRef.current = true;
+      } catch (err) {
+        console.error('[GameCurrentScreen] Error pausing for holding press:', err);
+      }
+    }
     router.push({
       pathname: '/game/asset-detail',
       params: {
@@ -1151,11 +1228,13 @@ export default function GameCurrentScreen() {
 
   const hasPrimaryGoalSuccess = endGameResult?.success === true;
   const modalContent = endGameResult?.modal;
-  const modalStarFillCount = modalContent?.type === 'PRIMARY_AND_SECONDARY_SUCCESS'
-    ? 2
-    : modalContent?.type === 'PRIMARY_SUCCESS_ONLY'
-      ? 1
-      : 0;
+  // Use actual stars from level completion if available, otherwise derive from modal type
+  const modalStarFillCount = endGameResult?.stars
+    ?? (modalContent?.type === 'PRIMARY_AND_SECONDARY_SUCCESS'
+      ? 2
+      : modalContent?.type === 'PRIMARY_SUCCESS_ONLY'
+        ? 1
+        : 0);
 
   if (isLoading) {
     return (
@@ -1445,8 +1524,38 @@ export default function GameCurrentScreen() {
               </Text>
             )}
 
+            {/* Goals list */}
+            {endGameResult?.goals && endGameResult.goals.length > 0 && (
+              <View style={{ width: '100%', marginTop: 8, marginBottom: 12, gap: 8 }}>
+                {endGameResult.goals.map((goal) => (
+                  <View key={goal.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <Ionicons
+                      name={goal.validated ? 'checkmark-circle' : 'close-circle'}
+                      size={20}
+                      color={goal.validated ? '#88D498' : '#E8889A'}
+                    />
+                    <Text
+                      allowFontScaling={false}
+                      style={{
+                        flex: 1,
+                        fontSize: 14,
+                        fontFamily: 'Anybody',
+                        color: theme.text,
+                        opacity: 0.85,
+                      }}
+                    >
+                      {goal.title}
+                      {!goal.isMandatory && (
+                        <Text style={{ fontSize: 12, opacity: 0.6 }}> (bonus)</Text>
+                      )}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
             <View style={styles.endGameStarsRow}>
-              {[0, 1].map((index) => (
+              {[0, 1, 2].map((index) => (
                 <GoalStarIcon
                   key={index}
                   filled={index < modalStarFillCount}
@@ -1580,6 +1689,8 @@ export default function GameCurrentScreen() {
                 style={[styles.assetsSheetRow, { backgroundColor: theme.card }]}
                 activeOpacity={0.7}
                 onPress={() => {
+                  skipResumeOnCloseRef.current = true;
+                  navigatedToAssetDetailRef.current = true;
                   assetsSheetRef.current?.close();
                   router.push(`/game/asset-detail?id=${asset.id}&gameInstanceId=${gameInstanceId}&walletId=${walletId}`);
                 }}
@@ -1955,13 +2066,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   assetsSheetRowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 6,
     flex: 1,
+    marginRight: 12,
   },
   assetsSheetRowName: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
   },
   assetsSheetBadge: {

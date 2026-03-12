@@ -67,8 +67,8 @@ export class EndGameService {
     }
 
     /**
-     * Calcule les gains/pertes d'un holding bases sur l'evolution du prix.
-     * Fallback sur le rate fixe si pas de donnees de prix.
+     * Calcule les gains/pertes d'un holding basés sur le prix d'acquisition réel.
+     * Même logique que investment.service.ts pour cohérence avec le portfolio affiché.
      */
     private async calculateInterests(holding: HoldingWithAsset, gameInstance: GameInstanceWithLevel): Promise<number> {
         const asset = holding.asset;
@@ -80,10 +80,40 @@ export class EndGameService {
         // Price-based calculation
         const currentPrice = await this.assetHistoryService.getCurrentPrice(asset.id, gameInstance.id);
         if (currentPrice) {
+            // Get average acquisition price from BUY transactions
+            const buyTransactions = await this.prisma.transaction.findMany({
+                where: {
+                    assetId: asset.id,
+                    gameInstanceId: gameInstance.id,
+                    type: "BUY",
+                },
+                orderBy: { transactionDate: 'asc' },
+            });
+
+            if (buyTransactions.length > 0) {
+                let totalSpent = 0;
+                let totalQty = 0;
+                for (const tx of buyTransactions) {
+                    const txQty = tx.quantity ? Number(tx.quantity) : 0;
+                    const txPrice = tx.unitPrice ? Number(tx.unitPrice) : 0;
+                    if (txPrice > 0 && txQty > 0) {
+                        totalSpent += txQty * txPrice;
+                        totalQty += txQty;
+                    }
+                }
+
+                if (totalQty > 0 && totalSpent > 0) {
+                    const avgAcquisitionPrice = totalSpent / totalQty;
+                    const returnRate = (currentPrice - avgAcquisitionPrice) / avgAcquisitionPrice;
+                    return Math.round(quantity * returnRate);
+                }
+            }
+
+            // Fallback: use game start price
             const history = await this.assetHistoryService.findForGame(asset.id, gameInstance.id);
-            const historyStartDay = level.historyStartDay ?? 0;
-            if (history.length > historyStartDay) {
-                const startPoint = history[historyStartDay];
+            if (history.length > 0) {
+                const historyStartDay = level.historyStartDay ?? 0;
+                const startPoint = history[Math.min(historyStartDay, history.length - 1)];
                 const startPrice = startPoint?.value ? Number(startPoint.value) : currentPrice;
                 if (startPrice > 0) {
                     const returnRate = (currentPrice - startPrice) / startPrice;
@@ -135,6 +165,11 @@ export class EndGameService {
                         asset: true,
                     },
                 },
+                transactions: {
+                    include: {
+                        asset: true,
+                    },
+                },
             },
         });
 
@@ -157,10 +192,14 @@ export class EndGameService {
         let totalAssetsValue = 0;
         let totalInterests = 0;
 
+        console.log(`[EndGame] === HOLDINGS DETAIL ===`);
         for (const holding of gameInstance.holdings) {
             const holdingWithAsset = holding as HoldingWithAsset;
             const quantity = holdingWithAsset.quantity ? Number(holdingWithAsset.quantity) : 0;
             const interests = await this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
+
+            const currentPrice = await this.assetHistoryService.getCurrentPrice(holdingWithAsset.asset.id, gameInstance.id);
+            console.log(`[EndGame] Holding: ${holdingWithAsset.asset.title} (assetId=${holdingWithAsset.asset.id}, submarketId=${holdingWithAsset.asset.submarketId}) → qty=${quantity}€, currentPrice=${currentPrice}, interests=${interests}, value=${quantity + interests}€`);
 
             totalInterests += interests;
             totalAssetsValue += quantity + interests;
@@ -173,11 +212,19 @@ export class EndGameService {
         // 4. Valider les objectifs
         const goalResults: GoalResult[] = [];
 
+        console.log(`[EndGame] === GOAL VALIDATION DEBUG ===`);
+        console.log(`[EndGame] startBalance=${startBalance}, walletBalance=${currentWalletBalance}, assetsValue=${totalAssetsValue}, totalInterests=${totalInterests}, totalValue=${totalValue}`);
+        console.log(`[EndGame] Transactions (BUY):`, gameInstance.transactions.filter((t: any) => t.type === 'BUY').map((t: any) => `${t.asset?.title ?? 'unknown'} (assetId=${t.assetId}, submarketId=${t.asset?.submarketId}) qty=${t.quantity} price=${t.unitPrice}`));
+
         for (const levelGoal of gameInstance.level.levelGoals) {
             const goal = levelGoal.goal;
             if (!goal) continue;
 
-            const validated = this.validateGoal(goal.goalType, goal.goalValue, totalValue, startBalance, gameInstance.holdings as HoldingWithAsset[]);
+            console.log(`[EndGame] Goal "${goal.title}" (id=${goal.id}): type=${goal.goalType}, value=${goal.goalValue}, isMandatory=${levelGoal.isMandatory}`);
+
+            const validated = this.validateGoal(goal.goalType, goal.goalValue, totalValue, startBalance, gameInstance.holdings as HoldingWithAsset[], gameInstance.transactions as any[]);
+
+            console.log(`[EndGame] → validated=${validated} (totalValue ${totalValue} >= goalValue ${goal.goalValue} ? ${totalValue >= (goal.goalValue || 0)})`);
 
             goalResults.push({
                 id: goal.id,
@@ -187,6 +234,8 @@ export class EndGameService {
                 validated,
             });
         }
+
+        console.log(`[EndGame] Goal results:`, goalResults.map(g => `${g.title}: ${g.validated} (mandatory=${g.isMandatory})`));
 
         // 5. Marquer la partie comme terminee
         await this.prisma.gameInstance.update({
@@ -208,6 +257,10 @@ export class EndGameService {
             mandatoryGoalIds.every(
                 (goalId) => goalResults.find((g) => g.id === goalId)?.validated === true
             );
+
+        console.log(`[EndGame] mandatoryGoalIds=`, mandatoryGoalIds);
+        console.log(`[EndGame] allMandatoryGoalsValidated=${allMandatoryGoalsValidated}`);
+
         const userId = gameInstance.userId;
         const levelId = gameInstance.levelId;
         let completion: Awaited<ReturnType<LevelCompletionService["getCompletion"]>> = null;
@@ -297,6 +350,7 @@ export class EndGameService {
                 },
                 wallets: true,
                 holdings: { include: { asset: true } },
+                transactions: { include: { asset: true } },
             },
         });
 
@@ -312,7 +366,7 @@ export class EndGameService {
         for (const holding of gameInstance.holdings) {
             const holdingWithAsset = holding as HoldingWithAsset;
             const quantity = holdingWithAsset.quantity ? Number(holdingWithAsset.quantity) : 0;
-            const interests = this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
+            const interests = await this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
             totalInterests += interests;
             totalAssetsValue += quantity + interests;
         }
@@ -324,7 +378,7 @@ export class EndGameService {
         for (const levelGoal of gameInstance.level.levelGoals) {
             const goal = levelGoal.goal;
             if (!goal) continue;
-            const validated = this.validateGoal(goal.goalType, goal.goalValue, totalValue, startBalance);
+            const validated = this.validateGoal(goal.goalType, goal.goalValue, totalValue, startBalance, gameInstance.holdings as HoldingWithAsset[], gameInstance.transactions as any[]);
             goalResults.push({
                 id: goal.id,
                 title: goal.title || "Objectif sans titre",
@@ -384,7 +438,8 @@ export class EndGameService {
         goalValue: number | null,
         finalBalance: number,
         startBalance: number,
-        holdings: HoldingWithAsset[]
+        holdings: HoldingWithAsset[],
+        transactions: any[] = []
     ): boolean {
         if (!goalType) {
             // Pas de type défini = objectif validé par défaut
@@ -412,13 +467,22 @@ export class EndGameService {
                 return profit >= value;
 
             case 'min_submarkets_invested':
-                // Nombre minimum de submarkets distincts dans les holdings
-                const distinctSubmarkets = new Set(
+                // Nombre minimum de submarkets distincts — basé sur les transactions d'achat (historique complet)
+                // Fallback sur les holdings si pas de transactions
+                const submarketIdsFromTx = new Set(
+                    transactions
+                        .filter((t: any) => t.type === 'BUY' && t.asset?.submarketId)
+                        .map((t: any) => t.asset.submarketId)
+                );
+                const submarketIdsFromHoldings = new Set(
                     holdings
                         .filter(h => Number(h.quantity) > 0)
                         .map(h => h.asset.submarketId)
                         .filter(Boolean)
                 );
+                // Union des deux sources
+                const distinctSubmarkets = new Set([...submarketIdsFromTx, ...submarketIdsFromHoldings]);
+                console.log(`[EndGame] min_submarkets_invested: fromTx=${submarketIdsFromTx.size}, fromHoldings=${submarketIdsFromHoldings.size}, total=${distinctSubmarkets.size} (need >= ${value})`);
                 return distinctSubmarkets.size >= value;
 
             default:

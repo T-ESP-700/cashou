@@ -97,6 +97,8 @@ interface NotificationContextValue {
   assetsScreenDepthRef: React.MutableRefObject<number>;
   pausedByAssets: boolean;
   setPausedByAssets: (paused: boolean) => void;
+  shouldOpenAssetsSheet: boolean;
+  setShouldOpenAssetsSheet: (value: boolean) => void;
 }
 
 const NotificationContext = createContext<NotificationContextValue | null>(null);
@@ -153,6 +155,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [assetsScreenDepth, setAssetsScreenDepthState] = useState<number>(0); // Track nested navigation (assets -> asset-detail)
   const assetsScreenDepthRef = useRef<number>(0); // Shared ref for immediate depth access
   const [pausedByAssets, setPausedByAssets] = useState<boolean>(false); // Track if we paused the game from assets screen
+  const [shouldOpenAssetsSheet, setShouldOpenAssetsSheet] = useState<boolean>(false);
   const { user, isAuthenticated } = useAuth();
 
   // Wrapper that updates both state and ref
@@ -400,6 +403,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         assetsScreenDepthRef,
         pausedByAssets,
         setPausedByAssets,
+        shouldOpenAssetsSheet,
+        setShouldOpenAssetsSheet,
       }}
     >
       {children}
