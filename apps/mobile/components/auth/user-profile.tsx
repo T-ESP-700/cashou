@@ -63,6 +63,10 @@ export function UserProfile() {
     );
 
     const getInitials = (): string => {
+        if (user?.username) {
+            return user.username.substring(0, 2).toUpperCase();
+        }
+
         if (user?.name) {
             const names = user.name.split(" ");
             if (names.length >= 2) {
@@ -70,17 +74,16 @@ export function UserProfile() {
             }
             return user.name.substring(0, 2).toUpperCase();
         }
-        if (user?.username) {
-            return user.username.substring(0, 2).toUpperCase();
-        }
+
         if (user?.email) {
             return user.email.substring(0, 2).toUpperCase();
         }
+
         return "U";
     };
 
     const getDisplayName = (): string => {
-        return user?.name || user?.username || "Investisseur";
+        return user?.username || user?.name || "Investisseur";
     };
 
     const getLevelProgress = (): number => {

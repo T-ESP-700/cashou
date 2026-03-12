@@ -41,10 +41,10 @@ export default function AuthScreen() {
                 >
                     <ThemedView style={styles.header}>
                         <ThemedText type="title" style={styles.headerTitle}>
-                            Welcome to Cashou
+                            Bienvenue sur Cashou
                         </ThemedText>
                         <ThemedText style={styles.headerSubtitle}>
-                            Your gamified financial education platform
+                            Votre plateforme d'éducation financière gamifiée
                         </ThemedText>
                     </ThemedView>
 
