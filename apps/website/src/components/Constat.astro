@@ -1,0 +1,67 @@
+---
+const amfUrl = 'https://www.amf-france.org/fr/actualites-publications/communiques/communiques-de-lamf/barometre-amf-2025-en-quete-dautonomie-les-francais-sont-nombreux-recourir-lintelligence?utm_source=chatgpt.com';
+const bricksUrl = 'https://www.datapressepremium.com/rmdiff/2007177/CP-Bricks-Education-Financiere-202528.pdf';
+
+const stats = [
+  {
+    value: '35%',
+    text: "des Français déclarent leurs intentions d'investir dans les 12 prochains mois",
+    source: 'Baromètre AMF 2025',
+    sourceUrl: amfUrl,
+  },
+  {
+    value: '73%',
+    text: "des particuliers estiment ne pas être suffisamment informés ou éduqués sur la finance pour investir",
+    source: 'Bricks.co – Enquête nationale 2025',
+    sourceUrl: bricksUrl,
+  },
+  {
+    value: '82%',
+    text: "déclarent que leur entourage n'est pas mieux informé ni éduqué en matière de finances",
+    source: 'Bricks.co – Enquête nationale 2025',
+    sourceUrl: bricksUrl,
+  },
+  {
+    value: '44%',
+    text: 'des Français décident seuls de leur placement',
+    source: 'Baromètre AMF 2025',
+    sourceUrl: amfUrl,
+  },
+];
+---
+
+<section id="constat" class="min-h-screen bg-gradient-to-br from-white via-cashou-background-light to-cashou-secondary/10 py-16 pb-24 relative z-10 scroll-mt-16">
+  <div class="container mx-auto px-6">
+    <div class="text-center mb-12">
+      <h2 class="text-4xl md:text-5xl font-heading font-bold text-cashou-text-light mb-4">
+        Pourquoi Cashou ?
+      </h2>
+      <p class="text-xl text-cashou-text-light/70 max-w-2xl mx-auto">
+        Un constat alarmant sur l'éducation financière en France qui nous pousse à agir
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+      {stats.map((stat) => (
+        <div
+          class="bg-white p-6 rounded-xl border border-cashou-secondary/30 shadow-sm hover:shadow-lg transition-all transform hover:-translate-y-1 flex flex-col min-h-[200px]"
+        >
+          <p class="text-4xl md:text-5xl font-heading font-bold text-cashou-primary mb-3">
+            {stat.value.replace('%', '')}<span class="text-4xl align-baseline">%</span>
+          </p>
+          <p class="text-cashou-text-light leading-relaxed mb-3 flex-grow">
+            {stat.text}
+          </p>
+          <p class="text-sm text-cashou-text-light/60 mt-auto">
+            Source : <a href={stat.sourceUrl} target="_blank" rel="noopener noreferrer" class="text-cashou-primary hover:underline">{stat.source}</a>
+          </p>
+        </div>
+      ))}
+    </div>
+
+    <p class="text-center text-cashou-text-light/60 text-sm mt-8 max-w-2xl mx-auto">
+      Face à ces chiffres, Cashou naît de la volonté de démocratiser l'accès à l'éducation financière, 
+      en offrant un outil ludique et accessible pour apprendre à investir en toute confiance.
+    </p>
+  </div>
+</section>
