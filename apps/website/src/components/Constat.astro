@@ -49,18 +49,18 @@ const stats = [
       )}
     </div>
 
-    <div class={`grid grid-cols-1 gap-6 mx-auto ${diapo ? 'md:grid-cols-2 max-w-6xl' : 'md:grid-cols-2 max-w-5xl'}`}>
+    <div class={`grid grid-cols-1 mx-auto ${diapo ? 'md:grid-cols-2 max-w-5xl gap-4' : 'md:grid-cols-2 max-w-5xl gap-6'}`}>
       {stats.map((stat) => (
         <div
-          class={`bg-white rounded-xl border border-cashou-secondary/30 shadow-sm hover:shadow-lg transition-all transform hover:-translate-y-1 flex flex-col ${diapo ? 'p-10 min-h-[280px]' : 'p-6 min-h-[200px]'}`}
+          class={`bg-white rounded-xl border border-cashou-secondary/30 shadow-sm hover:shadow-lg transition-all transform hover:-translate-y-1 flex flex-col ${diapo ? 'p-5 min-h-[140px]' : 'p-6 min-h-[200px]'}`}
         >
-          <p class={`font-heading font-bold text-cashou-primary mb-3 ${diapo ? 'text-6xl md:text-7xl' : 'text-4xl md:text-5xl'}`}>
-            {stat.value.replace('%', '')}<span class={diapo ? 'text-5xl md:text-6xl align-baseline' : 'text-4xl align-baseline'}>%</span>
+          <p class={`font-heading font-bold text-cashou-primary mb-2 ${diapo ? 'text-4xl md:text-5xl' : 'text-4xl md:text-5xl'}`}>
+            {stat.value.replace('%', '')}<span class={diapo ? 'text-3xl md:text-4xl align-baseline' : 'text-4xl align-baseline'}>%</span>
           </p>
-          <p class={`text-cashou-text-light leading-relaxed flex-grow ${diapo ? 'text-xl md:text-2xl mb-4' : 'mb-3'}`}>
+          <p class={`text-cashou-text-light leading-relaxed flex-grow ${diapo ? 'text-base md:text-lg mb-2' : 'mb-3'}`}>
             {stat.text}
           </p>
-          <p class={`text-cashou-text-light/60 mt-auto ${diapo ? 'text-base' : 'text-sm'}`}>
+          <p class={`text-cashou-text-light/60 mt-auto ${diapo ? 'text-xs' : 'text-sm'}`}>
             Source : <a href={stat.sourceUrl} target="_blank" rel="noopener noreferrer" class="text-cashou-primary hover:underline">{stat.source}</a>
           </p>
         </div>
