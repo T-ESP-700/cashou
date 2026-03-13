@@ -251,14 +251,14 @@ async function main() {
   console.log('📚 Mise à jour du niveau par défaut (Level 1) avec config ESP...');
 
   const levelData = {
-    title: 'Niveau Démo ESP',
-    number: 99,
+    title: 'Découverte des marchés',
+    number: 25,
     duration: 365,
     speed: 262800,
     startBalance: 5000,
     pointsRequired: 0,
     historyStartDay: HISTORY_START_DAY, // Game starts at day 365 (year 2), player sees 1 year of past
-    description: 'Niveau de démonstration pour l\'événement ESP. Partie de 2 minutes avec 3 enveloppes et 2 événements dramatiques.',
+    description: 'Découvre les bases de l\'investissement avec 3 enveloppes et 2 événements de marché. Un premier niveau pour comprendre la diversification et la gestion du risque.',
   };
 
   // Upsert on id=1 so the default user level is always the ESP demo
