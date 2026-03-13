@@ -227,7 +227,12 @@ export class GameInstanceEventService {
         gameInstance: {
           isEnded: false,
           userId: { not: null }, // Only process events for games with a user
-          isPaused: false, // Events should not fire while the game is paused for any reason
+          // Exclude games that are paused with actionRequired=true (already waiting for user action)
+          // Manual pause (actionRequired=false) should NOT block events
+          OR: [
+            { isPaused: false },
+            { isPaused: true, actionRequired: false },
+          ],
         },
       },
       include: {
