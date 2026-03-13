@@ -26,7 +26,7 @@ const isDiapo = siteMode === 'diapo';
   <ComingSoon />
 ) : (
   <Layout title="Cashou - Apprendre la finance en s'amusant" description="L'app qui vous apprend à gérer votre argent en toute sécurité !">
-    <Header />
+    <Header diapo={isDiapo} />
     <main>
       <Hero diapo={isDiapo} />
       <Constat diapo={isDiapo} />
