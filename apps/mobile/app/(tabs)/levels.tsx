@@ -51,7 +51,7 @@ export default function LevelsScreen() {
         setIsLoading(true);
         trpcClient.level.getUserLevels
             .query({ userId: user.id })
-            .then((data) => {
+            .then((data: any) => {
                 if (!cancelled) {
                     setUserLevels((data as UserLevelEntry[]) ?? []);
                 }
@@ -154,7 +154,7 @@ export default function LevelsScreen() {
                                             name="lock-closed"
                                             size={18}
                                             color={
-                                                colors.icon?.muted ?? "#9CA3AF"
+                                                colors.iconMuted ?? "#9CA3AF"
                                             }
                                         />
                                     )}
@@ -184,7 +184,7 @@ export default function LevelsScreen() {
                                         color={
                                             i <= entry.stars
                                                 ? special.gold
-                                                : (colors.icon?.muted ??
+                                                : (colors.iconMuted ??
                                                   "#9CA3AF")
                                         }
                                     />
