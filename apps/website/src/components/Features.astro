@@ -69,9 +69,9 @@ function setSvgColor(svg: string, color: string): string {
 }
 ---
 
-<section id="features" class="min-h-screen bg-white py-16 pb-32 relative z-10 scroll-mt-16">
-  <div class="container mx-auto px-6">
-    <div class="text-center mb-8">
+<section id="features" class={`min-h-screen bg-white py-16 pb-32 relative z-10 scroll-mt-16 ${diapo ? 'flex flex-col' : ''}`}>
+  <div class={`container mx-auto px-6 ${diapo ? 'flex flex-col flex-1' : ''}`}>
+    <div class={`text-center ${diapo ? 'mb-0 flex-shrink-0' : 'mb-8'}`}>
       <h2 class={`font-heading font-bold text-cashou-text-light ${diapo ? 'text-5xl md:text-6xl mb-0' : 'text-4xl md:text-5xl mb-4'}`}>
         Fonctionnalités
       </h2>
@@ -82,7 +82,8 @@ function setSvgColor(svg: string, color: string): string {
       )}
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class={diapo ? 'flex-1 flex items-center justify-center' : ''}>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {features.map((feature, index) => (
         <div 
           class={`bg-cashou-background-light rounded-xl hover:shadow-xl transition-all transform hover:-translate-y-2 border border-cashou-secondary animate-fade-in ${diapo ? 'p-8 flex flex-col items-center text-center' : 'p-6'}`}
@@ -101,6 +102,7 @@ function setSvgColor(svg: string, color: string): string {
           )}
         </div>
       ))}
+      </div>
     </div>
   </div>
 </section>

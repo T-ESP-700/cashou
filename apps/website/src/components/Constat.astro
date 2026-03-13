@@ -36,9 +36,9 @@ const stats = [
 ];
 ---
 
-<section id="constat" class="min-h-screen bg-gradient-to-br from-white via-cashou-background-light to-cashou-secondary/10 py-16 pb-24 relative z-10 scroll-mt-16">
-  <div class="container mx-auto px-6">
-    <div class="text-center mb-12">
+<section id="constat" class={`min-h-screen bg-gradient-to-br from-white via-cashou-background-light to-cashou-secondary/10 py-16 pb-24 relative z-10 scroll-mt-16 ${diapo ? 'flex flex-col' : ''}`}>
+  <div class={`container mx-auto px-6 ${diapo ? 'flex flex-col flex-1' : ''}`}>
+    <div class={`text-center ${diapo ? 'mb-0 flex-shrink-0' : 'mb-12'}`}>
       <h2 class={`font-heading font-bold text-cashou-text-light ${diapo ? 'text-5xl md:text-6xl mb-0' : 'text-4xl md:text-5xl mb-4'}`}>
         Pourquoi Cashou ?
       </h2>
@@ -49,7 +49,8 @@ const stats = [
       )}
     </div>
 
-    <div class={`grid grid-cols-1 mx-auto ${diapo ? 'md:grid-cols-2 max-w-5xl gap-4' : 'md:grid-cols-2 max-w-5xl gap-6'}`}>
+    <div class={`${diapo ? 'flex-1 flex items-center justify-center' : ''}`}>
+      <div class={`grid grid-cols-1 md:grid-cols-2 max-w-5xl mx-auto ${diapo ? 'gap-4' : 'gap-6'}`}>
       {stats.map((stat) => (
         <div
           class={`bg-white rounded-xl border border-cashou-secondary/30 shadow-sm hover:shadow-lg transition-all transform hover:-translate-y-1 flex flex-col ${diapo ? 'p-5 min-h-[140px]' : 'p-6 min-h-[200px]'}`}
@@ -65,6 +66,7 @@ const stats = [
           </p>
         </div>
       ))}
+      </div>
     </div>
 
     {!diapo && (
