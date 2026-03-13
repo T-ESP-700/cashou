@@ -1447,39 +1447,45 @@ export default function GameCurrentScreen() {
         visible={showNoInvestmentModal}
         transparent
         animationType="fade"
+        statusBarTranslucent
         onRequestClose={() => setShowNoInvestmentModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
-            <Text style={[styles.modalTitle, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
-              Aucun investissement
-            </Text>
-            <Text style={[styles.modalMessage, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
-              {"Vous n'avez fait aucun investissement. Si vous demarrez maintenant, vous ne pourrez pas gagner d'argent pendant la partie."}
-            </Text>
-            <Text style={[styles.modalMessage, { fontFamily: CashouTheme.fonts.body, color: theme.text, marginTop: 8 }]}>
-              Voulez-vous vraiment demarrer sans investir ?
-            </Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonCancel, { borderColor: theme.border }]}
-                onPress={() => setShowNoInvestmentModal(false)}
-              >
-                <Text style={[styles.modalButtonText, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
-                  {"Investir d'abord"}
+        <BlurView
+          intensity={60}
+          tint={isDark ? 'dark' : 'light'}
+          style={styles.endGameBlur}
+        >
+          <View style={styles.endGameOverlay}>
+            <View style={[styles.endGameCardBackdrop, { backgroundColor: theme.secondary }]}>
+              <View style={[styles.endGameCard, { backgroundColor: theme.card, shadowColor: theme.border, alignItems: 'center' }]}>
+                <Text allowFontScaling={false} style={[styles.endGameTitle, { fontFamily: 'Anybody', color: theme.text }]}>
+                  Aucun investissement
                 </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonConfirm, { backgroundColor: theme.accent }]}
-                onPress={handleConfirmStartWithoutInvestment}
-              >
-                <Text style={[styles.modalButtonText, { fontFamily: CashouTheme.fonts.body, color: '#FFFFFF' }]}>
-                  Demarrer quand meme
+                <Text allowFontScaling={false} style={[styles.endGameMessage, { fontFamily: 'Anybody', color: theme.text, textAlign: 'center' }]}>
+                  {"Vous n'avez fait aucun investissement. Si vous démarrez maintenant, vous ne pourrez pas gagner d'argent pendant la partie."}
                 </Text>
-              </TouchableOpacity>
+                <Text allowFontScaling={false} style={[styles.endGameMessage, styles.endGameSecondary, { fontFamily: 'Anybody', color: theme.text, textAlign: 'center', marginBottom: 16 }]}>
+                  Voulez-vous vraiment démarrer sans investir ?
+                </Text>
+                <View style={styles.endGameActions}>
+                  <ActionPillButton
+                    label="Investir"
+                    iconName="add"
+                    onPress={() => {
+                      setShowNoInvestmentModal(false);
+                      handleAddAsset();
+                    }}
+                  />
+                  <ActionPillButton
+                    label="Démarrer"
+                    iconName="play"
+                    onPress={handleConfirmStartWithoutInvestment}
+                  />
+                </View>
+              </View>
             </View>
           </View>
-        </View>
+        </BlurView>
       </Modal>
 
       {/* Modale de fin de partie */}
@@ -1647,7 +1653,7 @@ export default function GameCurrentScreen() {
               ]}
               onPress={() => setSelectedSubmarketId(null)}
             >
-              <Text style={[styles.assetsSheetTabText, { color: selectedSubmarketId === null ? '#FFFFFF' : theme.text, fontFamily: CashouTheme.fonts.body }]}>
+              <Text style={[styles.assetsSheetTabText, { color: theme.text, fontFamily: CashouTheme.fonts.body }]}>
                 Tous
               </Text>
             </TouchableOpacity>
@@ -1660,7 +1666,7 @@ export default function GameCurrentScreen() {
                 ]}
                 onPress={() => setSelectedSubmarketId(sm.id)}
               >
-                <Text style={[styles.assetsSheetTabText, { color: selectedSubmarketId === sm.id ? '#FFFFFF' : theme.text, fontFamily: CashouTheme.fonts.body }]}>
+                <Text style={[styles.assetsSheetTabText, { color: theme.text, fontFamily: CashouTheme.fonts.body }]}>
                   {sm.title}
                 </Text>
               </TouchableOpacity>
@@ -1821,48 +1827,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  modalContent: {
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-  },
-  modalTitle: {
-    fontSize: 20,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  modalMessage: {
-    fontSize: 14,
-    textAlign: 'center',
-    opacity: 0.8,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    marginTop: 24,
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  modalButtonCancel: {
-    borderWidth: 2,
-  },
-  modalButtonConfirm: {
-  },
-  modalButtonText: {
-    fontSize: 14,
   },
   endGameBlur: {
     flex: 1,

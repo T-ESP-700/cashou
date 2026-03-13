@@ -183,10 +183,10 @@ export default function AssetDetailScreen() {
               <Text style={[styles.assetTitle, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>
                 {asset.title || 'Sans titre'}
               </Text>
-              {asset.symbol && (
+              {asset.submarket?.title && (
                 <View style={[styles.assetBadge, { backgroundColor: badgeStyle.bg }]}>
                   <Text style={[styles.assetBadgeText, { color: badgeStyle.text }]}>
-                    {asset.symbol}
+                    {asset.submarket.title}
                   </Text>
                 </View>
               )}
@@ -428,14 +428,12 @@ export default function AssetDetailScreen() {
             label={isSavings ? 'Déposer' : 'Acheter'}
             iconName={isSavings ? 'download-outline' : 'arrow-down-circle'}
             onPress={handleBuy}
-            style={{ flex: 1 }}
           />
           <ActionPillButton
             label={isSavings ? 'Retirer' : 'Vendre'}
             iconName={isSavings ? 'upload-outline' : 'arrow-up-circle'}
             onPress={handleSell}
             disabled={currentHolding === 0}
-            style={{ flex: 1 }}
           />
         </View>
       )}

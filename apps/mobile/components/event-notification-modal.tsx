@@ -1,58 +1,28 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   Modal,
-  Dimensions,
-  ActivityIndicator,
+  Pressable,
+  StyleSheet,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, usePathname, useLocalSearchParams } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { useNotifications } from '@/hooks/use-notifications';
-import { Card, Button } from '@/components/ui';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import { ActionPillButton } from '@/components/ui';
+import { trpcClient } from '@/lib/trpc';
 
 export function EventNotificationModal() {
-  const { colors, special, fonts, spacing, borderRadius, isDark } = useCashouTheme();
+  const { colors, isDark } = useCashouTheme();
   const router = useRouter();
   const pathname = usePathname();
-  const params = useLocalSearchParams<{ gameId?: string }>();
   const { eventNotification, clearEventNotification, setPendingEventCompletion, setShouldOpenAssetsSheet } = useNotifications();
-  const hasNavigatedRef = useRef<number | null>(null);
 
   const isVisible = eventNotification !== null;
 
-  // Navigate to /game/current when an event notification is received
-  useEffect(() => {
-    if (!eventNotification?.gameInstanceId) {
-      hasNavigatedRef.current = null;
-      return;
-    }
-
-    const gameInstanceId = eventNotification.gameInstanceId;
-
-    // Don't navigate if we already navigated for this notification
-    if (hasNavigatedRef.current === gameInstanceId) {
-      return;
-    }
-
-    // Check if we're already on /game/current with the same gameId
-    const isOnCurrentGame =
-      pathname === '/game/current' &&
-      params.gameId === gameInstanceId.toString();
-
-    if (!isOnCurrentGame) {
-      hasNavigatedRef.current = gameInstanceId;
-      // Navigate to /game/current with the gameId
-      router.push({
-        pathname: '/game/current',
-        params: { gameId: gameInstanceId.toString() },
-      });
-    }
-  }, [eventNotification, pathname, params.gameId, router]);
+  const isOnCurrentScreen = pathname === '/game/current';
 
   const handleClose = async () => {
     if (!eventNotification?.gameInstanceId) {
@@ -60,9 +30,20 @@ export function EventNotificationModal() {
       return;
     }
 
-    // Marquer l'event comme à compléter — current.tsx s'en chargera
-    setPendingEventCompletion(eventNotification.gameInstanceId);
+    const gameInstanceId = eventNotification.gameInstanceId;
     clearEventNotification();
+
+    if (isOnCurrentScreen) {
+      // current.tsx is mounted — let it handle completion + resume via the existing effect
+      setPendingEventCompletion(gameInstanceId);
+    } else {
+      // current.tsx is not mounted — complete event + resume directly
+      try {
+        await trpcClient.gameInstance.completeEvent.mutate({ id: gameInstanceId });
+      } catch (err) {
+        console.error('[EventModal] Failed to complete event:', err);
+      }
+    }
   };
 
   const handleGoToAssets = () => {
@@ -73,13 +54,20 @@ export function EventNotificationModal() {
 
     const gameInstanceId = eventNotification.gameInstanceId;
 
-    // Don't complete the event yet - keep the game paused.
-    // Mark that we need to complete it when returning to the game.
+    // Mark event as pending — current.tsx will complete it when opening the sheet
     setPendingEventCompletion(gameInstanceId);
     clearEventNotification();
 
     // Signal current.tsx to open the assets bottom sheet
     setShouldOpenAssetsSheet(true);
+
+    if (!isOnCurrentScreen) {
+      // Navigate to /game/current — the shouldOpenAssetsSheet effect will fire on mount
+      router.push({
+        pathname: '/game/current',
+        params: { gameId: gameInstanceId.toString() },
+      });
+    }
   };
 
   if (!eventNotification) {
@@ -95,85 +83,108 @@ export function EventNotificationModal() {
       onRequestClose={handleClose}
     >
       <BlurView
-        intensity={80}
+        intensity={60}
         tint={isDark ? 'dark' : 'light'}
-        style={{ flex: 1 }}
+        style={styles.blur}
       >
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg }}>
-          <Card
-            variant="elevated"
-            padding="lg"
-            style={{
-              width: SCREEN_WIDTH - 48,
-              maxWidth: 400,
-              alignItems: 'center',
-            }}
+        <Pressable style={styles.overlay} onPress={handleClose}>
+          <View
+            onStartShouldSetResponder={() => true}
+            style={[styles.cardBackdrop, { backgroundColor: colors.secondary }]}
           >
-            {/* Event Icon */}
-            <View
-              style={{
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 80,
-                height: 80,
-                borderRadius: 40,
-                backgroundColor: `${colors.accent}20`,
-                marginBottom: 20,
-              }}
-            >
-              <Ionicons name="flash" size={40} color={colors.accent} />
-            </View>
+            <View style={[styles.card, { backgroundColor: colors.card, shadowColor: colors.border }]}>
+              {/* Event Icon */}
+              <View style={[styles.iconCircle, { backgroundColor: `${colors.accent}20` }]}>
+                <Ionicons name="flash" size={40} color={colors.accent} />
+              </View>
 
-            {/* Title */}
-            <Text
-              style={{
-                fontSize: 22,
-                fontFamily: fonts.heading,
-                color: colors.text,
-                textAlign: 'center',
-                marginBottom: spacing.sm + 4,
-              }}
-            >
-              {eventNotification.title ?? 'Nouvel événement !'}
-            </Text>
+              {/* Title */}
+              <Text allowFontScaling={false} style={[styles.title, { color: colors.text }]}>
+                {eventNotification.title ?? 'Nouvel événement !'}
+              </Text>
 
-            {/* Body/Description */}
-            <Text
-              style={{
-                fontSize: 16,
-                fontFamily: fonts.body,
-                color: colors.text,
-                textAlign: 'center',
-                lineHeight: 24,
-                marginBottom: spacing.lg,
-                opacity: 0.85,
-              }}
-            >
-              {eventNotification.body ?? 'Un événement vient de se produire dans le jeu. Consultez vos assets pour voir les changements.'}
-            </Text>
+              {/* Body/Description */}
+              <Text allowFontScaling={false} style={[styles.description, { color: colors.text }]}>
+                {eventNotification.body ?? 'Un événement vient de se produire dans le jeu. Consultez vos assets pour voir les changements.'}
+              </Text>
 
-            {/* Buttons */}
-            <View style={{ flexDirection: 'row', width: '100%', gap: spacing.sm + 4 }}>
-              <View style={{ flex: 1 }}>
-                <Button
-                  title="Continuer"
-                  variant="outline"
+              {/* Buttons */}
+              <View style={styles.actions}>
+                <ActionPillButton
+                  label="Continuer"
+                  iconName="checkmark"
                   onPress={handleClose}
-                  fullWidth
                 />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Button
-                  title="Voir mes assets"
-                  variant="primary"
+                <ActionPillButton
+                  label="Investir"
+                  iconName="add"
                   onPress={handleGoToAssets}
-                  fullWidth
                 />
               </View>
             </View>
-          </Card>
-        </View>
+          </View>
+        </Pressable>
       </BlurView>
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  blur: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  overlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+  },
+  cardBackdrop: {
+    width: '97%',
+    maxWidth: 410,
+    borderRadius: 36,
+    padding: 6,
+  },
+  card: {
+    width: '100%',
+    borderRadius: 30,
+    paddingHorizontal: 18,
+    paddingTop: 24,
+    paddingBottom: 20,
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+    alignItems: 'center',
+  },
+  iconCircle: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 22,
+    fontFamily: 'Anybody',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  description: {
+    fontSize: 14,
+    fontFamily: 'Anybody',
+    textAlign: 'center',
+    lineHeight: 20,
+    opacity: 0.85,
+    marginBottom: 16,
+  },
+  actions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    width: '100%',
+  },
+});

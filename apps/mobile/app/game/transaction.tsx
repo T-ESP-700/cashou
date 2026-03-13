@@ -20,6 +20,7 @@ import { trpcClient } from '@/lib/trpc';
 import { useHeaderOptions } from '@/hooks/use-header';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useAuth } from '@/hooks/use-auth';
+import { ActionPillButton } from '@/components/ui/ActionPillButton';
 
 type TransactionType = 'buy' | 'sell';
 
@@ -38,7 +39,7 @@ export default function TransactionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
-  const { activeGameInstanceId, pendingEventCompletion, setPendingEventCompletion, setAssetsScreenDepth, assetsScreenDepthRef, setIsOnAssetsScreen, setPausedByAssets } = useNotifications();
+  const { activeGameInstanceId, pendingEventCompletion, setPendingEventCompletion, setAssetsScreenDepth, assetsScreenDepthRef, setIsOnAssetsScreen, setPausedByAssets, setShouldOpenAssetsSheet } = useNotifications();
   const { user } = useAuth();
 
   // Configure header for this screen
@@ -276,6 +277,15 @@ export default function TransactionScreen() {
     return null;
   };
 
+  const goBackToCurrentWithSheet = () => {
+    // Signal current.tsx to re-open the assets bottom sheet so the user
+    // can perform more transactions without the game resuming.
+    setShouldOpenAssetsSheet(true);
+    // Pop back to /game/current: go back twice (transaction → asset-detail → current)
+    router.back();
+    setTimeout(() => router.back(), 50);
+  };
+
   const handleSubmit = async () => {
     const validationError = validateAmount();
     if (validationError) {
@@ -301,9 +311,9 @@ export default function TransactionScreen() {
           gameInstanceId,
         });
         Alert.alert(
-          'Achat effectue',
+          'Achat effectué',
           `Vous avez investi ${Math.round(numAmount)} EUR dans ${asset?.title}`,
-          [{ text: 'OK', onPress: () => router.back() }]
+          [{ text: 'OK', onPress: () => goBackToCurrentWithSheet() }]
         );
       } else {
         // Convert user-entered value to raw quantity for backend
@@ -317,7 +327,7 @@ export default function TransactionScreen() {
         Alert.alert(
           'Vente effectuée',
           `Vous avez récupéré ${Math.round(result.amountReceived)} EUR (dont ${Math.round(result.interests)} EUR d'intérêts)`,
-          [{ text: 'OK', onPress: () => router.back() }]
+          [{ text: 'OK', onPress: () => goBackToCurrentWithSheet() }]
         );
       }
     } catch (e: any) {
@@ -366,25 +376,25 @@ export default function TransactionScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {/* Header */}
-        <View style={[styles.header, { backgroundColor: isBuy ? '#4CAF50' : '#FF9800' }]}>
+        <View style={[styles.header, { backgroundColor: theme.card, shadowColor: theme.border }]}>
           <Ionicons
             name={isSavings ? (isBuy ? 'download-outline' : 'upload-outline') : (isBuy ? 'arrow-down-circle' : 'arrow-up-circle')}
             size={48}
-            color="#FFFFFF"
+            color={theme.accent}
           />
-          <Text style={styles.headerTitle}>
+          <Text style={[styles.headerTitle, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>
             {isSavings ? (isBuy ? 'Déposer' : 'Retirer') : (isBuy ? 'Acheter' : 'Vendre')}
           </Text>
-          <Text style={styles.headerSubtitle}>{asset.title}</Text>
+          <Text style={[styles.headerSubtitle, { color: theme.text, fontFamily: CashouTheme.fonts.body }]}>{asset.title}</Text>
           {asset.symbol && (
-            <View style={styles.symbolBadge}>
-              <Text style={styles.symbolText}>{asset.symbol}</Text>
+            <View style={[styles.symbolBadge, { backgroundColor: `${theme.accent}20` }]}>
+              <Text style={[styles.symbolText, { color: theme.accent }]}>{asset.symbol}</Text>
             </View>
           )}
         </View>
 
         {/* Balance Info */}
-        <View style={[styles.balanceCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={[styles.balanceCard, { backgroundColor: theme.card }]}>
           <View style={styles.balanceRow}>
             <Text style={[styles.balanceLabel, { color: theme.text, opacity: 0.7 }]}>
               {isBuy ? 'Solde disponible' : (isSavings ? 'Valeur actuelle' : 'Valeur actuelle')}
@@ -416,7 +426,7 @@ export default function TransactionScreen() {
         </View>
 
         {/* Amount Input */}
-        <View style={[styles.inputCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={[styles.inputCard, { backgroundColor: theme.card }]}>
           <Text style={[styles.inputLabel, { color: theme.text }]}>Montant</Text>
           <View style={styles.inputContainer}>
             <TextInput
@@ -442,7 +452,7 @@ export default function TransactionScreen() {
                 key={value}
                 style={[
                   styles.quickAmountButton,
-                  { backgroundColor: theme.card, borderColor: theme.border },
+                  { backgroundColor: theme.card },
                   value > maxAvailable && styles.quickAmountDisabled,
                 ]}
                 onPress={() => handleQuickAmount(value)}
@@ -473,31 +483,14 @@ export default function TransactionScreen() {
       </ScrollView>
 
       {/* Bottom Button */}
-      <View style={[styles.bottomContainer, { paddingBottom: insets.bottom + 16, backgroundColor: theme.background }]}>
-        <TouchableOpacity
-          style={[
-            styles.submitButton,
-            { backgroundColor: isBuy ? '#4CAF50' : '#FF9800' },
-            isSubmitting && styles.submitButtonDisabled,
-          ]}
+      <View style={[styles.bottomContainer, { paddingBottom: insets.bottom + 16 }]}>
+        <ActionPillButton
+          label={isSavings ? (isBuy ? 'Confirmer le dépôt' : 'Confirmer le retrait') : (isBuy ? "Confirmer l'achat" : 'Confirmer la vente')}
+          iconName={isBuy ? 'checkmark-circle' : 'cash'}
           onPress={handleSubmit}
           disabled={isSubmitting || !amount}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <>
-              <Ionicons
-                name={isBuy ? 'checkmark-circle' : 'cash'}
-                size={24}
-                color="#FFFFFF"
-              />
-              <Text style={styles.submitButtonText}>
-                {isSavings ? (isBuy ? 'Confirmer le dépôt' : 'Confirmer le retrait') : (isBuy ? 'Confirmer l\'achat' : 'Confirmer la vente')}
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
+          isLoading={isSubmitting}
+        />
       </View>
     </KeyboardAvoidingView>
   );
@@ -527,40 +520,35 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   header: {
-    borderRadius: 16,
+    borderRadius: 22,
     padding: 24,
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#FFFFFF',
     marginTop: 12,
   },
   headerSubtitle: {
     fontSize: 18,
-    color: '#FFFFFF',
     opacity: 0.9,
     marginTop: 4,
   },
   symbolBadge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 999,
     marginTop: 8,
   },
   symbolText: {
-    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
   },
   balanceCard: {
-    borderRadius: 16,
+    borderRadius: 22,
     padding: 16,
-    borderWidth: 2,
-    marginBottom: 16,
+    marginBottom: 8,
   },
   balanceRow: {
     flexDirection: 'row',
@@ -576,10 +564,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   inputCard: {
-    borderRadius: 16,
+    borderRadius: 22,
     padding: 16,
-    borderWidth: 2,
-    marginBottom: 16,
+    marginBottom: 8,
   },
   inputLabel: {
     fontSize: 16,
@@ -617,8 +604,7 @@ const styles = StyleSheet.create({
   quickAmountButton: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 2,
+    borderRadius: 22,
   },
   quickAmountDisabled: {
     opacity: 0.5,
@@ -638,21 +624,7 @@ const styles = StyleSheet.create({
   bottomContainer: {
     padding: 16,
     paddingTop: 8,
-  },
-  submitButton: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
   },
 });
