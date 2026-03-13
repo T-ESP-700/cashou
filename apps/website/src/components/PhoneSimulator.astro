@@ -9,7 +9,7 @@ const { diapo = false } = Astro.props;
 import Logo from '../assets/Frame 93.png';
 ---
 
-<section id="phone-demo" class="bg-cashou-background-light py-16 scroll-mt-16" data-logo-src={Logo.src}>
+<section id="phone-demo" class="min-h-screen bg-cashou-background-light py-16 scroll-mt-16 flex flex-col" data-logo-src={Logo.src}>
   <div class="container mx-auto px-6">
     <div class="text-center mb-12">
       <h2 class={`font-heading font-bold text-cashou-text-light ${diapo ? 'text-5xl md:text-6xl mb-0' : 'text-4xl md:text-5xl mb-4'}`}>
