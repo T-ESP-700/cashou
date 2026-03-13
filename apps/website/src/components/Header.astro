@@ -2,7 +2,10 @@
 import Logo from '../assets/Frame 93.png';
 ---
 
-<header class="fixed top-0 left-0 right-0 z-50 bg-white border-b border-cashou-border-light/10 transition-all" id="header">
+<header
+  id="header"
+  class="fixed top-0 left-0 right-0 z-50 border-b border-transparent transition-all duration-300 ease-out bg-transparent"
+>
   <nav class="container mx-auto px-6 py-4 flex items-center justify-between">
     <a href="/" class="flex items-center gap-3 hover:opacity-80 transition-opacity">
       <img src={Logo.src} alt="Cashou Logo" class="h-10 w-auto" />
@@ -37,6 +40,14 @@ import Logo from '../assets/Frame 93.png';
   </div>
 </header>
 
+<style is:global>
+  #header.header-scrolled {
+    background-color: white !important;
+    border-color: rgba(28, 30, 51, 0.1);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+  }
+</style>
+
 <script>
   const menuButton = document.getElementById('mobile-menu-button');
   const mobileMenu = document.getElementById('mobile-menu');
@@ -46,12 +57,12 @@ import Logo from '../assets/Frame 93.png';
     mobileMenu?.classList.toggle('hidden');
   });
 
-  // Header shadow on scroll
+  // Header blanc plein au scroll
   window.addEventListener('scroll', () => {
     if (window.scrollY > 50) {
-      header?.classList.add('shadow-lg');
+      header?.classList.add('header-scrolled');
     } else {
-      header?.classList.remove('shadow-lg');
+      header?.classList.remove('header-scrolled');
     }
   });
 </script>
