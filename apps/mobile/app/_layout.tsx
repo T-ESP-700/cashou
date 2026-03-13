@@ -5,6 +5,7 @@ import 'react-native-reanimated';
 import '../global.css';
 import { useFonts } from 'expo-font';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import {
   Rowdies_300Light,
   Rowdies_400Regular,
@@ -75,7 +76,9 @@ function RootNavigatorContent() {
       {showHeader && (
         <CashouHeader
           title={headerOptions.title}
+          subtitle={headerOptions.subtitle}
           showBackButton={headerOptions.showBackButton}
+          onTitlePress={headerOptions.onTitlePress}
           onMenuPress={headerOptions.onMenuPress}
           onBackPress={headerOptions.onBackPress}
         />
@@ -135,7 +138,9 @@ export default function RootLayout() {
       <ThemePreferenceProvider>
         <AuthProvider>
           <NotificationProvider>
-            <RootLayoutInner />
+            <BottomSheetModalProvider>
+              <RootLayoutInner />
+            </BottomSheetModalProvider>
           </NotificationProvider>
         </AuthProvider>
       </ThemePreferenceProvider>
