@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LevelCard } from '@/components/level-card';
 import { DailyQuizCard } from '@/components/daily-quiz-card';
+import { ScrollingLogos } from '@/components/scrolling-logos';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { useAuth } from '@/hooks/use-auth';
 import { useHeaderOptions } from '@/hooks/use-header';
@@ -387,7 +388,12 @@ export default function HomeScreen() {
           </View>
         ) : (
           <>
-            <View style={{ flex: 1, justifyContent: 'flex-end', paddingHorizontal: spacing.md, paddingTop: spacing.lg, gap: 8 }}>
+            {/* Scrolling logos background filling the empty space */}
+            <View style={{ flex: 1, minHeight: 120 }}>
+              <ScrollingLogos />
+            </View>
+
+            <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.lg, gap: 8 }}>
               {/* Greeting bubble */}
               <Card variant="default" padding="md">
                 <Text
