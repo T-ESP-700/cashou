@@ -19,6 +19,7 @@ import { EditProfileModal } from "@/components/profile/EditProfileModal";
 import { Image } from "react-native";
 import { trpcClient } from "@/lib/trpc";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { Link } from "expo-router";
 
 interface UserLevelEntry {
     level: { id: number; number: number | null; title: string | null };
@@ -606,7 +607,7 @@ export function UserProfile() {
                                 : ""}
                         </Text>
                         <TouchableOpacity
-                            onPress={() => router.push("/(tabs)/levels")}
+                            onPress={() => router.push("/levels")}
                             style={{
                                 flexDirection: "row",
                                 alignItems: "center",

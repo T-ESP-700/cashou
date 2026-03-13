@@ -508,7 +508,7 @@
 
     "@expo-google-fonts/anybody": ["@expo-google-fonts/anybody@0.4.2", "", {}, "sha512-sXGJzetfFjW19TeeYZRURKYs10BvAMErUFhxjAlNsjq9X8EUF7wmOYD14bV5MeKrYHHHw65xsR26UHbtXV77tg=="],
 
-    "@expo-google-fonts/roboto": ["@expo-google-fonts/roboto@0.4.3", "", {}, "sha512-kX3wmpmu06fN1yOwYWMdjYJWNUYW6xUiAGeHbvPzzSEb3A3j23JelQ3tAgwQNKgEKRq6wtMmzixy2r7y9c8dsA=="],
+    "@expo-google-fonts/roboto": ["@expo-google-fonts/roboto@0.4.1", "", {}, "sha512-kil05iC3NGEhdwbkbftA++0xyWTDqdbCmQEuM2sCPdESzTJVtqXDyoRZqBoXRjvLZWH76uR0x115QPQEeNJa1w=="],
 
     "@expo-google-fonts/rowdies": ["@expo-google-fonts/rowdies@0.4.2", "", {}, "sha512-Xg8t5yIW+jzeAk+iwXHyTnUPmKKc3W//Iq7qdv0oSSVgk++7Sl2BBF2P8MyyloaU5xvDhwee7W/NV8C86TgxiQ=="],
 
@@ -2577,8 +2577,6 @@
     "metro-symbolicate/metro-source-map": ["metro-source-map@0.83.3", "", { "dependencies": { "@babel/traverse": "^7.25.3", "@babel/traverse--for-generate-function-map": "npm:@babel/traverse@^7.25.3", "@babel/types": "^7.25.2", "flow-enums-runtime": "^0.0.6", "invariant": "^2.2.4", "metro-symbolicate": "0.83.3", "nullthrows": "^1.1.1", "ob1": "0.83.3", "source-map": "^0.5.6", "vlq": "^1.0.0" } }, "sha512-xkC3qwUBh2psVZgVavo8+r2C9Igkk3DibiOXSAht1aYRRcztEZNFtAMtfSB7sdO2iFMx2Mlyu++cBxz/fhdzQg=="],
 
     "metro-transform-worker/metro-source-map": ["metro-source-map@0.83.3", "", { "dependencies": { "@babel/traverse": "^7.25.3", "@babel/traverse--for-generate-function-map": "npm:@babel/traverse@^7.25.3", "@babel/types": "^7.25.2", "flow-enums-runtime": "^0.0.6", "invariant": "^2.2.4", "metro-symbolicate": "0.83.3", "nullthrows": "^1.1.1", "ob1": "0.83.3", "source-map": "^0.5.6", "vlq": "^1.0.0" } }, "sha512-xkC3qwUBh2psVZgVavo8+r2C9Igkk3DibiOXSAht1aYRRcztEZNFtAMtfSB7sdO2iFMx2Mlyu++cBxz/fhdzQg=="],
-
-    "mobile/@expo-google-fonts/roboto": ["@expo-google-fonts/roboto@0.4.1", "", {}, "sha512-kil05iC3NGEhdwbkbftA++0xyWTDqdbCmQEuM2sCPdESzTJVtqXDyoRZqBoXRjvLZWH76uR0x115QPQEeNJa1w=="],
 
     "mobile/@trpc/client": ["@trpc/client@11.0.0", "", { "peerDependencies": { "@trpc/server": "11.0.0", "typescript": ">=5.7.2" } }, "sha512-U2THlxsdr4ykAX5lpTU8k5WRADPQ+68Ex2gfUht3MlCxGK7njBmNSSzjpQSWNt7tMI/xsYrddFiRlmEPrh+Cbg=="],
 

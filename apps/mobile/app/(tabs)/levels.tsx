@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, useColorScheme as useRNColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/use-auth';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,6 +17,7 @@ interface UserLevelEntry {
 }
 
 export default function LevelsScreen() {
+  const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const { colors, special, fonts, spacing, borderRadius } = useCashouTheme();
   const insets = useSafeAreaInsets();
@@ -26,7 +28,11 @@ export default function LevelsScreen() {
   const [userLevels, setUserLevels] = useState<UserLevelEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useHeaderOptions({ showBackButton: true });
+  const handleBackPress = useCallback(() => {
+    router.replace('/(tabs)/profile');
+  }, [router]);
+
+  useHeaderOptions({ showBackButton: true, onBackPress: handleBackPress });
 
   useEffect(() => {
     if (!user?.id) {
