@@ -1,4 +1,9 @@
 ---
+interface Props {
+  diapo?: boolean;
+}
+
+const { diapo = false } = Astro.props;
 import Logo from '../assets/Frame 93.png';
 ---
 
@@ -24,13 +29,15 @@ import Logo from '../assets/Frame 93.png';
         L'app qui vous apprend à gérer votre argent en toute sécurité !
       </p>
       
-      <p class="text-lg md:text-xl text-cashou-text-light/70 mb-12 max-w-2xl mx-auto leading-relaxed">
-        Transformez l'apprentissage de la finance en une expérience ludique et interactive. 
-        Relevez des défis, prenez des décisions éclairées et progressez dans votre compréhension 
-        des principes financiers et des stratégies d'investissement.
-      </p>
+      {!diapo && (
+        <p class="text-lg md:text-xl text-cashou-text-light/70 mb-12 max-w-2xl mx-auto leading-relaxed">
+          Transformez l'apprentissage de la finance en une expérience ludique et interactive. 
+          Relevez des défis, prenez des décisions éclairées et progressez dans votre compréhension 
+          des principes financiers et des stratégies d'investissement.
+        </p>
+      )}
 
-      <div class="grid grid-cols-1 sm:grid-cols-[1fr_21px_1fr] gap-6 sm:gap-0 items-center max-w-2xl mx-auto">
+      <div class={`grid grid-cols-1 sm:grid-cols-[1fr_21px_1fr] gap-6 sm:gap-0 items-center max-w-2xl mx-auto ${diapo ? 'mt-4' : ''}`}>
         <a 
           href="#download" 
           class="w-fit whitespace-nowrap bg-cashou-primary text-white px-8 py-4 rounded-full text-lg font-medium hover:bg-cashou-primary/90 transition-all transform hover:scale-105 shadow-lg hover:shadow-xl text-center sm:justify-self-end mx-auto sm:mx-0"

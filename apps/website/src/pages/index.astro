@@ -11,9 +11,15 @@ import Download from '../components/Download.astro';
 import Footer from '../components/Footer.astro';
 import ComingSoon from '../components/ComingSoon.astro';
 
-// Détecter si on doit afficher la page "coming soon"
-// La variable d'environnement PUBLIC_SHOW_COMING_SOON doit être définie à 'true' dans Vercel
-const showComingSoon = import.meta.env.PUBLIC_SHOW_COMING_SOON === 'true';
+// Mode du site : "site" | "soon" | "diapo"
+// - site : site complet (équivalent ancien false)
+// - soon : page Coming Soon (équivalent ancien true)
+// - diapo : version présentation (titres sans descriptions, cartes adaptées)
+// Rétrocompatibilité : "true" = soon, "false" ou absent = site
+const envValue = String(import.meta.env.PUBLIC_SHOW_COMING_SOON ?? 'site').toLowerCase();
+const siteMode = envValue === 'true' ? 'soon' : envValue === 'false' ? 'site' : envValue;
+const showComingSoon = siteMode === 'soon';
+const isDiapo = siteMode === 'diapo';
 ---
 
 {showComingSoon ? (
@@ -22,13 +28,13 @@ const showComingSoon = import.meta.env.PUBLIC_SHOW_COMING_SOON === 'true';
   <Layout title="Cashou - Apprendre la finance en s'amusant" description="L'app qui vous apprend à gérer votre argent en toute sécurité !">
     <Header />
     <main>
-      <Hero />
-      <Constat />
-      <Features />
-      <PhoneSimulator />
+      <Hero diapo={isDiapo} />
+      <Constat diapo={isDiapo} />
+      <Features diapo={isDiapo} />
+      <PhoneSimulator diapo={isDiapo} />
       {/* <HowItWorks /> */}
-      <Team />
-      <Download />
+      <Team diapo={isDiapo} />
+      <Download diapo={isDiapo} />
     </main>
     <Footer />
   </Layout>

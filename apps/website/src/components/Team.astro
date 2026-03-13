@@ -1,4 +1,9 @@
 ---
+interface Props {
+  diapo?: boolean;
+}
+
+const { diapo = false } = Astro.props;
 // Import des photos de l'équipe
 import FlaviePhoto from '../assets/flavie.png';
 import ChloePhoto from '../assets/chloe.jpeg';
@@ -55,12 +60,14 @@ const teamMembers = [
 <section id="team" class="min-h-screen flex items-center bg-gradient-to-br from-cashou-background-light via-white to-cashou-secondary/10">
   <div class="container mx-auto px-6 w-full py-16">
     <div class="text-center mb-12">
-      <h2 class="text-3xl md:text-4xl font-heading font-bold text-cashou-text-light mb-2">
+      <h2 class={`font-heading font-bold text-cashou-text-light ${diapo ? 'text-5xl md:text-6xl mb-0' : 'text-3xl md:text-4xl mb-2'}`}>
         Notre équipe
       </h2>
-      <p class="text-lg text-cashou-text-light/70 max-w-2xl mx-auto">
-        Découvrez les talents qui font vivre Cashou au quotidien
-      </p>
+      {!diapo && (
+        <p class="text-lg text-cashou-text-light/70 max-w-2xl mx-auto">
+          Découvrez les talents qui font vivre Cashou au quotidien
+        </p>
+      )}
     </div>
 
     <div class="max-w-7xl mx-auto">

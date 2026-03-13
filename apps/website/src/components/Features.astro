@@ -1,4 +1,10 @@
 ---
+interface Props {
+  diapo?: boolean;
+}
+
+const { diapo = false } = Astro.props;
+
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -58,7 +64,7 @@ function setSvgColor(svg: string, color: string): string {
   // Remplacer ou ajouter les attributs width et height pour une taille cohérente (40px = w-10 h-10)
   result = result.replace(/width="[^"]*"/g, '');
   result = result.replace(/height="[^"]*"/g, '');
-  result = result.replace(/<svg([^>]*)>/g, `<svg$1 class="w-10 h-10">`);
+  result = result.replace(/<svg([^>]*)>/g, `<svg$1 class="${diapo ? 'w-14 h-14' : 'w-10 h-10'}">`);
   return result;
 }
 ---
@@ -66,29 +72,33 @@ function setSvgColor(svg: string, color: string): string {
 <section id="features" class="min-h-screen bg-white py-16 pb-32 relative z-10 scroll-mt-16">
   <div class="container mx-auto px-6">
     <div class="text-center mb-8">
-      <h2 class="text-4xl md:text-5xl font-heading font-bold text-cashou-text-light mb-4">
+      <h2 class={`font-heading font-bold text-cashou-text-light ${diapo ? 'text-5xl md:text-6xl mb-0' : 'text-4xl md:text-5xl mb-4'}`}>
         Fonctionnalités
       </h2>
-      <p class="text-xl text-cashou-text-light/70 max-w-2xl mx-auto">
-        Découvrez tout ce qui fait de Cashou l'app idéale pour apprendre la finance en s'amusant
-      </p>
+      {!diapo && (
+        <p class="text-xl text-cashou-text-light/70 max-w-2xl mx-auto">
+          Découvrez tout ce qui fait de Cashou l'app idéale pour apprendre la finance en s'amusant
+        </p>
+      )}
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {features.map((feature, index) => (
         <div 
-          class="bg-cashou-background-light p-6 rounded-xl hover:shadow-xl transition-all transform hover:-translate-y-2 border border-cashou-secondary animate-fade-in"
+          class={`bg-cashou-background-light rounded-xl hover:shadow-xl transition-all transform hover:-translate-y-2 border border-cashou-secondary animate-fade-in ${diapo ? 'p-8 flex flex-col items-center text-center' : 'p-6'}`}
           style={`animation-delay: ${index * 0.1}s`}
         >
-          <div class="mb-3 flex items-center justify-center text-cashou-primary" style="width: 2.5rem; height: 2.5rem;">
+          <div class={`flex items-center justify-center text-cashou-primary ${diapo ? 'mb-4' : 'mb-3'}`} style={diapo ? 'width: 3.5rem; height: 3.5rem;' : 'width: 2.5rem; height: 2.5rem;'}>
             <span set:html={setSvgColor(feature.icon, '#FFB472')} />
           </div>
-          <h3 class="text-xl font-heading font-bold text-cashou-text-light mb-2">
+          <h3 class={`font-heading font-bold text-cashou-text-light ${diapo ? 'text-2xl md:text-3xl' : 'text-xl mb-2'}`}>
             {feature.title}
           </h3>
-          <p class="text-sm text-cashou-text-light/70 leading-relaxed">
-            {feature.description}
-          </p>
+          {!diapo && (
+            <p class="text-sm text-cashou-text-light/70 leading-relaxed">
+              {feature.description}
+            </p>
+          )}
         </div>
       ))}
     </div>

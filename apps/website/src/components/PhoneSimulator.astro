@@ -1,4 +1,9 @@
 ---
+interface Props {
+  diapo?: boolean;
+}
+
+const { diapo = false } = Astro.props;
 // Composant de simulateur de téléphone avec démo interactive de l'app Cashou
 // Design basé exactement sur Progress.svg
 import Logo from '../assets/Frame 93.png';
@@ -7,15 +12,19 @@ import Logo from '../assets/Frame 93.png';
 <section id="phone-demo" class="bg-cashou-background-light py-16 scroll-mt-16" data-logo-src={Logo.src}>
   <div class="container mx-auto px-6">
     <div class="text-center mb-12">
-      <h2 class="text-4xl md:text-5xl font-heading font-bold text-cashou-text-light mb-4">
+      <h2 class={`font-heading font-bold text-cashou-text-light ${diapo ? 'text-5xl md:text-6xl mb-0' : 'text-4xl md:text-5xl mb-4'}`}>
         Essayez l'application
       </h2>
-      <p class="text-xl text-cashou-text-light/70 max-w-2xl mx-auto">
-        Découvrez Cashou en action avec cette démo interactive
-      </p>
-      <p class="text-sm text-cashou-text-light/60 max-w-2xl mx-auto mt-1">
-        (Ceci est un prototype, le design et les fonctionnalités sont susceptibles de changer dans l'app.)
-      </p>
+      {!diapo && (
+        <>
+          <p class="text-xl text-cashou-text-light/70 max-w-2xl mx-auto">
+            Découvrez Cashou en action avec cette démo interactive
+          </p>
+          <p class="text-sm text-cashou-text-light/60 max-w-2xl mx-auto mt-1">
+            (Ceci est un prototype, le design et les fonctionnalités sont susceptibles de changer dans l'app.)
+          </p>
+        </>
+      )}
     </div>
 
     <div class="flex justify-center items-start">

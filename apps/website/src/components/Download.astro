@@ -1,4 +1,9 @@
 ---
+interface Props {
+  diapo?: boolean;
+}
+
+const { diapo = false } = Astro.props;
 import Logo from '../assets/Frame 93.png';
 ---
 
@@ -13,15 +18,17 @@ import Logo from '../assets/Frame 93.png';
         <img src={Logo.src} alt="Cashou Logo" class="h-24 w-auto" />
       </div>
       
-      <h2 class="text-4xl md:text-6xl font-heading font-bold mb-6">
+      <h2 class={`font-heading font-bold mb-6 ${diapo ? 'text-5xl md:text-7xl' : 'text-4xl md:text-6xl'}`}>
         Cashou arrive bientôt ! 
       </h2>
       
-      <p class="text-xl md:text-2xl mb-12 text-white/90 max-w-2xl mx-auto">
-        Inscrivez-vous pour être notifié au lancement de l'application et transformez votre apprentissage financier en aventure passionnante.
-      </p>
+      {!diapo && (
+        <p class="text-xl md:text-2xl mb-12 text-white/90 max-w-2xl mx-auto">
+          Inscrivez-vous pour être notifié au lancement de l'application et transformez votre apprentissage financier en aventure passionnante.
+        </p>
+      )}
 
-      <div class="flex flex-col sm:flex-row gap-6 justify-center items-center mb-12">
+      <div class={`flex flex-col sm:flex-row gap-6 justify-center items-center ${diapo ? 'mb-12 mt-4' : 'mb-12'}`}>
         <!-- Bouton iOS avec modal -->
         <button 
           id="ios-download-btn"
