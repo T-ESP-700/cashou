@@ -269,7 +269,6 @@ export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScre
                     label={buttonLabel}
                     customIcon={buttonIcon}
                     onPress={handleButtonPress}
-                    // style={{ flex: 0, maxWidth: undefined, paddingHorizontal: 10 }}
                   />
                 </View>
               </View>

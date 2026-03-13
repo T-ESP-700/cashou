@@ -166,6 +166,7 @@ export class GameInstanceService {
    * Supprime une instance de jeu
    */
   async delete(id: number): Promise<GameInstance> {
+    console.log(`[GAME-ENDED] delete: gameInstanceId=${id}, reason=GAME_INSTANCE_DELETED`);
     return this.prisma.gameInstance.delete({ where: { id } });
   }
 
@@ -185,6 +186,7 @@ export class GameInstanceService {
    * Ne pas appeler endGame (qui calcule et enregistre les étoiles).
    */
   async abandon(id: number): Promise<GameInstance> {
+    console.log(`[GAME-ENDED] abandon: gameInstanceId=${id}, reason=USER_ABANDON`);
     return this.prisma.gameInstance.update({
       where: { id },
       data: { isEnded: true, endedAt: new Date() },
@@ -404,6 +406,7 @@ export class GameInstanceService {
     }
 
     // Réinitialiser le createdAt à maintenant et démarrer le jeu
+    console.log(`[GAME-ENDED] start: gameInstanceId=${id}, levelId=${gameInstance.levelId}, reason=CHRONO_RESET_ON_START (createdAt and totalPausedDuration reset to 0)`);
     const updated = await this.prisma.gameInstance.update({
       where: { id },
       data: {
@@ -503,6 +506,8 @@ export class GameInstanceService {
     if (gameInstances.length === 0) {
       return { deletedCount: 0 };
     }
+
+    console.log(`[GAME-ENDED] resetLevelForUser: userId=${userId}, levelId=${levelId}, deletingCount=${gameInstances.length}, gameInstanceIds=${gameInstances.map(gi => gi.id).join(',')}, reason=MANUAL_RESET_LEVEL`);
 
     const gameInstanceIds = gameInstances.map(gi => gi.id);
 

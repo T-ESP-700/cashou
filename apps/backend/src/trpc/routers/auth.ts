@@ -298,19 +298,28 @@ export const authRouter = router({
     let currentReturn = 0;
 
     // Vérifier si la partie aurait dû se terminer (safety net)
-    // On ignore les pauses pour cette vérification : si le temps RÉEL depuis
-    // la création dépasse la durée totale, la partie est terminée.
+    // On soustrait les pauses pour ne pas terminer prématurément une partie en pause
     if (activeGame && activeGame.level) {
       const gameTimeService = new GameTimeService();
       const totalDurationSeconds = gameTimeService.calculateTotalDuration(activeGame.level as Parameters<typeof gameTimeService.calculateTotalDuration>[0]);
       const realElapsedSeconds = Math.floor((Date.now() - new Date(activeGame.createdAt).getTime()) / 1000);
-      const shouldHaveEnded = realElapsedSeconds >= totalDurationSeconds;
+      let effectiveElapsedSeconds = realElapsedSeconds - (activeGame.totalPausedDuration ?? 0);
+      // Soustraire aussi la pause en cours si le jeu est actuellement en pause
+      if (activeGame.isPaused && activeGame.pausedAt) {
+        const currentPauseDuration = Math.floor((Date.now() - new Date(activeGame.pausedAt).getTime()) / 1000);
+        effectiveElapsedSeconds -= currentPauseDuration;
+      }
+      effectiveElapsedSeconds = Math.max(0, effectiveElapsedSeconds);
+      const shouldHaveEnded = effectiveElapsedSeconds >= totalDurationSeconds;
 
       console.log(`[getHomeData] Game ${activeGame.id} time check:`, {
         levelDuration: activeGame.level.duration,
         levelSpeed: activeGame.level.speed,
         totalDurationSeconds,
         realElapsedSeconds,
+        effectiveElapsedSeconds,
+        totalPausedDuration: activeGame.totalPausedDuration ?? 0,
+        isPaused: activeGame.isPaused,
         shouldHaveEnded,
         isEnded: activeGame.isEnded,
       });
@@ -318,7 +327,7 @@ export const authRouter = router({
       if (shouldHaveEnded && !activeGame.isEnded) {
         // La partie aurait dû se terminer mais le job n'a pas été exécuté
         const gameId = activeGame.id;
-        console.log(`[getHomeData] Game ${gameId} should have ended, triggering now`);
+        console.log(`[GAME-ENDED] getHomeData safety net: gameInstanceId=${gameId}, levelId=${activeGame.levelId}, userId=${ctx.session.user.id}, effectiveElapsedSeconds=${effectiveElapsedSeconds}, totalDurationSeconds=${totalDurationSeconds}, totalPausedDuration=${activeGame.totalPausedDuration ?? 0}, reason=SAFETY_NET_AUTO_END (time expired but job missed)`);
         try {
           const gameEndTriggerService = new GameEndTriggerService();
           await gameEndTriggerService.triggerGameEnd(gameId);

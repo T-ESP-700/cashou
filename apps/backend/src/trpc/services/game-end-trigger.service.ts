@@ -60,6 +60,7 @@ export class GameEndTriggerService {
     }
 
     // 1. Mark game as ended
+    console.log(`[GAME-ENDED] triggerGameEnd: gameInstanceId=${gameInstanceId}, levelId=${gameInstance.levelId}, userId=${gameInstance.userId}, reason=TRIGGER_GAME_END (time elapsed or scheduled job)`);
     await this.prisma.gameInstance.update({
       where: { id: gameInstanceId },
       data: {
@@ -70,8 +71,6 @@ export class GameEndTriggerService {
         actionRequired: false,
       },
     });
-
-    console.log(`[GameEndTrigger] Game ${gameInstanceId} marked as ended`);
 
     // 2. Validate goals via EndGameService
     const endGameResult = await this.endGameService.endGame(gameInstanceId);

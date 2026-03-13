@@ -114,11 +114,13 @@ export function EventNotificationModal() {
                   label="Continuer"
                   iconName="checkmark"
                   onPress={handleClose}
+                  style={{ flex: 1 }}
                 />
                 <ActionPillButton
                   label="Investir"
                   iconName="add"
                   onPress={handleGoToAssets}
+                  style={{ flex: 1 }}
                 />
               </View>
             </View>

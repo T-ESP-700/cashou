@@ -190,6 +190,13 @@ export default function GameCurrentScreen() {
 
     let elapsedSeconds = Math.floor((now - startTime) / 1000);
     elapsedSeconds -= timeState.totalPausedDuration;
+
+    // Soustraire aussi la durée de pause en cours (même logique que calculateGameDate)
+    if (timeState.isPaused && timeState.pausedAt) {
+      const currentPauseDuration = Math.floor((now - timeState.pausedAt.getTime()) / 1000);
+      elapsedSeconds -= currentPauseDuration;
+    }
+
     elapsedSeconds = Math.max(0, elapsedSeconds);
 
     const totalDurationSeconds = (timeState.duration / timeState.speed) * 86400;
@@ -589,12 +596,25 @@ export default function GameCurrentScreen() {
   }, [levelId, gameId, calculateEndDate, user]);
 
   // Animation visuelle de la date (quand on revient sur une partie)
+  // Only updates React state on month boundaries to avoid excessive re-renders.
+  // For large date ranges (>60 days), skips animation entirely.
   useEffect(() => {
     if (!isAnimating || !targetDate) return;
 
+    const target = new Date(targetDate);
+    const start = new Date(GAME_START_DATE);
+
+    // Skip animation for large date ranges to avoid excessive state updates
+    const totalDays = Math.floor((target.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    if (totalDays > 60) {
+      setGameDate(target);
+      setIsAnimating(false);
+      setTargetDate(null);
+      return;
+    }
+
     let animationFrame: ReturnType<typeof setTimeout> | null = null;
     let currentDate = new Date(GAME_START_DATE);
-    const target = new Date(targetDate);
 
     const animate = () => {
       if (currentDate >= target) {
@@ -613,7 +633,11 @@ export default function GameCurrentScreen() {
 
       // Avancer d'un jour
       currentDate = nextDate;
-      setGameDate(new Date(currentDate));
+
+      // Only update React state on month boundaries or at the end to limit re-renders
+      if (isMonthChange || currentDate >= target) {
+        setGameDate(new Date(currentDate));
+      }
 
       // Pause plus longue au changement de mois
       const delay = isMonthChange ? MONTH_PAUSE_MS : DAY_ANIMATION_MS;
@@ -672,6 +696,8 @@ export default function GameCurrentScreen() {
   // Le jeu reste en pause tant que le sheet est ouvert (handleAssetsSheetChange gère le resume à la fermeture).
   useEffect(() => {
     if (!shouldOpenAssetsSheet) return;
+    // Attendre que gameInstanceId et walletId soient initialisés avant d'ouvrir le sheet
+    if (!gameInstanceId || !walletId) return;
     setShouldOpenAssetsSheet(false);
     setIsAssetsSheetOpen(true); // Freeze date animation immediately
 
@@ -709,7 +735,7 @@ export default function GameCurrentScreen() {
     };
 
     openAssetsFromEvent();
-  }, [shouldOpenAssetsSheet, pendingEventCompletion, gameInstanceId]);
+  }, [shouldOpenAssetsSheet, pendingEventCompletion, gameInstanceId, walletId]);
 
   // Quand le modal d'event se ferme via "Continuer" (pendingEventCompletion set, pas sur assets),
   // compléter l'event immédiatement et reprendre la partie.
@@ -756,14 +782,15 @@ export default function GameCurrentScreen() {
 
   // Calculate initial game date whenever gameTimeState changes
   // This ensures the correct date is shown even when paused
+  // Skip during animation to avoid fighting with the animation effect
   useEffect(() => {
-    if (!gameTimeState) return;
+    if (!gameTimeState || isAnimating) return;
 
     // Calculate and set the current game date
     const currentDate = calculateGameDate(gameTimeState);
     setGameDate(currentDate);
     console.log('[GameCurrentScreen] 📅 Initial date calculated:', currentDate.toLocaleDateString('fr-FR'));
-  }, [gameTimeState, calculateGameDate]);
+  }, [gameTimeState, calculateGameDate, isAnimating]);
 
   // Backup event detection: periodically check backend for pending events during active gameplay.
   // This complements the NotificationProvider polling — if push or provider polling fails,
@@ -858,6 +885,19 @@ export default function GameCurrentScreen() {
 
             if (wasPaused && !nowPaused) {
               console.log('[GameCurrentScreen] ✅ Game was resumed, state updated');
+            }
+
+            // Si la partie a été terminée côté serveur (safety net, job schedulé, etc.)
+            // et qu'on n'a pas encore affiché la modale → récupérer le résultat et l'afficher
+            if (isEnded && !isGameEnded && !endGameResult) {
+              console.log('[GameCurrentScreen] 🏁 Game was ended server-side, fetching end game result...');
+              try {
+                const result = await trpcClient.gameInstance.getEndGameResult.query({ id: gameInstanceId }) as EndGameResult;
+                setEndGameResult(result);
+                setShowEndGameModal(true);
+              } catch (endErr) {
+                console.error('[GameCurrentScreen] Error fetching end game result:', endErr);
+              }
             }
 
             // Si la partie est terminée, afficher directement la date de fin
@@ -1421,14 +1461,12 @@ export default function GameCurrentScreen() {
                 label="Investir"
                 iconName="add"
                 onPress={handleAddAsset}
-                // style={{ flex: 0, paddingHorizontal: 24, maxWidth: undefined }}
               />
               <ActionPillButton
                 label="Commencer"
                 iconName="play"
                 onPress={handleStartGame}
                 isLoading={isStarting}
-                // style={{ flex: 0, paddingHorizontal: 24, maxWidth: undefined }}
               />
             </View>
           ) : (
@@ -1436,7 +1474,6 @@ export default function GameCurrentScreen() {
               label="Investir"
               iconName="add"
               onPress={handleAddAsset}
-              // style={{ flex: 0, paddingHorizontal: 28, maxWidth: undefined }}
             />
           )}
         </View>
@@ -1475,11 +1512,13 @@ export default function GameCurrentScreen() {
                       setShowNoInvestmentModal(false);
                       handleAddAsset();
                     }}
+                    style={{ flex: 1 }}
                   />
                   <ActionPillButton
                     label="Démarrer"
                     iconName="play"
                     onPress={handleConfirmStartWithoutInvestment}
+                    style={{ flex: 1 }}
                   />
                 </View>
               </View>
@@ -1565,13 +1604,13 @@ export default function GameCurrentScreen() {
                     label="Récap"
                     customIcon={<RecapActionIcon width={22} height={22} />}
                     onPress={handleOpenRecap}
-                    // style={styles.endGameActionButton}
+                    style={{ flex: 1 }}
                   />
                   <ActionPillButton
                     label="Quiz"
                     customIcon={<QuizActionIcon width={18} height={18} />}
                     onPress={handleOpenQuiz}
-                    // style={styles.endGameActionButton}
+                    style={{ flex: 1 }}
                   />
                 </>
               ) : (
@@ -1581,7 +1620,6 @@ export default function GameCurrentScreen() {
                   onPress={handleReplay}
                   disabled={isReplayCreating}
                   isLoading={isReplayCreating}
-                  // style={StyleSheet.flatten([styles.endGameActionButton, styles.endGameSingleAction])}
                 />
               )}
             </View>

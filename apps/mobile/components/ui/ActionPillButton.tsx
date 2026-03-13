@@ -60,24 +60,26 @@ export function ActionPillButton({
   );
 }
 
-const ICON_SIZE = 28;
+const ICON_SIZE = 22;
 
 const styles = StyleSheet.create({
   button: {
-    height: 74,
-    borderRadius: 37,
+    height: 56,
+    borderRadius: 28,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    paddingHorizontal: 20,
+    gap: 8,
+    paddingHorizontal: 16,
     paddingVertical: 0,
+    maxWidth: '100%',
+    flexShrink: 1,
   },
   contentRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 8,
     flexShrink: 1,
   },
   iconWrapper: {
@@ -90,12 +92,13 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   label: {
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 16,
+    lineHeight: 20,
     fontFamily: 'Roboto',
     paddingHorizontal: 0,
     paddingVertical: 0,
     textAlignVertical: 'center',
+    flexShrink: 1,
     ...(Platform.OS === 'android' && { includeFontPadding: false }),
   },
 });

@@ -238,6 +238,7 @@ export class EndGameService {
         console.log(`[EndGame] Goal results:`, goalResults.map(g => `${g.title}: ${g.validated} (mandatory=${g.isMandatory})`));
 
         // 5. Marquer la partie comme terminee
+        console.log(`[GAME-ENDED] endGame: gameInstanceId=${gameInstanceId}, levelId=${gameInstance.levelId}, userId=${gameInstance.userId}, totalValue=${Math.round(totalValue)}, startBalance=${startBalance}, reason=NORMAL_END_GAME`);
         await this.prisma.gameInstance.update({
             where: { id: gameInstanceId },
             data: {

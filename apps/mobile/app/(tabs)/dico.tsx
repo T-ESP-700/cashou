@@ -9,6 +9,7 @@ import {
   Pressable,
   ActivityIndicator,
   RefreshControl,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -124,6 +125,7 @@ export default function DicoScreen() {
 
   // Handle entry press - open bottom sheet
   const handleEntryPress = useCallback((entry: DicoEntry) => {
+    Keyboard.dismiss();
     setSelectedEntry(entry);
     bottomSheetRef.current?.present();
   }, []);
