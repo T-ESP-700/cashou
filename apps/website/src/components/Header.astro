@@ -1,9 +1,4 @@
 ---
-interface Props {
-  diapo?: boolean;
-}
-
-const { diapo = false } = Astro.props;
 import Logo from '../assets/Frame 93.png';
 ---
 
@@ -15,21 +10,12 @@ import Logo from '../assets/Frame 93.png';
     </a>
     
     <div class="hidden md:flex items-center gap-8">
-      {diapo ? (
-        <>
-          <a href="/cgu" class="text-cashou-text-light hover:text-cashou-primary transition-colors font-medium">CGU</a>
-          <a href="/mentions-legales" class="text-cashou-text-light hover:text-cashou-primary transition-colors font-medium">Mentions légales</a>
-          <a href="/politique-confidentialite" class="text-cashou-text-light hover:text-cashou-primary transition-colors font-medium">Politique de confidentialité</a>
-        </>
-      ) : (
-        <>
-          <a href="#features" class="text-cashou-text-light hover:text-cashou-primary transition-colors font-medium">Fonctionnalités</a>
-          <a href="#phone-demo" class="text-cashou-text-light hover:text-cashou-primary transition-colors font-medium">Essayez l'application</a>
-          <a href="#download" class="bg-cashou-primary text-white px-6 py-2 rounded-full font-medium hover:bg-cashou-primary/90 transition-colors">
-            Télécharger
-          </a>
-        </>
-      )}
+      <a href="#constat" class="text-cashou-text-light hover:text-cashou-primary transition-colors font-medium">Pourquoi Cashou ?</a>
+      <a href="#features" class="text-cashou-text-light hover:text-cashou-primary transition-colors font-medium">Fonctionnalités</a>
+      <a href="#phone-demo" class="text-cashou-text-light hover:text-cashou-primary transition-colors font-medium">Essayez l'application</a>
+      <a href="#download" class="bg-cashou-primary text-white px-6 py-2 rounded-full font-medium hover:bg-cashou-primary/90 transition-colors">
+        Télécharger
+      </a>
     </div>
 
     <button class="md:hidden p-2" id="mobile-menu-button" aria-label="Menu">
@@ -41,21 +27,12 @@ import Logo from '../assets/Frame 93.png';
 
   <div class="md:hidden hidden bg-white border-t border-cashou-border-light/10" id="mobile-menu">
     <div class="container mx-auto px-6 py-4 flex flex-col gap-4">
-      {diapo ? (
-        <>
-          <a href="/cgu" class="text-cashou-text-light hover:text-cashou-primary transition-colors font-medium">CGU</a>
-          <a href="/mentions-legales" class="text-cashou-text-light hover:text-cashou-primary transition-colors font-medium">Mentions légales</a>
-          <a href="/politique-confidentialite" class="text-cashou-text-light hover:text-cashou-primary transition-colors font-medium">Politique de confidentialité</a>
-        </>
-      ) : (
-        <>
-          <a href="#features" class="text-cashou-text-light hover:text-cashou-primary transition-colors font-medium">Fonctionnalités</a>
-          <a href="#phone-demo" class="text-cashou-text-light hover:text-cashou-primary transition-colors font-medium">Essayez l'application</a>
-          <a href="#download" class="bg-cashou-primary text-white px-6 py-2 rounded-full font-medium hover:bg-cashou-primary/90 transition-colors text-center">
-            Télécharger
-          </a>
-        </>
-      )}
+      <a href="#constat" class="text-cashou-text-light hover:text-cashou-primary transition-colors font-medium">Pourquoi Cashou ?</a>
+      <a href="#features" class="text-cashou-text-light hover:text-cashou-primary transition-colors font-medium">Fonctionnalités</a>
+      <a href="#phone-demo" class="text-cashou-text-light hover:text-cashou-primary transition-colors font-medium">Essayez l'application</a>
+      <a href="#download" class="bg-cashou-primary text-white px-6 py-2 rounded-full font-medium hover:bg-cashou-primary/90 transition-colors text-center">
+        Télécharger
+      </a>
     </div>
   </div>
 </header>
