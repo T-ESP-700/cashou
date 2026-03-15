@@ -59,18 +59,32 @@ export class GameEndTriggerService {
       };
     }
 
-    // 1. Mark game as ended
+    // 1. Optimistic lock: claim this game-end (prevents double processing)
     console.log(`[GAME-ENDED] triggerGameEnd: gameInstanceId=${gameInstanceId}, levelId=${gameInstance.levelId}, userId=${gameInstance.userId}, reason=TRIGGER_GAME_END (time elapsed or scheduled job)`);
-    await this.prisma.gameInstance.update({
-      where: { id: gameInstanceId },
-      data: {
-        isPaused: true,
-        pausedAt: new Date(),
-        isEnded: true,
-        endedAt: new Date(),
-        actionRequired: false,
-      },
+    const lockResult = await this.prisma.gameInstance.updateMany({
+      where: { id: gameInstanceId, isEnded: false },
+      data: { actionRequired: false },
     });
+    if (lockResult.count === 0) {
+      // Already ended by another process
+      console.log(`[GameEndTrigger] Game ${gameInstanceId} already ended by another process`);
+      return {
+        success: false,
+        gameInstanceId,
+        startBalance: 0,
+        walletBalance: 0,
+        assetsValue: 0,
+        totalValue: 0,
+        goals: [],
+        message: "La partie est déjà terminée",
+        modal: {
+          type: "PRIMARY_FAILURE" as const,
+          title: "Dommage !",
+          primaryMessage: "La partie est déjà terminée.",
+          secondaryMessage: null,
+        },
+      };
+    }
 
     // 2. Validate goals via EndGameService
     const endGameResult = await this.endGameService.endGame(gameInstanceId);

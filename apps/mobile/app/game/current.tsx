@@ -9,6 +9,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { trpcClient } from '@/lib/trpc';
+import { tokenStorage } from '@/lib/token-storage';
+import { connectGameSocket, type GameSocketEvent } from '../../lib/game-socket';
+import { cachedQuery, invalidateCache } from '../../lib/query-cache';
 import { useAuth } from '@/hooks/use-auth';
 import { useHeader } from '@/hooks/use-header';
 import { useNotifications } from '@/hooks/use-notifications';
@@ -106,6 +109,7 @@ interface EndGameResult {
 // Constantes pour l'animation de la date
 const GAME_START_DATE = new Date('2024-01-01');
 const UPDATE_INTERVAL_MS = 1000;
+const PORTFOLIO_REFRESH_INTERVAL_MS = 10_000;
 
 // Constantes pour l'animation visuelle de la date
 const DAY_ANIMATION_MS = 30; // Vitesse par jour (30ms = très rapide)
@@ -288,10 +292,14 @@ export default function GameCurrentScreen() {
       // Load price-based portfolio values if wallet is available
       if (effectiveWalletId) {
         try {
-          const portfolio = await trpcClient.investment.getPortfolio.query({
-            walletId: effectiveWalletId,
-            gameInstanceId: gInstanceId,
-          });
+          const portfolio = await cachedQuery(
+            `portfolio:${gInstanceId}`,
+            () => trpcClient.investment.getPortfolio.query({
+              walletId: effectiveWalletId,
+              gameInstanceId: gInstanceId,
+            }),
+            5_000,
+          ) as { items: { holding: { assetId: number | null }; totalValue: number }[] };
           const values: Record<number, number> = {};
           for (const item of portfolio.items) {
             values[item.holding.assetId ?? 0] = Math.round(item.totalValue);
@@ -462,7 +470,11 @@ export default function GameCurrentScreen() {
               // Load the wallet associated with this instance
               let loadedWalletId: number | null = null;
               try {
-                const wallets = await trpcClient.wallet.getByGameInstance.query({ gameInstanceId: gameInstance.id });
+                const wallets = await cachedQuery(
+                  `wallet:${gameInstance.id}`,
+                  () => trpcClient.wallet.getByGameInstance.query({ gameInstanceId: gameInstance.id }),
+                  5_000,
+                ) as { id: number; amount: number }[] | null;
                 if (wallets && wallets.length > 0) {
                   loadedWalletId = wallets[0].id;
                   setWalletId(wallets[0].id);
@@ -793,18 +805,109 @@ export default function GameCurrentScreen() {
   }, [gameTimeState, calculateGameDate, isAnimating]);
 
   // Backup event detection: periodically check backend for pending events during active gameplay.
-  // This complements the NotificationProvider polling — if push or provider polling fails,
-  // this ensures events are still detected while the game screen is active.
+  // This is a FALLBACK for when the WebSocket connection is down.
+  // Primary event delivery is via WebSocket (see connectGameSocket effect below).
+  // Interval is set to 30s since WS handles the real-time case.
   useEffect(() => {
     if (!gameInstanceId || isPaused || isGameEnded || isEndingGame || eventNotification || pendingEventCompletion) return;
 
-    const EVENT_CHECK_INTERVAL_MS = 5000;
+    const EVENT_CHECK_INTERVAL_MS = 30_000;
     const eventCheckInterval = setInterval(() => {
       triggerPendingEventCheck();
     }, EVENT_CHECK_INTERVAL_MS);
 
     return () => clearInterval(eventCheckInterval);
   }, [gameInstanceId, isPaused, isGameEnded, isEndingGame, eventNotification, pendingEventCompletion, triggerPendingEventCheck]);
+
+  // WebSocket connection for real-time game events
+  useEffect(() => {
+    if (!gameInstanceId || isGameEnded) return;
+
+    let disconnectFn: (() => void) | null = null;
+
+    const setupSocket = async () => {
+      const token = await tokenStorage.getToken();
+      if (!token) {
+        console.warn('[GameCurrentScreen] No auth token available for WebSocket');
+        return;
+      }
+
+      disconnectFn = connectGameSocket(
+        gameInstanceId.toString(),
+        token,
+        (event: GameSocketEvent) => {
+          switch (event.type) {
+            case 'game:event':
+              // Trigger the same event check the polling fallback uses
+              console.log('[GameCurrentScreen] WS game:event received, triggering event check');
+              triggerPendingEventCheck();
+              break;
+            case 'game:end':
+              console.log('[GameCurrentScreen] WS game:end received');
+              handleGameEnd();
+              break;
+            case 'game:pause':
+              console.log('[GameCurrentScreen] WS game:pause received, reason:', event.payload.reason);
+              setIsPaused(true);
+              break;
+            case 'game:resume':
+              console.log('[GameCurrentScreen] WS game:resume received');
+              setIsPaused(false);
+              invalidateCache(`snapshot:${gameInstanceId}`);
+              invalidateCache(`portfolio:${gameInstanceId}`);
+              invalidateCache(`wallet:${gameInstanceId}`);
+              break;
+          }
+        },
+        (connected) => {
+          console.log('[GameCurrentScreen] WebSocket connection:', connected ? 'connected' : 'disconnected');
+        },
+      );
+    };
+
+    setupSocket();
+
+    return () => {
+      disconnectFn?.();
+    };
+  }, [gameInstanceId, isGameEnded, triggerPendingEventCheck, handleGameEnd]);
+
+  // Portfolio refresh interval (10s) — keeps holdings values up to date during active gameplay
+  useEffect(() => {
+    if (!gameInstanceId || !walletId || isPaused || isGameEnded) return;
+
+    const interval = setInterval(async () => {
+      try {
+        type PortfolioSnapshot = { walletBalance: number; holdings: { assetId: number | null; currentValue: number }[] };
+        const snapshot = await cachedQuery(
+          `snapshot:${gameInstanceId}`,
+          () => trpcClient.investment.getPortfolioSnapshot.query({ gameInstanceId, walletId }),
+          8_000,
+        ) as PortfolioSnapshot | null;
+
+        if (snapshot) {
+          // Update wallet balance
+          setStats(prev => ({
+            ...prev,
+            cash: Math.round(snapshot.walletBalance),
+          }));
+
+          // Update holding values by assetId
+          const values: Record<number, number> = {};
+          for (const h of snapshot.holdings) {
+            if (h.assetId != null) {
+              values[h.assetId] = Math.round(h.currentValue);
+            }
+          }
+          setHoldingValues(values);
+        }
+      } catch (err) {
+        console.warn('[GameCurrentScreen] Portfolio refresh failed (keeping last known values):', err);
+      }
+    }, PORTFOLIO_REFRESH_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [gameInstanceId, walletId, isPaused, isGameEnded]);
 
   // Animation locale de la date en temps réel (aucun appel backend)
   useEffect(() => {
@@ -842,6 +945,11 @@ export default function GameCurrentScreen() {
       const resync = async () => {
         try {
           console.log('[GameCurrentScreen] 🔄 Resyncing game state for gameInstanceId:', gameInstanceId);
+
+          // Invalidate caches to ensure fresh data after returning from other screens
+          invalidateCache(`snapshot:${gameInstanceId}`);
+          invalidateCache(`portfolio:${gameInstanceId}`);
+          invalidateCache(`wallet:${gameInstanceId}`);
 
           // If returning from asset-detail, resume the game first
           if (navigatedToAssetDetailRef.current) {
@@ -978,6 +1086,7 @@ export default function GameCurrentScreen() {
   const handleOpenRecap = () => {
     if (!gameInstanceId) return;
     setShowEndGameModal(false);
+    trpcClient.notification.markGameEndAsRead.mutate({ gameInstanceId }).catch(console.error);
     router.replace({
       pathname: '/(tabs)/summary',
       params: { gameId: gameInstanceId.toString() },
@@ -987,10 +1096,13 @@ export default function GameCurrentScreen() {
   const handleOpenQuiz = () => {
     if (!endGameResult?.success) return;
     if (!levelQuizId) {
-      Alert.alert('Quiz indisponible', 'Aucun quiz n’est associé à ce niveau pour le moment.');
+      Alert.alert('Quiz indisponible', "Aucun quiz n'est associe a ce niveau pour le moment.");
       return;
     }
     setShowEndGameModal(false);
+    if (gameInstanceId) {
+      trpcClient.notification.markGameEndAsRead.mutate({ gameInstanceId }).catch(console.error);
+    }
     router.push({
       pathname: '/(tabs)/daily-quiz',
       params: {
@@ -1002,6 +1114,10 @@ export default function GameCurrentScreen() {
 
   const handleReplay = async () => {
     if (!user?.id || !levelData?.level?.id) return;
+
+    if (gameInstanceId) {
+      trpcClient.notification.markGameEndAsRead.mutate({ gameInstanceId }).catch(console.error);
+    }
 
     try {
       setIsReplayCreating(true);

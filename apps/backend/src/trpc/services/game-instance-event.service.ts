@@ -69,6 +69,20 @@ export class GameInstanceEventService {
 
     console.log(`[GameInstanceEventService] Level ${level.id}: found ${levelEvents.length} levelEvents`);
 
+    // Defensive cleanup: if events already exist for this game instance, remove them
+    const existingCount = await this.prisma.gameInstanceEvent.count({ where: { gameInstanceId } });
+    if (existingCount > 0) {
+      console.log(`[GameInstanceEventService] Cleaning up ${existingCount} existing events for GameInstance ${gameInstanceId}`);
+      const oldEvents = await this.prisma.gameInstanceEvent.findMany({
+        where: { gameInstanceId },
+        select: { id: true },
+      });
+      for (const e of oldEvents) {
+        await cancelGameEvent(e.id);
+      }
+      await this.prisma.gameInstanceEvent.deleteMany({ where: { gameInstanceId } });
+    }
+
     if (levelEvents.length === 0) {
       console.log(`[GameInstanceEventService] ❌ Level ${level.id} has no events to schedule`);
       return;
@@ -116,20 +130,20 @@ export class GameInstanceEventService {
       data: eventsToCreate,
     });
 
-    // Fetch the created events to get their IDs
+    // Fetch the created events to get their IDs (sorted by scheduledAt)
     const createdEvents = await this.prisma.gameInstanceEvent.findMany({
       where: { gameInstanceId },
       orderBy: { scheduledAt: "asc" },
     });
 
-    // Schedule pg-boss jobs for each event
-    for (const event of createdEvents) {
-      await scheduleGameEvent(event.id, event.scheduledAt);
+    // Schedule ONLY the first event in pg-boss (chain mode)
+    // Subsequent events will be scheduled when each event is completed by the user
+    if (createdEvents.length > 0) {
+      await scheduleGameEvent(createdEvents[0].id, createdEvents[0].scheduledAt);
+      console.log(
+        `[GameInstanceEventService] Scheduled first event ${createdEvents[0].id} via pg-boss (chain mode). ${createdEvents.length} total events in DB for GameInstance ${gameInstanceId}`
+      );
     }
-
-    console.log(
-      `[GameInstanceEventService] Scheduled ${eventsToCreate.length} events for GameInstance ${gameInstanceId} (DB + pg-boss)`
-    );
   }
 
   /**
@@ -180,14 +194,16 @@ export class GameInstanceEventService {
       })
     );
 
-    // Cancel old pg-boss jobs and schedule new ones with updated times
-    for (const { id, newScheduledAt } of updatedEvents) {
-      await cancelGameEvent(id);
-      await scheduleGameEvent(id, newScheduledAt);
+    // In chain mode, only one pg-boss job exists at a time (the next pending event).
+    // Reschedule only the first pending event (already sorted by scheduledAt asc).
+    if (updatedEvents.length > 0) {
+      const next = updatedEvents[0];
+      await cancelGameEvent(next.id);
+      await scheduleGameEvent(next.id, next.newScheduledAt);
     }
 
     console.log(
-      `[GameInstanceEventService] Shifted ${pendingEvents.length} events forward by ${pauseDurationSeconds}s for GameInstance ${gameInstanceId} (DB + pg-boss rescheduled)`
+      `[GameInstanceEventService] Shifted ${pendingEvents.length} events forward by ${pauseDurationSeconds}s for GameInstance ${gameInstanceId} (DB updated, next pg-boss job rescheduled)`
     );
   }
 

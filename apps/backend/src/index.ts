@@ -5,6 +5,10 @@ import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 import { cors } from './middleware/cors';
 import { getJobQueue, stopJobQueue } from './lib/job-queue';
 import { startGameEventWorkers } from './workers/game-event.worker';
+import { prisma } from './database';
+import { joinGame, leaveGame } from './ws/game-socket';
+import type { GameSocketData } from './ws/game-socket';
+import type { ServerWebSocket } from 'bun';
 
 // Server instance variable to track if server is already running
 let serverInstance: ReturnType<typeof Bun.serve> | null = null;
@@ -29,7 +33,7 @@ async function startServer() {
   serverInstance = Bun.serve({
     port: 3000,
     hostname: '0.0.0.0', // Listen on all network interfaces
-    async fetch(req) {
+    async fetch(req, server) {
       const url = new URL(req.url);
 
       // CORS headers for all requests
@@ -38,6 +42,47 @@ async function startServer() {
       // Handle CORS preflight requests
       if (req.method === 'OPTIONS') {
         return new Response(null, { headers: corsHeaders });
+      }
+
+      // WebSocket upgrade for /ws/game
+      if (url.pathname === '/ws/game') {
+        const token = url.searchParams.get('token');
+        if (!token) {
+          return new Response(JSON.stringify({ error: 'Missing token' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Validate token against session table (same logic as tRPC context)
+        const sessionData = await prisma.session.findUnique({
+          where: { token },
+          include: { user: true },
+        });
+
+        if (!sessionData || sessionData.expiresAt <= new Date()) {
+          return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const upgraded = server.upgrade(req, {
+          data: {
+            userId: sessionData.user.id,
+            gameInstanceId: '',
+          },
+        });
+
+        if (upgraded) {
+          // Bun convention: return undefined on successful upgrade
+          return undefined as unknown as Response;
+        }
+
+        return new Response('WebSocket upgrade failed', {
+          status: 500,
+          headers: corsHeaders,
+        });
       }
 
       // Health check endpoint
@@ -110,6 +155,25 @@ async function startServer() {
 
       // Default response
       return new Response('Cashou Backend API', { headers: corsHeaders });
+    },
+    websocket: {
+      open(_ws: ServerWebSocket<GameSocketData>) {
+        // No-op: wait for client to send a "join" message
+      },
+      message(ws: ServerWebSocket<GameSocketData>, msg: string | Buffer) {
+        try {
+          const data = JSON.parse(msg as string);
+          if (data.type === 'join' && data.payload?.gameInstanceId) {
+            ws.data.gameInstanceId = String(data.payload.gameInstanceId);
+            joinGame(ws);
+          }
+        } catch {
+          // Ignore malformed messages
+        }
+      },
+      close(ws: ServerWebSocket<GameSocketData>) {
+        leaveGame(ws);
+      },
     },
   });
 

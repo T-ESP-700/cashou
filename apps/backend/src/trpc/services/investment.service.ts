@@ -8,6 +8,7 @@ import { WalletService } from "./wallet.service.ts";
 import { GameTimeService } from "./game-time.service.ts";
 import { AssetHistoryService } from "./asset-history.service.ts";
 import type { BuySchema, SellSchema } from "../schemas-zod/investment-schema.ts";
+import { gameCache, cached } from "../../lib/cache.ts";
 
 type HoldingWithAsset = Holding & {
   asset: Asset;
@@ -359,6 +360,11 @@ export class InvestmentService {
    * Récupère le portefeuille complet d'un utilisateur avec calcul des intérêts
    */
   async getPortfolio(walletId: number, gameInstanceId: number): Promise<Portfolio> {
+    const cacheKey = `portfolio:${gameInstanceId}:${walletId}`;
+    return cached(gameCache, cacheKey, () => this._getPortfolioUncached(walletId, gameInstanceId));
+  }
+
+  private async _getPortfolioUncached(walletId: number, gameInstanceId: number): Promise<Portfolio> {
     // 1. Récupérer le wallet
     const wallet = await this.walletService.findOne(walletId);
     if (!wallet) {
@@ -499,5 +505,25 @@ export class InvestmentService {
         });
       }
     }
+  }
+
+  /**
+   * Returns a lightweight snapshot of the portfolio for quick display
+   */
+  async getPortfolioSnapshot(walletId: number, gameInstanceId: number) {
+    const cacheKey = `snapshot:${gameInstanceId}:${walletId}`;
+    return cached(gameCache, cacheKey, async () => {
+      const portfolio = await this.getPortfolio(walletId, gameInstanceId);
+      return {
+        totalValue: portfolio.totalValue,
+        walletBalance: portfolio.walletBalance,
+        holdings: portfolio.items.map((item) => ({
+          assetId: item.holding.assetId,
+          assetName: item.holding.asset.name,
+          currentValue: item.currentValue,
+          change: item.interests,
+        })),
+      };
+    });
   }
 }

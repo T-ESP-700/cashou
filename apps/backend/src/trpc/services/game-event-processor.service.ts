@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import { ExpoPushService } from "./expo-push.service.ts";
+import { broadcastToGame } from "../../ws/game-socket.ts";
 
 interface ProcessEventResult {
   success: boolean;
@@ -103,6 +104,15 @@ export class GameEventProcessorService {
           throw new Error("Event already triggered");
         }
 
+        // Check if game has ended (race condition protection against concurrent triggerGameEnd)
+        const currentGame = await tx.gameInstance.findUnique({
+          where: { id: gameInstance.id },
+          select: { isEnded: true },
+        });
+        if (currentGame?.isEnded) {
+          throw new Error("Game has ended");
+        }
+
         // Pause the game and require user action
         const pauseTimestamp =
           gameInstance.isPaused && gameInstance.pausedAt
@@ -143,11 +153,26 @@ export class GameEventProcessorService {
         });
       });
     } catch (transactionError) {
-      if (transactionError instanceof Error && transactionError.message === "Event already triggered") {
-        return { success: false, reason: "Event already triggered by another process" };
+      if (transactionError instanceof Error) {
+        if (transactionError.message === "Event already triggered") {
+          return { success: false, reason: "Event already triggered by another process" };
+        }
+        if (transactionError.message === "Game has ended") {
+          return { success: false, reason: "Game has ended" };
+        }
       }
       throw transactionError;
     }
+
+    // Broadcast event to WebSocket clients
+    broadcastToGame(String(gameInstance.id), {
+      type: "game:event",
+      payload: {
+        eventId: String(event.id),
+        isPaused: true,
+        actionRequired: true,
+      },
+    });
 
     // Send Expo push notification (outside transaction since it's external)
     console.log(

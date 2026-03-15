@@ -16,16 +16,28 @@ export interface EventNotificationData {
   body?: string;
 }
 
+export interface GameEndNotificationData {
+  type: 'GAME_END';
+  gameInstanceId: number;
+  success: boolean;
+  totalValue: number;
+  title?: string;
+  body?: string;
+}
+
 // Global setters to allow the handler (outside component) to update state
 let globalSetEventNotification: ((data: EventNotificationData | null) => void) | null = null;
 let globalSetNotification: ((notification: Notifications.Notification | null) => void) | null = null;
+let globalSetGameEndNotification: ((data: GameEndNotificationData | null) => void) | null = null;
 
 export function setGlobalNotificationSetters(
   setEventNotification: (data: EventNotificationData | null) => void,
   setNotification: (notification: Notifications.Notification | null) => void,
+  setGameEndNotification: (data: GameEndNotificationData | null) => void,
 ) {
   globalSetEventNotification = setEventNotification;
   globalSetNotification = setNotification;
+  globalSetGameEndNotification = setGameEndNotification;
 }
 
 // Configure how notifications are displayed when the app is in foreground
@@ -69,6 +81,22 @@ if (!isExpoGo) Notifications.setNotificationHandler({
         title: notification.request.content.title ?? undefined,
         body: notification.request.content.body ?? undefined,
       });
+    } else if (data?.type === 'GAME_END' && globalSetGameEndNotification) {
+      const gameInstanceId =
+        typeof data.gameInstanceId === 'number'
+          ? data.gameInstanceId
+          : Number(data.gameInstanceId);
+
+      if (!Number.isNaN(gameInstanceId)) {
+        globalSetGameEndNotification({
+          type: 'GAME_END',
+          gameInstanceId,
+          success: !!data.success,
+          totalValue: Number(data.totalValue) || 0,
+          title: notification.request.content.title ?? undefined,
+          body: notification.request.content.body ?? undefined,
+        });
+      }
     }
 
     return {
@@ -86,6 +114,8 @@ interface NotificationContextValue {
   notification: Notifications.Notification | null;
   eventNotification: EventNotificationData | null;
   clearEventNotification: () => void;
+  gameEndNotification: GameEndNotificationData | null;
+  clearGameEndNotification: () => void;
   registerForPushNotifications: () => Promise<string | null>;
   /** Manually trigger a pending event check (used by game screen as backup) */
   triggerPendingEventCheck: () => Promise<void>;
@@ -152,6 +182,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
   const [notification, setNotification] = useState<Notifications.Notification | null>(null);
   const [eventNotification, setEventNotification] = useState<EventNotificationData | null>(null);
+  const [gameEndNotification, setGameEndNotification] = useState<GameEndNotificationData | null>(null);
   const [pendingEventCompletion, setPendingEventCompletion] = useState<number | null>(null);
   const [isOnAssetsScreen, setIsOnAssetsScreen] = useState<boolean>(false);
   const [activeGameInstanceId, setActiveGameInstanceId] = useState<number | null>(null);
@@ -253,6 +284,28 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
   }, [isAuthenticated, eventNotification, pendingEventCompletion]);
 
+  // Check for pending GAME_END notifications (fallback polling)
+  const checkPendingGameEnd = useCallback(async () => {
+    if (!isAuthenticated || gameEndNotification) {
+      return;
+    }
+
+    try {
+      const pendingGameEnd = await trpcClient.auth.getPendingGameEnd.query();
+      if (pendingGameEnd) {
+        console.log('[Notifications] Found pending game end via fallback check:', pendingGameEnd);
+        setGameEndNotification({
+          type: 'GAME_END',
+          gameInstanceId: pendingGameEnd.gameInstanceId,
+          success: false,
+          totalValue: 0,
+        });
+      }
+    } catch (error) {
+      console.error('[Notifications] Error checking pending game end:', error);
+    }
+  }, [isAuthenticated, gameEndNotification]);
+
   // Forced event check — bypasses guards, used by game screen as direct backup detection
   const triggerPendingEventCheck = useCallback(async () => {
     // Only skip if already showing a notification or pending completion
@@ -280,24 +333,26 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
   }, [eventNotification, pendingEventCompletion]);
 
-  // Check for pending events on initial mount when authenticated
+  // Check for pending events and game ends on initial mount when authenticated
   useEffect(() => {
     if (isAuthenticated) {
       // Small delay to let the app fully initialize
       const timeoutId = setTimeout(() => {
         checkPendingEvent();
+        checkPendingGameEnd();
       }, 1000);
       return () => clearTimeout(timeoutId);
     }
-  }, [isAuthenticated, checkPendingEvent]);
+  }, [isAuthenticated, checkPendingEvent, checkPendingGameEnd]);
 
-  // Check for pending events when app returns to foreground
+  // Check for pending events and game ends when app returns to foreground
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active' && isAuthenticated) {
         // Small delay to ensure app state is stable
         setTimeout(() => {
           checkPendingEvent();
+          checkPendingGameEnd();
         }, 500);
       }
     });
@@ -305,27 +360,28 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     return () => {
       subscription.remove();
     };
-  }, [isAuthenticated, checkPendingEvent]);
+  }, [isAuthenticated, checkPendingEvent, checkPendingGameEnd]);
 
-  // Poll for pending events during active gameplay
+  // Poll for pending events and game ends during active gameplay
   // Fallback for Expo Go where push notifications don't work
   useEffect(() => {
     if (!isAuthenticated || !activeGameInstanceId || eventNotification || pendingEventCompletion) return;
 
     const pollInterval = setInterval(() => {
       checkPendingEvent();
+      checkPendingGameEnd();
     }, 3000);
 
     return () => clearInterval(pollInterval);
-  }, [isAuthenticated, activeGameInstanceId, eventNotification, pendingEventCompletion, checkPendingEvent]);
+  }, [isAuthenticated, activeGameInstanceId, eventNotification, pendingEventCompletion, checkPendingEvent, checkPendingGameEnd]);
 
   // Register global setters so the handler can update state directly
   useEffect(() => {
-    setGlobalNotificationSetters(setEventNotification, setNotification);
+    setGlobalNotificationSetters(setEventNotification, setNotification, setGameEndNotification);
     return () => {
-      setGlobalNotificationSetters(() => {}, () => {});
+      setGlobalNotificationSetters(() => {}, () => {}, () => {});
     };
-  }, [setEventNotification, setNotification]);
+  }, [setEventNotification, setNotification, setGameEndNotification]);
 
   // Handle incoming notifications from listeners
   const handleIncomingNotification = useCallback((notification: Notifications.Notification) => {
@@ -357,8 +413,24 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         title: notification.request.content.title ?? undefined,
         body: notification.request.content.body ?? undefined,
       });
+    } else if (data?.type === 'GAME_END') {
+      const gameInstanceId =
+        typeof data.gameInstanceId === 'number'
+          ? data.gameInstanceId
+          : Number(data.gameInstanceId);
+
+      if (!Number.isNaN(gameInstanceId)) {
+        setGameEndNotification({
+          type: 'GAME_END',
+          gameInstanceId,
+          success: !!data.success,
+          totalValue: Number(data.totalValue) || 0,
+          title: notification.request.content.title ?? undefined,
+          body: notification.request.content.body ?? undefined,
+        });
+      }
     }
-  }, [setNotification, setEventNotification]);
+  }, [setNotification, setEventNotification, setGameEndNotification]);
 
   // Handle incoming notifications (skip in Expo Go)
   useEffect(() => {
@@ -388,6 +460,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     setEventNotification(null);
   }, []);
 
+  const clearGameEndNotification = useCallback(() => {
+    setGameEndNotification(null);
+  }, []);
+
   return (
     <NotificationContext.Provider
       value={{
@@ -395,6 +471,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         notification,
         eventNotification,
         clearEventNotification,
+        gameEndNotification,
+        clearGameEndNotification,
         registerForPushNotifications,
         triggerPendingEventCheck,
         pendingEventCompletion,

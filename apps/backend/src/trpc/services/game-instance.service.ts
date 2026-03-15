@@ -8,6 +8,7 @@ import { GameTimeService, type GameTimeInfo } from "./game-time.service.ts";
 import { GameEventTriggerService } from "./game-event-trigger.service.ts";
 import { GameInstanceEventService } from "./game-instance-event.service.ts";
 import { cancelGameJobs } from "../../lib/job-queue.ts";
+import { broadcastToGame } from "../../ws/game-socket.ts";
 
 export class GameInstanceService {
   private prisma: PrismaClient;
@@ -187,6 +188,7 @@ export class GameInstanceService {
    */
   async abandon(id: number): Promise<GameInstance> {
     console.log(`[GAME-ENDED] abandon: gameInstanceId=${id}, reason=USER_ABANDON`);
+    await cancelGameJobs(id);
     return this.prisma.gameInstance.update({
       where: { id },
       data: { isEnded: true, endedAt: new Date() },
@@ -223,70 +225,18 @@ export class GameInstanceService {
    * Retourne null si aucune partie terminee n existe pour ce niveau.
    */
   async findBestForLevel(levelId: number, userId: string): Promise<GameInstance | null> {
-    const instances = await this.prisma.gameInstance.findMany({
+    // Use LevelCompletion.stars (already computed at game-end) instead of recalculating.
+    // The most recent completed instance is returned; stars are tracked in LevelCompletion.
+    const bestInstance = await this.prisma.gameInstance.findFirst({
       where: { levelId, userId, isEnded: true },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'desc' },
       include: {
-        level: {
-          include: {
-            levelGoals: {
-              orderBy: { id: 'asc' },
-              include: { goal: true },
-            },
-          },
-        },
+        level: true,
         wallets: true,
-        holdings: { include: { asset: true } },
       },
     });
 
-    if (instances.length === 0) return null;
-    if (instances.length === 1) return instances[0];
-
-    const scored = instances.map((instance) => {
-      const level = instance.level as any;
-      if (!level) return { instance, score: 0 };
-
-      const startBalance = Number(instance.startBalance || level.startBalance || 0);
-      const wallet = instance.wallets[0];
-      const walletAmount = wallet ? Number((wallet as any).amount || 0) : 0;
-      const assetsValue = (instance.holdings as any[]).reduce((sum: number, h: any) => {
-        return sum + (h.quantity ? Number(h.quantity) : 0);
-      }, 0);
-      const totalValue = walletAmount + assetsValue;
-
-      let mandatoryMet = true;
-      let bonusMet = false;
-      for (const lg of level.levelGoals ?? []) {
-        const goal = lg.goal;
-        if (!goal) continue;
-        const validated = this.validateGoalSimple(goal.goalType, goal.goalValue, totalValue, startBalance);
-        if (lg.isMandatory && !validated) mandatoryMet = false;
-        if (!lg.isMandatory && validated) bonusMet = true;
-      }
-
-      return { instance, score: (mandatoryMet ? 1 : 0) + (bonusMet ? 1 : 0) };
-    });
-
-    scored.sort((a, b) => b.score - a.score);
-    return scored[0].instance;
-  }
-
-  private validateGoalSimple(
-    goalType: string | null,
-    goalValue: number | null,
-    finalBalance: number,
-    startBalance: number
-  ): boolean {
-    if (!goalType) return true;
-    const value = goalValue || 0;
-    switch (goalType) {
-      case 'wallet_gte_start': return finalBalance >= startBalance + value;
-      case 'wallet_gt_start': return finalBalance > startBalance + value;
-      case 'wallet_min': return finalBalance >= value;
-      case 'profit_min': return ((finalBalance - startBalance) / startBalance) * 100 >= value;
-      default: return true;
-    }
+    return bestInstance;
   }
 
 
@@ -312,10 +262,18 @@ export class GameInstanceService {
     // Cancel all scheduled jobs for this game
     await cancelGameJobs(id);
 
-    return this.prisma.gameInstance.update({
+    const updated = await this.prisma.gameInstance.update({
       where: { id },
       data: { isPaused: true, pausedAt: new Date() },
     });
+
+    // Broadcast pause to WebSocket clients
+    broadcastToGame(String(id), {
+      type: "game:pause",
+      payload: { reason: "user_paused" },
+    });
+
+    return updated;
   }
 
   /**
@@ -380,6 +338,12 @@ export class GameInstanceService {
       await this.gameEventTriggerService.rescheduleAfterResume(id);
     }
 
+    // Broadcast resume to WebSocket clients
+    broadcastToGame(String(id), {
+      type: "game:resume",
+      payload: {},
+    });
+
     return updated;
   }
 
@@ -403,6 +367,14 @@ export class GameInstanceService {
 
     if (gameInstance.isEnded) {
       throw new Error(`Cannot start an ended game`);
+    }
+
+    // Guard: prevent restarting a game that already had events triggered
+    const triggeredCount = await this.prisma.gameInstanceEvent.count({
+      where: { gameInstanceId: id, triggeredAt: { not: null } },
+    });
+    if (triggeredCount > 0) {
+      throw new Error("Cannot restart a game that has already had events. Use resume().");
     }
 
     // Réinitialiser le createdAt à maintenant et démarrer le jeu
@@ -533,6 +505,11 @@ export class GameInstanceService {
 
     // 3. Wallets
     await this.prisma.wallet.deleteMany({
+      where: { gameInstanceId: { in: gameInstanceIds } },
+    });
+
+    // 3.5. GameInstanceEvents
+    await this.prisma.gameInstanceEvent.deleteMany({
       where: { gameInstanceId: { in: gameInstanceIds } },
     });
 

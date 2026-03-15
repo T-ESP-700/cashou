@@ -3,6 +3,7 @@
 import type { AssetHistory, PrismaClient } from "@prisma/client";
 import defaultPrisma from "../../database.ts";
 import type {AssetHistoryCreateSchema, AssetHistoryDataSchema} from "../schemas-zod/asset-history-schema.ts";
+import { gameCache, cached } from "../../lib/cache.ts";
 
 export class AssetHistoryService {
     private prisma: PrismaClient;
@@ -96,6 +97,11 @@ export class AssetHistoryService {
      * All players on the same level see the same prices.
      */
     async findForGame(assetId: number, gameInstanceId: number) {
+        const cacheKey = `assetHistory:${assetId}:${gameInstanceId}`;
+        return cached(gameCache, cacheKey, () => this._findForGameUncached(assetId, gameInstanceId));
+    }
+
+    private async _findForGameUncached(assetId: number, gameInstanceId: number) {
         // Load game instance with level + level events + impacts
         const gameInstance = await this.prisma.gameInstance.findUnique({
             where: { id: gameInstanceId },
@@ -214,10 +220,13 @@ export class AssetHistoryService {
      * Used by buy/sell operations.
      */
     async getCurrentPrice(assetId: number, gameInstanceId: number): Promise<number | null> {
-        const history = await this.findForGame(assetId, gameInstanceId);
-        if (history.length === 0) return null;
-        const lastPoint = history[history.length - 1];
-        return lastPoint.value ? Number(lastPoint.value) : null;
+        const cacheKey = `assetPrice:${assetId}:${gameInstanceId}`;
+        return cached(gameCache, cacheKey, async () => {
+            const history = await this.findForGame(assetId, gameInstanceId);
+            if (history.length === 0) return null;
+            const lastPoint = history[history.length - 1];
+            return lastPoint.value ? Number(lastPoint.value) : null;
+        });
     }
 
     /**

@@ -33,6 +33,7 @@ import { NotificationProvider } from '@/hooks/use-notifications';
 import { ThemePreferenceProvider, useThemePreference } from '@/hooks/use-theme-provider';
 import { CashouHeader } from '@/components/cashou-header';
 import { EventNotificationModal } from '@/components/event-notification-modal';
+import { GameEndNotificationHandler } from '@/components/game-end-notification-handler';
 import { CashouTheme } from '@/constants/cashou-theme';
 
 // Keep the splash screen visible while we fetch resources
@@ -113,6 +114,7 @@ function RootLayoutInner() {
     <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
       <RootNavigator />
       <EventNotificationModal />
+      <GameEndNotificationHandler />
       <StatusBar style={isDark ? 'light' : 'dark'} />
     </ThemeProvider>
   );

@@ -527,4 +527,20 @@ export const authRouter = router({
       body: event.description ?? 'Un événement requiert votre attention dans le jeu.',
     };
   }),
+
+  // Get pending GAME_END notification that hasn't been seen yet (fallback for push)
+  getPendingGameEnd: protectedProcedure.query(async ({ ctx }) => {
+    const unseenNotification = await prisma.notification.findFirst({
+      where: {
+        userId: ctx.session.user.id,
+        type: 'GAME_END',
+        isOpened: false,
+      },
+      orderBy: { sentAt: 'desc' },
+      select: { gameInstanceId: true },
+    });
+
+    if (!unseenNotification?.gameInstanceId) return null;
+    return { gameInstanceId: unseenNotification.gameInstanceId };
+  }),
 });
