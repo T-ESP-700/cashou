@@ -30,6 +30,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { AuthProvider, useAuth } from '@/hooks/use-auth';
 import { HeaderProvider, useHeader } from '@/hooks/use-header';
 import { NotificationProvider } from '@/hooks/use-notifications';
+import { AlertProvider } from '@/hooks/use-alert';
 import { ThemePreferenceProvider, useThemePreference } from '@/hooks/use-theme-provider';
 import { CashouHeader } from '@/components/cashou-header';
 import { EventNotificationModal } from '@/components/event-notification-modal';
@@ -111,12 +112,14 @@ function RootLayoutInner() {
   const { isDark } = useThemePreference();
 
   return (
-    <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
-      <RootNavigator />
-      <EventNotificationModal />
-      <GameEndNotificationHandler />
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-    </ThemeProvider>
+    <AlertProvider>
+      <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+        <RootNavigator />
+        <EventNotificationModal />
+        <GameEndNotificationHandler />
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+      </ThemeProvider>
+    </AlertProvider>
   );
 }
 

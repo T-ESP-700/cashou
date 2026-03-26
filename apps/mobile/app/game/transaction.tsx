@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -16,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
+import { useAlert } from '@/hooks/use-alert';
 import { trpcClient } from '@/lib/trpc';
 import { useHeaderOptions } from '@/hooks/use-header';
 import { useNotifications } from '@/hooks/use-notifications';
@@ -36,6 +36,7 @@ interface AssetData {
 
 export default function TransactionScreen() {
   const { colors: theme, isDark } = useCashouTheme();
+  const { showAlert } = useAlert();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
@@ -280,12 +281,12 @@ export default function TransactionScreen() {
   const handleSubmit = async () => {
     const validationError = validateAmount();
     if (validationError) {
-      Alert.alert('Erreur', validationError);
+      showAlert('Erreur', validationError);
       return;
     }
 
     if (!assetId || !walletId || !gameInstanceId) {
-      Alert.alert('Erreur', 'Parametres manquants');
+      showAlert('Erreur', 'Parametres manquants');
       return;
     }
 
@@ -301,7 +302,7 @@ export default function TransactionScreen() {
           amount: numAmount,
           gameInstanceId,
         });
-        Alert.alert(
+        showAlert(
           'Achat effectué',
           `Vous avez investi ${Math.round(numAmount)} EUR dans ${asset?.title}`,
           [{ text: 'OK', onPress: () => goBackToCurrentWithSheet() }]
@@ -315,7 +316,7 @@ export default function TransactionScreen() {
           amount: rawAmount,
           gameInstanceId,
         });
-        Alert.alert(
+        showAlert(
           'Vente effectuée',
           `Vous avez récupéré ${Math.round(result.amountReceived)} EUR (dont ${Math.round(result.interests)} EUR d'intérêts)`,
           [{ text: 'OK', onPress: () => goBackToCurrentWithSheet() }]
@@ -323,7 +324,7 @@ export default function TransactionScreen() {
       }
     } catch (e: any) {
       console.error('Transaction error:', e);
-      Alert.alert('Erreur', e.message || 'Erreur lors de la transaction');
+      showAlert('Erreur', e.message || 'Erreur lors de la transaction');
     } finally {
       setIsSubmitting(false);
     }

@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,6 +8,7 @@ import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
+import { useAlert } from '@/hooks/use-alert';
 import { trpcClient } from '@/lib/trpc';
 import { tokenStorage } from '@/lib/token-storage';
 import { connectGameSocket, type GameSocketEvent } from '../../lib/game-socket';
@@ -118,6 +119,7 @@ const MONTH_PAUSE_MS = 150; // Pause supplémentaire au changement de mois
 export default function GameCurrentScreen() {
   const { levelId, gameId } = useLocalSearchParams<{ levelId: string; gameId?: string }>();
   const { colors: theme, isDark } = useCashouTheme();
+  const { showAlert } = useAlert();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { pendingEventCompletion, setPendingEventCompletion, isOnAssetsScreen, setActiveGameInstanceId, eventNotification, triggerPendingEventCheck, shouldOpenAssetsSheet, setShouldOpenAssetsSheet } = useNotifications();
@@ -240,7 +242,7 @@ export default function GameCurrentScreen() {
       setShowEndGameModal(true);
     } catch (err) {
       console.error('Error ending game:', err);
-      Alert.alert('Erreur', 'Impossible de terminer la partie');
+      showAlert('Erreur', 'Impossible de terminer la partie');
     } finally {
       setIsEndingGame(false);
     }
@@ -578,7 +580,7 @@ export default function GameCurrentScreen() {
             const activeGame = await trpcClient.gameInstance.getActiveByUser.query({ userId: user.id });
             if (activeGame) {
               const confirmed = await new Promise<boolean>((resolve) => {
-                Alert.alert(
+                showAlert(
                   'Partie en cours',
                   'Lancer cette partie va clôturer la partie en cours sans gagner de récompenses. Voulez-vous continuer ?',
                   [
@@ -1033,7 +1035,7 @@ export default function GameCurrentScreen() {
   const handleOpenQuiz = () => {
     if (!endGameResult?.success) return;
     if (!levelQuizId) {
-      Alert.alert('Quiz indisponible', "Aucun quiz n'est associe a ce niveau pour le moment.");
+      showAlert('Quiz indisponible', "Aucun quiz n'est associe a ce niveau pour le moment.");
       return;
     }
     setShowEndGameModal(false);
@@ -1095,7 +1097,7 @@ export default function GameCurrentScreen() {
       }));
     } catch (err) {
       console.error('Error creating replay game:', err);
-      Alert.alert('Erreur', 'Impossible de créer la partie');
+      showAlert('Erreur', 'Impossible de créer la partie');
     } finally {
       setIsReplayCreating(false);
     }
@@ -1250,7 +1252,7 @@ export default function GameCurrentScreen() {
 
   const handleAddAsset = async () => {
     if (!gameInstanceId || !walletId) {
-      Alert.alert('Erreur', 'Initialisation en cours, veuillez patienter...');
+      showAlert('Erreur', 'Initialisation en cours, veuillez patienter...');
       return;
     }
     // Mark sheet as open immediately to freeze date animation
@@ -1299,7 +1301,7 @@ export default function GameCurrentScreen() {
       console.log('[GameCurrentScreen] ✅ Event completed, game resumed');
     } catch (err) {
       console.error('[GameCurrentScreen] Error resuming after event:', err);
-      Alert.alert('Erreur', 'Impossible de reprendre la partie');
+      showAlert('Erreur', 'Impossible de reprendre la partie');
     } finally {
       setIsStarting(false);
     }
@@ -1330,7 +1332,7 @@ export default function GameCurrentScreen() {
   // Fonction pour effectivement démarrer le jeu (unpause)
   const startGameNow = async () => {
     if (!gameInstanceId || !levelData?.level) {
-      Alert.alert('Erreur', 'Instance de jeu non trouvée');
+      showAlert('Erreur', 'Instance de jeu non trouvée');
       return;
     }
 
@@ -1358,7 +1360,7 @@ export default function GameCurrentScreen() {
       });
     } catch (err) {
       console.error('Error starting game:', err);
-      Alert.alert('Erreur', 'Impossible de demarrer la partie');
+      showAlert('Erreur', 'Impossible de demarrer la partie');
     } finally {
       setIsStarting(false);
     }
@@ -1366,12 +1368,12 @@ export default function GameCurrentScreen() {
 
   const handleStartGame = async () => {
     if (!user) {
-      Alert.alert('Erreur', 'Vous devez etre connecte pour jouer');
+      showAlert('Erreur', 'Vous devez etre connecte pour jouer');
       return;
     }
 
     if (!gameInstanceId) {
-      Alert.alert('Erreur', 'Initialisation en cours, veuillez patienter...');
+      showAlert('Erreur', 'Initialisation en cours, veuillez patienter...');
       return;
     }
 
@@ -1394,7 +1396,7 @@ export default function GameCurrentScreen() {
   const handleResetLevel = async () => {
     if (!user || !levelId) return;
 
-    Alert.alert(
+    showAlert(
       'Reinitialiser le niveau',
       'Cette action supprimera toutes vos parties sur ce niveau. Voulez-vous continuer ?',
       [
@@ -1421,10 +1423,10 @@ export default function GameCurrentScreen() {
               if (levelData) {
                 await createGameInstanceForPreparation(levelData);
               }
-              Alert.alert('Succes', 'Le niveau a ete reinitialise. Vous pouvez recommencer !');
+              showAlert('Succes', 'Le niveau a ete reinitialise. Vous pouvez recommencer !');
             } catch (err) {
               console.error('Error resetting level:', err);
-              Alert.alert('Erreur', 'Impossible de reinitialiser le niveau');
+              showAlert('Erreur', 'Impossible de reinitialiser le niveau');
             } finally {
               setIsResetting(false);
             }

@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, Pressable, ScrollView, ActivityIndicator, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Pressable, ScrollView, ActivityIndicator, Modal } from 'react-native';
 import { BlurView } from 'expo-blur';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
+import { useAlert } from '@/hooks/use-alert';
 import { useThemePreference } from '@/hooks/use-theme-provider';
 import { Card, ActionPillButton } from '@/components/ui';
 import { trpcClient } from '@/lib/trpc';
@@ -39,6 +40,7 @@ export default function DailyQuizScreen() {
   const params = useLocalSearchParams();
   const { user, refreshUser } = useAuth();
   const { colors, fonts, spacing } = useCashouTheme();
+  const { showAlert } = useAlert();
   const { isDark } = useThemePreference();
   const insets = useSafeAreaInsets();
   const [quiz, setQuiz] = useState<Quiz | null>(null);
@@ -329,7 +331,7 @@ export default function DailyQuizScreen() {
 
   const handleValidate = async () => {
     if (!selectedAnswerId || !user || !questions[currentQuestionIndex] || !quiz) {
-      Alert.alert('Attention', 'Veuillez sélectionner une réponse');
+      showAlert('Attention', 'Veuillez sélectionner une réponse');
       return;
     }
 
@@ -434,7 +436,7 @@ export default function DailyQuizScreen() {
       }
     } catch (err) {
       console.error('Error submitting answer:', err);
-      Alert.alert('Erreur', 'Impossible de soumettre la réponse');
+      showAlert('Erreur', 'Impossible de soumettre la réponse');
     } finally {
       setIsSubmitting(false);
     }

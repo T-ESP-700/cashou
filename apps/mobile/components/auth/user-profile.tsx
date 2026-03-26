@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { ActivityIndicator, View, Alert, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/use-auth';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
+import { useAlert } from '@/hooks/use-alert';
 import { Card, Badge, Button } from '@/components/ui';
 import { trpcClient } from '@/lib/trpc';
 
@@ -16,6 +17,7 @@ interface UserLevelEntry {
 export function UserProfile() {
   const { user, isLoading, logout } = useAuth();
   const { colors, status, special, fonts, spacing, borderRadius, borderWidth, isDark } = useCashouTheme();
+  const { showAlert } = useAlert();
   const router = useRouter();
   const [userLevels, setUserLevels] = useState<UserLevelEntry[]>([]);
 
@@ -36,7 +38,7 @@ export function UserProfile() {
   }, [user?.id]);
 
   const handleLogout = () => {
-    Alert.alert(
+    showAlert(
       'Déconnexion',
       'Êtes-vous sûr de vouloir vous déconnecter ?',
       [

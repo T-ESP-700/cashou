@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Alert } from 'react-native';
+import { View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Input } from '@/components/ui';
 import { tokenStorage } from '@/lib/token-storage';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
+import { useAlert } from '@/hooks/use-alert';
 import { AUTH_URL } from '@/lib/api-config';
 
 const AUTH_BASE_URL = AUTH_URL;
@@ -19,10 +20,11 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   const [password, setPassword] = useState(isDev ? 'azerty123456' : '');
   const [isLoading, setIsLoading] = useState(false);
   const { colors, spacing } = useCashouTheme();
+  const { showAlert } = useAlert();
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      showAlert('Error', 'Please fill in all fields');
       return;
     }
 
@@ -37,7 +39,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       const data = await response.json();
 
       if (!response.ok || data.error) {
-        Alert.alert('Login Failed', data.error?.message || 'Invalid credentials');
+        showAlert('Login Failed', data.error?.message || 'Invalid credentials');
       } else {
         console.log('[LoginForm] Login successful, storing token...');
         // Store the token
@@ -58,7 +60,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 
       // Check if it's a network error
       if (error instanceof TypeError && error.message === 'Network request failed') {
-        Alert.alert(
+        showAlert(
           'Connection Error',
           'Cannot connect to the server. Please check:\n\n' +
           '• Backend is running\n' +
@@ -66,7 +68,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           '• API URL is correct in .env'
         );
       } else {
-        Alert.alert('Error', 'An error occurred during login');
+        showAlert('Error', 'An error occurred during login');
       }
     } finally {
       setIsLoading(false);

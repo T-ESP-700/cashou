@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Alert } from 'react-native';
+import { View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Input } from '@/components/ui';
 import { tokenStorage } from '@/lib/token-storage';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
+import { useAlert } from '@/hooks/use-alert';
 import { AUTH_URL } from '@/lib/api-config';
 
 interface SignupFormProps {
@@ -17,20 +18,21 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { colors, spacing } = useCashouTheme();
+  const { showAlert } = useAlert();
 
   const handleSignup = async () => {
     if (!name || !email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+      showAlert('Error', 'Please fill in all fields');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      showAlert('Error', 'Passwords do not match');
       return;
     }
 
     if (password.length < 8) {
-      Alert.alert('Error', 'Password must be at least 8 characters long');
+      showAlert('Error', 'Password must be at least 8 characters long');
       return;
     }
 
@@ -45,7 +47,7 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
       const data = await response.json();
 
       if (!response.ok || data.error) {
-        Alert.alert('Signup Failed', data.error?.message || 'Could not create account');
+        showAlert('Signup Failed', data.error?.message || 'Could not create account');
       } else {
         // Store the token
         await tokenStorage.setToken(data.token);
@@ -64,7 +66,7 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
 
       // Check if it's a network error
       if (error instanceof TypeError && error.message === 'Network request failed') {
-        Alert.alert(
+        showAlert(
           'Connection Error',
           'Cannot connect to the server. Please check:\n\n' +
           '• Backend is running\n' +
@@ -72,7 +74,7 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
           '• API URL is correct in .env'
         );
       } else {
-        Alert.alert('Error', 'An error occurred during signup');
+        showAlert('Error', 'An error occurred during signup');
       }
     } finally {
       setIsLoading(false);
