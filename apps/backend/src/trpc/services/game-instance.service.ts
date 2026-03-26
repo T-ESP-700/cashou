@@ -290,8 +290,23 @@ export class GameInstanceService {
       throw new Error(`GameInstance ${id} not found`);
     }
 
-    if (!gameInstance.isPaused || !gameInstance.pausedAt) {
+    if (!gameInstance.isPaused) {
       return gameInstance; // Not paused, nothing to do
+    }
+
+    // Safety net: if isPaused=true but pausedAt is null (inconsistent state from a race condition
+    // or previous completeEvent/endGame), force-unpause without calculating pause duration.
+    if (!gameInstance.pausedAt) {
+      console.warn(`[GameInstanceService] resume(): game ${id} has isPaused=true but pausedAt=null — force-unpausing`);
+      const forceResumed = await this.prisma.gameInstance.update({
+        where: { id },
+        data: { isPaused: false, pausedAt: null, actionRequired: false },
+      });
+      broadcastToGame(String(id), {
+        type: "game:resume",
+        payload: {},
+      });
+      return forceResumed;
     }
 
     // If the game was never start()'d (preparation mode), don't unpause.

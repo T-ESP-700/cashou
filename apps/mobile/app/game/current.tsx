@@ -436,6 +436,14 @@ export default function GameCurrentScreen() {
                 !gameInstance.isPaused || (gameInstance.currentEventIndex ?? 0) > 0 || !!gameInstance.actionRequired
               );
 
+              // Restore pendingEventCompletion if backend has actionRequired=true
+              // This handles the case where the user navigates to /current from a notification
+              // or the component remounts after the event modal was dismissed
+              if (gameInstance.actionRequired && !pendingEventCompletion) {
+                console.log('[GameCurrentScreen] 🔄 Restoring pendingEventCompletion on initial load from actionRequired');
+                setPendingEventCompletion(gameInstance.id);
+              }
+
               // If we have level data from the gameInstance, fetch full level summary (includes goals)
               if (gameInstance.level) {
                 try {
@@ -930,6 +938,14 @@ export default function GameCurrentScreen() {
               setGameHasBeenStarted(true);
             }
 
+            // Resync pendingEventCompletion from backend: if the backend says actionRequired=true
+            // but frontend lost the pendingEventCompletion state (e.g., component remount),
+            // restore it so the "Reprendre" button appears and the user is never stuck.
+            if (instance.actionRequired && !pendingEventCompletion) {
+              console.log('[GameCurrentScreen] 🔄 Restoring pendingEventCompletion from backend actionRequired');
+              setPendingEventCompletion(instance.id);
+            }
+
             if (wasPaused && !nowPaused) {
               console.log('[GameCurrentScreen] ✅ Game was resumed, state updated');
             }
@@ -965,7 +981,7 @@ export default function GameCurrentScreen() {
       };
 
       resync();
-    }, [gameInstanceId, calculateEndDate, isPaused, walletId, isAwaitingEventResume])
+    }, [gameInstanceId, calculateEndDate, isPaused, walletId, isAwaitingEventResume, pendingEventCompletion, setPendingEventCompletion])
   );
 
   // Configure header: static options on focus
@@ -1307,6 +1323,50 @@ export default function GameCurrentScreen() {
     }
   };
 
+  // Manual resume for when the game is paused without an event pending
+  // This is a safety net for edge cases where the game gets stuck in paused state
+  const handleManualResume = async () => {
+    if (!gameInstanceId || !hasGameStarted || !isPaused || isInPreparation) return;
+
+    try {
+      setIsStarting(true);
+      console.log('[GameCurrentScreen] ▶️ Manual resume for stuck paused game', gameInstanceId);
+
+      // If backend still has actionRequired (e.g., pendingEventCompletion was lost),
+      // use completeEvent to properly clear the event state before resuming
+      const checkInstance = await trpcClient.gameInstance.getById.query({ id: gameInstanceId });
+      if (checkInstance?.actionRequired) {
+        console.log('[GameCurrentScreen] 🔧 Backend has actionRequired=true, completing event first');
+        await trpcClient.gameInstance.completeEvent.mutate({ id: gameInstanceId });
+        setPendingEventCompletion(null);
+      } else {
+        await trpcClient.gameInstance.resume.mutate({ id: gameInstanceId });
+      }
+
+      const instance = await trpcClient.gameInstance.getById.query({ id: gameInstanceId });
+      if (instance?.level) {
+        setGameTimeState({
+          createdAt: new Date(instance.createdAt),
+          totalPausedDuration: instance.totalPausedDuration ?? 0,
+          duration: instance.level.duration ?? 30,
+          speed: instance.level.speed ?? 1,
+          isEnded: instance.isEnded ?? false,
+          isPaused: instance.isPaused ?? false,
+          pausedAt: instance.pausedAt ? new Date(instance.pausedAt) : null,
+        });
+        setIsPaused(instance.isPaused ?? false);
+      } else {
+        setIsPaused(false);
+      }
+      console.log('[GameCurrentScreen] ✅ Manual resume completed');
+    } catch (err) {
+      console.error('[GameCurrentScreen] Error in manual resume:', err);
+      showAlert('Erreur', 'Impossible de reprendre la partie');
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
   const handleHoldingPress = async (holding: HoldingData) => {
     if (!gameInstanceId || !walletId || !holding.asset) return;
     // Pause the game while on asset-detail
@@ -1571,6 +1631,20 @@ export default function GameCurrentScreen() {
                 label="Reprendre"
                 iconName="play"
                 onPress={handleResumeAfterEvent}
+                isLoading={isStarting}
+              />
+            </View>
+          ) : hasGameStarted && isPaused && !isAssetsSheetOpen ? (
+            <View style={styles.startButtonsContainer}>
+              <ActionPillButton
+                label="Investir"
+                iconName="add"
+                onPress={handleAddAsset}
+              />
+              <ActionPillButton
+                label="Reprendre"
+                iconName="play"
+                onPress={handleManualResume}
                 isLoading={isStarting}
               />
             </View>
