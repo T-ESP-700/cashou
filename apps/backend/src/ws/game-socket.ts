@@ -1,4 +1,6 @@
 import type { ServerWebSocket } from "bun";
+import type { PrismaClient } from "@cashou/db-app";
+import defaultPrisma from "../database.ts";
 
 export type GameSocketData = {
   userId: string;
@@ -10,7 +12,8 @@ export type GameSocketEvent =
   | { type: "game:end"; payload: { gameInstanceId: string } }
   | { type: "game:pause"; payload: { reason: string } }
   | { type: "game:resume"; payload: Record<string, never> }
-  | { type: "game:notification"; payload: { id: string; title: string; body: string } };
+  | { type: "game:notification"; payload: { id: string; title: string; body: string } }
+  | { type: "game:error"; payload: { message: string } };
 
 // Map gameInstanceId -> set of connections
 const gameRooms = new Map<string, Set<ServerWebSocket<GameSocketData>>>();
@@ -34,6 +37,18 @@ export function leaveGame(ws: ServerWebSocket<GameSocketData>) {
   }
 }
 
+export function switchGameRoom(
+  ws: ServerWebSocket<GameSocketData>,
+  nextGameInstanceId: string
+) {
+  if (ws.data.gameInstanceId && ws.data.gameInstanceId !== nextGameInstanceId) {
+    leaveGame(ws);
+  }
+
+  ws.data.gameInstanceId = nextGameInstanceId;
+  joinGame(ws);
+}
+
 export function broadcastToGame(gameInstanceId: string, event: GameSocketEvent) {
   const room = gameRooms.get(gameInstanceId);
   if (!room || room.size === 0) return;
@@ -54,4 +69,31 @@ export function getActiveConnections(): number {
     count += room.size;
   }
   return count;
+}
+
+export async function canUserJoinGame(
+  userId: string,
+  gameInstanceId: string,
+  prismaClient: Pick<PrismaClient, "gameInstance"> = defaultPrisma
+): Promise<boolean> {
+  const numericGameInstanceId = Number(gameInstanceId);
+
+  if (!Number.isInteger(numericGameInstanceId) || numericGameInstanceId <= 0) {
+    return false;
+  }
+
+  const gameInstance = await prismaClient.gameInstance.findUnique({
+    where: { id: numericGameInstanceId },
+    select: { userId: true },
+  });
+
+  return !!gameInstance && gameInstance.userId === userId;
+}
+
+export function clearGameRoomsForTests() {
+  gameRooms.clear();
+}
+
+export function getRoomSize(gameInstanceId: string): number {
+  return gameRooms.get(gameInstanceId)?.size ?? 0;
 }

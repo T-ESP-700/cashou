@@ -61,6 +61,10 @@ export async function startGameEventWorkers(): Promise<void> {
             console.log(
               `[Worker] Game event ${gameInstanceEventId} processed successfully`
             );
+          } else if (result.reason === "Event already being processed") {
+            console.warn(
+              `[Worker] Event ${gameInstanceEventId} is already being processed elsewhere`
+            );
           } else if (result.reason === "Game already has pending action") {
             // In chain mode, this should not happen (only one event scheduled at a time).
             // Log a warning but do not retry — the event will be re-scheduled when the

@@ -1,6 +1,8 @@
-import type { PrismaClient } from "@cashou/db-app";
+import type { Prisma, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import { scheduleGameEvent, cancelGameEvent } from "../../lib/job-queue.ts";
+
+type PrismaDbClient = PrismaClient | Prisma.TransactionClient;
 
 /**
  * Service for managing GameInstanceEvent records.
@@ -18,9 +20,9 @@ import { scheduleGameEvent, cancelGameEvent } from "../../lib/job-queue.ts";
  * scheduledAt shifted forward by the pause duration to maintain the correct game timeline.
  */
 export class GameInstanceEventService {
-  private prisma: PrismaClient;
+  private prisma: PrismaDbClient;
 
-  constructor(prismaClient?: PrismaClient) {
+  constructor(prismaClient?: PrismaDbClient) {
     this.prisma = prismaClient || defaultPrisma;
   }
 
@@ -168,6 +170,7 @@ export class GameInstanceEventService {
         gameInstanceId,
         triggeredAt: null,
       },
+      orderBy: { scheduledAt: "asc" },
     });
 
     if (pendingEvents.length === 0) {
@@ -180,19 +183,18 @@ export class GameInstanceEventService {
     // Calculate new scheduled times
     const updatedEvents: { id: number; newScheduledAt: Date }[] = [];
 
-    // Update each event's scheduledAt time in database
-    await this.prisma.$transaction(
-      pendingEvents.map((event) => {
-        const newScheduledAt = new Date(
-          event.scheduledAt.getTime() + pauseDurationSeconds * 1000
-        );
-        updatedEvents.push({ id: event.id, newScheduledAt });
-        return this.prisma.gameInstanceEvent.update({
-          where: { id: event.id },
-          data: { scheduledAt: newScheduledAt },
-        });
-      })
-    );
+    // Update each event's scheduledAt time in database.
+    // This method may run inside an outer interactive transaction, so avoid nesting.
+    for (const event of pendingEvents) {
+      const newScheduledAt = new Date(
+        event.scheduledAt.getTime() + pauseDurationSeconds * 1000
+      );
+      updatedEvents.push({ id: event.id, newScheduledAt });
+      await this.prisma.gameInstanceEvent.update({
+        where: { id: event.id },
+        data: { scheduledAt: newScheduledAt },
+      });
+    }
 
     // In chain mode, only one pg-boss job exists at a time (the next pending event).
     // Reschedule only the first pending event (already sorted by scheduledAt asc).
@@ -239,6 +241,7 @@ export class GameInstanceEventService {
     const events = await this.prisma.gameInstanceEvent.findMany({
       where: {
         scheduledAt: { lte: now },
+        processingStartedAt: null,
         triggeredAt: null,
         gameInstance: {
           isEnded: false,

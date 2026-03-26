@@ -1,4 +1,4 @@
-import type { GameInstance, PrismaClient } from "@cashou/db-app";
+import type { GameInstance, Prisma, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {
   GameInstanceCreateSchema,
@@ -316,7 +316,9 @@ export class GameInstanceService {
       (gameInstance.totalPausedDuration ?? 0) + pauseDurationSeconds;
 
     // Use a transaction to update GameInstance and shift GameInstanceEvents atomically
-    const [updated] = await this.prisma.$transaction(async (tx) => {
+    const [updated] = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const gameInstanceEventService = new GameInstanceEventService(tx);
+
       // Update the game instance
       const updatedInstance = await tx.gameInstance.update({
         where: { id },
@@ -328,7 +330,7 @@ export class GameInstanceService {
       });
 
       // Shift all non-triggered GameInstanceEvent.scheduledAt forward
-      await this.gameInstanceEventService.shiftScheduledEvents(id, pauseDurationSeconds);
+      await gameInstanceEventService.shiftScheduledEvents(id, pauseDurationSeconds);
 
       return [updatedInstance];
     });

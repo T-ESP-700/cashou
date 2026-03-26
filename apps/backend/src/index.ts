@@ -6,7 +6,7 @@ import { cors } from './middleware/cors';
 import { getJobQueue, stopJobQueue } from './lib/job-queue';
 import { startGameEventWorkers } from './workers/game-event.worker';
 import { prisma } from './database';
-import { joinGame, leaveGame } from './ws/game-socket';
+import { canUserJoinGame, leaveGame, switchGameRoom } from './ws/game-socket';
 import type { GameSocketData } from './ws/game-socket';
 import type { ServerWebSocket } from 'bun';
 
@@ -161,15 +161,32 @@ async function startServer() {
         // No-op: wait for client to send a "join" message
       },
       message(ws: ServerWebSocket<GameSocketData>, msg: string | Buffer) {
-        try {
-          const data = JSON.parse(msg as string);
-          if (data.type === 'join' && data.payload?.gameInstanceId) {
-            ws.data.gameInstanceId = String(data.payload.gameInstanceId);
-            joinGame(ws);
+        void (async () => {
+          try {
+            const data = JSON.parse(msg as string);
+            if (data.type === 'join' && data.payload?.gameInstanceId) {
+              const requestedGameInstanceId = String(data.payload.gameInstanceId);
+              const canJoin = await canUserJoinGame(
+                ws.data.userId,
+                requestedGameInstanceId,
+                prisma
+              );
+
+              if (!canJoin) {
+                ws.send(JSON.stringify({
+                  type: 'game:error',
+                  payload: { message: 'Unauthorized game access' },
+                }));
+                ws.close();
+                return;
+              }
+
+              switchGameRoom(ws, requestedGameInstanceId);
+            }
+          } catch {
+            // Ignore malformed messages
           }
-        } catch {
-          // Ignore malformed messages
-        }
+        })();
       },
       close(ws: ServerWebSocket<GameSocketData>) {
         leaveGame(ws);
