@@ -39,7 +39,7 @@ export default function TransactionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
-  const { activeGameInstanceId, pendingEventCompletion, setPendingEventCompletion, setAssetsScreenDepth, assetsScreenDepthRef, setIsOnAssetsScreen, setPausedByAssets, setShouldOpenAssetsSheet } = useNotifications();
+  const { activeGameInstanceId, pendingEventCompletion, setAssetsScreenDepth, assetsScreenDepthRef, setIsOnAssetsScreen, setPausedByAssets, setShouldOpenAssetsSheet } = useNotifications();
   const { user } = useAuth();
 
   // Configure header for this screen
@@ -109,30 +109,21 @@ export default function TransactionScreen() {
 
               console.log('[TransactionScreen] EXIT - Game state: isPaused=', isCurrentlyPaused);
 
-              // Resume if game is currently paused
-              if (isCurrentlyPaused) {
+              const isWaitingForEventResume = pendingCompletion === gameId;
+
+              // Resume only when we're not intentionally paused after an event.
+              if (isCurrentlyPaused && !isWaitingForEventResume) {
                 console.log('[TransactionScreen] 🎮 Resuming game', gameId);
                 await trpcClient.gameInstance.resume.mutate({ id: gameId });
                 console.log('[TransactionScreen] ✅ Game resumed successfully');
               } else {
-                console.log('[TransactionScreen] ⚠️  Game is not paused, nothing to resume');
-              }
-
-              // Complete pending event if any
-              if (pendingCompletion && pendingCompletion === gameId) {
-                console.log('[TransactionScreen] 📋 Completing pending event for game', gameId);
-                await trpcClient.gameInstance.completeEvent.mutate({ id: gameId });
-                setPendingEventCompletion(null);
-                console.log('[TransactionScreen] ✅ Event completed');
+                console.log('[TransactionScreen] ⏸️  Game stays paused after transaction exit');
               }
 
               setPausedByAssets(false);
               setIsOnAssetsScreen(false);
             } catch (error) {
-              console.error('[TransactionScreen] ❌ Failed to resume game or complete event:', error);
-              if (pendingCompletion === gameId) {
-                setPendingEventCompletion(null);
-              }
+              console.error('[TransactionScreen] ❌ Failed to resume game:', error);
               setPausedByAssets(false);
               setIsOnAssetsScreen(false);
             }
@@ -142,7 +133,7 @@ export default function TransactionScreen() {
           setIsOnAssetsScreen(newDepth > 0);
         }
       };
-    }, [setAssetsScreenDepth, setPendingEventCompletion, setIsOnAssetsScreen, setPausedByAssets, assetsScreenDepthRef])
+    }, [setAssetsScreenDepth, setIsOnAssetsScreen, setPausedByAssets, assetsScreenDepthRef])
   );
 
   // Params

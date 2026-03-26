@@ -190,7 +190,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const assetsScreenDepthRef = useRef<number>(0); // Shared ref for immediate depth access
   const [pausedByAssets, setPausedByAssets] = useState<boolean>(false); // Track if we paused the game from assets screen
   const [shouldOpenAssetsSheet, setShouldOpenAssetsSheet] = useState<boolean>(false);
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, authResolved } = useAuth();
+  const hasCheckedPendingForUserRef = useRef<string | null>(null);
 
   // Wrapper that updates both state and ref
   const setAssetsScreenDepth = useCallback((depth: number | ((prev: number) => number)) => {
@@ -223,7 +224,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     if (token) {
       setExpoPushToken(token);
 
-      if (isAuthenticated && user) {
+      if (authResolved && isAuthenticated && user) {
         try {
           await trpcClient.user.updateExpoPushToken.mutate({ expoPushToken: token });
         } catch (error) {
@@ -233,19 +234,19 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
 
     return token;
-  }, [isAuthenticated, user]);
+  }, [authResolved, isAuthenticated, user]);
 
   // Register on mount when authenticated
   useEffect(() => {
-    if (isAuthenticated) {
+    if (authResolved && isAuthenticated) {
       registerForPushNotifications();
     }
-  }, [isAuthenticated, registerForPushNotifications]);
+  }, [authResolved, isAuthenticated, registerForPushNotifications]);
 
   // Re-register push token when the app returns to the foreground
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active' && isAuthenticated && !expoPushToken) {
+      if (state === 'active' && authResolved && isAuthenticated && !expoPushToken) {
         registerForPushNotifications();
       }
     });
@@ -253,58 +254,65 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     return () => {
       subscription.remove();
     };
-  }, [expoPushToken, isAuthenticated, registerForPushNotifications]);
+  }, [authResolved, expoPushToken, isAuthenticated, registerForPushNotifications]);
 
-  // Check for pending events on app launch and when returning to foreground
-  // This is a fallback for when push notification didn't trigger properly (e.g., Expo Go redirect issue)
-  const checkPendingEvent = useCallback(async () => {
+  // One-shot fallback check after login in case a notification was missed.
+  const checkPendingEvent = useCallback(async (): Promise<EventNotificationData | null> => {
     // Don't check if:
     // - Not authenticated
     // - Already showing an event notification
     // - Already have a pending event completion (user clicked "Plus tard" or "Voir mes assets")
     // Note: we no longer block polling on assets screen — the modal overlays everything
-    if (!isAuthenticated || eventNotification || pendingEventCompletion) {
-      return;
+    if (!authResolved || !isAuthenticated || eventNotification || pendingEventCompletion) {
+      return null;
     }
 
     try {
       const pendingEvent = await trpcClient.auth.getPendingEvent.query();
       if (pendingEvent) {
-        console.log('[Notifications] Found pending event via fallback check:', pendingEvent);
-        setEventNotification({
+        const eventData = {
           type: 'EVENT',
           gameInstanceId: pendingEvent.gameInstanceId,
           eventId: pendingEvent.eventId,
           title: pendingEvent.title,
           body: pendingEvent.body,
-        });
+        } satisfies EventNotificationData;
+        console.log('[Notifications] Found pending event via fallback check:', pendingEvent);
+        setEventNotification(eventData);
+        return eventData;
       }
     } catch (error) {
       console.error('[Notifications] Error checking pending event:', error);
     }
-  }, [isAuthenticated, eventNotification, pendingEventCompletion]);
 
-  // Check for pending GAME_END notifications (fallback polling)
-  const checkPendingGameEnd = useCallback(async () => {
-    if (!isAuthenticated || gameEndNotification) {
-      return;
+    return null;
+  }, [authResolved, isAuthenticated, eventNotification, pendingEventCompletion]);
+
+  // One-shot fallback check after login for unseen GAME_END notifications.
+  const checkPendingGameEnd = useCallback(async (): Promise<GameEndNotificationData | null> => {
+    if (!authResolved || !isAuthenticated || gameEndNotification) {
+      return null;
     }
 
     try {
       const pendingGameEnd = await trpcClient.auth.getPendingGameEnd.query();
       if (pendingGameEnd) {
-        console.log('[Notifications] Found pending game end via fallback check:', pendingGameEnd);
-        setGameEndNotification({
+        const gameEndData = {
           type: 'GAME_END',
           gameInstanceId: pendingGameEnd.gameInstanceId,
           success: false,
           totalValue: 0,
-        });
+        } satisfies GameEndNotificationData;
+        console.log('[Notifications] Found pending game end via fallback check:', pendingGameEnd);
+        setGameEndNotification(gameEndData);
+        return gameEndData;
       }
     } catch (error) {
       console.error('[Notifications] Error checking pending game end:', error);
     }
-  }, [isAuthenticated, gameEndNotification]);
+
+    return null;
+  }, [authResolved, isAuthenticated, gameEndNotification]);
 
   // Forced event check — bypasses guards, used by game screen as direct backup detection
   const triggerPendingEventCheck = useCallback(async () => {
@@ -333,47 +341,37 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
   }, [eventNotification, pendingEventCompletion]);
 
-  // Check for pending events and game ends on initial mount when authenticated
   useEffect(() => {
-    if (isAuthenticated) {
-      // Small delay to let the app fully initialize
-      const timeoutId = setTimeout(() => {
-        checkPendingEvent();
-        checkPendingGameEnd();
-      }, 1000);
-      return () => clearTimeout(timeoutId);
+    if (!authResolved) {
+      return;
     }
-  }, [isAuthenticated, checkPendingEvent, checkPendingGameEnd]);
 
-  // Check for pending events and game ends when app returns to foreground
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active' && isAuthenticated) {
-        // Small delay to ensure app state is stable
-        setTimeout(() => {
-          checkPendingEvent();
-          checkPendingGameEnd();
-        }, 500);
+    if (!isAuthenticated || !user) {
+      hasCheckedPendingForUserRef.current = null;
+      return;
+    }
+
+    if (hasCheckedPendingForUserRef.current === user.id) {
+      return;
+    }
+
+    hasCheckedPendingForUserRef.current = user.id;
+
+    void (async () => {
+      const pendingEvent = await checkPendingEvent();
+      if (!pendingEvent && !eventNotification && !gameEndNotification) {
+        await checkPendingGameEnd();
       }
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, [isAuthenticated, checkPendingEvent, checkPendingGameEnd]);
-
-  // Poll for pending events and game ends during active gameplay
-  // Fallback for Expo Go where push notifications don't work
-  useEffect(() => {
-    if (!isAuthenticated || !activeGameInstanceId || eventNotification || pendingEventCompletion) return;
-
-    const pollInterval = setInterval(() => {
-      checkPendingEvent();
-      checkPendingGameEnd();
-    }, 3000);
-
-    return () => clearInterval(pollInterval);
-  }, [isAuthenticated, activeGameInstanceId, eventNotification, pendingEventCompletion, checkPendingEvent, checkPendingGameEnd]);
+    })();
+  }, [
+    authResolved,
+    isAuthenticated,
+    user,
+    eventNotification,
+    gameEndNotification,
+    checkPendingEvent,
+    checkPendingGameEnd,
+  ]);
 
   // Register global setters so the handler can update state directly
   useEffect(() => {

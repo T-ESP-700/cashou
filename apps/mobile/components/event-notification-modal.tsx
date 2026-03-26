@@ -12,7 +12,6 @@ import { useRouter, usePathname } from 'expo-router';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { useNotifications } from '@/hooks/use-notifications';
 import { ActionPillButton } from '@/components/ui';
-import { trpcClient } from '@/lib/trpc';
 
 export function EventNotificationModal() {
   const { colors, isDark } = useCashouTheme();
@@ -34,15 +33,13 @@ export function EventNotificationModal() {
     clearEventNotification();
 
     if (isOnCurrentScreen) {
-      // current.tsx is mounted — let it handle completion + resume via the existing effect
       setPendingEventCompletion(gameInstanceId);
     } else {
-      // current.tsx is not mounted — complete event + resume directly
-      try {
-        await trpcClient.gameInstance.completeEvent.mutate({ id: gameInstanceId });
-      } catch (err) {
-        console.error('[EventModal] Failed to complete event:', err);
-      }
+      setPendingEventCompletion(gameInstanceId);
+      router.push({
+        pathname: '/game/current',
+        params: { gameId: gameInstanceId.toString() },
+      });
     }
   };
 
@@ -111,7 +108,7 @@ export function EventNotificationModal() {
               {/* Buttons */}
               <View style={styles.actions}>
                 <ActionPillButton
-                  label="Continuer"
+                  label="Plus tard"
                   iconName="checkmark"
                   onPress={handleClose}
                   style={{ flex: 1 }}

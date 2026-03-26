@@ -31,7 +31,7 @@ export default function AssetsScreen() {
   const { colors: theme, isDark, status } = useCashouTheme();
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { setIsOnAssetsScreen, activeGameInstanceId, pendingEventCompletion, setPendingEventCompletion, assetsScreenDepth, setAssetsScreenDepth, assetsScreenDepthRef, setPausedByAssets, pausedByAssets } = useNotifications();
+  const { setIsOnAssetsScreen, activeGameInstanceId, pendingEventCompletion, setAssetsScreenDepth, assetsScreenDepthRef, setPausedByAssets, pausedByAssets } = useNotifications();
   const { user } = useAuth();
 
   // Configure header for this screen
@@ -217,31 +217,21 @@ export default function AssetsScreen() {
             console.log('[AssetsScreen] EXIT - No other assets screen, proceeding with resume');
 
             try {
-              // Only resume if WE paused the game (not if paused by event or user)
-              if (pausedByAssetsRef.current) {
+              const isWaitingForEventResume = pendingCompletion === gameId;
+
+              // Only resume if WE paused the game and we're not waiting for an explicit event resume.
+              if (pausedByAssetsRef.current && !isWaitingForEventResume) {
                 console.log('[AssetsScreen] 🎮 Resuming game (pausedByAssets=true)', gameId);
                 await trpcClient.gameInstance.resume.mutate({ id: gameId });
                 console.log('[AssetsScreen] ✅ Game resumed successfully');
               } else {
-                console.log('[AssetsScreen] ⏸️  Game was not paused by assets screen, not resuming');
-              }
-
-              // If there's a pending event completion, complete it now
-              if (pendingCompletion && pendingCompletion === gameId) {
-                console.log('[AssetsScreen] 📋 Completing pending event for game', gameId);
-                await trpcClient.gameInstance.completeEvent.mutate({ id: gameId });
-                setPendingEventCompletion(null);
-                console.log('[AssetsScreen] ✅ Event completed');
+                console.log('[AssetsScreen] ⏸️  Game stays paused after assets close');
               }
 
               setPausedByAssets(false);
               setIsOnAssetsScreen(false);
             } catch (error) {
-              console.error('[AssetsScreen] ❌ Failed to resume game or complete event:', error);
-              // Clear pending completion on error to avoid retry loops
-              if (pendingCompletion === gameId) {
-                setPendingEventCompletion(null);
-              }
+              console.error('[AssetsScreen] ❌ Failed to resume game:', error);
               setPausedByAssets(false);
               setIsOnAssetsScreen(false);
             }
@@ -251,7 +241,7 @@ export default function AssetsScreen() {
           setIsOnAssetsScreen(newDepth > 0);
         }
       };
-    }, [setIsOnAssetsScreen, setPendingEventCompletion, setAssetsScreenDepth, setPausedByAssets, assetsScreenDepthRef, fetchAssets])
+    }, [setIsOnAssetsScreen, setAssetsScreenDepth, setPausedByAssets, assetsScreenDepthRef, fetchAssets])
   );
 
 

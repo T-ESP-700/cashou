@@ -162,6 +162,7 @@ export default function GameCurrentScreen() {
   const [targetDate, setTargetDate] = useState<Date | null>(null); // Date cible pour l'animation
   const [isGameEnded, setIsGameEnded] = useState(false); // Partie terminée
   const [gameHasBeenStarted, setGameHasBeenStarted] = useState(false); // Le jeu a été démarré au moins une fois via start()
+  const isAwaitingEventResume = pendingEventCompletion === gameInstanceId;
 
   // Game has started if start() was called at least once (not just created in preparation mode)
   const hasGameStarted = gameInstanceId !== null && gameHasBeenStarted;
@@ -703,9 +704,8 @@ export default function GameCurrentScreen() {
     }
   }, [eventNotification, gameInstanceId]);
 
-  // Quand la modale d'event demande d'ouvrir le sheet assets:
-  // Compléter l'event SANS reprendre le jeu, puis ouvrir le bottom sheet.
-  // Le jeu reste en pause tant que le sheet est ouvert (handleAssetsSheetChange gère le resume à la fermeture).
+  // Quand la modale d'event demande d'ouvrir le sheet assets,
+  // on garde la partie en pause jusqu'à ce que le joueur clique explicitement sur "Reprendre".
   useEffect(() => {
     if (!shouldOpenAssetsSheet) return;
     // Attendre que gameInstanceId et walletId soient initialisés avant d'ouvrir le sheet
@@ -714,77 +714,11 @@ export default function GameCurrentScreen() {
     setIsAssetsSheetOpen(true); // Freeze date animation immediately
 
     const openAssetsFromEvent = async () => {
-      if (pendingEventCompletion && gameInstanceId) {
-        try {
-          console.log('[GameCurrentScreen] 📋 Completing event and opening assets sheet (game stays paused)');
-          await trpcClient.gameInstance.completeEvent.mutate({ id: gameInstanceId });
-          console.log('[GameCurrentScreen] 📋 completeEvent done → re-pausing immediately');
-          // completeEvent unpauses on backend → immediately re-pause
-          await trpcClient.gameInstance.pause.mutate({ id: gameInstanceId });
-          console.log('[GameCurrentScreen] 📋 re-pause done → game is paused');
-          setPendingEventCompletion(null);
-
-          // Resync game state (game is paused)
-          const instance = await trpcClient.gameInstance.getById.query({ id: gameInstanceId });
-          console.log('[GameCurrentScreen] 📋 backend state: isPaused=', instance?.isPaused, 'totalPausedDuration=', instance?.totalPausedDuration);
-          if (instance?.level) {
-            setGameTimeState({
-              createdAt: new Date(instance.createdAt),
-              totalPausedDuration: instance.totalPausedDuration ?? 0,
-              duration: instance.level.duration ?? 30,
-              speed: instance.level.speed ?? 1,
-              isEnded: instance.isEnded ?? false,
-              isPaused: instance.isPaused ?? false,
-              pausedAt: instance.pausedAt ? new Date(instance.pausedAt) : null,
-            });
-          }
-          setIsPaused(true);
-        } catch (err) {
-          console.error('[GameCurrentScreen] Error completing event for assets:', err);
-        }
-      }
       handleAddAsset();
     };
 
     openAssetsFromEvent();
-  }, [shouldOpenAssetsSheet, pendingEventCompletion, gameInstanceId, walletId]);
-
-  // Quand le modal d'event se ferme via "Continuer" (pendingEventCompletion set, pas sur assets),
-  // compléter l'event immédiatement et reprendre la partie.
-  // Skip si shouldOpenAssetsSheet est actif (le cas "Voir mes assets" est géré par l'effect ci-dessus).
-  useEffect(() => {
-    if (!pendingEventCompletion || !gameInstanceId || isOnAssetsScreen || shouldOpenAssetsSheet) return;
-    if (pendingEventCompletion !== gameInstanceId) return;
-
-    const completeAndResume = async () => {
-      try {
-        console.log('[GameCurrentScreen] ▶️ Completing event and resuming game', gameInstanceId);
-        await trpcClient.gameInstance.completeEvent.mutate({ id: gameInstanceId });
-        setPendingEventCompletion(null);
-
-        // Resync game state from backend BEFORE unpausing to avoid stale totalPausedDuration
-        // causing checkIfTimeElapsed to incorrectly end the game
-        const instance = await trpcClient.gameInstance.getById.query({ id: gameInstanceId });
-        if (instance?.level) {
-          setGameTimeState({
-            createdAt: new Date(instance.createdAt),
-            totalPausedDuration: instance.totalPausedDuration ?? 0,
-            duration: instance.level.duration ?? 30,
-            speed: instance.level.speed ?? 1,
-            isEnded: instance.isEnded ?? false,
-            isPaused: instance.isPaused ?? false,
-            pausedAt: instance.pausedAt ? new Date(instance.pausedAt) : null,
-          });
-        }
-        setIsPaused(false);
-        console.log('[GameCurrentScreen] ✅ Event completed, game resumed');
-      } catch (err) {
-        console.error('[GameCurrentScreen] Error completing event:', err);
-      }
-    };
-
-    completeAndResume();
-  }, [pendingEventCompletion, gameInstanceId, isOnAssetsScreen, shouldOpenAssetsSheet, setPendingEventCompletion]);
+  }, [shouldOpenAssetsSheet, gameInstanceId, walletId]);
 
   // Fetch triggered impacts on mount and when eventNotification changes
   useEffect(() => {
@@ -951,8 +885,8 @@ export default function GameCurrentScreen() {
           invalidateCache(`portfolio:${gameInstanceId}`);
           invalidateCache(`wallet:${gameInstanceId}`);
 
-          // If returning from asset-detail, resume the game first
-          if (navigatedToAssetDetailRef.current) {
+          // If returning from asset-detail, resume unless an event is waiting for explicit resume.
+          if (navigatedToAssetDetailRef.current && !isAwaitingEventResume) {
             console.log('[GameCurrentScreen] 🔄 Returning from asset-detail → resuming game');
             navigatedToAssetDetailRef.current = false;
             try {
@@ -960,6 +894,9 @@ export default function GameCurrentScreen() {
             } catch (err) {
               console.error('[GameCurrentScreen] Error resuming after asset-detail:', err);
             }
+          } else if (navigatedToAssetDetailRef.current) {
+            console.log('[GameCurrentScreen] 🔄 Returning from asset-detail while awaiting event resume → keeping game paused');
+            navigatedToAssetDetailRef.current = false;
           }
 
           // Add a delay to let the backend process any pending operations
@@ -1026,7 +963,7 @@ export default function GameCurrentScreen() {
       };
 
       resync();
-    }, [gameInstanceId, calculateEndDate, isPaused, walletId])
+    }, [gameInstanceId, calculateEndDate, isPaused, walletId, isAwaitingEventResume])
   );
 
   // Configure header: static options on focus
@@ -1280,6 +1217,8 @@ export default function GameCurrentScreen() {
           // Navigating to asset-detail — keep game paused
           console.log('[GameCurrentScreen] 🛒 Assets sheet CLOSED → navigating to asset-detail, keeping game paused');
           skipResumeOnCloseRef.current = false;
+        } else if (isAwaitingEventResume) {
+          console.log('[GameCurrentScreen] 🛒 Assets sheet CLOSED while awaiting event resume → keeping game paused');
         } else {
           console.log('[GameCurrentScreen] 🛒 Assets sheet CLOSED → resuming game');
           await trpcClient.gameInstance.resume.mutate({ id: gameInstanceId });
@@ -1307,7 +1246,7 @@ export default function GameCurrentScreen() {
     } catch (err) {
       console.error('Error pausing/resuming game from assets sheet:', err);
     }
-  }, [gameInstanceId, gameHasBeenStarted, isPaused]);
+  }, [gameInstanceId, gameHasBeenStarted, isPaused, isAwaitingEventResume]);
 
   const handleAddAsset = async () => {
     if (!gameInstanceId || !walletId) {
@@ -1330,6 +1269,40 @@ export default function GameCurrentScreen() {
       fetchAllAssets();
     }
     assetsSheetRef.current?.expand();
+  };
+
+  const handleResumeAfterEvent = async () => {
+    if (!gameInstanceId || !isAwaitingEventResume) {
+      return;
+    }
+
+    try {
+      setIsStarting(true);
+      console.log('[GameCurrentScreen] ▶️ Completing event and resuming game', gameInstanceId);
+      await trpcClient.gameInstance.completeEvent.mutate({ id: gameInstanceId });
+      setPendingEventCompletion(null);
+
+      const instance = await trpcClient.gameInstance.getById.query({ id: gameInstanceId });
+      if (instance?.level) {
+        setGameTimeState({
+          createdAt: new Date(instance.createdAt),
+          totalPausedDuration: instance.totalPausedDuration ?? 0,
+          duration: instance.level.duration ?? 30,
+          speed: instance.level.speed ?? 1,
+          isEnded: instance.isEnded ?? false,
+          isPaused: instance.isPaused ?? false,
+          pausedAt: instance.pausedAt ? new Date(instance.pausedAt) : null,
+        });
+      }
+
+      setIsPaused(false);
+      console.log('[GameCurrentScreen] ✅ Event completed, game resumed');
+    } catch (err) {
+      console.error('[GameCurrentScreen] Error resuming after event:', err);
+      Alert.alert('Erreur', 'Impossible de reprendre la partie');
+    } finally {
+      setIsStarting(false);
+    }
   };
 
   const handleHoldingPress = async (holding: HoldingData) => {
@@ -1582,6 +1555,20 @@ export default function GameCurrentScreen() {
                 label="Commencer"
                 iconName="play"
                 onPress={handleStartGame}
+                isLoading={isStarting}
+              />
+            </View>
+          ) : isAwaitingEventResume ? (
+            <View style={styles.startButtonsContainer}>
+              <ActionPillButton
+                label="Investir"
+                iconName="add"
+                onPress={handleAddAsset}
+              />
+              <ActionPillButton
+                label="Reprendre"
+                iconName="play"
+                onPress={handleResumeAfterEvent}
                 isLoading={isStarting}
               />
             </View>
