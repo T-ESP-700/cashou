@@ -6,7 +6,8 @@ import { cors } from './middleware/cors';
 import { getJobQueue, stopJobQueue } from './lib/job-queue';
 import { startGameEventWorkers } from './workers/game-event.worker';
 import { prisma } from './database';
-import { canUserJoinGame, leaveGame, switchGameRoom } from './ws/game-socket';
+import { canUserJoinGame, leaveGame, switchGameRoom, sendToSocket, startTicker, stopTicker } from './ws/game-socket';
+import { buildGameStateSnapshot } from './ws/game-state-snapshot';
 import type { GameSocketData } from './ws/game-socket';
 import type { ServerWebSocket } from 'bun';
 
@@ -24,7 +25,8 @@ async function startServer() {
     console.log('Initializing job queue...');
     await getJobQueue();
     await startGameEventWorkers();
-    console.log('Job queue and workers initialized successfully');
+    startTicker(prisma);
+    console.log('Job queue, workers, and WebSocket ticker initialized successfully');
   } catch (error) {
     console.error('Failed to initialize job queue:', error);
     // Don't fail server startup, but log the error
@@ -182,6 +184,30 @@ async function startServer() {
               }
 
               switchGameRoom(ws, requestedGameInstanceId);
+
+              // Send immediate game:state snapshot to the joining client
+              try {
+                const numericId = Number(requestedGameInstanceId);
+                if (Number.isInteger(numericId) && numericId > 0) {
+                  const gameInstance = await prisma.gameInstance.findUnique({
+                    where: { id: numericId },
+                    include: { level: true },
+                  });
+                  if (gameInstance) {
+                    const snapshot = buildGameStateSnapshot(gameInstance);
+                    if (snapshot) {
+                      sendToSocket(ws, { type: 'game:state', payload: snapshot });
+                    }
+                  } else {
+                    sendToSocket(ws, {
+                      type: 'game:error',
+                      payload: { message: 'Game instance not found' },
+                    });
+                  }
+                }
+              } catch (err) {
+                console.error('[WS] Error sending initial game:state:', err);
+              }
             }
           } catch {
             // Ignore malformed messages
@@ -204,6 +230,8 @@ async function startServer() {
 // Graceful shutdown handler
 async function gracefulShutdown(signal: string) {
   console.log(`Received ${signal}, shutting down gracefully...`);
+
+  stopTicker();
 
   try {
     await stopJobQueue();

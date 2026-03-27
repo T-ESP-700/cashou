@@ -1,7 +1,7 @@
 import type { Prisma, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import { ExpoPushService } from "./expo-push.service.ts";
-import { broadcastToGame } from "../../ws/game-socket.ts";
+import { broadcastToGame, broadcastGameState } from "../../ws/game-socket.ts";
 
 type PrismaTx = Prisma.TransactionClient;
 
@@ -361,6 +361,7 @@ export class GameEventProcessorService {
         actionRequired: true,
       },
     });
+    await broadcastGameState(String(gameInstance.id), this.prisma);
 
     console.log(
       `[GameEventProcessor] Processing event ${gameInstanceEventId} for game ${gameInstance.id}: userId=${userId}, expoPushToken=${expoPushToken ? "SET" : "NOT SET"}`

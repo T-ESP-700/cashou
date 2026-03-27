@@ -10,11 +10,10 @@ import { CashouTheme } from '@/constants/cashou-theme';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { useAlert } from '@/hooks/use-alert';
 import { trpcClient } from '@/lib/trpc';
-import { tokenStorage } from '@/lib/token-storage';
-import { connectGameSocket, type GameSocketEvent } from '../../lib/game-socket';
 import { cachedQuery, invalidateCache } from '../../lib/query-cache';
+import { useGameRealtime } from '@/hooks/use-game-realtime';
 import { useAuth } from '@/hooks/use-auth';
-import { useHeader } from '@/hooks/use-header';
+import { useHeader, useGameHeaderSubtitle } from '@/hooks/use-header';
 import { useNotifications } from '@/hooks/use-notifications';
 import { LevelInfoModal } from '@/components/level-info-modal';
 import { ActionPillButton, GoalStarIcon } from '@/components/ui';
@@ -124,6 +123,7 @@ export default function GameCurrentScreen() {
   const { user } = useAuth();
   const { pendingEventCompletion, setPendingEventCompletion, isOnAssetsScreen, setActiveGameInstanceId, eventNotification, triggerPendingEventCheck, shouldOpenAssetsSheet, setShouldOpenAssetsSheet } = useNotifications();
   const { setOptions: setHeaderOptions } = useHeader();
+  const { state: realtimeState, setGameInstanceId: setRealtimeGameInstanceId, formattedGameDate } = useGameRealtime();
 
   const [levelData, setLevelData] = useState<LevelData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -174,12 +174,29 @@ export default function GameCurrentScreen() {
 
   // Stats simulées pour la démo (à remplacer par de vraies données)
   const [stats, setStats] = useState<GameStats>({
-    level: 1,
+    level: 0, // 0 = not yet loaded, avoids "Niveau 1" → "Niveau N" flicker
     cash: 1000,
     timePassed: '0m',
     successes: 0,
   });
 
+  // === Realtime provider sync ===
+  // Register the gameInstanceId with the centralized realtime provider.
+  // No cleanup — the provider lives in game/_layout and must keep
+  // the socket alive while navigating between game/* screens.
+  useEffect(() => {
+    if (gameInstanceId) {
+      setRealtimeGameInstanceId(gameInstanceId);
+    }
+  }, [gameInstanceId, setRealtimeGameInstanceId]);
+
+  // Sync game date from realtime provider (server ticks)
+  // Only update if the provider has a date and we're not in the middle of a date animation
+  useEffect(() => {
+    if (realtimeState.gameDate && !isAnimating) {
+      setGameDate(realtimeState.gameDate);
+    }
+  }, [realtimeState.gameDate, isAnimating]);
 
   // Calcul de la date de fin de jeu (date de départ + durée)
   const calculateEndDate = useCallback((duration: number): Date => {
@@ -247,6 +264,16 @@ export default function GameCurrentScreen() {
       setIsEndingGame(false);
     }
   }, [gameInstanceId, isEndingGame, isGameEnded]);
+
+  // Sync isPaused/isEnded from realtime provider
+  useEffect(() => {
+    if (realtimeState.lastServerSyncAt) {
+      setIsPaused(realtimeState.isPaused);
+      if (realtimeState.isEnded && !isGameEnded) {
+        handleGameEnd();
+      }
+    }
+  }, [realtimeState.isPaused, realtimeState.isEnded, realtimeState.lastServerSyncAt, isGameEnded, handleGameEnd]);
 
   // Calcul de la date de jeu (purement local, aucun appel backend)
   const calculateGameDate = useCallback((timeState: GameTimeState): Date => {
@@ -750,7 +777,7 @@ export default function GameCurrentScreen() {
 
   // Backup event detection: periodically check backend for pending events during active gameplay.
   // This is a FALLBACK for when the WebSocket connection is down.
-  // Primary event delivery is via WebSocket (see connectGameSocket effect below).
+  // Primary event delivery is via WebSocket (managed by GameRealtimeProvider).
   // Interval is set to 30s since WS handles the real-time case.
   useEffect(() => {
     if (!gameInstanceId || isPaused || isGameEnded || isEndingGame || eventNotification || pendingEventCompletion) return;
@@ -763,58 +790,9 @@ export default function GameCurrentScreen() {
     return () => clearInterval(eventCheckInterval);
   }, [gameInstanceId, isPaused, isGameEnded, isEndingGame, eventNotification, pendingEventCompletion, triggerPendingEventCheck]);
 
-  // WebSocket connection for real-time game events
-  useEffect(() => {
-    if (!gameInstanceId || isGameEnded) return;
-
-    let disconnectFn: (() => void) | null = null;
-
-    const setupSocket = async () => {
-      const token = await tokenStorage.getToken();
-      if (!token) {
-        console.warn('[GameCurrentScreen] No auth token available for WebSocket');
-        return;
-      }
-
-      disconnectFn = connectGameSocket(
-        gameInstanceId.toString(),
-        token,
-        (event: GameSocketEvent) => {
-          switch (event.type) {
-            case 'game:event':
-              // Trigger the same event check the polling fallback uses
-              console.log('[GameCurrentScreen] WS game:event received, triggering event check');
-              triggerPendingEventCheck();
-              break;
-            case 'game:end':
-              console.log('[GameCurrentScreen] WS game:end received');
-              handleGameEnd();
-              break;
-            case 'game:pause':
-              console.log('[GameCurrentScreen] WS game:pause received, reason:', event.payload.reason);
-              setIsPaused(true);
-              break;
-            case 'game:resume':
-              console.log('[GameCurrentScreen] WS game:resume received');
-              setIsPaused(false);
-              invalidateCache(`snapshot:${gameInstanceId}`);
-              invalidateCache(`portfolio:${gameInstanceId}`);
-              invalidateCache(`wallet:${gameInstanceId}`);
-              break;
-          }
-        },
-        (connected) => {
-          console.log('[GameCurrentScreen] WebSocket connection:', connected ? 'connected' : 'disconnected');
-        },
-      );
-    };
-
-    setupSocket();
-
-    return () => {
-      disconnectFn?.();
-    };
-  }, [gameInstanceId, isGameEnded, triggerPendingEventCheck, handleGameEnd]);
+  // WebSocket connection is now managed by GameRealtimeProvider (see use-game-realtime.tsx).
+  // game:event, game:end, game:pause, game:resume, game:state, game:tick are handled centrally.
+  // Local state is synced from realtimeState via the sync effects above.
 
   // Portfolio refresh interval (10s) — keeps holdings values up to date during active gameplay
   useEffect(() => {
@@ -853,10 +831,12 @@ export default function GameCurrentScreen() {
     return () => clearInterval(interval);
   }, [gameInstanceId, walletId, isPaused, isGameEnded]);
 
-  // Animation locale de la date en temps réel (aucun appel backend)
+  // Fallback local date calculation — only active when the WebSocket hasn't synced yet.
+  // Primary date updates come from the realtime provider (game:tick/game:state).
   useEffect(() => {
-    // Ne pas exécuter si on est en train d'animer ou si la partie est terminée
     if (!gameTimeState || isPaused || isAnimating || isGameEnded || isEndingGame || isAssetsSheetOpen) return;
+    // If we have recent server data, skip local calculation — server ticks handle it
+    if (realtimeState.isConnected && realtimeState.lastServerSyncAt) return;
 
     // Vérifier immédiatement si le temps est écoulé
     if (checkIfTimeElapsed(gameTimeState)) {
@@ -864,12 +844,10 @@ export default function GameCurrentScreen() {
       return;
     }
 
-    // Mise à jour immédiate
+    // Fallback: calculate locally
     setGameDate(calculateGameDate(gameTimeState));
 
-    // Puis toutes les secondes
     const interval = setInterval(() => {
-      // Vérifier si le temps est écoulé à chaque tick
       if (checkIfTimeElapsed(gameTimeState)) {
         clearInterval(interval);
         handleGameEnd();
@@ -879,7 +857,7 @@ export default function GameCurrentScreen() {
     }, UPDATE_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [gameTimeState, isPaused, isAnimating, isGameEnded, isEndingGame, isOnAssetsScreen, isAssetsSheetOpen, calculateGameDate, checkIfTimeElapsed, handleGameEnd]);
+  }, [gameTimeState, isPaused, isAnimating, isGameEnded, isEndingGame, isAssetsSheetOpen, calculateGameDate, checkIfTimeElapsed, handleGameEnd, realtimeState.isConnected, realtimeState.lastServerSyncAt]);
 
   // Resynchronisation quand on revient sur la page (sans animation)
   useFocusEffect(
@@ -985,30 +963,39 @@ export default function GameCurrentScreen() {
   );
 
   // Configure header: static options on focus
-  useFocusEffect(
-    useCallback(() => {
-      setHeaderOptions({
-        showBackButton: true,
-        title: `Niveau ${stats.level}`,
-        onTitlePress: isGameEnded ? undefined : () => setShowLevelInfoModal(true),
-      });
-    }, [setHeaderOptions, stats.level, isGameEnded])
+  // Set header title once level data is loaded — useEffect (not useFocusEffect)
+  // so it reacts to stats.level changing even while the screen is already focused
+  useEffect(() => {
+    if (stats.level <= 0) return;
+    setHeaderOptions({
+      showBackButton: true,
+      title: `Niveau ${stats.level}`,
+      onTitlePress: isGameEnded ? undefined : () => setShowLevelInfoModal(true),
+    });
+  }, [setHeaderOptions, stats.level, isGameEnded]);
+
+  // Configure header: dynamic subtitle from centralized realtime provider
+  // This uses the same hook as other game/* screens for consistent display
+  // Fallback: format gameDate locally if realtime provider hasn't synced yet
+  const localFormattedDate = gameInstanceId
+    ? `${String(gameDate.getDate()).padStart(2, '0')}/${String(gameDate.getMonth() + 1).padStart(2, '0')}/${gameDate.getFullYear()}`
+    : null;
+  // Don't inject subtitle until level is loaded (avoids header flicker)
+  useGameHeaderSubtitle(
+    stats.level > 0 ? (formattedGameDate ?? localFormattedDate) : null,
+    isPaused,
+    isGameEnded,
   );
 
-  // Configure header: dynamic subtitle (date + game state)
+  // Clear subtitle and title press when game ends
   useEffect(() => {
     if (isGameEnded) {
       setHeaderOptions({
         subtitle: undefined,
         onTitlePress: undefined,
       });
-    } else {
-      const statusIcon = isPaused ? '' : ' ►';
-      setHeaderOptions({
-        subtitle: gameInstanceId ? `${formatDate(gameDate)}${statusIcon}` : undefined,
-      });
     }
-  }, [gameDate, isPaused, isGameEnded, gameInstanceId, setHeaderOptions]);
+  }, [isGameEnded, setHeaderOptions]);
 
   // Auto-show level info modal for new games (when no gameId is passed)
   useEffect(() => {
@@ -1952,18 +1939,18 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   errorContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 16,
   },
   errorText: {
     fontSize: 16,
-    textAlign: 'center',
+    textAlign: "center",
   },
   portfolioCard: {
     borderRadius: 22,
@@ -1973,22 +1960,22 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   portfolioRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 14,
   },
   portfolioLabel: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   portfolioTotal: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   portfolioSeparator: {
     height: 3,
-    backgroundColor: '#5A5A5A',
+    backgroundColor: "#CCCCCC",
     borderRadius: 2,
     marginHorizontal: 20,
     marginBottom: 8,
@@ -2000,69 +1987,69 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   assetRowContent: {
-    flexDirection: 'column',
+    flexDirection: "column",
     gap: 8,
   },
   assetRowTopLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   assetRowName: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     flex: 1,
   },
   assetBadge: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 999,
   },
   assetBadgeText: {
     fontSize: 12,
-    fontWeight: '600',
-    fontFamily: 'Anybody',
+    fontWeight: "600",
+    fontFamily: "Anybody",
   },
   assetRowAmount: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   bottomControls: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingTop: 16,
     gap: 16,
   },
   startButtonsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   endGameBlur: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   endGameOverlay: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 18,
   },
   endGameCardBackdrop: {
-    width: '97%',
+    width: "97%",
     maxWidth: 410,
     borderRadius: 36,
     padding: 6,
   },
   endGameCard: {
-    width: '100%',
+    width: "100%",
     borderRadius: 30,
     paddingHorizontal: 18,
     paddingTop: 14,
@@ -2074,48 +2061,47 @@ const styles = StyleSheet.create({
   },
   endGameTitle: {
     fontSize: 28,
-    fontFamily: 'Anybody',
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontFamily: "Anybody",
+    fontWeight: "bold",
+    textAlign: "center",
     marginBottom: 12,
   },
   endGameMessage: {
     fontSize: 15,
-    fontFamily: 'Anybody',
-    fontWeight: 'normal',
+    fontFamily: "Anybody",
+    fontWeight: "normal",
     lineHeight: 20,
   },
   endGameSecondary: {
     marginTop: 9,
   },
   endGameStarsRow: {
-    alignSelf: 'center',
+    alignSelf: "center",
     marginTop: 14,
     marginBottom: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
     borderRadius: 30,
-    backgroundColor: '#F7B167',
+    backgroundColor: "#F7B167",
     paddingHorizontal: 7,
     paddingVertical: 5,
   },
   endGameActions: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     gap: 8,
   },
-  endGameActionButton: {
-  },
+  endGameActionButton: {},
   endGameSingleAction: {
     flex: 0,
     minWidth: 132,
   },
   // Assets Bottom Sheet styles
   assetsSheetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   assetsSheetTitle: {
@@ -2141,7 +2127,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   assetsSheetTabsBar: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderRadius: 999,
     borderWidth: 1,
     padding: 4,
@@ -2151,8 +2137,8 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   assetsSheetTabText: {
     fontSize: 14,
@@ -2164,27 +2150,27 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   assetsSheetRowLeft: {
-    flexDirection: 'column',
+    flexDirection: "column",
     gap: 8,
   },
   assetsSheetRowTopLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   assetsSheetRowName: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     flex: 1,
   },
   assetsSheetBadge: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     paddingHorizontal: 14,
     paddingVertical: 4,
     borderRadius: 999,
   },
   assetsSheetRowPrice: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });

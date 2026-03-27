@@ -1,12 +1,9 @@
-import { LogBox } from 'react-native';
+import { LogBox , View, ActivityIndicator } from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, Redirect, useSegments, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import '../global.css';
-
-// Suppress expo-notifications warning in Expo Go (remote notifications removed in SDK 53)
-LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
 
 import { useFonts } from 'expo-font';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -25,7 +22,6 @@ import {
 } from '@expo-google-fonts/anybody';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { View, ActivityIndicator } from 'react-native';
 
 import { AuthProvider, useAuth } from '@/hooks/use-auth';
 import { HeaderProvider, useHeader } from '@/hooks/use-header';
@@ -36,6 +32,9 @@ import { CashouHeader } from '@/components/cashou-header';
 import { EventNotificationModal } from '@/components/event-notification-modal';
 import { GameEndNotificationHandler } from '@/components/game-end-notification-handler';
 import { CashouTheme } from '@/constants/cashou-theme';
+
+// Suppress expo-notifications warning in Expo Go (remote notifications removed in SDK 53)
+LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -85,6 +84,7 @@ function RootNavigatorContent() {
           title={headerOptions.title}
           subtitle={headerOptions.subtitle}
           showBackButton={headerOptions.showBackButton}
+          isPaused={headerOptions.isPaused}
           onTitlePress={headerOptions.onTitlePress}
           onMenuPress={headerOptions.onMenuPress}
           onBackPress={headerOptions.onBackPress}

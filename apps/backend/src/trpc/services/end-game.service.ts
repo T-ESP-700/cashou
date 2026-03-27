@@ -7,7 +7,7 @@ import defaultPrisma from "../../database.ts";
 import { GameTimeService } from "./game-time.service.ts";
 import { LevelCompletionService } from "./level-completion.service.ts";
 import { AssetHistoryService } from "./asset-history.service.ts";
-import { broadcastToGame } from "../../ws/game-socket.ts";
+import { broadcastToGame, broadcastGameState } from "../../ws/game-socket.ts";
 
 type HoldingWithAsset = Holding & {
     asset: Asset;
@@ -255,6 +255,7 @@ export class EndGameService {
             type: "game:end",
             payload: { gameInstanceId: String(gameInstanceId) },
         });
+        await broadcastGameState(String(gameInstanceId), this.prisma);
 
         // 5b. Success and level completion: based on mandatory goals only (bonus only affects stars)
         type LevelGoalWithMandatory = { goalId: number; isMandatory: boolean };

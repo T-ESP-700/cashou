@@ -2,7 +2,24 @@ import { getBackendHost } from "./api-config";
 
 const PORT = 3000;
 
+export interface GameStateSnapshot {
+  gameInstanceId: string;
+  serverNow: string;
+  gameDate: string;
+  isPaused: boolean;
+  isEnded: boolean;
+  actionRequired: boolean;
+  currentEventIndex: number;
+  totalPausedDuration: number;
+  pausedAt: string | null;
+  createdAt: string;
+  duration: number;
+  speed: number;
+}
+
 export type GameSocketEvent =
+  | { type: "game:state"; payload: GameStateSnapshot }
+  | { type: "game:tick"; payload: GameStateSnapshot }
   | { type: "game:event"; payload: { eventId: string; isPaused: boolean; actionRequired: boolean } }
   | { type: "game:end"; payload: { gameInstanceId: string } }
   | { type: "game:pause"; payload: { reason: string } }

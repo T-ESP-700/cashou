@@ -74,6 +74,23 @@ export function setCacheEntry<T>(key: string, data: T, ttlMs: number = 5000) {
 }
 
 /**
+ * Invalidate all game-related caches for a given game instance
+ */
+export function invalidateGameCaches(gameInstanceId: number | string) {
+  invalidateCache(`snapshot:${gameInstanceId}`);
+  invalidateCache(`portfolio:${gameInstanceId}`);
+  invalidateCache(`wallet:${gameInstanceId}`);
+}
+
+/**
+ * Invalidate only portfolio/financial caches for a given game instance
+ */
+export function invalidatePortfolioCaches(gameInstanceId: number | string) {
+  invalidateCache(`portfolio:${gameInstanceId}`);
+  invalidateCache(`wallet:${gameInstanceId}`);
+}
+
+/**
  * Get cache stats for debugging
  */
 export function getCacheStats() {

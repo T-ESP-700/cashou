@@ -17,7 +17,8 @@ import { CashouTheme } from '@/constants/cashou-theme';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { useAlert } from '@/hooks/use-alert';
 import { trpcClient } from '@/lib/trpc';
-import { useHeaderOptions } from '@/hooks/use-header';
+import { useHeader, useGameHeaderSubtitle } from '@/hooks/use-header';
+import { useGameRealtime } from '@/hooks/use-game-realtime';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useAuth } from '@/hooks/use-auth';
 import { ActionPillButton } from '@/components/ui/ActionPillButton';
@@ -43,8 +44,16 @@ export default function TransactionScreen() {
   const { activeGameInstanceId, pendingEventCompletion, setAssetsScreenDepth, assetsScreenDepthRef, setIsOnAssetsScreen, setPausedByAssets, setShouldOpenAssetsSheet } = useNotifications();
   const { user } = useAuth();
 
-  // Configure header for this screen
-  useHeaderOptions({ showBackButton: true, title: 'Transaction' });
+  // Keep the game header (Niveau X + date) — only ensure back button is shown
+  const { setOptions: setHeaderOptions } = useHeader();
+  const { formattedGameDate, state: realtimeState } = useGameRealtime();
+  useGameHeaderSubtitle(formattedGameDate, realtimeState.isPaused, realtimeState.isEnded);
+
+  useFocusEffect(
+    useCallback(() => {
+      setHeaderOptions({ showBackButton: true });
+    }, [setHeaderOptions])
+  );
 
   // Use refs to track values needed during cleanup to avoid stale closure issues
   const activeGameInstanceIdRef = useRef(activeGameInstanceId);
@@ -295,6 +304,9 @@ export default function TransactionScreen() {
     try {
       setIsSubmitting(true);
 
+      let alertTitle: string;
+      let alertMessage: string;
+
       if (type === 'buy') {
         await trpcClient.investment.buy.mutate({
           walletId,
@@ -302,11 +314,8 @@ export default function TransactionScreen() {
           amount: numAmount,
           gameInstanceId,
         });
-        showAlert(
-          'Achat effectué',
-          `Vous avez investi ${Math.round(numAmount)} EUR dans ${asset?.title}`,
-          [{ text: 'OK', onPress: () => goBackToCurrentWithSheet() }]
-        );
+        alertTitle = 'Achat effectué';
+        alertMessage = `Vous avez investi ${Math.round(numAmount)} EUR dans ${asset?.title}`;
       } else {
         // Convert user-entered value to raw quantity for backend
         const rawAmount = valueToRawQuantity(numAmount);
@@ -316,12 +325,15 @@ export default function TransactionScreen() {
           amount: rawAmount,
           gameInstanceId,
         });
-        showAlert(
-          'Vente effectuée',
-          `Vous avez récupéré ${Math.round(result.amountReceived)} EUR (dont ${Math.round(result.interests)} EUR d'intérêts)`,
-          [{ text: 'OK', onPress: () => goBackToCurrentWithSheet() }]
-        );
+        alertTitle = 'Vente effectuée';
+        alertMessage = `Vous avez récupéré ${Math.round(result.amountReceived)} EUR (dont ${Math.round(result.interests)} EUR d'intérêts)`;
       }
+
+      // Navigate first, then show alert on the destination screen
+      goBackToCurrentWithSheet();
+      setTimeout(() => {
+        showAlert(alertTitle, alertMessage);
+      }, 300);
     } catch (e: any) {
       console.error('Transaction error:', e);
       showAlert('Erreur', e.message || 'Erreur lors de la transaction');

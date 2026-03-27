@@ -13,7 +13,8 @@ import { CashouTheme } from '@/constants/cashou-theme';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useNotifications } from '@/hooks/use-notifications';
-import { useHeaderOptions } from '@/hooks/use-header';
+import { useHeader, useGameHeaderSubtitle } from '@/hooks/use-header';
+import { useGameRealtime } from '@/hooks/use-game-realtime';
 import { PriceChart } from '@/components/price-chart';
 import { ActionPillButton } from '@/components/ui/ActionPillButton';
 
@@ -24,8 +25,16 @@ export default function AssetDetailScreen() {
   const insets = useSafeAreaInsets();
   const { setAssetsScreenDepth, assetsScreenDepthRef } = useNotifications();
 
-  // Configure header for this screen
-  useHeaderOptions({ showBackButton: true, title: 'Détail' });
+  // Keep the game header (Niveau X + date) — only ensure back button is shown
+  const { setOptions: setHeaderOptions } = useHeader();
+  const { formattedGameDate, state: realtimeState } = useGameRealtime();
+  useGameHeaderSubtitle(formattedGameDate, realtimeState.isPaused, realtimeState.isEnded);
+
+  useFocusEffect(
+    useCallback(() => {
+      setHeaderOptions({ showBackButton: true });
+    }, [setHeaderOptions])
+  );
 
   const [asset, setAsset] = useState<any>(null);
   const [loading, setLoading] = useState(true);

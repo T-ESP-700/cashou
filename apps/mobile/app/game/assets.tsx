@@ -15,7 +15,8 @@ import { trpcClient } from '@/lib/trpc';
 import { API_URL } from '@/lib/api-config';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useAuth } from '@/hooks/use-auth';
-import { useHeaderOptions } from '@/hooks/use-header';
+import { useHeader, useGameHeaderSubtitle } from '@/hooks/use-header';
+import { useGameRealtime } from '@/hooks/use-game-realtime';
 
 // UI representation of an asset for display purposes
 type AssetItem = {
@@ -34,8 +35,16 @@ export default function AssetsScreen() {
   const { setIsOnAssetsScreen, activeGameInstanceId, pendingEventCompletion, setAssetsScreenDepth, assetsScreenDepthRef, setPausedByAssets, pausedByAssets } = useNotifications();
   const { user } = useAuth();
 
-  // Configure header for this screen
-  useHeaderOptions({ showBackButton: true, title: 'Actifs' });
+  // Keep the game header (Niveau X + date) — only ensure back button is shown
+  const { setOptions: setHeaderOptions } = useHeader();
+  const { formattedGameDate, state: realtimeState } = useGameRealtime();
+  useGameHeaderSubtitle(formattedGameDate, realtimeState.isPaused, realtimeState.isEnded);
+
+  useFocusEffect(
+    useCallback(() => {
+      setHeaderOptions({ showBackButton: true });
+    }, [setHeaderOptions])
+  );
 
   const [query, setQuery] = useState('');
   const [assets, setAssets] = useState<AssetItem[]>([]);

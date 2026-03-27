@@ -8,7 +8,7 @@ import { GameTimeService, type GameTimeInfo } from "./game-time.service.ts";
 import { GameEventTriggerService } from "./game-event-trigger.service.ts";
 import { GameInstanceEventService } from "./game-instance-event.service.ts";
 import { cancelGameJobs } from "../../lib/job-queue.ts";
-import { broadcastToGame } from "../../ws/game-socket.ts";
+import { broadcastToGame, broadcastGameState } from "../../ws/game-socket.ts";
 
 export class GameInstanceService {
   private prisma: PrismaClient;
@@ -272,6 +272,7 @@ export class GameInstanceService {
       type: "game:pause",
       payload: { reason: "user_paused" },
     });
+    await broadcastGameState(String(id), this.prisma);
 
     return updated;
   }
@@ -306,6 +307,7 @@ export class GameInstanceService {
         type: "game:resume",
         payload: {},
       });
+      await broadcastGameState(String(id), this.prisma);
       return forceResumed;
     }
 
@@ -360,6 +362,7 @@ export class GameInstanceService {
       type: "game:resume",
       payload: {},
     });
+    await broadcastGameState(String(id), this.prisma);
 
     return updated;
   }
@@ -428,6 +431,9 @@ export class GameInstanceService {
       console.log(`[GameInstanceService] ⚠️ start() no levelId for game ${id}, skipping event scheduling`);
     }
 
+    // Broadcast initial game:state after start
+    await broadcastGameState(String(id), this.prisma);
+
     return updated;
   }
 
@@ -475,6 +481,13 @@ export class GameInstanceService {
     if (!updated) {
       throw new Error(`GameInstance ${id} not found after completing event`);
     }
+
+    // Broadcast resume + state after event completion
+    broadcastToGame(String(id), {
+      type: "game:resume",
+      payload: {},
+    });
+    await broadcastGameState(String(id), this.prisma);
 
     return updated;
   }
