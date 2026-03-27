@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
@@ -109,7 +109,7 @@ interface EndGameResult {
 // Constantes pour l'animation de la date
 const GAME_START_DATE = new Date('2024-01-01');
 const UPDATE_INTERVAL_MS = 1000;
-const PORTFOLIO_REFRESH_INTERVAL_MS = 10_000;
+const PORTFOLIO_REFRESH_INTERVAL_MS = 3_000;
 
 // Constantes pour l'animation visuelle de la date
 const DAY_ANIMATION_MS = 30; // Vitesse par jour (30ms = très rapide)
@@ -149,7 +149,7 @@ export default function GameCurrentScreen() {
   const [impactCoefs, setImpactCoefs] = useState<Record<number, number>>({});
 
   // Assets bottom sheet state
-  const assetsSheetRef = useRef<BottomSheet>(null);
+  const assetsSheetRef = useRef<BottomSheetModal>(null);
   const skipResumeOnCloseRef = useRef(false); // Don't resume game when closing sheet to navigate to asset-detail
   const navigatedToAssetDetailRef = useRef(false); // Track if we navigated away to asset-detail
   const [allAssets, setAllAssets] = useState<any[]>([]);
@@ -265,15 +265,16 @@ export default function GameCurrentScreen() {
     }
   }, [gameInstanceId, isEndingGame, isGameEnded]);
 
-  // Sync isPaused/isEnded from realtime provider
+  // Sync isPaused/isEnded from realtime provider — only if the provider's game matches ours
   useEffect(() => {
-    if (realtimeState.lastServerSyncAt) {
-      setIsPaused(realtimeState.isPaused);
-      if (realtimeState.isEnded && !isGameEnded) {
-        handleGameEnd();
-      }
+    if (!realtimeState.lastServerSyncAt || !gameInstanceId) return;
+    if (realtimeState.gameInstanceId !== gameInstanceId) return;
+
+    setIsPaused(realtimeState.isPaused);
+    if (realtimeState.isEnded && !isGameEnded) {
+      handleGameEnd();
     }
-  }, [realtimeState.isPaused, realtimeState.isEnded, realtimeState.lastServerSyncAt, isGameEnded, handleGameEnd]);
+  }, [realtimeState.isPaused, realtimeState.isEnded, realtimeState.lastServerSyncAt, realtimeState.gameInstanceId, gameInstanceId, isGameEnded, handleGameEnd]);
 
   // Calcul de la date de jeu (purement local, aucun appel backend)
   const calculateGameDate = useCallback((timeState: GameTimeState): Date => {
@@ -794,17 +795,22 @@ export default function GameCurrentScreen() {
   // game:event, game:end, game:pause, game:resume, game:state, game:tick are handled centrally.
   // Local state is synced from realtimeState via the sync effects above.
 
-  // Portfolio refresh interval (10s) — keeps holdings values up to date during active gameplay
+  // Portfolio refresh interval (10s) — keeps holdings + values up to date during active gameplay
   useEffect(() => {
     if (!gameInstanceId || !walletId || isPaused || isGameEnded) return;
 
-    const interval = setInterval(async () => {
+    const refresh = async () => {
       try {
-        type PortfolioSnapshot = { walletBalance: number; holdings: { assetId: number | null; currentValue: number }[] };
+        // Refresh holdings list (new purchases / sales)
+        const holdingsData = await trpcClient.holding.getByGameInstance.query({ gameInstanceId });
+        setHoldings((holdingsData as HoldingData[]) ?? []);
+
+        // Refresh portfolio snapshot (total values incl. interests + wallet balance)
+        type PortfolioSnapshot = { walletBalance: number; holdings: { assetId: number | null; totalValue: number }[] };
         const snapshot = await cachedQuery(
           `snapshot:${gameInstanceId}`,
           () => trpcClient.investment.getPortfolioSnapshot.query({ gameInstanceId, walletId }),
-          8_000,
+          2_000,
         ) as PortfolioSnapshot | null;
 
         if (snapshot) {
@@ -814,11 +820,11 @@ export default function GameCurrentScreen() {
             cash: Math.round(snapshot.walletBalance),
           }));
 
-          // Update holding values by assetId
+          // Update holding values by assetId (totalValue = principal + interests)
           const values: Record<number, number> = {};
           for (const h of snapshot.holdings) {
             if (h.assetId != null) {
-              values[h.assetId] = Math.round(h.currentValue);
+              values[h.assetId] = Math.round(h.totalValue);
             }
           }
           setHoldingValues(values);
@@ -826,7 +832,9 @@ export default function GameCurrentScreen() {
       } catch (err) {
         console.warn('[GameCurrentScreen] Portfolio refresh failed (keeping last known values):', err);
       }
-    }, PORTFOLIO_REFRESH_INTERVAL_MS);
+    };
+
+    const interval = setInterval(refresh, PORTFOLIO_REFRESH_INTERVAL_MS);
 
     return () => clearInterval(interval);
   }, [gameInstanceId, walletId, isPaused, isGameEnded]);
@@ -997,6 +1005,11 @@ export default function GameCurrentScreen() {
     }
   }, [isGameEnded, setHeaderOptions]);
 
+  // Dim header when assets bottom sheet is open
+  useEffect(() => {
+    setHeaderOptions({ dimmed: isAssetsSheetOpen });
+  }, [isAssetsSheetOpen, setHeaderOptions]);
+
   // Auto-show level info modal for new games (when no gameId is passed)
   useEffect(() => {
     // Only show once per session, only for new games, and only after level data is loaded
@@ -1077,6 +1090,20 @@ export default function GameCurrentScreen() {
       });
 
       setShowEndGameModal(false);
+
+      // Reset realtime provider before switching game to avoid stale isEnded triggering handleGameEnd
+      setRealtimeGameInstanceId(null);
+
+      setIsGameEnded(false);
+      setEndGameResult(null);
+      setGameTimeState(null);
+      setGameDate(GAME_START_DATE);
+      setHoldings([]);
+      setIsPaused(true);
+
+      setGameInstanceId(newGame.id);
+      setWalletId(wallet.id);
+
       router.replace({
         pathname: '/game/current',
         params: {
@@ -1084,15 +1111,8 @@ export default function GameCurrentScreen() {
           levelId: String(levelData.level.id),
         },
       });
-
-      setGameInstanceId(newGame.id);
-      setWalletId(wallet.id);
-      setIsPaused(true);
-      setIsGameEnded(false);
-      setEndGameResult(null);
-      setGameTimeState(null);
-      setGameDate(GAME_START_DATE);
-      setHoldings([]);
+      hasShownLevelInfoRef.current = false;
+      setShowLevelInfoModal(true);
       setStats((prev) => ({
         ...prev,
         cash: startBalance,
@@ -1176,9 +1196,12 @@ export default function GameCurrentScreen() {
 
   // Total portfolio value (cash + all holdings)
   const totalPortfolio = useMemo(() => {
-    const holdingsTotal = holdings.reduce((sum, h) => sum + Number(h.quantity ?? 0), 0);
+    const holdingsTotal = holdings.reduce((sum, h) => {
+      const assetId = h.asset?.id ?? 0;
+      return sum + (holdingValues[assetId] ?? Number(h.quantity ?? 0));
+    }, 0);
     return Math.round(stats.cash + holdingsTotal);
-  }, [stats.cash, holdings]);
+  }, [stats.cash, holdings, holdingValues]);
 
   // Render backdrop for assets sheet
   const renderAssetsBackdrop = useCallback(
@@ -1273,7 +1296,7 @@ export default function GameCurrentScreen() {
     if (allAssets.length === 0) {
       fetchAllAssets();
     }
-    assetsSheetRef.current?.expand();
+    assetsSheetRef.current?.present();
   };
 
   const handleResumeAfterEvent = async () => {
@@ -1574,7 +1597,7 @@ export default function GameCurrentScreen() {
                     {holding.asset?.title ?? 'Asset'}
                   </Text>
                   <Text style={[styles.assetRowAmount, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
-                    {Math.round(Number(holding.quantity ?? 0)).toLocaleString('fr-FR')}€
+                    {(holdingValues[holding.asset?.id ?? 0] ?? Math.round(Number(holding.quantity ?? 0))).toLocaleString('fr-FR')}€
                   </Text>
                 </View>
                 {badgeStyle && (
@@ -1815,9 +1838,8 @@ export default function GameCurrentScreen() {
       />
 
       {/* Assets Bottom Sheet */}
-      <BottomSheet
+      <BottomSheetModal
         ref={assetsSheetRef}
-        index={-1}
         snapPoints={['85%']}
         onChange={handleAssetsSheetChange}
         enablePanDownToClose
@@ -1889,7 +1911,7 @@ export default function GameCurrentScreen() {
                 onPress={() => {
                   skipResumeOnCloseRef.current = true;
                   navigatedToAssetDetailRef.current = true;
-                  assetsSheetRef.current?.close();
+                  assetsSheetRef.current?.dismiss();
                   router.push(`/game/asset-detail?id=${asset.id}&gameInstanceId=${gameInstanceId}&walletId=${walletId}`);
                 }}
               >
@@ -1919,7 +1941,7 @@ export default function GameCurrentScreen() {
             </Text>
           )}
         </BottomSheetScrollView>
-      </BottomSheet>
+      </BottomSheetModal>
     </View>
     </GestureHandlerRootView>
   );

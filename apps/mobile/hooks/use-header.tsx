@@ -6,6 +6,7 @@ interface HeaderOptions {
   showBackButton: boolean;
   subtitle?: string;
   isPaused?: boolean;
+  dimmed?: boolean;
   onTitlePress?: () => void;
   onMenuPress?: () => void;
   onBackPress?: () => void;

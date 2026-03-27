@@ -86,6 +86,9 @@ export function GameRealtimeProvider({ children }: { children: ReactNode }) {
       case 'game:state':
       case 'game:tick':
         handleSnapshot(event.payload);
+        if (gid) {
+          invalidateGameCaches(gid);
+        }
         break;
 
       case 'game:event':

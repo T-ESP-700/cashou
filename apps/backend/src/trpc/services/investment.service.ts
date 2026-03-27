@@ -521,6 +521,7 @@ export class InvestmentService {
           assetId: item.holding.assetId,
           assetName: item.holding.asset.name,
           currentValue: item.currentValue,
+          totalValue: item.totalValue,
           change: item.interests,
         })),
       };

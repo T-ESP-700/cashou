@@ -10,7 +10,7 @@ import { HeaderDropdownMenu } from '@/components/header-dropdown-menu';
 // Filled icons on white circle background
 
 function PlayIcon({ size = 40, color = '#1C1E33' }: { size?: number; color?: string }) {
-  const inner = size * 0.4;
+  const inner = size * 0.55;
   return (
     <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={inner} height={inner} viewBox="0 0 24 24" fill="none">
@@ -21,7 +21,7 @@ function PlayIcon({ size = 40, color = '#1C1E33' }: { size?: number; color?: str
 }
 
 function PauseIcon({ size = 40, color = '#1C1E33' }: { size?: number; color?: string }) {
-  const inner = size * 0.4;
+  const inner = size * 0.55;
   return (
     <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={inner} height={inner} viewBox="0 0 24 24" fill="none">
@@ -37,8 +37,8 @@ function InfoIcon({ size = 40, color = '#1C1E33' }: { size?: number; color?: str
   return (
     <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={inner} height={inner} viewBox="0 0 24 24" fill="none">
-        <Path d="M12 11V17" stroke={color} strokeWidth={2.5} strokeLinecap="round" />
-        <Circle cx="12" cy="7.5" r="1.5" fill={color} />
+        <Path d="M12 10V21" stroke={color} strokeWidth={3.5} strokeLinecap="round" />
+        <Circle cx="12" cy="5" r="2.5" fill={color} />
       </Svg>
     </View>
   );
@@ -49,6 +49,7 @@ interface CashouHeaderProps {
   subtitle?: string;
   showBackButton?: boolean;
   isPaused?: boolean;
+  dimmed?: boolean;
   onTitlePress?: () => void;
   onMenuPress?: () => void;
   onBackPress?: () => void;
@@ -59,6 +60,7 @@ export function CashouHeader({
   subtitle,
   showBackButton = true,
   isPaused,
+  dimmed,
   onTitlePress,
   onMenuPress,
   onBackPress,
@@ -183,6 +185,7 @@ export function CashouHeader({
         visible={menuVisible}
         onClose={() => setMenuVisible(false)}
       />
+
     </View>
   );
 }

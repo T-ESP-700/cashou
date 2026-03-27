@@ -1,4 +1,4 @@
-import { LogBox , View, ActivityIndicator } from 'react-native';
+import { LogBox, View, ActivityIndicator, StyleSheet } from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, Redirect, useSegments, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
