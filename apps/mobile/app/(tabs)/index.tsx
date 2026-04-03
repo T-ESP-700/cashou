@@ -454,6 +454,7 @@ export default function HomeScreen() {
                 cash={levelCardData.cash}
                 currentReturn={levelCardData.currentReturn}
                 status={levelCardData.status}
+                isPaused={homeData?.activeGame?.isPaused === true}
                 stars={levelCardData.stars}
                 onPress={handleLevelPress}
               />

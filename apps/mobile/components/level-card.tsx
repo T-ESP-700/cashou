@@ -11,6 +11,7 @@ interface LevelCardProps {
   cash: number;
   currentReturn: number; // percentage
   status?: 'not_started' | 'in_progress' | 'completed' | 'quiz_pending';
+  isPaused?: boolean;
   stars?: number; // 1-3 from level completion
   onPress?: () => void;
 }
@@ -22,6 +23,7 @@ export function LevelCard({
   cash,
   currentReturn,
   status = 'in_progress',
+  isPaused = false,
   stars = 0,
   onPress,
 }: LevelCardProps) {
@@ -81,6 +83,14 @@ export function LevelCard({
               Prêt à apprendre à investir ? Appuyez ici pour découvrir le niveau {level} et commencer votre aventure financière.
             </Text>
           </View>
+
+          {/* Status badge (bottom left) */}
+          <View style={{ flexDirection: 'row', marginTop: spacing.sm + 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#9CD6FF', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 }}>
+              <Ionicons name="flag-outline" size={14} color="#FFFFFF" />
+              <Text style={{ fontSize: 14, fontFamily: fonts.body, color: '#FFFFFF' }}>À commencer</Text>
+            </View>
+          </View>
         </Card>
       </TouchableOpacity>
     );
@@ -114,7 +124,7 @@ export function LevelCard({
           </View>
           {status === 'in_progress' && (
             <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#FFB472', alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+              <Ionicons name="arrow-forward" size={18} color="#000000" />
             </View>
           )}
           {status === 'quiz_pending' && (
@@ -125,15 +135,29 @@ export function LevelCard({
           )}
         </View>
 
-        {/* Line 2: Cash amount | Return % */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-          <Text style={{ fontSize: 32, fontFamily: fonts.body, color: colors.text }}>
-            {cash.toLocaleString('fr-FR')}€
-          </Text>
+        {/* Line 2: Status badge (left) + Cash amount + Return % (right) */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          {status === 'in_progress' && isPaused && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#A0A0A0', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 }}>
+              <Ionicons name="pause" size={14} color="#FFFFFF" />
+              <Text style={{ fontSize: 14, fontFamily: fonts.body, color: '#FFFFFF' }}>En pause</Text>
+            </View>
+          )}
+          {status === 'in_progress' && !isPaused && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#FFB472', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 }}>
+              <Ionicons name="play" size={14} color="#FFFFFF" />
+              <Text style={{ fontSize: 14, fontFamily: fonts.body, color: '#FFFFFF' }}>En cours</Text>
+            </View>
+          )}
 
-          <Text style={{ fontSize: 22, fontFamily: fonts.body, color: returnColor }}>
-            {returnArrow}{Math.abs(currentReturn)}%
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
+            <Text style={{ fontSize: 32, fontFamily: fonts.body, color: colors.text }}>
+              {cash.toLocaleString('fr-FR')}€
+            </Text>
+            <Text style={{ fontSize: 22, fontFamily: fonts.body, color: returnColor }}>
+              {currentReturn !== 0 ? returnArrow : ''}{Math.abs(currentReturn)}%
+            </Text>
+          </View>
         </View>
       </Card>
     </TouchableOpacity>
