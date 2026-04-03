@@ -2,6 +2,7 @@
 import { initTRPC } from "@trpc/server";
 import { LevelService } from "../../trpc/services/level.service.ts";
 import { levelCreateSchema, levelUpdateSchema, levelIdSchema, userIdSchema, availabilitySchema } from "../schemas-zod/level-schema.ts";
+import { staticCache, cached, invalidateByPrefix } from "../../lib/cache.ts";
 
 // Initialisation de tRPC pour ce router spécifique
 const t = initTRPC.create();
@@ -17,7 +18,7 @@ export const levelRouter = t.router({
      * Pas de paramètre d'entrée requis
      */
     getAll: t.procedure.query(async () => {
-        return await levelService.findAll();
+        return cached(staticCache, "level:all", () => levelService.findAll());
     }),
 
     /**
@@ -28,7 +29,7 @@ export const levelRouter = t.router({
     getById: t.procedure
         .input(levelIdSchema) // Validation automatique de l'entrée
         .query(async ({ input }) => {
-            return await levelService.findOne(input.id);
+            return cached(staticCache, `level:${input.id}`, () => levelService.findOne(input.id));
         }),
 
     /**
@@ -97,7 +98,9 @@ export const levelRouter = t.router({
     duplicate: t.procedure
         .input(levelIdSchema)
         .mutation(async ({ input }) => {
-            return await levelService.duplicate(input.id);
+            const result = await levelService.duplicate(input.id);
+            invalidateByPrefix(staticCache, "level:");
+            return result;
         }),
 
     /**
@@ -108,7 +111,9 @@ export const levelRouter = t.router({
     create: t.procedure
         .input(levelCreateSchema) // Validation des données avant traitement
         .mutation(async ({ input }) => { // mutation = opération de modification
-            return await levelService.create(input);
+            const result = await levelService.create(input);
+            invalidateByPrefix(staticCache, "level:");
+            return result;
         }),
 
     /**
@@ -119,7 +124,9 @@ export const levelRouter = t.router({
     update: t.procedure
         .input(levelUpdateSchema) // Validation de l'ID et des données
         .mutation(async ({ input }) => {
-            return await levelService.update(input.id, input.data);
+            const result = await levelService.update(input.id, input.data);
+            invalidateByPrefix(staticCache, "level:");
+            return result;
         }),
 
     /**
@@ -130,7 +137,9 @@ export const levelRouter = t.router({
     delete: t.procedure
         .input(levelIdSchema) // Validation de l'ID
         .mutation(async ({ input }) => {
-            return await levelService.delete(input.id);
+            const result = await levelService.delete(input.id);
+            invalidateByPrefix(staticCache, "level:");
+            return result;
         }),
 });
 

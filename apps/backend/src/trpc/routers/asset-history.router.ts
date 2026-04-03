@@ -76,6 +76,46 @@ export const assetHistoryRouter = t.router({
         }),
 
     /**
+     * Retrieve asset price history filtered by current game progression.
+     * Only returns points up to the player's current "game day".
+     * Endpoint: GET http://localhost:3000/trpc/assetHistory.getForGame?input={"assetId":1,"gameInstanceId":1}
+     */
+    getForGame: t.procedure
+        .input(z.object({
+            assetId: z.number().min(1),
+            gameInstanceId: z.number().min(1),
+        }))
+        .query(async ({ input }) => {
+            return await assetHistoryService.findForGame(input.assetId, input.gameInstanceId);
+        }),
+
+    /**
+     * Get the current virtual price of an asset in a game context.
+     * Returns DB price × cumulative event coefs at the current game day.
+     */
+    getCurrentPrice: t.procedure
+        .input(z.object({
+            assetId: z.number().min(1),
+            gameInstanceId: z.number().min(1),
+        }))
+        .query(async ({ input }) => {
+            return await assetHistoryService.getCurrentPrice(input.assetId, input.gameInstanceId);
+        }),
+
+    /**
+     * Get current price + daily change % for an asset in a game context.
+     * Returns both in one call to avoid N+1.
+     */
+    getPriceWithChange: t.procedure
+        .input(z.object({
+            assetId: z.number().min(1),
+            gameInstanceId: z.number().min(1),
+        }))
+        .query(async ({ input }) => {
+            return await assetHistoryService.getCurrentPriceWithChange(input.assetId, input.gameInstanceId);
+        }),
+
+    /**
      * Crée un nouvel historique d'actif
      * Endpoint: POST http://localhost:3000/trpc/assetHistory.create
      * @input AssetHistoryCreateSchema - Données de l'historique à créer, validées automatiquement

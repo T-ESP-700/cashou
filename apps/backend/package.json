@@ -28,7 +28,14 @@
     "test:regression": "bun test tests/service/level.service.regression.test.ts",
     "test:router": "bun test tests/router/level.router.test.ts",
     "test:grep:unit": "bun test --grep='Tests unitaires'",
-    "healthy:game": "bun run scripts/healthy-game.ts"
+    "healthy:game": "bun run scripts/healthy-game.ts",
+    "db:seed:fake-levels": "bun run scripts/seed-fake-levels.ts",
+    "db:seed:level-esp": "bun run scripts/seed-level-esp.ts",
+    "db:seed:level2": "bun run scripts/seed-level2.ts",
+    "db:seed:level3": "bun run scripts/seed-level3.ts",
+    "db:seed:level4": "bun run scripts/seed-level4.ts",
+    "db:seed:level5": "bun run scripts/seed-level5.ts",
+    "db:seed:level6": "bun run scripts/seed-level6.ts"
   },
   "dependencies": {
     "@cashou/auth": "workspace:*",

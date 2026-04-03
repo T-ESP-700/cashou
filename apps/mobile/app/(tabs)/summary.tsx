@@ -1,9 +1,11 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, useColorScheme as useRNColorScheme, Alert, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Switch } from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
+import { useCashouTheme } from '@/hooks/use-cashou-theme';
+import { useAlert } from '@/hooks/use-alert';
 import { trpcClient } from '@/lib/trpc';
 import { useHeaderOptions } from '@/hooks/use-header';
 import { useAuth } from '@/hooks/use-auth';
@@ -88,9 +90,8 @@ export default function GameSummaryScreen() {
   const { gameId, levelId, mode } = params;
   const isHistoryMode = mode === 'history';
   const { user } = useAuth();
-  const colorScheme = useRNColorScheme();
-  const isDark = colorScheme === 'dark';
-  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const { colors: theme, isDark } = useCashouTheme();
+  const { showAlert } = useAlert();
   const insets = useSafeAreaInsets();
 
   useHeaderOptions({ showBackButton: true, title: 'Résumé' });
@@ -303,7 +304,7 @@ export default function GameSummaryScreen() {
     const activeGame = await trpcClient.gameInstance.getActiveByUser.query({ userId: user.id });
     if (activeGame) {
       const confirmed = await new Promise<boolean>((resolve) => {
-        Alert.alert(
+        showAlert(
           'Partie en cours',
           'Lancer cette partie va clôturer la partie en cours sans gagner de récompenses. Voulez-vous continuer ?',
           [
@@ -339,7 +340,7 @@ export default function GameSummaryScreen() {
       });
     } catch (err) {
       console.error('Error creating replay game:', err);
-      Alert.alert('Erreur', 'Impossible de créer la partie');
+      showAlert('Erreur', 'Impossible de créer la partie');
     } finally {
       setIsReplaying(false);
     }
@@ -396,23 +397,23 @@ export default function GameSummaryScreen() {
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 112 }]}
       >
-        <Text allowFontScaling={false} style={styles.screenTitle}>Récapitulatif</Text>
-        <View style={styles.titleUnderline} />
+        <Text allowFontScaling={false} style={[styles.screenTitle, { color: theme.text }]}>Récapitulatif</Text>
+        <View style={[styles.titleUnderline, { backgroundColor: theme.text }]} />
 
         {isHistoryMode ? (
           // Mode history : contexte du niveau (titre + description)
           <>
-            <Text allowFontScaling={false} style={styles.sectionTitle}>
+            <Text allowFontScaling={false} style={[styles.sectionTitle, { color: theme.text }]}>
               Niveau {gameInstance?.level?.number ?? ''}
             </Text>
-            <View style={styles.panel}>
+            <View style={[styles.panel, { backgroundColor: theme.card }]}>
               {gameInstance?.level?.title ? (
-                <Text allowFontScaling={false} style={styles.levelContextTitle}>
+                <Text allowFontScaling={false} style={[styles.levelContextTitle, { color: theme.text }]}>
                   {gameInstance.level.title}
                 </Text>
               ) : null}
               {gameInstance?.level?.description ? (
-                <Text allowFontScaling={false} style={styles.levelContextDescription}>
+                <Text allowFontScaling={false} style={[styles.levelContextDescription, { color: theme.text }]}>
                   {gameInstance.level.description}
                 </Text>
               ) : null}
@@ -422,36 +423,36 @@ export default function GameSummaryScreen() {
           // Mode normal : bilan financier avec switch vue simple/détaillée
           <>
             <View style={styles.sectionHeaderRow}>
-              <Text allowFontScaling={false} style={styles.sectionTitle}>
+              <Text allowFontScaling={false} style={[styles.sectionTitle, { color: theme.text }]}>
                 {isDetailedView ? 'Transactions' : 'Bilan'}
               </Text>
               <View style={styles.simpleViewRow}>
-                <Text allowFontScaling={false} style={styles.simpleViewText}>
+                <Text allowFontScaling={false} style={[styles.simpleViewText, { color: theme.text }]}>
                   {isDetailedView ? 'Vue détaillée' : 'Vue simple'}
                 </Text>
                 <Switch
                   value={isDetailedView}
                   onValueChange={setIsDetailedView}
-                  trackColor={{ false: '#D0D1D5', true: '#4CAF50' }}
-                  thumbColor="#FFFFFF"
+                  trackColor={{ false: theme.borderLight, true: '#4CAF50' }}
+                  thumbColor={theme.card}
                 />
               </View>
             </View>
 
             {isDetailedView ? (
               transactionGroups === null ? (
-                <View style={styles.panel}>
-                  <ActivityIndicator size="small" color="#2B2C48" />
+                <View style={[styles.panel, { backgroundColor: theme.card }]}>
+                  <ActivityIndicator size="small" color={theme.text} />
                 </View>
               ) : transactionGroups.length === 0 ? (
-                <View style={styles.panel}>
-                  <Text allowFontScaling={false} style={styles.summaryLabel}>Aucune transaction</Text>
+                <View style={[styles.panel, { backgroundColor: theme.card }]}>
+                  <Text allowFontScaling={false} style={[styles.summaryLabel, { color: theme.text }]}>Aucune transaction</Text>
                 </View>
               ) : (
                 transactionGroups.map((group) => (
                   <View key={group.submarketTitle}>
-                    <Text allowFontScaling={false} style={styles.transactionGroupTitle}>{group.submarketTitle}</Text>
-                    <View style={styles.transactionGroupCard}>
+                    <Text allowFontScaling={false} style={[styles.transactionGroupTitle, { color: theme.text }]}>{group.submarketTitle}</Text>
+                    <View style={[styles.transactionGroupCard, { backgroundColor: theme.card }]}>
                       {group.items.map((item) => {
                         const isSell = item.type === 'SELL';
                         const isInterest = item.type === 'INTEREST';
@@ -460,21 +461,21 @@ export default function GameSummaryScreen() {
                           <View key={item.id} style={styles.transactionRow}>
                             <TypeIcon width={12} height={12} />
                             {isInterest ? (
-                              <Text allowFontScaling={false} style={styles.transactionLabelFlex} numberOfLines={1}>
+                              <Text allowFontScaling={false} style={[styles.transactionLabelFlex, { color: theme.text }]} numberOfLines={1}>
                                 Intérêts {item.assetTitle}
                               </Text>
                             ) : (
                               <View style={styles.transactionLabelRow}>
-                                <Text allowFontScaling={false} style={styles.transactionLabel} numberOfLines={1}>
+                                <Text allowFontScaling={false} style={[styles.transactionLabel, { color: theme.text }]} numberOfLines={1}>
                                   {isSell ? item.assetTitle : 'Portefeuille'}
                                 </Text>
                                 <TxIconArrow width={12} height={12} />
-                                <Text allowFontScaling={false} style={styles.transactionLabel} numberOfLines={1}>
+                                <Text allowFontScaling={false} style={[styles.transactionLabel, { color: theme.text }]} numberOfLines={1}>
                                   {isSell ? 'Portefeuille' : item.assetTitle}
                                 </Text>
                               </View>
                             )}
-                            <Text allowFontScaling={false} style={styles.transactionAmount}>{formatAmount(item.totalValue)}</Text>
+                            <Text allowFontScaling={false} style={[styles.transactionAmount, { color: theme.text }]}>{formatAmount(item.totalValue)}</Text>
                           </View>
                         );
                       })}
@@ -483,32 +484,32 @@ export default function GameSummaryScreen() {
                 ))
               )
             ) : (
-              <View style={styles.panel}>
+              <View style={[styles.panel, { backgroundColor: theme.card }]}>
                 <View style={styles.summaryRow}>
-                  <Text allowFontScaling={false} style={styles.summaryLabel}>Capital initial</Text>
-                  <Text allowFontScaling={false} style={styles.summaryValue}>{formatAmount(endGameResult.startBalance)}</Text>
+                  <Text allowFontScaling={false} style={[styles.summaryLabel, { color: theme.text }]}>Capital initial</Text>
+                  <Text allowFontScaling={false} style={[styles.summaryValue, { color: theme.text }]}>{formatAmount(endGameResult.startBalance)}</Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text allowFontScaling={false} style={styles.summaryLabel}>Cash final</Text>
-                  <Text allowFontScaling={false} style={styles.summaryValue}>{formatAmount(endGameResult.walletBalance)}</Text>
+                  <Text allowFontScaling={false} style={[styles.summaryLabel, { color: theme.text }]}>Cash final</Text>
+                  <Text allowFontScaling={false} style={[styles.summaryValue, { color: theme.text }]}>{formatAmount(endGameResult.walletBalance)}</Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text allowFontScaling={false} style={styles.summaryLabel}>Valeur des actifs</Text>
-                  <Text allowFontScaling={false} style={styles.summaryValue}>{formatAmount(endGameResult.assetsValue)}</Text>
+                  <Text allowFontScaling={false} style={[styles.summaryLabel, { color: theme.text }]}>Valeur des actifs</Text>
+                  <Text allowFontScaling={false} style={[styles.summaryValue, { color: theme.text }]}>{formatAmount(endGameResult.assetsValue)}</Text>
                 </View>
 
-                <View style={styles.summaryDivider} />
+                <View style={[styles.summaryDivider, { backgroundColor: theme.borderLight }]} />
 
                 <View style={styles.summaryRow}>
                   <View style={styles.finalPortfolioLabelRow}>
-                    <Text allowFontScaling={false} style={[styles.summaryLabel, styles.finalPortfolioLabel]}>
+                    <Text allowFontScaling={false} style={[styles.summaryLabel, styles.finalPortfolioLabel, { color: theme.text }]}>
                       Portefeuille final
                     </Text>
                     <View style={[styles.profitPill, { backgroundColor: profitChipColor }]}>
                       <Text allowFontScaling={false} style={styles.profitPillText}>{profitText}</Text>
                     </View>
                   </View>
-                  <Text allowFontScaling={false} style={styles.finalPortfolioValue}>{formatAmount(endGameResult.totalValue)}</Text>
+                  <Text allowFontScaling={false} style={[styles.finalPortfolioValue, { color: theme.text }]}>{formatAmount(endGameResult.totalValue)}</Text>
                 </View>
               </View>
             )}
@@ -517,16 +518,17 @@ export default function GameSummaryScreen() {
 
         {!isDetailedView && (
         <>
-        <Text allowFontScaling={false} style={[styles.sectionTitle, styles.objectiveTitle]}>Objectif</Text>
+        <Text allowFontScaling={false} style={[styles.sectionTitle, styles.objectiveTitle, { color: theme.text }]}>Objectif</Text>
 
         {primaryGoal && (
-          <View style={styles.goalCard}>
-            <Text allowFontScaling={false} style={styles.goalCardTitle}>Objectif Principal</Text>
+          <View style={[styles.goalCard, { backgroundColor: theme.card }]}>
+            <Text allowFontScaling={false} style={[styles.goalCardTitle, { color: theme.text }]}>Objectif Principal</Text>
             <View style={styles.goalCardRow}>
               <Text
                 allowFontScaling={false}
                 style={[
                   styles.goalCardSubtitle,
+                  { color: theme.text },
                   (isHistoryMode ? endGameResult?.mandatoryGoalsMet : primaryGoal.validated) && styles.goalReachedText,
                 ]}
               >
@@ -544,13 +546,14 @@ export default function GameSummaryScreen() {
         )}
 
         {bonusGoal && (
-          <View style={styles.goalCard}>
-            <Text allowFontScaling={false} style={styles.goalCardTitle}>Objectif Bonus</Text>
+          <View style={[styles.goalCard, { backgroundColor: theme.card }]}>
+            <Text allowFontScaling={false} style={[styles.goalCardTitle, { color: theme.text }]}>Objectif Bonus</Text>
             <View style={styles.goalCardRow}>
               <Text
                 allowFontScaling={false}
                 style={[
                   styles.goalCardSubtitle,
+                  { color: theme.text },
                   (isHistoryMode ? endGameResult?.bonusGoalsMet : bonusGoal.validated) && styles.goalReachedText,
                 ]}
               >
@@ -569,25 +572,25 @@ export default function GameSummaryScreen() {
 
         {hasLevelQuiz && (
           shouldShowQuizCta ? (
-            <TouchableOpacity style={styles.quizCtaRow} onPress={handleGoToQuiz} activeOpacity={0.85}>
-              <Text allowFontScaling={false} style={styles.quizCtaTitle}>Quizz</Text>
+            <TouchableOpacity style={[styles.quizCtaRow, { backgroundColor: theme.card }]} onPress={handleGoToQuiz} activeOpacity={0.85}>
+              <Text allowFontScaling={false} style={[styles.quizCtaTitle, { color: theme.text }]}>Quizz</Text>
               <View style={styles.quizCtaRight}>
                 <View style={styles.quizStatusPill}>
-                  <Text allowFontScaling={false} style={styles.quizStatusText}>À faire</Text>
+                  <Text allowFontScaling={false} style={[styles.quizStatusText, { color: theme.text }]}>À faire</Text>
                 </View>
                 <View style={styles.quizArrowCircle}>
-                  <Ionicons name="arrow-forward" size={18} color="#2B2C48" />
+                  <Ionicons name="arrow-forward" size={18} color={theme.text} />
                 </View>
               </View>
             </TouchableOpacity>
           ) : isHistoryMode ? (
             // Mode history : afficher le quiz avec l'état consolidé de UserLevelCompletion
-            <View style={styles.goalCard}>
-              <Text allowFontScaling={false} style={styles.goalCardTitle}>Quizz</Text>
+            <View style={[styles.goalCard, { backgroundColor: theme.card }]}>
+              <Text allowFontScaling={false} style={[styles.goalCardTitle, { color: theme.text }]}>Quizz</Text>
               <View style={styles.goalCardRow}>
                 <Text
                   allowFontScaling={false}
-                  style={[styles.goalCardSubtitle, endGameResult?.quizPassed && styles.goalReachedText]}
+                  style={[styles.goalCardSubtitle, { color: theme.text }, endGameResult?.quizPassed && styles.goalReachedText]}
                 >
                   Question aléatoire
                 </Text>
@@ -597,12 +600,12 @@ export default function GameSummaryScreen() {
               </View>
             </View>
           ) : isQuizDoneForThisGame ? (
-            <View style={styles.goalCard}>
-              <Text allowFontScaling={false} style={styles.goalCardTitle}>Quizz</Text>
+            <View style={[styles.goalCard, { backgroundColor: theme.card }]}>
+              <Text allowFontScaling={false} style={[styles.goalCardTitle, { color: theme.text }]}>Quizz</Text>
               <View style={styles.goalCardRow}>
                 <Text
                   allowFontScaling={false}
-                  style={[styles.goalCardSubtitle, isQuizPassedForThisGame && styles.goalReachedText]}
+                  style={[styles.goalCardSubtitle, { color: theme.text }, isQuizPassedForThisGame && styles.goalReachedText]}
                 >
                   Question aléatoire
                 </Text>
@@ -618,14 +621,13 @@ export default function GameSummaryScreen() {
       </ScrollView>
 
       {user && gameInstance?.level?.id && (
-        <View style={[styles.bottomActions, { paddingBottom: insets.bottom + 10 }]}>
+        <View style={[styles.bottomActions, { paddingBottom: insets.bottom + 10, backgroundColor: theme.background }]}>
           <ActionPillButton
             label={isReplaying ? '...' : 'Rejouer'}
             iconName="refresh-outline"
             onPress={handleReplay}
             disabled={isReplaying}
             isLoading={isReplaying}
-            style={styles.bottomActionButton}
           />
 
           {!isHistoryMode && (
@@ -634,7 +636,6 @@ export default function GameSummaryScreen() {
                 label="Quiz"
                 customIcon={<QuizActionIcon width={18} height={18} />}
                 onPress={handleGoToQuiz}
-                style={styles.bottomActionButton}
               />
             ) : (
               !!nextLevel?.id && (
@@ -642,7 +643,6 @@ export default function GameSummaryScreen() {
                   label={`Niveau ${nextLevel.number ?? ''}`.trim()}
                   iconName="play"
                   onPress={handleGoToNextLevel}
-                  style={styles.bottomActionButton}
                 />
               )
             )
@@ -663,6 +663,8 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 10,
+    flexGrow: 1,
+    justifyContent: 'center',
   },
   loadingContainer: {
     flex: 1,
@@ -672,7 +674,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#2B2C48',
     fontFamily: 'Roboto',
   },
   errorContainer: {
@@ -699,7 +700,6 @@ const styles = StyleSheet.create({
   },
   screenTitle: {
     fontSize: 26,
-    color: '#2B2C48',
     fontFamily: 'Anybody',
     fontWeight: '700',
     marginBottom: 6,
@@ -707,7 +707,6 @@ const styles = StyleSheet.create({
   titleUnderline: {
     height: 3,
     borderRadius: 2,
-    backgroundColor: '#2B2C48',
     marginBottom: 16,
   },
   sectionHeaderRow: {
@@ -719,7 +718,6 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 20,
-    color: '#2B2C48',
     fontFamily: 'Anybody',
     fontWeight: '700',
   },
@@ -730,11 +728,9 @@ const styles = StyleSheet.create({
   },
   simpleViewText: {
     fontSize: 14,
-    color: '#2B2C48',
     fontFamily: 'Roboto',
   },
   transactionGroupCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 14,
@@ -743,7 +739,6 @@ const styles = StyleSheet.create({
   transactionGroupTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#2B2C48',
     fontFamily: 'Anybody',
     marginBottom: 8,
     marginTop: 4,
@@ -764,13 +759,11 @@ const styles = StyleSheet.create({
   transactionLabel: {
     fontSize: 14,
     fontFamily: 'Roboto',
-    color: '#2B2C48',
     flexShrink: 1,
   },
   transactionLabelFlex: {
     fontSize: 14,
     fontFamily: 'Roboto',
-    color: '#2B2C48',
     flex: 1,
     flexShrink: 1,
   },
@@ -778,11 +771,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     fontFamily: 'Roboto',
-    color: '#2B2C48',
     flexShrink: 0,
   },
   panel: {
-    backgroundColor: 'white',
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 14,
@@ -797,18 +788,15 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#2B2C48',
     fontFamily: 'Roboto',
   },
   summaryValue: {
     fontSize: 14,
-    color: '#2B2C48',
     fontFamily: 'Roboto',
     fontWeight: '700',
   },
   summaryDivider: {
     height: 1,
-    backgroundColor: '#D6D6D6',
     marginTop: 2,
     marginBottom: 10,
   },
@@ -823,7 +811,6 @@ const styles = StyleSheet.create({
   },
   finalPortfolioValue: {
     fontSize: 16,
-    color: '#2B2C48',
     fontFamily: 'Roboto',
     fontWeight: '700',
   },
@@ -842,7 +829,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   goalCard: {
-    backgroundColor: 'white',
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 14,
@@ -856,13 +842,11 @@ const styles = StyleSheet.create({
   },
   goalCardTitle: {
     fontSize: 14,
-    color: '#2B2C48',
     fontFamily: 'Roboto',
     fontWeight: '700',
   },
   goalCardSubtitle: {
     fontSize: 12,
-    color: '#2B2C48',
     fontFamily: 'Roboto',
     fontWeight: '500',
     flex: 1,
@@ -883,7 +867,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#F4A258',
     borderRadius: 22,
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 14,
     paddingVertical: 10,
     flexDirection: 'row',
@@ -893,7 +876,6 @@ const styles = StyleSheet.create({
   },
   quizCtaTitle: {
     fontSize: 14,
-    color: '#2B2C48',
     fontFamily: 'Roboto',
     fontWeight: '700',
   },
@@ -910,7 +892,6 @@ const styles = StyleSheet.create({
   },
   quizStatusText: {
     fontSize: 12,
-    color: '#2B2C48',
     fontFamily: 'Roboto',
   },
   quizArrowCircle: {
@@ -932,21 +913,17 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 18,
     paddingTop: 10,
-    backgroundColor: 'transparent',
   },
   bottomActionButton: {
-    flex: 1,
   },
   levelContextTitle: {
     fontSize: 16,
-    color: '#2B2C48',
     fontFamily: 'Anybody',
     fontWeight: '700',
     marginBottom: 8,
   },
   levelContextDescription: {
     fontSize: 14,
-    color: '#2B2C48',
     fontFamily: 'Roboto',
     lineHeight: 20,
   },

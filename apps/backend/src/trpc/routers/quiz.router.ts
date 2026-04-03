@@ -3,6 +3,7 @@ import { initTRPC } from "@trpc/server";
 import { QuizService } from "../../trpc/services/quiz.service.ts";
 import {quizCreateSchema, quizUpdateSchema, quizIdSchema, QuizTypeEnum, quizDateCheckSchema, quizHistorySchema} from "../schemas-zod/quiz-schema.ts";
 import { z } from "zod";
+import { staticCache, cached, invalidateByPrefix } from "../../lib/cache.ts";
 
 // Initialisation de tRPC pour ce router spécifique
 const t = initTRPC.create();
@@ -18,7 +19,7 @@ export const quizRouter = t.router({
      * Pas de paramètre d'entrée requis
      */
     getAll: t.procedure.query(async () => {
-        return await quizService.findAll();
+        return cached(staticCache, "quiz:all", () => quizService.findAll());
     }),
 
     /**
@@ -29,7 +30,7 @@ export const quizRouter = t.router({
     getById: t.procedure
         .input(quizIdSchema) // Validation automatique de l'entrée
         .query(async ({ input }) => {
-            return await quizService.findOne(input.id);
+            return cached(staticCache, `quiz:${input.id}`, () => quizService.findOne(input.id));
         }),
 
     /**
@@ -40,7 +41,9 @@ export const quizRouter = t.router({
     create: t.procedure
         .input(quizCreateSchema) // Validation des données avant traitement
         .mutation(async ({ input }) => { // mutation = opération de modification
-            return await quizService.create(input);
+            const result = await quizService.create(input);
+            invalidateByPrefix(staticCache, "quiz:");
+            return result;
         }),
 
     /**
@@ -51,7 +54,9 @@ export const quizRouter = t.router({
     update: t.procedure
         .input(quizUpdateSchema) // Validation de l'ID et des données
         .mutation(async ({ input }) => {
-            return await quizService.update(input.id, input.data);
+            const result = await quizService.update(input.id, input.data);
+            invalidateByPrefix(staticCache, "quiz:");
+            return result;
         }),
 
     /**
@@ -62,7 +67,9 @@ export const quizRouter = t.router({
     delete: t.procedure
         .input(quizIdSchema) // Validation de l'ID
         .mutation(async ({ input }) => {
-            return await quizService.delete(input.id);
+            const result = await quizService.delete(input.id);
+            invalidateByPrefix(staticCache, "quiz:");
+            return result;
         }),
 
     /**

@@ -1,9 +1,10 @@
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, useColorScheme as useRNColorScheme } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
+import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useAuth } from '@/hooks/use-auth';
 import { useHeaderOptions } from '@/hooks/use-header';
@@ -26,14 +27,13 @@ interface LevelItem {
 }
 
 export default function LevelsScreen() {
-  const colorScheme = useRNColorScheme();
-  const isDark = colorScheme === 'dark';
-  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const { colors: theme, isDark, special } = useCashouTheme();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
 
   useHeaderOptions({ showBackButton: false, title: 'Historique' });
 
+  const flatListRef = useRef<FlatList<LevelItem>>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [levels, setLevels] = useState<LevelItem[]>([]);
@@ -119,6 +119,17 @@ export default function LevelsScreen() {
         });
 
         setLevels(result);
+
+        // Scroll to the first unlocked non-completed level after render
+        const nextLevelIndex = result.findIndex((l) => l.status === 'current');
+        if (nextLevelIndex > 0) {
+          setTimeout(() => {
+            flatListRef.current?.scrollToIndex({
+              index: Math.max(0, nextLevelIndex - 2), // Show a couple completed levels above for context
+              animated: true,
+            });
+          }, 300);
+        }
       } catch (err) {
         console.error('Error fetching levels:', err);
         setError('Erreur lors du chargement des niveaux');
@@ -170,7 +181,7 @@ export default function LevelsScreen() {
             key={i}
             name={filled ? 'star' : 'star-outline'}
             size={12}
-            color={filled ? '#FFFFFF' : 'rgba(255,255,255,0.5)'}
+            color={filled ? special.white : 'rgba(255,255,255,0.5)'}
           />
         ))}
       </View>
@@ -182,7 +193,7 @@ export default function LevelsScreen() {
     if (item.hasActiveGame) {
       return (
         <View style={styles.statusIconCurrent}>
-          <Ionicons name="arrow-forward" size={18} color="#2B2C48" />
+          <Ionicons name="arrow-forward" size={18} color={isDark ? '#FFFFFF' : '#2B2C48'} />
         </View>
       );
     }
@@ -217,6 +228,7 @@ export default function LevelsScreen() {
       <TouchableOpacity
         style={[
           styles.levelRow,
+          { backgroundColor: isLocked ? (isDark ? '#2A2D45' : '#D9D9D9') : theme.card },
           isLocked && styles.levelRowLocked,
           hasActiveGame && styles.levelRowCurrent,
           isCurrentUnlockedNoGame && styles.levelRowUnlockedNoGame,
@@ -230,6 +242,7 @@ export default function LevelsScreen() {
           <Text
             style={[
               styles.levelName,
+              { color: isLocked ? (isDark ? 'rgba(255,255,255,0.4)' : '#2B2C48') : theme.text },
               isLocked && styles.levelNameLocked,
             ]}
           >
@@ -273,11 +286,17 @@ export default function LevelsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <FlatList
+        ref={flatListRef}
         data={levels}
         renderItem={renderLevelItem}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 16 }]}
         showsVerticalScrollIndicator={false}
+        onScrollToIndexFailed={(info) => {
+          setTimeout(() => {
+            flatListRef.current?.scrollToIndex({ index: info.index, animated: true });
+          }, 500);
+        }}
       />
     </View>
   );
@@ -323,27 +342,22 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
   },
-  // Completed level: white bg, no border
+  // Completed level: no border
   levelRowCompleted: {
-    backgroundColor: '#FFFFFF',
   },
-  // Current level with active game: white bg, orange border
+  // Current level with active game: orange border
   levelRowCurrent: {
-    backgroundColor: '#FFFFFF',
     borderColor: '#EFA667',
     borderWidth: 2,
   },
-  // Unlocked level without active game (next to play): white bg, blue border
+  // Unlocked level without active game (next to play): blue border
   levelRowUnlockedNoGame: {
-    backgroundColor: '#FFFFFF',
     borderColor: '#9CD6FF',
     borderWidth: 2,
   },
-  // Locked level: gray bg
+  // Locked level
   levelRowLocked: {
-    backgroundColor: '#D9D9D9',
   },
   levelInfo: {
     flexDirection: 'row',
@@ -354,10 +368,8 @@ const styles = StyleSheet.create({
   levelName: {
     fontSize: 20,
     fontFamily: 'Anybody',
-    color: '#2B2C48',
   },
   levelNameLocked: {
-    color: '#2B2C48',
   },
   starsContainer: {
     flexDirection: 'row',
@@ -376,7 +388,7 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: '#FFB472',
+    backgroundColor: CashouTheme.colors.light.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },

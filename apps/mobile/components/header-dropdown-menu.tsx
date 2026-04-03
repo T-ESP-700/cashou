@@ -6,7 +6,6 @@ import {
   Platform,
   Modal,
   Switch,
-  Alert,
 } from 'react-native';
 import * as Linking from 'expo-linking';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +18,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
+import { useAlert } from '@/hooks/use-alert';
 import { useThemePreference } from '@/hooks/use-theme-provider';
 
 interface HeaderDropdownMenuProps {
@@ -37,6 +37,7 @@ interface MenuItemConfig {
 
 export function HeaderDropdownMenu({ visible, onClose }: HeaderDropdownMenuProps) {
   const { colors, isDark, borderRadius } = useCashouTheme();
+  const { showAlert } = useAlert();
   const { toggleTheme } = useThemePreference();
   const insets = useSafeAreaInsets();
 
@@ -76,13 +77,13 @@ export function HeaderDropdownMenu({ visible, onClose }: HeaderDropdownMenuProps
     onClose();
     await WebBrowser.openBrowserAsync('https://cashou.app', {
       presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
-      controlsColor: isDark ? '#FFB472' : '#1C1E33',
-      toolbarColor: isDark ? '#1C1E33' : '#F4F4F9',
+      controlsColor: colors.accent,
+      toolbarColor: colors.background,
     });
   };
 
   const handleContact = () => {
-    Alert.alert(
+    showAlert(
       'Nous contacter',
       "Vous allez ouvrir votre application email pour contacter l'\u00e9quipe Cashou.",
       [
@@ -104,9 +105,9 @@ export function HeaderDropdownMenu({ visible, onClose }: HeaderDropdownMenuProps
 
   // --- Menu config ---
 
-  const menuBg = isDark ? '#23263A' : '#FFFFFF';
+  const menuBg = colors.card;
   const subtextColor = isDark ? 'rgba(255, 255, 255, 0.45)' : 'rgba(0, 0, 0, 0.4)';
-  const accentOrange = '#FFB472';
+  const accentOrange = colors.accent;
 
   const menuItems: MenuItemConfig[] = [
     {
@@ -157,7 +158,7 @@ export function HeaderDropdownMenu({ visible, onClose }: HeaderDropdownMenuProps
         <Switch
           value={item.switchValue}
           onValueChange={item.onPress}
-          trackColor={{ false: isDark ? '#3A3D55' : '#D1D5DB', true: accentOrange }}
+          trackColor={{ false: colors.borderLight, true: accentOrange }}
           thumbColor="#FFFFFF"
           style={{ transform: [{ scale: 0.72 }], marginRight: -4 }}
         />

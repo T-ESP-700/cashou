@@ -6,6 +6,8 @@ import {
     notificationUserIdSchema,
 } from "../schemas-zod/notification-schema.ts";
 import { router, publicProcedure } from "../index.ts";
+import { z } from "zod";
+import { prisma } from "@cashou/db-app";
 
 const notificationService = new NotificationService();
 
@@ -95,6 +97,24 @@ export const notificationRouter = router({
         .input(notificationIdSchema)
         .mutation(async ({ input }) => {
             return await notificationService.delete(input.id);
+        }),
+
+    /**
+     * Marque la notification GAME_END d'une partie comme lue.
+     * Empêche le polling de re-déclencher la navigation vers l'écran de jeu.
+     */
+    markGameEndAsRead: publicProcedure
+        .input(z.object({ gameInstanceId: z.number() }))
+        .mutation(async ({ input }) => {
+            await prisma.notification.updateMany({
+                where: {
+                    gameInstanceId: input.gameInstanceId,
+                    type: 'GAME_END',
+                    isOpened: false,
+                },
+                data: { isOpened: true },
+            });
+            return { success: true };
         }),
 });
 

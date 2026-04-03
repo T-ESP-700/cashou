@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { ActivityIndicator, View, Alert, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/use-auth';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAlert } from '@/hooks/use-alert';
 import { Card, Badge, Button } from '@/components/ui';
 import { trpcClient } from '@/lib/trpc';
 
@@ -17,7 +17,7 @@ interface UserLevelEntry {
 export function UserProfile() {
   const { user, isLoading, logout } = useAuth();
   const { colors, status, special, fonts, spacing, borderRadius, borderWidth, isDark } = useCashouTheme();
-  const insets = useSafeAreaInsets();
+  const { showAlert } = useAlert();
   const router = useRouter();
   const [userLevels, setUserLevels] = useState<UserLevelEntry[]>([]);
 
@@ -38,7 +38,7 @@ export function UserProfile() {
   }, [user?.id]);
 
   const handleLogout = () => {
-    Alert.alert(
+    showAlert(
       'Déconnexion',
       'Êtes-vous sûr de vouloir vous déconnecter ?',
       [
@@ -123,15 +123,16 @@ export function UserProfile() {
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{
-        padding: spacing.md,
-        gap: spacing.lg,
-        paddingBottom: insets.bottom + spacing.lg,
+        paddingHorizontal: spacing.md,
+        paddingTop: spacing.lg,
+        gap: 8,
+        paddingBottom: 100,
       }}
       showsVerticalScrollIndicator={false}
     >
       {/* Hero Header Section */}
       <Card
-        variant="elevated"
+        variant="default"
         padding="lg"
         style={{ marginTop: spacing.sm, paddingVertical: spacing.xl, alignItems: 'center' }}
       >
@@ -196,7 +197,7 @@ export function UserProfile() {
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
           {/* Points Card */}
           {(user.points !== undefined && user.points !== null && user.points > 0) && (
-            <Card variant="outlined" padding="md" style={{ flex: 1, alignItems: 'center', minWidth: '30%', gap: spacing.sm }}>
+            <Card variant="default" padding="md" style={{ flex: 1, alignItems: 'center', minWidth: '30%', gap: spacing.sm }}>
               <View
                 style={{
                   alignItems: 'center',
@@ -221,7 +222,7 @@ export function UserProfile() {
 
           {/* Current Streak Card */}
           {(user.currentStreak !== undefined && user.currentStreak > 0) && (
-            <Card variant="outlined" padding="md" style={{ flex: 1, alignItems: 'center', minWidth: '30%', gap: spacing.sm }}>
+            <Card variant="default" padding="md" style={{ flex: 1, alignItems: 'center', minWidth: '30%', gap: spacing.sm }}>
               <View
                 style={{
                   alignItems: 'center',
@@ -246,7 +247,7 @@ export function UserProfile() {
 
           {/* Best Streak Card */}
           {(user.maxStreak !== undefined && user.maxStreak > 0) && (
-            <Card variant="outlined" padding="md" style={{ flex: 1, alignItems: 'center', minWidth: '30%', gap: spacing.sm }}>
+            <Card variant="default" padding="md" style={{ flex: 1, alignItems: 'center', minWidth: '30%', gap: spacing.sm }}>
               <View
                 style={{
                   alignItems: 'center',
@@ -273,7 +274,7 @@ export function UserProfile() {
 
       {/* Level Progress Card */}
       {user.levelId && (
-        <Card variant="outlined" padding="lg" style={{ gap: spacing.md }}>
+        <Card variant="default" padding="lg" style={{ gap: spacing.md }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
               <Ionicons name="trending-up" size={20} color={colors.accent} />
@@ -308,7 +309,7 @@ export function UserProfile() {
 
       {/* Score: total stars and link to levels */}
       {userLevels.length > 0 && (
-        <Card variant="outlined" padding="lg" style={{ gap: spacing.md }}>
+        <Card variant="default" padding="lg" style={{ gap: spacing.md }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
             <Ionicons name="star" size={24} color={special.gold} />
             <Text style={{ fontSize: 18, fontFamily: fonts.subheading, color: colors.text }}>
@@ -342,7 +343,7 @@ export function UserProfile() {
 
       {/* Achievements Section */}
       {hasAchievementsContent() && (
-        <Card variant="outlined" padding="lg" style={{ gap: spacing.md }}>
+        <Card variant="default" padding="lg" style={{ gap: spacing.md }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
             <Ionicons name="medal" size={24} color={colors.accent} />
             <Text style={{ fontSize: 18, fontFamily: fonts.subheading, color: colors.text }}>
@@ -449,7 +450,7 @@ export function UserProfile() {
 
       {/* Account Info Card */}
       {hasAccountInfoContent() && (
-        <Card variant="outlined" padding="lg" style={{ gap: spacing.md }}>
+        <Card variant="default" padding="lg" style={{ gap: spacing.md }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs }}>
             <Ionicons name="person-circle-outline" size={24} color={colors.text} />
             <Text style={{ fontSize: 18, fontFamily: fonts.subheading, color: colors.text }}>
