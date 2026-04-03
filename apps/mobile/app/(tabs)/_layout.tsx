@@ -129,22 +129,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="wallet"
-        options={{
-          title: "Wallet",
-          tabBarIcon: ({ focused }) => renderTabIcon(TabHome, focused),
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="learn"
-        options={{
-          title: "Learn",
-          tabBarIcon: ({ focused }) => renderTabIcon(TabDico, focused),
-          href: null,
-        }}
-      />
-      <Tabs.Screen
         name="dico"
         options={{
           title: "Dico",
