@@ -31,16 +31,7 @@ export function EventNotificationModal() {
 
     const gameInstanceId = eventNotification.gameInstanceId;
     clearEventNotification();
-
-    if (isOnCurrentScreen) {
-      setPendingEventCompletion(gameInstanceId);
-    } else {
-      setPendingEventCompletion(gameInstanceId);
-      router.push({
-        pathname: '/game/current',
-        params: { gameId: gameInstanceId.toString() },
-      });
-    }
+    setPendingEventCompletion(gameInstanceId);
   };
 
   const handleGoToAssets = () => {
