@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { View, Alert } from "react-native";
+import { View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { Button, Input } from "@/components/ui";
 import { tokenStorage } from "@/lib/token-storage";
 import { useCashouTheme } from "@/hooks/use-cashou-theme";
+import { useAlert } from "@/hooks/use-alert";
 import { AUTH_URL } from "@/lib/api-config";
 
 // ─── Types ────────────────────────────────────────────────────────
@@ -78,6 +79,7 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
     const [errors, setErrors] = useState<FormErrors>({});
     const [isLoading, setIsLoading] = useState(false);
     const { colors, spacing } = useCashouTheme();
+    const { showAlert } = useAlert();
 
     function handleUsernameChange(text: string) {
         const cleaned = text.toLowerCase().replace(/[^a-z0-9_]/g, "");
@@ -124,7 +126,7 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
             const data = await response.json();
 
             if (!response.ok || data.error) {
-                Alert.alert(
+                showAlert(
                     "Inscription échouée",
                     data.error?.message || "Impossible de créer le compte",
                 );
@@ -143,7 +145,7 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
                 error instanceof TypeError &&
                 error.message === "Network request failed"
             ) {
-                Alert.alert(
+                showAlert(
                     "Erreur de connexion",
                     "Impossible de joindre le serveur. Vérifiez :\n\n" +
                         "• Le backend est démarré\n" +
@@ -151,7 +153,7 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
                         "• L'URL API est correcte dans .env",
                 );
             } else {
-                Alert.alert(
+                showAlert(
                     "Erreur",
                     "Une erreur est survenue lors de l'inscription",
                 );

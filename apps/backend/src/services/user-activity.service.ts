@@ -2,6 +2,8 @@
 import defaultPrisma from '../database.ts';
 import type { PrismaClient } from '@prisma/client';
 
+const LAST_ACTIVITY_THROTTLE_MS = 60 * 1000;
+
 export class UserActivityService {
   private prisma: PrismaClient;
 
@@ -19,8 +21,6 @@ export class UserActivityService {
       const now = new Date();
       const today = new Date(now);
       today.setHours(0, 0, 0, 0);
-      const todayEnd = new Date(today);
-      todayEnd.setHours(23, 59, 59, 999);
 
       // Récupérer l'utilisateur avec lastActivity
       const user = await this.prisma.user.findUnique({
@@ -50,8 +50,12 @@ export class UserActivityService {
       const lastActivityDay = new Date(lastActivityDate);
       lastActivityDay.setHours(0, 0, 0, 0);
 
-      // Si c'est la date du jour → mettre à jour avec la date/heure actuelle
       if (lastActivityDay.getTime() === today.getTime()) {
+        // Si l'activité du jour a déjà été touchée très récemment, éviter un UPDATE inutile.
+        if (now.getTime() - lastActivityDate.getTime() < LAST_ACTIVITY_THROTTLE_MS) {
+          return;
+        }
+
         await this.prisma.user.update({
           where: { id: userId },
           data: { lastActivity: now },
@@ -137,4 +141,3 @@ export function getUserActivityService(): UserActivityService {
   }
   return userActivityServiceInstance;
 }
-

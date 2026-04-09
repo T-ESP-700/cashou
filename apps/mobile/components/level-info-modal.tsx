@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,8 @@ import {
   Dimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
-  TouchableWithoutFeedback,
+  Pressable,
+  Animated,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import Svg, { Path } from 'react-native-svg';
@@ -55,10 +56,38 @@ export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScre
   const backdropWidth = Math.min((screenWidth - OVERLAY_PH * 2) * BACKDROP_RATIO, BACKDROP_MAX_WIDTH);
   const pageWidth = backdropWidth - BACKDROP_PADDING * 2;
 
+  // Height animation
+  const pageHeights = useRef<number[]>([0, 0]);
+  const animatedHeight = useRef(new Animated.Value(0)).current;
+  const [measured, setMeasured] = useState(false);
+
+  const animateToPage = useCallback((page: number) => {
+    const targetHeight = pageHeights.current[page];
+    if (targetHeight > 0) {
+      Animated.spring(animatedHeight, {
+        toValue: targetHeight,
+        useNativeDriver: false,
+        tension: 65,
+        friction: 12,
+      }).start();
+    }
+  }, [animatedHeight]);
+
+  const handlePageLayout = useCallback((pageIndex: number, height: number) => {
+    if (height <= 0) return;
+    pageHeights.current[pageIndex] = height;
+    // Once page 0 is measured, set height instantly and enable animated mode
+    if (pageIndex === 0 && !measured) {
+      animatedHeight.setValue(height);
+      setMeasured(true);
+    }
+  }, [animatedHeight, measured]);
+
   // Reset to first page when modal opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (visible) {
       setCurrentPage(0);
+      setMeasured(false);
       scrollRef.current?.scrollTo({ x: 0, animated: false });
     }
   }, [visible]);
@@ -82,7 +111,10 @@ export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScre
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const page = Math.round(e.nativeEvent.contentOffset.x / pageWidth);
-    setCurrentPage(page);
+    if (page !== currentPage) {
+      setCurrentPage(page);
+      animateToPage(page);
+    }
   };
 
   const isLastPage = currentPage === TOTAL_PAGES - 1;
@@ -93,6 +125,7 @@ export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScre
       const nextPage = currentPage + 1;
       scrollRef.current?.scrollTo({ x: nextPage * pageWidth, animated: true });
       setCurrentPage(nextPage);
+      animateToPage(nextPage);
     } else {
       onClose();
     }
@@ -127,14 +160,13 @@ export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScre
         tint={isDark ? 'dark' : 'light'}
         style={styles.levelInfoBlur}
       >
-        <TouchableWithoutFeedback onPress={onClose}>
-          <View style={styles.levelInfoOverlay}>
-            <View
-              onStartShouldSetResponder={() => true}
-              onResponderRelease={(e) => e.stopPropagation()}
-              style={[styles.levelInfoCardBackdrop, { backgroundColor: colors.secondary }]}
-            >
-                <View style={[styles.levelInfoCard, { backgroundColor: colors.card, shadowColor: colors.border }]}>
+        <Pressable style={styles.levelInfoOverlay} onPress={onClose}>
+          <View
+            onStartShouldSetResponder={() => true}
+            style={[styles.levelInfoCardBackdrop, { backgroundColor: colors.secondary }]}
+          >
+              <View style={[styles.levelInfoCard, { backgroundColor: colors.card, shadowColor: colors.border }]}>
+                <Animated.View style={measured ? { height: animatedHeight, overflow: 'hidden' } : undefined}>
                   <ScrollView
                     ref={scrollRef}
                     horizontal
@@ -142,9 +174,13 @@ export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScre
                     showsHorizontalScrollIndicator={false}
                     onMomentumScrollEnd={handleScroll}
                     style={styles.levelInfoScrollView}
+                    contentContainerStyle={{ alignItems: 'flex-start' }}
                   >
                     {/* Page 0: Description */}
-                    <View style={[styles.levelInfoPage, { width: pageWidth }]}>
+                    <View
+                      style={[styles.levelInfoPage, { width: pageWidth }]}
+                      onLayout={(e) => handlePageLayout(0, e.nativeEvent.layout.height)}
+                    >
                       {/* Title */}
                       <Text style={[styles.levelInfoTitle, { color: colors.text }]}>
                         Niveau {level.number}
@@ -178,7 +214,10 @@ export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScre
                     </View>
 
                     {/* Page 1: Goals */}
-                    <View style={[styles.levelInfoPage, { width: pageWidth }]}>
+                    <View
+                      style={[styles.levelInfoPage, { width: pageWidth }]}
+                      onLayout={(e) => handlePageLayout(1, e.nativeEvent.layout.height)}
+                    >
                       {/* Title */}
                       <Text style={[styles.levelInfoTitle, { color: colors.text }]}>
                         Objectifs
@@ -216,26 +255,25 @@ export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScre
                       })}
                     </View>
                   </ScrollView>
+                </Animated.View>
 
-                  {/* Page Indicator */}
-                  <View style={styles.levelInfoDots}>
-                    <View style={[styles.levelInfoDot, { backgroundColor: colors.progressBarBackground }, currentPage === 0 && { backgroundColor: colors.accent }]} />
-                    <View style={[styles.levelInfoDot, { backgroundColor: colors.progressBarBackground }, currentPage === 1 && { backgroundColor: colors.accent }]} />
-                  </View>
+                {/* Page Indicator */}
+                <View style={styles.levelInfoDots}>
+                  <View style={[styles.levelInfoDot, { backgroundColor: colors.progressBarBackground }, currentPage === 0 && { backgroundColor: colors.accent }]} />
+                  <View style={[styles.levelInfoDot, { backgroundColor: colors.progressBarBackground }, currentPage === 1 && { backgroundColor: colors.accent }]} />
+                </View>
 
-                  {/* Button */}
-                  <View style={styles.levelInfoActions}>
-                    <ActionPillButton
-                      label={buttonLabel}
-                      customIcon={buttonIcon}
-                      onPress={handleButtonPress}
-                      style={{ flex: 0, maxWidth: undefined, paddingHorizontal: 10 }}
-                    />
-                  </View>
+                {/* Button */}
+                <View style={styles.levelInfoActions}>
+                  <ActionPillButton
+                    label={buttonLabel}
+                    customIcon={buttonIcon}
+                    onPress={handleButtonPress}
+                  />
                 </View>
               </View>
             </View>
-        </TouchableWithoutFeedback>
+        </Pressable>
       </BlurView>
     </Modal>
   );

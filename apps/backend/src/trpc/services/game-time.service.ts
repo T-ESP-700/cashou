@@ -47,6 +47,11 @@ export class GameTimeService {
    * Uses createdAt as game start time
    */
   calculateElapsedTime(gameInstance: GameInstanceWithLevel): number {
+    // If paused without pausedAt (created in preparation mode, never started), elapsed = 0
+    if (gameInstance.isPaused && !gameInstance.pausedAt) {
+      return 0;
+    }
+
     const now = new Date();
     const startTime = new Date(gameInstance.createdAt);
 
@@ -201,6 +206,11 @@ export class GameTimeService {
     gameInstance: GameInstanceWithLevel,
     sinceDate: Date
   ): number {
+    // If paused without pausedAt (never started), elapsed = 0
+    if (gameInstance.isPaused && !gameInstance.pausedAt) {
+      return 0;
+    }
+
     const now = new Date();
     const startTime = new Date(sinceDate);
     const gameStartTime = new Date(gameInstance.createdAt);

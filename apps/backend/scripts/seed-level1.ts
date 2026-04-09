@@ -102,7 +102,7 @@ async function main() {
   const livretLED = await prisma.asset.upsert({
     where: { symbol: 'LIVRET_DDS' },
     update: {
-      title: 'Livret de Développement Durable et Solidaire',
+      title: 'Livret DDS',
       fieldId: null,
       rate: 1.7,
       description: 'Livret d\'épargne sécurisé dédié au financement de projets responsables et durables. Rendement stable et légèrement supérieur au Livret A dans l\'univers Cashou. Idéal pour initier le joueur à la notion d\'impact positif tout en conservant une gestion prudente et sans risque.',
@@ -112,7 +112,7 @@ async function main() {
       minAmount: 10     // Montant minimum de dépôt
     },
     create: {
-      title: 'Livret de Développement Durable et Solidaire',
+      title: 'Livret DDS',
       symbol: 'LIVRET_DDS',
       fieldId: null,
       rate: 1.7,

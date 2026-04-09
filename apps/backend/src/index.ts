@@ -5,6 +5,11 @@ import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 import { cors } from './middleware/cors';
 import { getJobQueue, stopJobQueue } from './lib/job-queue';
 import { startGameEventWorkers } from './workers/game-event.worker';
+import { prisma } from './database';
+import { canUserJoinGame, leaveGame, switchGameRoom, sendToSocket, startTicker, stopTicker } from './ws/game-socket';
+import { buildGameStateSnapshot } from './ws/game-state-snapshot';
+import type { GameSocketData } from './ws/game-socket';
+import type { ServerWebSocket } from 'bun';
 
 // Server instance variable to track if server is already running
 let serverInstance: ReturnType<typeof Bun.serve> | null = null;
@@ -20,7 +25,8 @@ async function startServer() {
     console.log('Initializing job queue...');
     await getJobQueue();
     await startGameEventWorkers();
-    console.log('Job queue and workers initialized successfully');
+    startTicker(prisma);
+    console.log('Job queue, workers, and WebSocket ticker initialized successfully');
   } catch (error) {
     console.error('Failed to initialize job queue:', error);
     // Don't fail server startup, but log the error
@@ -29,7 +35,7 @@ async function startServer() {
   serverInstance = Bun.serve({
     port: 3000,
     hostname: '0.0.0.0', // Listen on all network interfaces
-    async fetch(req) {
+    async fetch(req, server) {
       const url = new URL(req.url);
 
       // CORS headers for all requests
@@ -38,6 +44,47 @@ async function startServer() {
       // Handle CORS preflight requests
       if (req.method === 'OPTIONS') {
         return new Response(null, { headers: corsHeaders });
+      }
+
+      // WebSocket upgrade for /ws/game
+      if (url.pathname === '/ws/game') {
+        const token = url.searchParams.get('token');
+        if (!token) {
+          return new Response(JSON.stringify({ error: 'Missing token' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Validate token against session table (same logic as tRPC context)
+        const sessionData = await prisma.session.findUnique({
+          where: { token },
+          include: { user: true },
+        });
+
+        if (!sessionData || sessionData.expiresAt <= new Date()) {
+          return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const upgraded = server.upgrade(req, {
+          data: {
+            userId: sessionData.user.id,
+            gameInstanceId: '',
+          },
+        });
+
+        if (upgraded) {
+          // Bun convention: return undefined on successful upgrade
+          return undefined as unknown as Response;
+        }
+
+        return new Response('WebSocket upgrade failed', {
+          status: 500,
+          headers: corsHeaders,
+        });
       }
 
       // Health check endpoint
@@ -111,6 +158,66 @@ async function startServer() {
       // Default response
       return new Response('Cashou Backend API', { headers: corsHeaders });
     },
+    websocket: {
+      open(_ws: ServerWebSocket<GameSocketData>) {
+        // No-op: wait for client to send a "join" message
+      },
+      message(ws: ServerWebSocket<GameSocketData>, msg: string | Buffer) {
+        void (async () => {
+          try {
+            const data = JSON.parse(msg as string);
+            if (data.type === 'join' && data.payload?.gameInstanceId) {
+              const requestedGameInstanceId = String(data.payload.gameInstanceId);
+              const canJoin = await canUserJoinGame(
+                ws.data.userId,
+                requestedGameInstanceId,
+                prisma
+              );
+
+              if (!canJoin) {
+                ws.send(JSON.stringify({
+                  type: 'game:error',
+                  payload: { message: 'Unauthorized game access' },
+                }));
+                ws.close();
+                return;
+              }
+
+              switchGameRoom(ws, requestedGameInstanceId);
+
+              // Send immediate game:state snapshot to the joining client
+              try {
+                const numericId = Number(requestedGameInstanceId);
+                if (Number.isInteger(numericId) && numericId > 0) {
+                  const gameInstance = await prisma.gameInstance.findUnique({
+                    where: { id: numericId },
+                    include: { level: true },
+                  });
+                  if (gameInstance) {
+                    const snapshot = buildGameStateSnapshot(gameInstance);
+                    if (snapshot) {
+                      sendToSocket(ws, { type: 'game:state', payload: snapshot });
+                    }
+                  } else {
+                    sendToSocket(ws, {
+                      type: 'game:error',
+                      payload: { message: 'Game instance not found' },
+                    });
+                  }
+                }
+              } catch (err) {
+                console.error('[WS] Error sending initial game:state:', err);
+              }
+            }
+          } catch {
+            // Ignore malformed messages
+          }
+        })();
+      },
+      close(ws: ServerWebSocket<GameSocketData>) {
+        leaveGame(ws);
+      },
+    },
   });
 
   console.log(`Backend listening on http://localhost:${serverInstance.port}`);
@@ -123,6 +230,8 @@ async function startServer() {
 // Graceful shutdown handler
 async function gracefulShutdown(signal: string) {
   console.log(`Received ${signal}, shutting down gracefully...`);
+
+  stopTicker();
 
   try {
     await stopJobQueue();

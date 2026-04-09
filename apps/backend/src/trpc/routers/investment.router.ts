@@ -7,6 +7,7 @@ import {
   portfolioSchema,
   holdingInterestsSchema,
 } from "../schemas-zod/investment-schema.ts";
+import { gameCache, invalidateByPrefix } from "../../lib/cache.ts";
 
 const t = initTRPC.create();
 const investmentService = new InvestmentService();
@@ -19,7 +20,10 @@ export const investmentRouter = t.router({
   buy: t.procedure
     .input(buySchema)
     .mutation(async ({ input }) => {
-      return await investmentService.buy(input);
+      const result = await investmentService.buy(input);
+      invalidateByPrefix(gameCache, `portfolio:${input.gameInstanceId}`);
+      invalidateByPrefix(gameCache, `snapshot:${input.gameInstanceId}`);
+      return result;
     }),
 
   /**
@@ -30,7 +34,10 @@ export const investmentRouter = t.router({
   sell: t.procedure
     .input(sellSchema)
     .mutation(async ({ input }) => {
-      return await investmentService.sell(input);
+      const result = await investmentService.sell(input);
+      invalidateByPrefix(gameCache, `portfolio:${input.gameInstanceId}`);
+      invalidateByPrefix(gameCache, `snapshot:${input.gameInstanceId}`);
+      return result;
     }),
 
   /**
@@ -54,6 +61,16 @@ export const investmentRouter = t.router({
     }),
 
   /**
+   * Récupère un snapshot léger du portefeuille (totalValue, walletBalance, holdings résumés)
+   * Endpoint: GET /trpc/investment.getPortfolioSnapshot
+   */
+  getPortfolioSnapshot: t.procedure
+    .input(portfolioSchema)
+    .query(async ({ input }) => {
+      return await investmentService.getPortfolioSnapshot(input.walletId, input.gameInstanceId);
+    }),
+
+  /**
    * Applique les intérêts à tous les holdings d'une game instance
    * (utile pour la fin du niveau)
    * Endpoint: POST /trpc/investment.applyInterests
@@ -64,6 +81,8 @@ export const investmentRouter = t.router({
     }))
     .mutation(async ({ input }) => {
       await investmentService.applyInterestsToAllHoldings(input.gameInstanceId);
+      invalidateByPrefix(gameCache, `portfolio:${input.gameInstanceId}`);
+      invalidateByPrefix(gameCache, `snapshot:${input.gameInstanceId}`);
       return { success: true };
     }),
 });

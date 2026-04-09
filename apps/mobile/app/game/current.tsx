@@ -1,16 +1,19 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
+import { useAlert } from '@/hooks/use-alert';
 import { trpcClient } from '@/lib/trpc';
+import { cachedQuery, invalidateCache } from '../../lib/query-cache';
+import { useGameRealtime } from '@/hooks/use-game-realtime';
 import { useAuth } from '@/hooks/use-auth';
-import { useHeader } from '@/hooks/use-header';
+import { useHeader, useGameHeaderSubtitle } from '@/hooks/use-header';
 import { useNotifications } from '@/hooks/use-notifications';
 import { LevelInfoModal } from '@/components/level-info-modal';
 import { ActionPillButton, GoalStarIcon } from '@/components/ui';
@@ -106,6 +109,7 @@ interface EndGameResult {
 // Constantes pour l'animation de la date
 const GAME_START_DATE = new Date('2024-01-01');
 const UPDATE_INTERVAL_MS = 1000;
+const PORTFOLIO_REFRESH_INTERVAL_MS = 3_000;
 
 // Constantes pour l'animation visuelle de la date
 const DAY_ANIMATION_MS = 30; // Vitesse par jour (30ms = très rapide)
@@ -114,10 +118,12 @@ const MONTH_PAUSE_MS = 150; // Pause supplémentaire au changement de mois
 export default function GameCurrentScreen() {
   const { levelId, gameId } = useLocalSearchParams<{ levelId: string; gameId?: string }>();
   const { colors: theme, isDark } = useCashouTheme();
+  const { showAlert } = useAlert();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { pendingEventCompletion, setPendingEventCompletion, isOnAssetsScreen, setActiveGameInstanceId, eventNotification } = useNotifications();
+  const { pendingEventCompletion, setPendingEventCompletion, isOnAssetsScreen, setActiveGameInstanceId, eventNotification, triggerPendingEventCheck, shouldOpenAssetsSheet, setShouldOpenAssetsSheet } = useNotifications();
   const { setOptions: setHeaderOptions } = useHeader();
+  const { state: realtimeState, setGameInstanceId: setRealtimeGameInstanceId, formattedGameDate } = useGameRealtime();
 
   const [levelData, setLevelData] = useState<LevelData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -129,6 +135,7 @@ export default function GameCurrentScreen() {
   const [isResetting, setIsResetting] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [holdings, setHoldings] = useState<HoldingData[]>([]);
+  const [holdingValues, setHoldingValues] = useState<Record<number, number>>({});
   const [showNoInvestmentModal, setShowNoInvestmentModal] = useState(false);
   const [isEndingGame, setIsEndingGame] = useState(false);
   const [showEndGameModal, setShowEndGameModal] = useState(false);
@@ -142,32 +149,54 @@ export default function GameCurrentScreen() {
   const [impactCoefs, setImpactCoefs] = useState<Record<number, number>>({});
 
   // Assets bottom sheet state
-  const assetsSheetRef = useRef<BottomSheet>(null);
+  const assetsSheetRef = useRef<BottomSheetModal>(null);
+  const skipResumeOnCloseRef = useRef(false); // Don't resume game when closing sheet to navigate to asset-detail
+  const navigatedToAssetDetailRef = useRef(false); // Track if we navigated away to asset-detail
   const [allAssets, setAllAssets] = useState<any[]>([]);
   const [assetsLoading, setAssetsLoading] = useState(false);
   const [assetsSearchQuery, setAssetsSearchQuery] = useState('');
   const [selectedSubmarketId, setSelectedSubmarketId] = useState<number | null>(null);
+  const [isAssetsSheetOpen, setIsAssetsSheetOpen] = useState(false); // Track sheet visibility to freeze animations
 
   const [gameDate, setGameDate] = useState(GAME_START_DATE);
   const [gameTimeState, setGameTimeState] = useState<GameTimeState | null>(null);
   const [isAnimating, setIsAnimating] = useState(false); // Animation en cours
   const [targetDate, setTargetDate] = useState<Date | null>(null); // Date cible pour l'animation
   const [isGameEnded, setIsGameEnded] = useState(false); // Partie terminée
+  const [gameHasBeenStarted, setGameHasBeenStarted] = useState(false); // Le jeu a été démarré au moins une fois via start()
+  const isAwaitingEventResume = pendingEventCompletion === gameInstanceId;
 
-  // Game has started if we have a game instance ID AND the timer is running (not paused)
-  const hasGameStarted = gameInstanceId !== null && !isPaused;
+  // Game has started if start() was called at least once (not just created in preparation mode)
+  const hasGameStarted = gameInstanceId !== null && gameHasBeenStarted;
 
-  // Game is in preparation mode (instance created but not yet started)
-  const isInPreparation = gameInstanceId !== null && isPaused && !isGameEnded;
+  // Game is in preparation mode (instance created but not yet started via "Démarrer")
+  const isInPreparation = gameInstanceId !== null && !gameHasBeenStarted && !isGameEnded;
 
   // Stats simulées pour la démo (à remplacer par de vraies données)
   const [stats, setStats] = useState<GameStats>({
-    level: 1,
+    level: 0, // 0 = not yet loaded, avoids "Niveau 1" → "Niveau N" flicker
     cash: 1000,
     timePassed: '0m',
     successes: 0,
   });
 
+  // === Realtime provider sync ===
+  // Register the gameInstanceId with the centralized realtime provider.
+  // No cleanup — the provider lives in game/_layout and must keep
+  // the socket alive while navigating between game/* screens.
+  useEffect(() => {
+    if (gameInstanceId) {
+      setRealtimeGameInstanceId(gameInstanceId);
+    }
+  }, [gameInstanceId, setRealtimeGameInstanceId]);
+
+  // Sync game date from realtime provider (server ticks)
+  // Only update if the provider has a date and we're not in the middle of a date animation
+  useEffect(() => {
+    if (realtimeState.gameDate && !isAnimating) {
+      setGameDate(realtimeState.gameDate);
+    }
+  }, [realtimeState.gameDate, isAnimating]);
 
   // Calcul de la date de fin de jeu (date de départ + durée)
   const calculateEndDate = useCallback((duration: number): Date => {
@@ -185,6 +214,13 @@ export default function GameCurrentScreen() {
 
     let elapsedSeconds = Math.floor((now - startTime) / 1000);
     elapsedSeconds -= timeState.totalPausedDuration;
+
+    // Soustraire aussi la durée de pause en cours (même logique que calculateGameDate)
+    if (timeState.isPaused && timeState.pausedAt) {
+      const currentPauseDuration = Math.floor((now - timeState.pausedAt.getTime()) / 1000);
+      elapsedSeconds -= currentPauseDuration;
+    }
+
     elapsedSeconds = Math.max(0, elapsedSeconds);
 
     const totalDurationSeconds = (timeState.duration / timeState.speed) * 86400;
@@ -197,8 +233,25 @@ export default function GameCurrentScreen() {
 
     try {
       setIsEndingGame(true);
-      console.log('Game time elapsed, ending game...');
+      console.log('Game time elapsed, checking for pending events before ending...');
 
+      // Safety net: check if the backend has a pending event we missed
+      // This prevents ending the game while an event should be displayed
+      try {
+        const pendingEvent = await trpcClient.auth.getPendingEvent.query();
+        if (pendingEvent) {
+          console.log('[GameCurrentScreen] Found pending event before game end, showing it instead:', pendingEvent);
+          setIsEndingGame(false);
+          setIsPaused(true);
+          // Let the notification system handle it — the poll will pick it up on next cycle
+          return;
+        }
+      } catch (checkErr) {
+        // If the check fails, proceed with ending the game
+        console.warn('[GameCurrentScreen] Could not check for pending events:', checkErr);
+      }
+
+      console.log('No pending events, ending game...');
       const result = await trpcClient.gameInstance.endGame.mutate({ id: gameInstanceId }) as EndGameResult;
 
       setEndGameResult(result);
@@ -206,11 +259,22 @@ export default function GameCurrentScreen() {
       setShowEndGameModal(true);
     } catch (err) {
       console.error('Error ending game:', err);
-      Alert.alert('Erreur', 'Impossible de terminer la partie');
+      showAlert('Erreur', 'Impossible de terminer la partie');
     } finally {
       setIsEndingGame(false);
     }
   }, [gameInstanceId, isEndingGame, isGameEnded]);
+
+  // Sync isPaused/isEnded from realtime provider — only if the provider's game matches ours
+  useEffect(() => {
+    if (!realtimeState.lastServerSyncAt || !gameInstanceId) return;
+    if (realtimeState.gameInstanceId !== gameInstanceId) return;
+
+    setIsPaused(realtimeState.isPaused);
+    if (realtimeState.isEnded && !isGameEnded) {
+      handleGameEnd();
+    }
+  }, [realtimeState.isPaused, realtimeState.isEnded, realtimeState.lastServerSyncAt, realtimeState.gameInstanceId, gameInstanceId, isGameEnded, handleGameEnd]);
 
   // Calcul de la date de jeu (purement local, aucun appel backend)
   const calculateGameDate = useCallback((timeState: GameTimeState): Date => {
@@ -249,11 +313,33 @@ export default function GameCurrentScreen() {
     return gameDate;
   }, [calculateEndDate]);
 
-  // Helper function to load holdings for a game instance
-  const loadHoldings = async (gInstanceId: number) => {
+  // Helper function to load holdings + price-based values for a game instance
+  const loadHoldings = async (gInstanceId: number, wId?: number | null) => {
+    const effectiveWalletId = wId ?? walletId;
     try {
       const holdingsData = await trpcClient.holding.getByGameInstance.query({ gameInstanceId: gInstanceId });
       setHoldings((holdingsData as HoldingData[]) ?? []);
+
+      // Load price-based portfolio values if wallet is available
+      if (effectiveWalletId) {
+        try {
+          const portfolio = await cachedQuery(
+            `portfolio:${gInstanceId}`,
+            () => trpcClient.investment.getPortfolio.query({
+              walletId: effectiveWalletId,
+              gameInstanceId: gInstanceId,
+            }),
+            5_000,
+          ) as { items: { holding: { assetId: number | null }; totalValue: number }[] };
+          const values: Record<number, number> = {};
+          for (const item of portfolio.items) {
+            values[item.holding.assetId ?? 0] = Math.round(item.totalValue);
+          }
+          setHoldingValues(values);
+        } catch (e) {
+          console.error('Error fetching portfolio values:', e);
+        }
+      }
     } catch (err) {
       console.error('Error fetching holdings:', err);
       setHoldings([]);
@@ -373,6 +459,18 @@ export default function GameCurrentScreen() {
               setGameInstanceId(gameInstance.id);
               setIsPaused(gameInstance.isPaused ?? true);
               setIsGameEnded(gameInstance.isEnded ?? false);
+              // Si le jeu tourne, a avancé dans les events, ou a un event en cours, il a déjà été démarré
+              setGameHasBeenStarted(
+                !gameInstance.isPaused || (gameInstance.currentEventIndex ?? 0) > 0 || !!gameInstance.actionRequired
+              );
+
+              // Restore pendingEventCompletion if backend has actionRequired=true
+              // This handles the case where the user navigates to /current from a notification
+              // or the component remounts after the event modal was dismissed
+              if (gameInstance.actionRequired && !pendingEventCompletion) {
+                console.log('[GameCurrentScreen] 🔄 Restoring pendingEventCompletion on initial load from actionRequired');
+                setPendingEventCompletion(gameInstance.id);
+              }
 
               // If we have level data from the gameInstance, fetch full level summary (includes goals)
               if (gameInstance.level) {
@@ -409,9 +507,15 @@ export default function GameCurrentScreen() {
               }
 
               // Load the wallet associated with this instance
+              let loadedWalletId: number | null = null;
               try {
-                const wallets = await trpcClient.wallet.getByGameInstance.query({ gameInstanceId: gameInstance.id });
+                const wallets = await cachedQuery(
+                  `wallet:${gameInstance.id}`,
+                  () => trpcClient.wallet.getByGameInstance.query({ gameInstanceId: gameInstance.id }),
+                  5_000,
+                ) as { id: number; amount: number }[] | null;
                 if (wallets && wallets.length > 0) {
+                  loadedWalletId = wallets[0].id;
                   setWalletId(wallets[0].id);
                   await loadWalletBalance(wallets[0].id);
                 }
@@ -419,8 +523,8 @@ export default function GameCurrentScreen() {
                 console.error('Error fetching wallet:', walletErr);
               }
 
-              // Load holdings
-              await loadHoldings(gameInstance.id);
+              // Load holdings (pass walletId directly since setState is async)
+              await loadHoldings(gameInstance.id, loadedWalletId);
 
               // Initialize game time state
               if (gameInstance.level) {
@@ -512,7 +616,7 @@ export default function GameCurrentScreen() {
             const activeGame = await trpcClient.gameInstance.getActiveByUser.query({ userId: user.id });
             if (activeGame) {
               const confirmed = await new Promise<boolean>((resolve) => {
-                Alert.alert(
+                showAlert(
                   'Partie en cours',
                   'Lancer cette partie va clôturer la partie en cours sans gagner de récompenses. Voulez-vous continuer ?',
                   [
@@ -543,12 +647,25 @@ export default function GameCurrentScreen() {
   }, [levelId, gameId, calculateEndDate, user]);
 
   // Animation visuelle de la date (quand on revient sur une partie)
+  // Only updates React state on month boundaries to avoid excessive re-renders.
+  // For large date ranges (>60 days), skips animation entirely.
   useEffect(() => {
     if (!isAnimating || !targetDate) return;
 
+    const target = new Date(targetDate);
+    const start = new Date(GAME_START_DATE);
+
+    // Skip animation for large date ranges to avoid excessive state updates
+    const totalDays = Math.floor((target.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    if (totalDays > 60) {
+      setGameDate(target);
+      setIsAnimating(false);
+      setTargetDate(null);
+      return;
+    }
+
     let animationFrame: ReturnType<typeof setTimeout> | null = null;
     let currentDate = new Date(GAME_START_DATE);
-    const target = new Date(targetDate);
 
     const animate = () => {
       if (currentDate >= target) {
@@ -567,7 +684,11 @@ export default function GameCurrentScreen() {
 
       // Avancer d'un jour
       currentDate = nextDate;
-      setGameDate(new Date(currentDate));
+
+      // Only update React state on month boundaries or at the end to limit re-renders
+      if (isMonthChange || currentDate >= target) {
+        setGameDate(new Date(currentDate));
+      }
 
       // Pause plus longue au changement de mois
       const delay = isMonthChange ? MONTH_PAUSE_MS : DAY_ANIMATION_MS;
@@ -621,6 +742,22 @@ export default function GameCurrentScreen() {
     }
   }, [eventNotification, gameInstanceId]);
 
+  // Quand la modale d'event demande d'ouvrir le sheet assets,
+  // on garde la partie en pause jusqu'à ce que le joueur clique explicitement sur "Reprendre".
+  useEffect(() => {
+    if (!shouldOpenAssetsSheet) return;
+    // Attendre que gameInstanceId et walletId soient initialisés avant d'ouvrir le sheet
+    if (!gameInstanceId || !walletId) return;
+    setShouldOpenAssetsSheet(false);
+    setIsAssetsSheetOpen(true); // Freeze date animation immediately
+
+    const openAssetsFromEvent = async () => {
+      handleAddAsset();
+    };
+
+    openAssetsFromEvent();
+  }, [shouldOpenAssetsSheet, gameInstanceId, walletId]);
+
   // Fetch triggered impacts on mount and when eventNotification changes
   useEffect(() => {
     if (!gameInstanceId) return;
@@ -629,19 +766,85 @@ export default function GameCurrentScreen() {
 
   // Calculate initial game date whenever gameTimeState changes
   // This ensures the correct date is shown even when paused
+  // Skip during animation to avoid fighting with the animation effect
   useEffect(() => {
-    if (!gameTimeState) return;
+    if (!gameTimeState || isAnimating) return;
 
     // Calculate and set the current game date
     const currentDate = calculateGameDate(gameTimeState);
     setGameDate(currentDate);
     console.log('[GameCurrentScreen] 📅 Initial date calculated:', currentDate.toLocaleDateString('fr-FR'));
-  }, [gameTimeState, calculateGameDate]);
+  }, [gameTimeState, calculateGameDate, isAnimating]);
 
-  // Animation locale de la date en temps réel (aucun appel backend)
+  // Backup event detection: periodically check backend for pending events during active gameplay.
+  // This is a FALLBACK for when the WebSocket connection is down.
+  // Primary event delivery is via WebSocket (managed by GameRealtimeProvider).
+  // Interval is set to 30s since WS handles the real-time case.
   useEffect(() => {
-    // Ne pas exécuter si on est en train d'animer ou si la partie est terminée
-    if (!gameTimeState || isPaused || isAnimating || isGameEnded || isEndingGame) return;
+    if (!gameInstanceId || isPaused || isGameEnded || isEndingGame || eventNotification || pendingEventCompletion) return;
+
+    const EVENT_CHECK_INTERVAL_MS = 30_000;
+    const eventCheckInterval = setInterval(() => {
+      triggerPendingEventCheck();
+    }, EVENT_CHECK_INTERVAL_MS);
+
+    return () => clearInterval(eventCheckInterval);
+  }, [gameInstanceId, isPaused, isGameEnded, isEndingGame, eventNotification, pendingEventCompletion, triggerPendingEventCheck]);
+
+  // WebSocket connection is now managed by GameRealtimeProvider (see use-game-realtime.tsx).
+  // game:event, game:end, game:pause, game:resume, game:state, game:tick are handled centrally.
+  // Local state is synced from realtimeState via the sync effects above.
+
+  // Portfolio refresh interval (10s) — keeps holdings + values up to date during active gameplay
+  useEffect(() => {
+    if (!gameInstanceId || !walletId || isPaused || isGameEnded) return;
+
+    const refresh = async () => {
+      try {
+        // Refresh holdings list (new purchases / sales)
+        const holdingsData = await trpcClient.holding.getByGameInstance.query({ gameInstanceId });
+        setHoldings((holdingsData as HoldingData[]) ?? []);
+
+        // Refresh portfolio snapshot (total values incl. interests + wallet balance)
+        type PortfolioSnapshot = { walletBalance: number; holdings: { assetId: number | null; totalValue: number }[] };
+        const snapshot = await cachedQuery(
+          `snapshot:${gameInstanceId}`,
+          () => trpcClient.investment.getPortfolioSnapshot.query({ gameInstanceId, walletId }),
+          2_000,
+        ) as PortfolioSnapshot | null;
+
+        if (snapshot) {
+          // Update wallet balance
+          setStats(prev => ({
+            ...prev,
+            cash: Math.round(snapshot.walletBalance),
+          }));
+
+          // Update holding values by assetId (totalValue = principal + interests)
+          const values: Record<number, number> = {};
+          for (const h of snapshot.holdings) {
+            if (h.assetId != null) {
+              values[h.assetId] = Math.round(h.totalValue);
+            }
+          }
+          setHoldingValues(values);
+        }
+      } catch (err) {
+        console.warn('[GameCurrentScreen] Portfolio refresh failed (keeping last known values):', err);
+      }
+    };
+
+    const interval = setInterval(refresh, PORTFOLIO_REFRESH_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [gameInstanceId, walletId, isPaused, isGameEnded]);
+
+  // Fallback local date calculation — only active when the WebSocket hasn't synced yet.
+  // Primary date updates come from the realtime provider (game:tick/game:state).
+  useEffect(() => {
+    if (!gameTimeState || isPaused || isAnimating || isGameEnded || isEndingGame || isAssetsSheetOpen) return;
+    // If we have recent server data, skip local calculation — server ticks handle it
+    if (realtimeState.isConnected && realtimeState.lastServerSyncAt) return;
 
     // Vérifier immédiatement si le temps est écoulé
     if (checkIfTimeElapsed(gameTimeState)) {
@@ -649,12 +852,10 @@ export default function GameCurrentScreen() {
       return;
     }
 
-    // Mise à jour immédiate
+    // Fallback: calculate locally
     setGameDate(calculateGameDate(gameTimeState));
 
-    // Puis toutes les secondes
     const interval = setInterval(() => {
-      // Vérifier si le temps est écoulé à chaque tick
       if (checkIfTimeElapsed(gameTimeState)) {
         clearInterval(interval);
         handleGameEnd();
@@ -664,7 +865,7 @@ export default function GameCurrentScreen() {
     }, UPDATE_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [gameTimeState, isPaused, isAnimating, isGameEnded, isEndingGame, isOnAssetsScreen, calculateGameDate, checkIfTimeElapsed, handleGameEnd]);
+  }, [gameTimeState, isPaused, isAnimating, isGameEnded, isEndingGame, isAssetsSheetOpen, calculateGameDate, checkIfTimeElapsed, handleGameEnd, realtimeState.isConnected, realtimeState.lastServerSyncAt]);
 
   // Resynchronisation quand on revient sur la page (sans animation)
   useFocusEffect(
@@ -674,6 +875,25 @@ export default function GameCurrentScreen() {
       const resync = async () => {
         try {
           console.log('[GameCurrentScreen] 🔄 Resyncing game state for gameInstanceId:', gameInstanceId);
+
+          // Invalidate caches to ensure fresh data after returning from other screens
+          invalidateCache(`snapshot:${gameInstanceId}`);
+          invalidateCache(`portfolio:${gameInstanceId}`);
+          invalidateCache(`wallet:${gameInstanceId}`);
+
+          // If returning from asset-detail, resume unless an event is waiting for explicit resume.
+          if (navigatedToAssetDetailRef.current && !isAwaitingEventResume) {
+            console.log('[GameCurrentScreen] 🔄 Returning from asset-detail → resuming game');
+            navigatedToAssetDetailRef.current = false;
+            try {
+              await trpcClient.gameInstance.resume.mutate({ id: gameInstanceId });
+            } catch (err) {
+              console.error('[GameCurrentScreen] Error resuming after asset-detail:', err);
+            }
+          } else if (navigatedToAssetDetailRef.current) {
+            console.log('[GameCurrentScreen] 🔄 Returning from asset-detail while awaiting event resume → keeping game paused');
+            navigatedToAssetDetailRef.current = false;
+          }
 
           // Add a delay to let the backend process any pending operations
           // /assets has a 150ms delay before calling completeEvent, plus execution time
@@ -699,9 +919,34 @@ export default function GameCurrentScreen() {
             });
             setIsPaused(nowPaused);
             setIsGameEnded(isEnded);
+            // Si le jeu tourne, a avancé dans les events, ou a un event en cours, il a été démarré
+            if (!nowPaused || (instance.currentEventIndex ?? 0) > 0 || !!instance.actionRequired) {
+              setGameHasBeenStarted(true);
+            }
+
+            // Resync pendingEventCompletion from backend: if the backend says actionRequired=true
+            // but frontend lost the pendingEventCompletion state (e.g., component remount),
+            // restore it so the "Reprendre" button appears and the user is never stuck.
+            if (instance.actionRequired && !pendingEventCompletion) {
+              console.log('[GameCurrentScreen] 🔄 Restoring pendingEventCompletion from backend actionRequired');
+              setPendingEventCompletion(instance.id);
+            }
 
             if (wasPaused && !nowPaused) {
               console.log('[GameCurrentScreen] ✅ Game was resumed, state updated');
+            }
+
+            // Si la partie a été terminée côté serveur (safety net, job schedulé, etc.)
+            // et qu'on n'a pas encore affiché la modale → récupérer le résultat et l'afficher
+            if (isEnded && !isGameEnded && !endGameResult) {
+              console.log('[GameCurrentScreen] 🏁 Game was ended server-side, fetching end game result...');
+              try {
+                const result = await trpcClient.gameInstance.getEndGameResult.query({ id: gameInstanceId }) as EndGameResult;
+                setEndGameResult(result);
+                setShowEndGameModal(true);
+              } catch (endErr) {
+                console.error('[GameCurrentScreen] Error fetching end game result:', endErr);
+              }
             }
 
             // Si la partie est terminée, afficher directement la date de fin
@@ -722,34 +967,48 @@ export default function GameCurrentScreen() {
       };
 
       resync();
-    }, [gameInstanceId, calculateEndDate, isPaused, walletId])
+    }, [gameInstanceId, calculateEndDate, isPaused, walletId, isAwaitingEventResume, pendingEventCompletion, setPendingEventCompletion])
   );
 
   // Configure header: static options on focus
-  useFocusEffect(
-    useCallback(() => {
-      setHeaderOptions({
-        showBackButton: true,
-        title: `Niveau ${stats.level}`,
-        onTitlePress: isGameEnded ? undefined : () => setShowLevelInfoModal(true),
-      });
-    }, [setHeaderOptions, stats.level, isGameEnded])
+  // Set header title once level data is loaded — useEffect (not useFocusEffect)
+  // so it reacts to stats.level changing even while the screen is already focused
+  useEffect(() => {
+    if (stats.level <= 0) return;
+    setHeaderOptions({
+      showBackButton: true,
+      title: `Niveau ${stats.level}`,
+      onTitlePress: isGameEnded ? undefined : () => setShowLevelInfoModal(true),
+    });
+  }, [setHeaderOptions, stats.level, isGameEnded]);
+
+  // Configure header: dynamic subtitle from centralized realtime provider
+  // This uses the same hook as other game/* screens for consistent display
+  // Fallback: format gameDate locally if realtime provider hasn't synced yet
+  const localFormattedDate = gameInstanceId
+    ? `${String(gameDate.getDate()).padStart(2, '0')}/${String(gameDate.getMonth() + 1).padStart(2, '0')}/${gameDate.getFullYear()}`
+    : null;
+  // Don't inject subtitle until level is loaded (avoids header flicker)
+  useGameHeaderSubtitle(
+    stats.level > 0 ? (formattedGameDate ?? localFormattedDate) : null,
+    isPaused,
+    isGameEnded,
   );
 
-  // Configure header: dynamic subtitle (date + game state)
+  // Clear subtitle and title press when game ends
   useEffect(() => {
     if (isGameEnded) {
       setHeaderOptions({
         subtitle: undefined,
         onTitlePress: undefined,
       });
-    } else {
-      const statusIcon = isPaused ? '' : ' ►';
-      setHeaderOptions({
-        subtitle: gameInstanceId ? `${formatDate(gameDate)}${statusIcon}` : undefined,
-      });
     }
-  }, [gameDate, isPaused, isGameEnded, gameInstanceId, setHeaderOptions]);
+  }, [isGameEnded, setHeaderOptions]);
+
+  // Dim header when assets bottom sheet is open
+  useEffect(() => {
+    setHeaderOptions({ dimmed: isAssetsSheetOpen });
+  }, [isAssetsSheetOpen, setHeaderOptions]);
 
   // Auto-show level info modal for new games (when no gameId is passed)
   useEffect(() => {
@@ -782,6 +1041,7 @@ export default function GameCurrentScreen() {
   const handleOpenRecap = () => {
     if (!gameInstanceId) return;
     setShowEndGameModal(false);
+    trpcClient.notification.markGameEndAsRead.mutate({ gameInstanceId }).catch(console.error);
     router.replace({
       pathname: '/(tabs)/summary',
       params: { gameId: gameInstanceId.toString() },
@@ -791,10 +1051,13 @@ export default function GameCurrentScreen() {
   const handleOpenQuiz = () => {
     if (!endGameResult?.success) return;
     if (!levelQuizId) {
-      Alert.alert('Quiz indisponible', 'Aucun quiz n’est associé à ce niveau pour le moment.');
+      showAlert('Quiz indisponible', "Aucun quiz n'est associe a ce niveau pour le moment.");
       return;
     }
     setShowEndGameModal(false);
+    if (gameInstanceId) {
+      trpcClient.notification.markGameEndAsRead.mutate({ gameInstanceId }).catch(console.error);
+    }
     router.push({
       pathname: '/(tabs)/daily-quiz',
       params: {
@@ -806,6 +1069,10 @@ export default function GameCurrentScreen() {
 
   const handleReplay = async () => {
     if (!user?.id || !levelData?.level?.id) return;
+
+    if (gameInstanceId) {
+      trpcClient.notification.markGameEndAsRead.mutate({ gameInstanceId }).catch(console.error);
+    }
 
     try {
       setIsReplayCreating(true);
@@ -823,6 +1090,20 @@ export default function GameCurrentScreen() {
       });
 
       setShowEndGameModal(false);
+
+      // Reset realtime provider before switching game to avoid stale isEnded triggering handleGameEnd
+      setRealtimeGameInstanceId(null);
+
+      setIsGameEnded(false);
+      setEndGameResult(null);
+      setGameTimeState(null);
+      setGameDate(GAME_START_DATE);
+      setHoldings([]);
+      setIsPaused(true);
+
+      setGameInstanceId(newGame.id);
+      setWalletId(wallet.id);
+
       router.replace({
         pathname: '/game/current',
         params: {
@@ -830,15 +1111,8 @@ export default function GameCurrentScreen() {
           levelId: String(levelData.level.id),
         },
       });
-
-      setGameInstanceId(newGame.id);
-      setWalletId(wallet.id);
-      setIsPaused(true);
-      setIsGameEnded(false);
-      setEndGameResult(null);
-      setGameTimeState(null);
-      setGameDate(GAME_START_DATE);
-      setHoldings([]);
+      hasShownLevelInfoRef.current = false;
+      setShowLevelInfoModal(true);
       setStats((prev) => ({
         ...prev,
         cash: startBalance,
@@ -846,7 +1120,7 @@ export default function GameCurrentScreen() {
       }));
     } catch (err) {
       console.error('Error creating replay game:', err);
-      Alert.alert('Erreur', 'Impossible de créer la partie');
+      showAlert('Erreur', 'Impossible de créer la partie');
     } finally {
       setIsReplayCreating(false);
     }
@@ -922,9 +1196,12 @@ export default function GameCurrentScreen() {
 
   // Total portfolio value (cash + all holdings)
   const totalPortfolio = useMemo(() => {
-    const holdingsTotal = holdings.reduce((sum, h) => sum + Number(h.quantity ?? 0), 0);
+    const holdingsTotal = holdings.reduce((sum, h) => {
+      const assetId = h.asset?.id ?? 0;
+      return sum + (holdingValues[assetId] ?? Number(h.quantity ?? 0));
+    }, 0);
     return Math.round(stats.cash + holdingsTotal);
-  }, [stats.cash, holdings]);
+  }, [stats.cash, holdings, holdingValues]);
 
   // Render backdrop for assets sheet
   const renderAssetsBackdrop = useCallback(
@@ -943,37 +1220,175 @@ export default function GameCurrentScreen() {
   // Handle assets sheet state changes (pause/resume game)
   const handleAssetsSheetChange = useCallback(async (index: number) => {
     if (!gameInstanceId) return;
+    // En mode préparation (avant "Démarrer"), pas de pause/resume
+    if (!gameHasBeenStarted) {
+      if (index < 0) {
+        setAssetsSearchQuery('');
+        setSelectedSubmarketId(null);
+      }
+      return;
+    }
     try {
       if (index >= 0) {
-        await trpcClient.gameInstance.pause.mutate({ id: gameInstanceId });
-        setIsPaused(true);
+        // Game is already paused by handleAddAsset or openAssetsFromEvent before expanding.
+        setIsAssetsSheetOpen(true);
+        // Call pause again as a safety net (backend pause is idempotent).
+        if (!isPaused) {
+          console.log('[GameCurrentScreen] 🛒 Assets sheet OPENED → pausing game');
+          await trpcClient.gameInstance.pause.mutate({ id: gameInstanceId });
+          setIsPaused(true);
+          console.log('[GameCurrentScreen] 🛒 Game paused (sheet open)');
+        }
       } else {
-        await trpcClient.gameInstance.resume.mutate({ id: gameInstanceId });
-        setIsPaused(false);
-        // Reset search and filter when closing
+        // Sheet is closing
+        if (skipResumeOnCloseRef.current) {
+          // Navigating to asset-detail — keep game paused
+          console.log('[GameCurrentScreen] 🛒 Assets sheet CLOSED → navigating to asset-detail, keeping game paused');
+          skipResumeOnCloseRef.current = false;
+        } else if (isAwaitingEventResume) {
+          console.log('[GameCurrentScreen] 🛒 Assets sheet CLOSED while awaiting event resume → keeping game paused');
+        } else {
+          console.log('[GameCurrentScreen] 🛒 Assets sheet CLOSED → resuming game');
+          await trpcClient.gameInstance.resume.mutate({ id: gameInstanceId });
+          // Resync game state BEFORE unpausing to avoid stale totalPausedDuration
+          const instance = await trpcClient.gameInstance.getById.query({ id: gameInstanceId });
+          if (instance?.level) {
+            setGameTimeState({
+              createdAt: new Date(instance.createdAt),
+              totalPausedDuration: instance.totalPausedDuration ?? 0,
+              duration: instance.level.duration ?? 30,
+              speed: instance.level.speed ?? 1,
+              isEnded: instance.isEnded ?? false,
+              isPaused: instance.isPaused ?? false,
+              pausedAt: instance.pausedAt ? new Date(instance.pausedAt) : null,
+            });
+          }
+          setIsPaused(false);
+          console.log('[GameCurrentScreen] 🛒 Game resumed');
+        }
+        // Reset search, filter and sheet state when closing
+        setIsAssetsSheetOpen(false);
         setAssetsSearchQuery('');
         setSelectedSubmarketId(null);
       }
     } catch (err) {
       console.error('Error pausing/resuming game from assets sheet:', err);
     }
-  }, [gameInstanceId]);
+  }, [gameInstanceId, gameHasBeenStarted, isPaused, isAwaitingEventResume]);
 
-  const handleAddAsset = () => {
+  const handleAddAsset = async () => {
     if (!gameInstanceId || !walletId) {
-      Alert.alert('Erreur', 'Initialisation en cours, veuillez patienter...');
+      showAlert('Erreur', 'Initialisation en cours, veuillez patienter...');
       return;
+    }
+    // Mark sheet as open immediately to freeze date animation
+    setIsAssetsSheetOpen(true);
+    // Pause the game before opening the sheet
+    if (gameHasBeenStarted) {
+      try {
+        await trpcClient.gameInstance.pause.mutate({ id: gameInstanceId });
+        setIsPaused(true);
+      } catch (err) {
+        console.error('[GameCurrentScreen] Error pausing for assets sheet:', err);
+      }
     }
     // Fetch assets if not loaded yet
     if (allAssets.length === 0) {
       fetchAllAssets();
     }
-    assetsSheetRef.current?.expand();
+    assetsSheetRef.current?.present();
   };
 
-  const handleHoldingPress = (holding: HoldingData) => {
+  const handleResumeAfterEvent = async () => {
+    if (!gameInstanceId || !isAwaitingEventResume) {
+      return;
+    }
+
+    try {
+      setIsStarting(true);
+      console.log('[GameCurrentScreen] ▶️ Completing event and resuming game', gameInstanceId);
+      await trpcClient.gameInstance.completeEvent.mutate({ id: gameInstanceId });
+      setPendingEventCompletion(null);
+
+      const instance = await trpcClient.gameInstance.getById.query({ id: gameInstanceId });
+      if (instance?.level) {
+        setGameTimeState({
+          createdAt: new Date(instance.createdAt),
+          totalPausedDuration: instance.totalPausedDuration ?? 0,
+          duration: instance.level.duration ?? 30,
+          speed: instance.level.speed ?? 1,
+          isEnded: instance.isEnded ?? false,
+          isPaused: instance.isPaused ?? false,
+          pausedAt: instance.pausedAt ? new Date(instance.pausedAt) : null,
+        });
+      }
+
+      setIsPaused(false);
+      console.log('[GameCurrentScreen] ✅ Event completed, game resumed');
+    } catch (err) {
+      console.error('[GameCurrentScreen] Error resuming after event:', err);
+      showAlert('Erreur', 'Impossible de reprendre la partie');
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
+  // Manual resume for when the game is paused without an event pending
+  // This is a safety net for edge cases where the game gets stuck in paused state
+  const handleManualResume = async () => {
+    if (!gameInstanceId || !hasGameStarted || !isPaused || isInPreparation) return;
+
+    try {
+      setIsStarting(true);
+      console.log('[GameCurrentScreen] ▶️ Manual resume for stuck paused game', gameInstanceId);
+
+      // If backend still has actionRequired (e.g., pendingEventCompletion was lost),
+      // use completeEvent to properly clear the event state before resuming
+      const checkInstance = await trpcClient.gameInstance.getById.query({ id: gameInstanceId });
+      if (checkInstance?.actionRequired) {
+        console.log('[GameCurrentScreen] 🔧 Backend has actionRequired=true, completing event first');
+        await trpcClient.gameInstance.completeEvent.mutate({ id: gameInstanceId });
+        setPendingEventCompletion(null);
+      } else {
+        await trpcClient.gameInstance.resume.mutate({ id: gameInstanceId });
+      }
+
+      const instance = await trpcClient.gameInstance.getById.query({ id: gameInstanceId });
+      if (instance?.level) {
+        setGameTimeState({
+          createdAt: new Date(instance.createdAt),
+          totalPausedDuration: instance.totalPausedDuration ?? 0,
+          duration: instance.level.duration ?? 30,
+          speed: instance.level.speed ?? 1,
+          isEnded: instance.isEnded ?? false,
+          isPaused: instance.isPaused ?? false,
+          pausedAt: instance.pausedAt ? new Date(instance.pausedAt) : null,
+        });
+        setIsPaused(instance.isPaused ?? false);
+      } else {
+        setIsPaused(false);
+      }
+      console.log('[GameCurrentScreen] ✅ Manual resume completed');
+    } catch (err) {
+      console.error('[GameCurrentScreen] Error in manual resume:', err);
+      showAlert('Erreur', 'Impossible de reprendre la partie');
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
+  const handleHoldingPress = async (holding: HoldingData) => {
     if (!gameInstanceId || !walletId || !holding.asset) return;
-    // Naviguer vers la fiche détaillée de l'asset
+    // Pause the game while on asset-detail
+    if (gameHasBeenStarted) {
+      try {
+        await trpcClient.gameInstance.pause.mutate({ id: gameInstanceId });
+        setIsPaused(true);
+        navigatedToAssetDetailRef.current = true;
+      } catch (err) {
+        console.error('[GameCurrentScreen] Error pausing for holding press:', err);
+      }
+    }
     router.push({
       pathname: '/game/asset-detail',
       params: {
@@ -987,7 +1402,7 @@ export default function GameCurrentScreen() {
   // Fonction pour effectivement démarrer le jeu (unpause)
   const startGameNow = async () => {
     if (!gameInstanceId || !levelData?.level) {
-      Alert.alert('Erreur', 'Instance de jeu non trouvée');
+      showAlert('Erreur', 'Instance de jeu non trouvée');
       return;
     }
 
@@ -997,6 +1412,7 @@ export default function GameCurrentScreen() {
       await trpcClient.gameInstance.start.mutate({ id: gameInstanceId });
 
       setActiveGameInstanceId(gameInstanceId); // Mettre à jour le contexte global
+      setGameHasBeenStarted(true); // Le jeu a été démarré
       setIsPaused(false); // Le jeu démarre
       setIsAnimating(false);
       setTargetDate(null);
@@ -1014,7 +1430,7 @@ export default function GameCurrentScreen() {
       });
     } catch (err) {
       console.error('Error starting game:', err);
-      Alert.alert('Erreur', 'Impossible de demarrer la partie');
+      showAlert('Erreur', 'Impossible de demarrer la partie');
     } finally {
       setIsStarting(false);
     }
@@ -1022,12 +1438,12 @@ export default function GameCurrentScreen() {
 
   const handleStartGame = async () => {
     if (!user) {
-      Alert.alert('Erreur', 'Vous devez etre connecte pour jouer');
+      showAlert('Erreur', 'Vous devez etre connecte pour jouer');
       return;
     }
 
     if (!gameInstanceId) {
-      Alert.alert('Erreur', 'Initialisation en cours, veuillez patienter...');
+      showAlert('Erreur', 'Initialisation en cours, veuillez patienter...');
       return;
     }
 
@@ -1050,7 +1466,7 @@ export default function GameCurrentScreen() {
   const handleResetLevel = async () => {
     if (!user || !levelId) return;
 
-    Alert.alert(
+    showAlert(
       'Reinitialiser le niveau',
       'Cette action supprimera toutes vos parties sur ce niveau. Voulez-vous continuer ?',
       [
@@ -1077,10 +1493,10 @@ export default function GameCurrentScreen() {
               if (levelData) {
                 await createGameInstanceForPreparation(levelData);
               }
-              Alert.alert('Succes', 'Le niveau a ete reinitialise. Vous pouvez recommencer !');
+              showAlert('Succes', 'Le niveau a ete reinitialise. Vous pouvez recommencer !');
             } catch (err) {
               console.error('Error resetting level:', err);
-              Alert.alert('Erreur', 'Impossible de reinitialiser le niveau');
+              showAlert('Erreur', 'Impossible de reinitialiser le niveau');
             } finally {
               setIsResetting(false);
             }
@@ -1099,11 +1515,13 @@ export default function GameCurrentScreen() {
 
   const hasPrimaryGoalSuccess = endGameResult?.success === true;
   const modalContent = endGameResult?.modal;
-  const modalStarFillCount = modalContent?.type === 'PRIMARY_AND_SECONDARY_SUCCESS'
-    ? 2
-    : modalContent?.type === 'PRIMARY_SUCCESS_ONLY'
-      ? 1
-      : 0;
+  // Use actual stars from level completion if available, otherwise derive from modal type
+  const modalStarFillCount = endGameResult?.stars
+    ?? (modalContent?.type === 'PRIMARY_AND_SECONDARY_SUCCESS'
+      ? 2
+      : modalContent?.type === 'PRIMARY_SUCCESS_ONLY'
+        ? 1
+        : 0);
 
   if (isLoading) {
     return (
@@ -1135,7 +1553,7 @@ export default function GameCurrentScreen() {
         <View style={[styles.portfolioCard, { backgroundColor: theme.card }]}>
           <View style={styles.portfolioRow}>
             <Text style={[styles.portfolioLabel, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
-              Portefeuille
+              Total
             </Text>
             <Text style={[styles.portfolioTotal, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
               {totalPortfolio.toLocaleString('fr-FR')}€
@@ -1179,7 +1597,7 @@ export default function GameCurrentScreen() {
                     {holding.asset?.title ?? 'Asset'}
                   </Text>
                   <Text style={[styles.assetRowAmount, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
-                    {Math.round(Number(holding.quantity ?? 0)).toLocaleString('fr-FR')}€
+                    {(holdingValues[holding.asset?.id ?? 0] ?? Math.round(Number(holding.quantity ?? 0))).toLocaleString('fr-FR')}€
                   </Text>
                 </View>
                 {badgeStyle && (
@@ -1204,14 +1622,40 @@ export default function GameCurrentScreen() {
                 label="Investir"
                 iconName="add"
                 onPress={handleAddAsset}
-                style={{ flex: 0, paddingHorizontal: 24, maxWidth: undefined }}
               />
               <ActionPillButton
                 label="Commencer"
                 iconName="play"
                 onPress={handleStartGame}
                 isLoading={isStarting}
-                style={{ flex: 0, paddingHorizontal: 24, maxWidth: undefined }}
+              />
+            </View>
+          ) : isAwaitingEventResume ? (
+            <View style={styles.startButtonsContainer}>
+              <ActionPillButton
+                label="Investir"
+                iconName="add"
+                onPress={handleAddAsset}
+              />
+              <ActionPillButton
+                label="Reprendre"
+                iconName="play"
+                onPress={handleResumeAfterEvent}
+                isLoading={isStarting}
+              />
+            </View>
+          ) : hasGameStarted && isPaused && !isAssetsSheetOpen ? (
+            <View style={styles.startButtonsContainer}>
+              <ActionPillButton
+                label="Investir"
+                iconName="add"
+                onPress={handleAddAsset}
+              />
+              <ActionPillButton
+                label="Reprendre"
+                iconName="play"
+                onPress={handleManualResume}
+                isLoading={isStarting}
               />
             </View>
           ) : (
@@ -1219,7 +1663,6 @@ export default function GameCurrentScreen() {
               label="Investir"
               iconName="add"
               onPress={handleAddAsset}
-              style={{ flex: 0, paddingHorizontal: 28, maxWidth: undefined }}
             />
           )}
         </View>
@@ -1230,39 +1673,47 @@ export default function GameCurrentScreen() {
         visible={showNoInvestmentModal}
         transparent
         animationType="fade"
+        statusBarTranslucent
         onRequestClose={() => setShowNoInvestmentModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
-            <Text style={[styles.modalTitle, { fontFamily: CashouTheme.fonts.subheading, color: theme.text }]}>
-              Aucun investissement
-            </Text>
-            <Text style={[styles.modalMessage, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
-              {"Vous n'avez fait aucun investissement. Si vous demarrez maintenant, vous ne pourrez pas gagner d'argent pendant la partie."}
-            </Text>
-            <Text style={[styles.modalMessage, { fontFamily: CashouTheme.fonts.body, color: theme.text, marginTop: 8 }]}>
-              Voulez-vous vraiment demarrer sans investir ?
-            </Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonCancel, { borderColor: theme.border }]}
-                onPress={() => setShowNoInvestmentModal(false)}
-              >
-                <Text style={[styles.modalButtonText, { fontFamily: CashouTheme.fonts.body, color: theme.text }]}>
-                  {"Investir d'abord"}
+        <BlurView
+          intensity={60}
+          tint={isDark ? 'dark' : 'light'}
+          style={styles.endGameBlur}
+        >
+          <View style={styles.endGameOverlay}>
+            <View style={[styles.endGameCardBackdrop, { backgroundColor: theme.secondary }]}>
+              <View style={[styles.endGameCard, { backgroundColor: theme.card, shadowColor: theme.border, alignItems: 'center' }]}>
+                <Text allowFontScaling={false} style={[styles.endGameTitle, { fontFamily: 'Anybody', color: theme.text }]}>
+                  Aucun investissement
                 </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonConfirm, { backgroundColor: theme.accent }]}
-                onPress={handleConfirmStartWithoutInvestment}
-              >
-                <Text style={[styles.modalButtonText, { fontFamily: CashouTheme.fonts.body, color: '#FFFFFF' }]}>
-                  Demarrer quand meme
+                <Text allowFontScaling={false} style={[styles.endGameMessage, { fontFamily: 'Anybody', color: theme.text, textAlign: 'center' }]}>
+                  {"Vous n'avez fait aucun investissement. Si vous démarrez maintenant, vous ne pourrez pas gagner d'argent pendant la partie."}
                 </Text>
-              </TouchableOpacity>
+                <Text allowFontScaling={false} style={[styles.endGameMessage, styles.endGameSecondary, { fontFamily: 'Anybody', color: theme.text, textAlign: 'center', marginBottom: 16 }]}>
+                  Voulez-vous vraiment démarrer sans investir ?
+                </Text>
+                <View style={styles.endGameActions}>
+                  <ActionPillButton
+                    label="Investir"
+                    iconName="add"
+                    onPress={() => {
+                      setShowNoInvestmentModal(false);
+                      handleAddAsset();
+                    }}
+                    style={{ flex: 1 }}
+                  />
+                  <ActionPillButton
+                    label="Démarrer"
+                    iconName="play"
+                    onPress={handleConfirmStartWithoutInvestment}
+                    style={{ flex: 1 }}
+                  />
+                </View>
+              </View>
             </View>
           </View>
-        </View>
+        </BlurView>
       </Modal>
 
       {/* Modale de fin de partie */}
@@ -1294,8 +1745,38 @@ export default function GameCurrentScreen() {
               </Text>
             )}
 
+            {/* Goals list */}
+            {endGameResult?.goals && endGameResult.goals.length > 0 && (
+              <View style={{ width: '100%', marginTop: 8, marginBottom: 12, gap: 8 }}>
+                {endGameResult.goals.map((goal) => (
+                  <View key={goal.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <Ionicons
+                      name={goal.validated ? 'checkmark-circle' : 'close-circle'}
+                      size={20}
+                      color={goal.validated ? '#88D498' : '#E8889A'}
+                    />
+                    <Text
+                      allowFontScaling={false}
+                      style={{
+                        flex: 1,
+                        fontSize: 14,
+                        fontFamily: 'Anybody',
+                        color: theme.text,
+                        opacity: 0.85,
+                      }}
+                    >
+                      {goal.title}
+                      {!goal.isMandatory && (
+                        <Text style={{ fontSize: 12, opacity: 0.6 }}> (bonus)</Text>
+                      )}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
             <View style={styles.endGameStarsRow}>
-              {[0, 1].map((index) => (
+              {[0, 1, 2].map((index) => (
                 <GoalStarIcon
                   key={index}
                   filled={index < modalStarFillCount}
@@ -1312,13 +1793,13 @@ export default function GameCurrentScreen() {
                     label="Récap"
                     customIcon={<RecapActionIcon width={22} height={22} />}
                     onPress={handleOpenRecap}
-                    style={styles.endGameActionButton}
+                    style={{ flex: 1 }}
                   />
                   <ActionPillButton
                     label="Quiz"
                     customIcon={<QuizActionIcon width={18} height={18} />}
                     onPress={handleOpenQuiz}
-                    style={styles.endGameActionButton}
+                    style={{ flex: 1 }}
                   />
                 </>
               ) : (
@@ -1328,7 +1809,6 @@ export default function GameCurrentScreen() {
                   onPress={handleReplay}
                   disabled={isReplayCreating}
                   isLoading={isReplayCreating}
-                  style={StyleSheet.flatten([styles.endGameActionButton, styles.endGameSingleAction])}
                 />
               )}
             </View>
@@ -1358,9 +1838,8 @@ export default function GameCurrentScreen() {
       />
 
       {/* Assets Bottom Sheet */}
-      <BottomSheet
+      <BottomSheetModal
         ref={assetsSheetRef}
-        index={-1}
         snapPoints={['85%']}
         onChange={handleAssetsSheetChange}
         enablePanDownToClose
@@ -1400,7 +1879,7 @@ export default function GameCurrentScreen() {
               ]}
               onPress={() => setSelectedSubmarketId(null)}
             >
-              <Text style={[styles.assetsSheetTabText, { color: selectedSubmarketId === null ? '#FFFFFF' : theme.text, fontFamily: CashouTheme.fonts.body }]}>
+              <Text style={[styles.assetsSheetTabText, { color: theme.text, fontFamily: CashouTheme.fonts.body }]}>
                 Tous
               </Text>
             </TouchableOpacity>
@@ -1413,7 +1892,7 @@ export default function GameCurrentScreen() {
                 ]}
                 onPress={() => setSelectedSubmarketId(sm.id)}
               >
-                <Text style={[styles.assetsSheetTabText, { color: selectedSubmarketId === sm.id ? '#FFFFFF' : theme.text, fontFamily: CashouTheme.fonts.body }]}>
+                <Text style={[styles.assetsSheetTabText, { color: theme.text, fontFamily: CashouTheme.fonts.body }]}>
                   {sm.title}
                 </Text>
               </TouchableOpacity>
@@ -1430,7 +1909,9 @@ export default function GameCurrentScreen() {
                 style={[styles.assetsSheetRow, { backgroundColor: theme.card }]}
                 activeOpacity={0.7}
                 onPress={() => {
-                  assetsSheetRef.current?.close();
+                  skipResumeOnCloseRef.current = true;
+                  navigatedToAssetDetailRef.current = true;
+                  assetsSheetRef.current?.dismiss();
                   router.push(`/game/asset-detail?id=${asset.id}&gameInstanceId=${gameInstanceId}&walletId=${walletId}`);
                 }}
               >
@@ -1460,7 +1941,7 @@ export default function GameCurrentScreen() {
             </Text>
           )}
         </BottomSheetScrollView>
-      </BottomSheet>
+      </BottomSheetModal>
     </View>
     </GestureHandlerRootView>
   );
@@ -1480,18 +1961,18 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   errorContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 16,
   },
   errorText: {
     fontSize: 16,
-    textAlign: 'center',
+    textAlign: "center",
   },
   portfolioCard: {
     borderRadius: 22,
@@ -1501,22 +1982,22 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   portfolioRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 14,
   },
   portfolioLabel: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   portfolioTotal: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   portfolioSeparator: {
     height: 3,
-    backgroundColor: '#3A3A3A',
+    backgroundColor: "#CCCCCC",
     borderRadius: 2,
     marginHorizontal: 20,
     marginBottom: 8,
@@ -1528,111 +2009,69 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   assetRowContent: {
-    flexDirection: 'column',
+    flexDirection: "column",
     gap: 8,
   },
   assetRowTopLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   assetRowName: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     flex: 1,
   },
   assetBadge: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 999,
   },
   assetBadgeText: {
     fontSize: 12,
-    fontWeight: '600',
-    fontFamily: 'Anybody',
+    fontWeight: "600",
+    fontFamily: "Anybody",
   },
   assetRowAmount: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   bottomControls: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingTop: 16,
     gap: 16,
   },
   startButtonsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  modalContent: {
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-  },
-  modalTitle: {
-    fontSize: 20,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  modalMessage: {
-    fontSize: 14,
-    textAlign: 'center',
-    opacity: 0.8,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    marginTop: 24,
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  modalButtonCancel: {
-    borderWidth: 2,
-  },
-  modalButtonConfirm: {
-  },
-  modalButtonText: {
-    fontSize: 14,
   },
   endGameBlur: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   endGameOverlay: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 18,
   },
   endGameCardBackdrop: {
-    width: '97%',
+    width: "97%",
     maxWidth: 410,
     borderRadius: 36,
     padding: 6,
   },
   endGameCard: {
-    width: '100%',
+    width: "100%",
     borderRadius: 30,
     paddingHorizontal: 18,
     paddingTop: 14,
@@ -1644,48 +2083,47 @@ const styles = StyleSheet.create({
   },
   endGameTitle: {
     fontSize: 28,
-    fontFamily: 'Anybody',
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontFamily: "Anybody",
+    fontWeight: "bold",
+    textAlign: "center",
     marginBottom: 12,
   },
   endGameMessage: {
     fontSize: 15,
-    fontFamily: 'Anybody',
-    fontWeight: 'normal',
+    fontFamily: "Anybody",
+    fontWeight: "normal",
     lineHeight: 20,
   },
   endGameSecondary: {
     marginTop: 9,
   },
   endGameStarsRow: {
-    alignSelf: 'center',
+    alignSelf: "center",
     marginTop: 14,
     marginBottom: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
     borderRadius: 30,
-    backgroundColor: '#F7B167',
+    backgroundColor: "#F7B167",
     paddingHorizontal: 7,
     paddingVertical: 5,
   },
   endGameActions: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     gap: 8,
   },
-  endGameActionButton: {
-  },
+  endGameActionButton: {},
   endGameSingleAction: {
     flex: 0,
     minWidth: 132,
   },
   // Assets Bottom Sheet styles
   assetsSheetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   assetsSheetTitle: {
@@ -1711,7 +2149,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   assetsSheetTabsBar: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderRadius: 999,
     borderWidth: 1,
     padding: 4,
@@ -1721,8 +2159,8 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   assetsSheetTabText: {
     fontSize: 14,
@@ -1734,27 +2172,27 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   assetsSheetRowLeft: {
-    flexDirection: 'column',
+    flexDirection: "column",
     gap: 8,
   },
   assetsSheetRowTopLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   assetsSheetRowName: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: "600",
     flex: 1,
   },
   assetsSheetBadge: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     paddingHorizontal: 14,
     paddingVertical: 4,
     borderRadius: 999,
   },
   assetsSheetRowPrice: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });

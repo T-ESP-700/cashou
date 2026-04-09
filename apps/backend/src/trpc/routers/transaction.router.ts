@@ -9,6 +9,7 @@ import {
   assetIdSchema,
   transactionTypeSchema
 } from "../schemas-zod/transaction-schema.ts";
+import { gameCache, invalidateByPrefix } from "../../lib/cache.ts";
 
 const t = initTRPC.create();
 
@@ -41,7 +42,15 @@ export const transactionRouter = t.router({
   create: t.procedure
     .input(transactionCreateSchema)
     .mutation(async ({ input }) => {
-      return await transactionService.create(input);
+      const result = await transactionService.create(input);
+      const gameInstanceId = input.gameInstanceId;
+      if (gameInstanceId) {
+        invalidateByPrefix(gameCache, `portfolio:${gameInstanceId}`);
+        invalidateByPrefix(gameCache, `snapshot:${gameInstanceId}`);
+        invalidateByPrefix(gameCache, `wallet:game:${gameInstanceId}`);
+        invalidateByPrefix(gameCache, `holdings:game:${gameInstanceId}`);
+      }
+      return result;
     }),
 
   /**
