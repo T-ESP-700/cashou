@@ -4,7 +4,6 @@ import { prisma } from '@cashou/db-app';
 import { TRPCError } from '@trpc/server';
 import { hash } from '@cashou/auth/server';
 import { UserService } from '../services/user.service';
-import type { UserProfileUpdateData } from '../types/user.types';
 
 export const userRouter = router({
   // Get all users without pagination
