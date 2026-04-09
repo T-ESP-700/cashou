@@ -22,7 +22,7 @@ function makeLevelEvent(id: number, over: Partial<LevelEvent> = {}): LevelEvent 
         levelId: over.levelId ?? 1,
         eventId: over.eventId ?? 1,
         triggerPercent: over.triggerPercent ?? 0,
-        position: over.position ?? 1,
+        position: over.position ?? 0,
         createdAt: over.createdAt ?? now,
         updatedAt: over.updatedAt ?? now,
     };
@@ -41,51 +41,45 @@ const original = {
 beforeEach(() => {
     calls.length = 0;
 
-    LevelEventService.prototype.findAll = (async function (this: unknown): Promise<LevelEvent[]> {
+    LevelEventService.prototype.findAll = async function (): Promise<LevelEvent[]> {
         calls.push({ method: "findAll" });
         return [makeLevelEvent(1, { levelId: 1, eventId: 1 })];
-    });
+    };
 
-    LevelEventService.prototype.findOne = (async function (this: unknown, id: number): Promise<LevelEvent | null> {
+    LevelEventService.prototype.findOne = async function (id: number): Promise<LevelEvent | null> {
         calls.push({ method: "findOne", args: { id } });
         if (id === 404) return null;
         return makeLevelEvent(id);
-    });
+    };
 
-    LevelEventService.prototype.findByLevelId = (async function (this: unknown, levelId: number): Promise<LevelEvent[]> {
+    LevelEventService.prototype.findByLevelId = async function (levelId: number): Promise<LevelEvent[]> {
         calls.push({ method: "findByLevelId", args: { levelId } });
         return [makeLevelEvent(1, { levelId })];
-    });
+    };
 
-    LevelEventService.prototype.findByEventId = (async function (this: unknown, eventId: number): Promise<LevelEvent[]> {
+    LevelEventService.prototype.findByEventId = async function (eventId: number): Promise<LevelEvent[]> {
         calls.push({ method: "findByEventId", args: { eventId } });
         return [makeLevelEvent(1, { eventId })];
-    });
+    };
 
-    LevelEventService.prototype.create = (async function (this: unknown, data: Partial<LevelEvent>): Promise<LevelEvent> {
+    LevelEventService.prototype.create = async function (data: Partial<LevelEvent>): Promise<LevelEvent> {
         calls.push({ method: "create", args: { data } });
         return makeLevelEvent(123, data);
-    });
+    };
 
-    LevelEventService.prototype.update = (async function (this: unknown, id: number, data: Partial<LevelEvent>): Promise<LevelEvent> {
+    LevelEventService.prototype.update = async function (id: number, data: Partial<LevelEvent>): Promise<LevelEvent> {
         calls.push({ method: "update", args: { id, data } });
         return makeLevelEvent(id, data);
-    });
+    };
 
-    LevelEventService.prototype.delete = (async function (this: unknown, id: number): Promise<Pick<LevelEvent, "id">> {
+    LevelEventService.prototype.delete = async function (id: number): Promise<Pick<LevelEvent, "id">> {
         calls.push({ method: "delete", args: { id } });
         return { id };
-    }) as unknown as typeof LevelEventService.prototype.delete;
+    } as typeof LevelEventService.prototype.delete;
 });
 
 afterEach(() => {
-    LevelEventService.prototype.findAll = original.findAll;
-    LevelEventService.prototype.findOne = original.findOne;
-    LevelEventService.prototype.findByLevelId = original.findByLevelId;
-    LevelEventService.prototype.findByEventId = original.findByEventId;
-    LevelEventService.prototype.create = original.create;
-    LevelEventService.prototype.update = original.update;
-    LevelEventService.prototype.delete = original.delete;
+    Object.assign(LevelEventService.prototype, original);
 });
 
 type Ctx = Parameters<typeof levelEventRouter.createCaller>[0];
@@ -129,8 +123,8 @@ describe("levelEvent.router — createCaller (sans HTTP)", () => {
         const res = await caller.create(payload);
         expect(res).toMatchObject({ id: 123, ...payload });
         const hit = calls.find((c) => c.method === "create");
-        // Le schéma Zod ajoute des valeurs par défaut: triggerPercent: 50, position: 1
-        expect(hit?.args).toEqual({ data: { ...payload, triggerPercent: 50, position: 1 } });
+        // Zod ajoute les valeurs par défaut position: 1, triggerPercent: 50
+        expect(hit?.args).toEqual({ data: { ...payload, position: 1, triggerPercent: 50 } });
     });
 
     it("levelEvent.update → appelle service.update(id, data)", async () => {
@@ -138,8 +132,8 @@ describe("levelEvent.router — createCaller (sans HTTP)", () => {
         const res = await caller.update({ id: 99, data: { levelId: 4, eventId: 5 } });
         expect(res).toMatchObject({ id: 99, levelId: 4, eventId: 5 });
         const hit = calls.find((c) => c.method === "update");
-        // Le schéma Zod ajoute des valeurs par défaut: triggerPercent: 50, position: 1
-        expect(hit?.args).toEqual({ id: 99, data: { levelId: 4, eventId: 5, triggerPercent: 50, position: 1 } });
+        // Zod ajoute les valeurs par défaut position: 1, triggerPercent: 50
+        expect(hit?.args).toEqual({ id: 99, data: { levelId: 4, eventId: 5, position: 1, triggerPercent: 50 } });
     });
 
     it("levelEvent.delete → appelle service.delete(id)", async () => {

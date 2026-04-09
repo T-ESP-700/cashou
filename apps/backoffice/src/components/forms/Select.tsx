@@ -6,10 +6,7 @@ interface SelectOption {
   label: string
 }
 
-// On utilise FieldValues (de react-hook-form) au lieu de Record<string, unknown>
-// car UseFormRegister<T> attend FieldValues comme contrainte de type.
-// Le "= FieldValues" par défaut permet d'utiliser <Select> sans préciser le générique.
-interface SelectProps<TFieldValues extends FieldValues = FieldValues> {
+interface SelectProps<TFieldValues extends FieldValues> {
   label: string
   name: Path<TFieldValues>
   register: UseFormRegister<TFieldValues>
@@ -20,7 +17,7 @@ interface SelectProps<TFieldValues extends FieldValues = FieldValues> {
   helperText?: string
 }
 
-export function Select<TFieldValues extends FieldValues = FieldValues>({
+export function Select<TFieldValues extends FieldValues>({
   label,
   name,
   register,

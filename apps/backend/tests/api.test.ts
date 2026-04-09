@@ -1,15 +1,32 @@
-import { describe, it, expect, beforeAll } from 'bun:test';
-import { ensureServerStarted } from './setup';
+import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
+import { startServer } from '../src/index';
+
+type ServerInstance = Awaited<ReturnType<typeof startServer>>;
+
+// Use port 3001 for tests to avoid conflicts with Docker backend on 3000
+const TEST_PORT = process.env.TEST_PORT || '3001';
+const TEST_URL = `http://localhost:${TEST_PORT}`;
 
 describe('API Routes Tests', () => {
+  let server: ServerInstance;
+
   beforeAll(async () => {
-    // Start the server using shared setup
-    await ensureServerStarted();
+    // Set TEST_PORT env var before starting server
+    process.env.TEST_PORT = TEST_PORT;
+    
+    // Start the server explicitly
+    server = await startServer();
+  });
+
+  afterAll(async () => {
+    if (server && server.stop) {
+      await server.stop();
+    }
   });
 
   describe('Health Check', () => {
     it('should return OK for health endpoint', async () => {
-      const response = await fetch('http://localhost:3000/health');
+      const response = await fetch(`${TEST_URL}/health`);
       expect(response.status).toBe(200);
       const text = await response.text();
       expect(text).toBe('OK');
@@ -18,7 +35,7 @@ describe('API Routes Tests', () => {
 
   describe('Default Route', () => {
     it('should return default message for root path', async () => {
-      const response = await fetch('http://localhost:3000/');
+      const response = await fetch(`${TEST_URL}/`);
       expect(response.status).toBe(200);
       const text = await response.text();
       expect(text).toBe('Cashou Backend API');
@@ -27,14 +44,14 @@ describe('API Routes Tests', () => {
 
   describe('CORS Headers', () => {
     it('should include CORS headers in response', async () => {
-      const response = await fetch('http://localhost:3000/health');
+      const response = await fetch(`${TEST_URL}/health`);
       expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
       expect(response.headers.get('Access-Control-Allow-Methods')).toBeTruthy();
       expect(response.headers.get('Access-Control-Allow-Headers')).toBeTruthy();
     });
 
     it('should handle OPTIONS preflight requests', async () => {
-      const response = await fetch('http://localhost:3000/health', {
+      const response = await fetch(`${TEST_URL}/health`, {
         method: 'OPTIONS'
       });
       expect(response.status).toBe(200);
@@ -44,7 +61,7 @@ describe('API Routes Tests', () => {
 
   describe('Unknown Routes', () => {
     it('should return default message for unknown routes', async () => {
-      const response = await fetch('http://localhost:3000/unknown-route');
+      const response = await fetch(`${TEST_URL}/unknown-route`);
       expect(response.status).toBe(200);
       const text = await response.text();
       expect(text).toBe('Cashou Backend API');

@@ -189,6 +189,7 @@ export interface QuizQuestion {
   quizId: number
   questionId: number
   order?: number | null
+  position?: number | null
   createdAt?: string | Date | null
   updatedAt?: string | Date | null
 }
