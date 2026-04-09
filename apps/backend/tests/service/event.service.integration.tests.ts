@@ -1,6 +1,6 @@
 // tests/service/event.service.integration.test.ts
 import { describe, it, expect, afterAll } from "bun:test";
-import { PrismaClient, type Event } from "@prisma/client";
+import { PrismaClient, type Event } from "@cashou/db-app";
 import { EventService } from "../../src/trpc/services/event.service";
 
 const shouldRun = !!process.env.CASHOU_DB_URL;

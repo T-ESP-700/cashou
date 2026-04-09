@@ -1,18 +1,10 @@
-import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
-import { startServer } from '../src/index';
+import { describe, it, expect, beforeAll } from 'bun:test';
+import { ensureServerStarted } from './setup';
 
 describe('API Routes Tests', () => {
-  let server: any;
-
   beforeAll(async () => {
-    // Start the server explicitly
-    server = startServer();
-  });
-
-  afterAll(async () => {
-    if (server && server.stop) {
-      await server.stop();
-    }
+    // Start the server using shared setup
+    await ensureServerStarted();
   });
 
   describe('Health Check', () => {

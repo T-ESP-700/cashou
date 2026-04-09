@@ -42,7 +42,6 @@ export const userRouter = router({
             id: true,
             email: true,
             username: true,
-            role: true,
             level: true,
             points: true,
             createdAt: true,
@@ -154,17 +153,12 @@ export const userRouter = router({
         });
       }
 
-      // Hash password
-      const hashedPassword = await hash.password(input.password);
-
       // Create user
       const user = await prisma.user.create({
         data: {
           email: input.email,
           username: input.username,
-          hashedPassword,
-          role: input.role,
-          level: input.level,
+          levelId: input.level,
           points: input.points,
         },
       });
@@ -246,16 +240,16 @@ export const userRouter = router({
         }
       }
 
-      // Hash password if provided
-      if (input.password) {
-        (updateData as any).hashedPassword = await hash.password(input.password);
-        delete (updateData as any).password;
-      }
+      // Build Prisma-compatible update data
+      const { password: _password, role: _role, level, ...rest } = updateData;
+      void _password; void _role; // Champs exclus volontairement de la mise à jour Prisma
+      const prismaData: Record<string, unknown> = { ...rest };
+      if (level !== undefined) prismaData.levelId = level;
 
       // Update user
       const user = await prisma.user.update({
         where: { id },
-        data: updateData,
+        data: prismaData,
       });
 
       return {

@@ -248,39 +248,39 @@ export const backofficeApi = {
   level: {
     list: async () => callApi(() => getClient().level.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().level.create.mutate(payload)),
+      callApi(() => getClient().level.create.mutate(payload as any)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().level.update.mutate(payload)),
+      callApi(() => getClient().level.update.mutate(payload as any)),
     delete: async (id: number) => callApi(() => getClient().level.delete.mutate({ id })),
   },
   goal: {
     list: async () => callApi(() => getClient().goal.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().goal.create.mutate(payload)),
+      callApi(() => getClient().goal.create.mutate(payload as any)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().goal.update.mutate(payload)),
+      callApi(() => getClient().goal.update.mutate(payload as any)),
     delete: async (id: number) => callApi(() => getClient().goal.delete.mutate({ id })),
   },
   levelGoal: {
     list: async () => callApi(() => getClient().levelGoal.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().levelGoal.create.mutate(payload)),
+      callApi(() => getClient().levelGoal.create.mutate(payload as any)),
     update: async (id: number, payload: Record<string, unknown>) =>
-      callApi(() => getClient().levelGoal.update.mutate({ id, data: payload })),
+      callApi(() => getClient().levelGoal.update.mutate({ id, data: payload } as any)),
     delete: async (id: number) => callApi(() => getClient().levelGoal.delete.mutate({ id })),
   },
   levelEvent: {
     list: async () => callApi(() => getClient().levelEvent.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().levelEvent.create.mutate(payload)),
+      callApi(() => getClient().levelEvent.create.mutate(payload as any)),
     delete: async (id: number) => callApi(() => getClient().levelEvent.delete.mutate({ id })),
   },
   market: {
     list: async () => callApi(() => getClient().market.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().market.create.mutate(payload)),
+      callApi(() => getClient().market.create.mutate(payload as any)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().market.update.mutate(payload)),
+      callApi(() => getClient().market.update.mutate(payload as any)),
     delete: async (id: number) => callApi(() => getClient().market.delete.mutate({ id })),
     overview: async (marketId: number) =>
       (await callApi(() => getClient().market.getOverview.query({ marketId }))) as MarketOverview,
@@ -302,65 +302,65 @@ export const backofficeApi = {
   submarket: {
     list: async () => callApi(() => getClient().submarket.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().submarket.create.mutate(payload)),
+      callApi(() => getClient().submarket.create.mutate(payload as any)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().submarket.update.mutate(payload)),
+      callApi(() => getClient().submarket.update.mutate(payload as any)),
     delete: async (id: number) => callApi(() => getClient().submarket.delete.mutate({ id })),
   },
   field: {
     list: async () => callApi(() => getClient().field.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().field.create.mutate(payload)),
+      callApi(() => getClient().field.create.mutate(payload as any)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().field.update.mutate(payload)),
+      callApi(() => getClient().field.update.mutate(payload as any)),
     delete: async (id: number) => callApi(() => getClient().field.delete.mutate({ id })),
   },
   asset: {
     list: async () => callApi(() => getClient().asset.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().asset.create.mutate(payload)),
+      callApi(() => getClient().asset.create.mutate(payload as any)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().asset.update.mutate(payload)),
+      callApi(() => getClient().asset.update.mutate(payload as any)),
     delete: async (id: number) => callApi(() => getClient().asset.delete.mutate({ id })),
   },
   event: {
     list: async () => callApi(() => getClient().event.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().event.create.mutate(payload)),
+      callApi(() => getClient().event.create.mutate(payload as any)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().event.update.mutate(payload)),
+      callApi(() => getClient().event.update.mutate(payload as any)),
     delete: async (id: number) => callApi(() => getClient().event.delete.mutate({ id })),
   },
   assetHistory: {
     list: async () => callApi(() => getClient().assetHistory.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().assetHistory.create.mutate(payload)),
+      callApi(() => getClient().assetHistory.create.mutate(payload as any)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().assetHistory.update.mutate(payload)),
+      callApi(() => getClient().assetHistory.update.mutate(payload as any)),
     delete: async (id: number) => callApi(() => getClient().assetHistory.delete.mutate({ id })),
   },
   eventAsset: {
     list: async () => callApi(() => getClient().eventAsset.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().eventAsset.create.mutate(payload)),
+      callApi(() => getClient().eventAsset.create.mutate(payload as any)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().eventAsset.update.mutate(payload)),
+      callApi(() => getClient().eventAsset.update.mutate(payload as any)),
     delete: async (id: number) => callApi(() => getClient().eventAsset.delete.mutate({ id })),
   },
   impact: {
     list: async () => callApi(() => getClient().impact.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().impact.create.mutate(payload)),
+      callApi(() => getClient().impact.create.mutate(payload as any)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().impact.update.mutate(payload)),
+      callApi(() => getClient().impact.update.mutate(payload as any)),
     delete: async (id: number) => callApi(() => getClient().impact.delete.mutate({ id })),
   },
   quiz: {
     list: async () => callApi(() => getClient().quiz.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().quiz.create.mutate(payload)),
+      callApi(() => getClient().quiz.create.mutate(payload as any)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().quiz.update.mutate(payload)),
+      callApi(() => getClient().quiz.update.mutate(payload as any)),
     delete: async (id: number) => callApi(() => getClient().quiz.delete.mutate({ id })),
     dailyQuizExists: async (date: string) =>
       callApi(() => getClient().quiz.dailyQuizExists.query({ date })),
@@ -368,31 +368,31 @@ export const backofficeApi = {
   question: {
     list: async () => callApi(() => getClient().question.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().question.create.mutate(payload)),
+      callApi(() => getClient().question.create.mutate(payload as any)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().question.update.mutate(payload)),
+      callApi(() => getClient().question.update.mutate(payload as any)),
     delete: async (id: number) => callApi(() => getClient().question.delete.mutate({ id })),
   },
   answer: {
     list: async () => callApi(() => getClient().answer.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().answer.create.mutate(payload)),
+      callApi(() => getClient().answer.create.mutate(payload as any)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().answer.update.mutate(payload)),
+      callApi(() => getClient().answer.update.mutate(payload as any)),
     delete: async (id: number) => callApi(() => getClient().answer.delete.mutate({ id })),
   },
   quizQuestion: {
     list: async () => callApi(() => getClient().quizQuestion.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().quizQuestion.create.mutate(payload)),
+      callApi(() => getClient().quizQuestion.create.mutate(payload as any)),
     delete: async (id: number) => callApi(() => getClient().quizQuestion.delete.mutate({ id })),
   },
   dicoEntry: {
     list: async () => callApi(() => getClient().dicoEntry.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().dicoEntry.create.mutate(payload)),
+      callApi(() => getClient().dicoEntry.create.mutate(payload as any)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().dicoEntry.update.mutate(payload)),
+      callApi(() => getClient().dicoEntry.update.mutate(payload as any)),
     delete: async (id: number) => callApi(() => getClient().dicoEntry.delete.mutate({ id })),
   },
 }

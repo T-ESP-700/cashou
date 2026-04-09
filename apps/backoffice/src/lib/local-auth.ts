@@ -1,12 +1,30 @@
 /**
  * Service d'authentification local pour le backoffice
  * Utilise l'API backend au lieu de Supabase
+ *
+ * Note : on utilise createTRPCClient (client vanilla) et non le client React Query
+ * (createTRPCReact) car cette classe n'est pas un composant React.
+ * Le client React Query expose des hooks (.useQuery, .useMutation) mais pas
+ * .mutate() / .query() directement, ce qui causait des erreurs TypeScript.
  */
 
-import { trpc } from './trpc'
+// Client tRPC vanilla — permet d'appeler .mutate() et .query() hors contexte React
+import { createTRPCClient, httpBatchLink } from '@trpc/client'
+import type { AppRouter } from '../../../../apps/backend/src/trpc/router'
 
 const TOKEN_KEY = 'backoffice_auth_token'
 const USER_KEY = 'backoffice_user'
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'
+
+// Client tRPC dédié à ce service (indépendant du client React Query de ./trpc.ts)
+const vanillaClient = createTRPCClient<AppRouter>({
+  links: [
+    httpBatchLink({
+      url: `${BACKEND_URL}/api/trpc`,
+    }),
+  ],
+})
 
 export interface BackofficeUser {
   id: number
@@ -40,7 +58,7 @@ export class LocalAuthService {
 
   static async signIn(email: string, password: string) {
     try {
-      const result = await trpc.backofficeAuth.signIn.mutate({ email, password })
+      const result = await vanillaClient.backofficeAuth.signIn.mutate({ email, password })
 
       this.setToken(result.token)
       this.setUser(result.user)
@@ -58,7 +76,7 @@ export class LocalAuthService {
     }
 
     try {
-      const result = await trpc.backofficeAuth.verify.query({ token })
+      const result = await vanillaClient.backofficeAuth.verify.query({ token })
       this.setUser(result.user)
       return result.user
     } catch (error) {

@@ -1,5 +1,7 @@
 //backend/src/database.ts
 // Configuration et initialisation du client Prisma pour la base de données
+// Import depuis @cashou/db-app (et non @prisma/client) car Bun crée des copies séparées
+// de @prisma/client par contexte de résolution, ce qui cause des types incompatibles
 import { PrismaClient } from '@cashou/db-app'
 
 // Récupération de l'URL de la base de données depuis les variables d'environnement

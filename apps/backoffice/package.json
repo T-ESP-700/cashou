@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "start": "vite preview --host 0.0.0.0 --port 4173",
-    "typecheck": "tsc --noEmit",
+    "precheck": "cd ../../packages/@cashou/db-app && bun run generate && cd ../db-backoffice && bun run generate",
+    "typecheck": "bun run precheck && tsc --noEmit",
     "test": "bun test"
   },
   "dependencies": {
