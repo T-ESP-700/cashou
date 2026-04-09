@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "cashou",
@@ -151,14 +152,10 @@
       },
       "devDependencies": {
         "@babel/plugin-transform-react-jsx": "^7.28.6",
-        "@expo-google-fonts/anybody": "^0.4.2",
-        "@expo-google-fonts/roboto": "^0.4.2",
-        "@expo-google-fonts/rowdies": "^0.4.2",
         "@types/react": "~19.1.10",
         "babel-preset-expo": "~54.0.10",
         "eslint": "9.25.0",
         "eslint-config-expo": "10.0.0",
-        "expo-font": "~14.0.11",
         "typescript": "5.9.2",
       },
     },
