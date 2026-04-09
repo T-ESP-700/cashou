@@ -25,6 +25,7 @@ interface UpdateProfileInput {
 interface UseAuthReturn {
   user: User | null;
   isLoading: boolean;
+  authResolved: boolean;
   isAuthenticated: boolean;
   error: string | null;
   refreshUser: () => Promise<void>;
@@ -43,6 +44,7 @@ const RETRY_CONFIG = {
 function useProvideAuth(): UseAuthReturn {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authResolved, setAuthResolved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const retryCountRef = useRef(0);
   const isInitialLoadRef = useRef(true);
@@ -84,6 +86,7 @@ function useProvideAuth(): UseAuthReturn {
       if (!token) {
         setUser(null);
         setIsLoading(false);
+        setAuthResolved(true);
         isInitialLoadRef.current = false;
         retryCountRef.current = 0;
         return;
@@ -146,6 +149,7 @@ function useProvideAuth(): UseAuthReturn {
       }
     } finally {
       setIsLoading(false);
+      setAuthResolved(true);
       isInitialLoadRef.current = false;
       console.log('[useAuth] fetchUser completed');
     }
@@ -178,7 +182,8 @@ function useProvideAuth(): UseAuthReturn {
       setUser(null);
       setError(null);
       setIsLoading(false);
-      isInitialLoadRef.current = true;
+      setAuthResolved(true);
+      isInitialLoadRef.current = true; // Reset for next login
       retryCountRef.current = 0;
       resetAuthErrorHandling();
       console.log('[useAuth] Logout completed, local state cleared');
@@ -232,13 +237,14 @@ function useProvideAuth(): UseAuthReturn {
     () => ({
       user,
       isLoading,
+      authResolved,
       isAuthenticated: user !== null,
       error,
       refreshUser: fetchUser,
       logout,
       updateProfile,
     }),
-    [user, isLoading, error, fetchUser, logout, updateProfile],
+    [user, isLoading, authResolved, error, fetchUser, logout, updateProfile],
   );
 
   return contextValue;

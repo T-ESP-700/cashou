@@ -6,7 +6,6 @@ import {
     Platform,
     Modal,
     Switch,
-    Alert,
 } from "react-native";
 import * as Linking from "expo-linking";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,6 +18,7 @@ import Animated, {
     Easing,
 } from "react-native-reanimated";
 import { useCashouTheme } from "@/hooks/use-cashou-theme";
+import { useAlert } from "@/hooks/use-alert";
 import { useThemePreference } from "@/hooks/use-theme-provider";
 
 interface HeaderDropdownMenuProps {
@@ -40,6 +40,7 @@ export function HeaderDropdownMenu({
     onClose,
 }: HeaderDropdownMenuProps) {
     const { colors, isDark, borderRadius } = useCashouTheme();
+    const { showAlert } = useAlert();
     const { toggleTheme } = useThemePreference();
     const insets = useSafeAreaInsets();
 
@@ -95,9 +96,9 @@ export function HeaderDropdownMenu({
     };
 
     const handleContact = () => {
-        Alert.alert(
+        showAlert(
             "Nous contacter",
-            "Vous allez ouvrir votre application email pour contacter l'\u00e9quipe Cashou.",
+            "Vous allez ouvrir votre application email pour contacter l'équipe Cashou.",
             [
                 { text: "Annuler", style: "cancel" },
                 {

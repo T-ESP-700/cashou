@@ -1,10 +1,11 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Switch } from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
+import { useAlert } from '@/hooks/use-alert';
 import { trpcClient } from '@/lib/trpc';
 import { useHeaderOptions } from '@/hooks/use-header';
 import { useAuth } from '@/hooks/use-auth';
@@ -90,6 +91,7 @@ export default function GameSummaryScreen() {
   const isHistoryMode = mode === 'history';
   const { user } = useAuth();
   const { colors: theme, isDark } = useCashouTheme();
+  const { showAlert } = useAlert();
   const insets = useSafeAreaInsets();
 
   useHeaderOptions({ showBackButton: true, title: 'Résumé' });
@@ -302,7 +304,7 @@ export default function GameSummaryScreen() {
     const activeGame = await trpcClient.gameInstance.getActiveByUser.query({ userId: user.id });
     if (activeGame) {
       const confirmed = await new Promise<boolean>((resolve) => {
-        Alert.alert(
+        showAlert(
           'Partie en cours',
           'Lancer cette partie va clôturer la partie en cours sans gagner de récompenses. Voulez-vous continuer ?',
           [
@@ -338,7 +340,7 @@ export default function GameSummaryScreen() {
       });
     } catch (err) {
       console.error('Error creating replay game:', err);
-      Alert.alert('Erreur', 'Impossible de créer la partie');
+      showAlert('Erreur', 'Impossible de créer la partie');
     } finally {
       setIsReplaying(false);
     }
@@ -619,14 +621,13 @@ export default function GameSummaryScreen() {
       </ScrollView>
 
       {user && gameInstance?.level?.id && (
-        <View style={[styles.bottomActions, { paddingBottom: insets.bottom + 10 }]}>
+        <View style={[styles.bottomActions, { paddingBottom: insets.bottom + 10, backgroundColor: theme.background }]}>
           <ActionPillButton
             label={isReplaying ? '...' : 'Rejouer'}
             iconName="refresh-outline"
             onPress={handleReplay}
             disabled={isReplaying}
             isLoading={isReplaying}
-            style={styles.bottomActionButton}
           />
 
           {!isHistoryMode && (
@@ -635,7 +636,6 @@ export default function GameSummaryScreen() {
                 label="Quiz"
                 customIcon={<QuizActionIcon width={18} height={18} />}
                 onPress={handleGoToQuiz}
-                style={styles.bottomActionButton}
               />
             ) : (
               !!nextLevel?.id && (
@@ -643,7 +643,6 @@ export default function GameSummaryScreen() {
                   label={`Niveau ${nextLevel.number ?? ''}`.trim()}
                   iconName="play"
                   onPress={handleGoToNextLevel}
-                  style={styles.bottomActionButton}
                 />
               )
             )
@@ -664,6 +663,8 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 10,
+    flexGrow: 1,
+    justifyContent: 'center',
   },
   loadingContainer: {
     flex: 1,
@@ -912,10 +913,8 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 18,
     paddingTop: 10,
-    backgroundColor: 'transparent',
   },
   bottomActionButton: {
-    flex: 1,
   },
   levelContextTitle: {
     fontSize: 16,

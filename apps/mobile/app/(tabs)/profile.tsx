@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, ScrollView, ActivityIndicator, View } from 'react-native';
+import { StyleSheet, ActivityIndicator, View } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { UserProfile } from '@/components/auth/user-profile';
@@ -37,13 +37,7 @@ export default function ProfileScreen() {
   // Show user profile
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <UserProfile />
-      </ScrollView>
+      <UserProfile />
     </View>
   );
 }
@@ -51,12 +45,6 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
   },
   loadingContainer: {
     flex: 1,

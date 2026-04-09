@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
@@ -33,6 +33,7 @@ export default function LevelsScreen() {
 
   useHeaderOptions({ showBackButton: false, title: 'Historique' });
 
+  const flatListRef = useRef<FlatList<LevelItem>>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [levels, setLevels] = useState<LevelItem[]>([]);
@@ -118,6 +119,17 @@ export default function LevelsScreen() {
         });
 
         setLevels(result);
+
+        // Scroll to the first unlocked non-completed level after render
+        const nextLevelIndex = result.findIndex((l) => l.status === 'current');
+        if (nextLevelIndex > 0) {
+          setTimeout(() => {
+            flatListRef.current?.scrollToIndex({
+              index: Math.max(0, nextLevelIndex - 2), // Show a couple completed levels above for context
+              animated: true,
+            });
+          }, 300);
+        }
       } catch (err) {
         console.error('Error fetching levels:', err);
         setError('Erreur lors du chargement des niveaux');
@@ -274,11 +286,17 @@ export default function LevelsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <FlatList
+        ref={flatListRef}
         data={levels}
         renderItem={renderLevelItem}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 16 }]}
         showsVerticalScrollIndicator={false}
+        onScrollToIndexFailed={(info) => {
+          setTimeout(() => {
+            flatListRef.current?.scrollToIndex({ index: info.index, animated: true });
+          }, 500);
+        }}
       />
     </View>
   );

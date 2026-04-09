@@ -15,7 +15,8 @@ import { trpcClient } from '@/lib/trpc';
 import { API_URL } from '@/lib/api-config';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useAuth } from '@/hooks/use-auth';
-import { useHeaderOptions } from '@/hooks/use-header';
+import { useHeader, useGameHeaderSubtitle } from '@/hooks/use-header';
+import { useGameRealtime } from '@/hooks/use-game-realtime';
 
 // UI representation of an asset for display purposes
 type AssetItem = {
@@ -23,6 +24,7 @@ type AssetItem = {
   name: string;
   tags: string[];
   changePct: number;
+  submarketType?: string; // 'Savings' | 'Insurance' | 'Stock'
 };
 
 
@@ -30,11 +32,19 @@ export default function AssetsScreen() {
   const { colors: theme, isDark, status } = useCashouTheme();
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { setIsOnAssetsScreen, activeGameInstanceId, pendingEventCompletion, setPendingEventCompletion, assetsScreenDepth, setAssetsScreenDepth, assetsScreenDepthRef, setPausedByAssets, pausedByAssets } = useNotifications();
+  const { setIsOnAssetsScreen, activeGameInstanceId, pendingEventCompletion, setAssetsScreenDepth, assetsScreenDepthRef, setPausedByAssets, pausedByAssets } = useNotifications();
   const { user } = useAuth();
 
-  // Configure header for this screen
-  useHeaderOptions({ showBackButton: true, title: 'Actifs' });
+  // Keep the game header (Niveau X + date) — only ensure back button is shown
+  const { setOptions: setHeaderOptions } = useHeader();
+  const { formattedGameDate, state: realtimeState } = useGameRealtime();
+  useGameHeaderSubtitle(formattedGameDate, realtimeState.isPaused, realtimeState.isEnded);
+
+  useFocusEffect(
+    useCallback(() => {
+      setHeaderOptions({ showBackButton: true });
+    }, [setHeaderOptions])
+  );
 
   const [query, setQuery] = useState('');
   const [assets, setAssets] = useState<AssetItem[]>([]);
@@ -50,6 +60,7 @@ export default function AssetsScreen() {
   const activeGameInstanceIdRef = useRef(activeGameInstanceId);
   const userRef = useRef(user);
   const pendingEventCompletionRef = useRef(pendingEventCompletion);
+  const pausedByAssetsRef = useRef(pausedByAssets);
 
   // Keep refs in sync with current values
   useEffect(() => {
@@ -63,6 +74,69 @@ export default function AssetsScreen() {
   useEffect(() => {
     pendingEventCompletionRef.current = pendingEventCompletion;
   }, [pendingEventCompletion]);
+
+  useEffect(() => {
+    pausedByAssetsRef.current = pausedByAssets;
+  }, [pausedByAssets]);
+
+  const fetchAssets = useCallback(async () => {
+    let localError: unknown = null;
+    try {
+      setLoading(true);
+      setError(null);
+      const data: any[] = await trpcClient.asset.getAll.query();
+
+      // Fetch current prices + daily change in one call per asset
+      const priceData: Record<number, { price: number; changePct: number } | null> = {};
+      if (gameInstanceId) {
+        await Promise.all(
+          (data || []).map(async (a: any) => {
+            try {
+              priceData[a.id] = await trpcClient.assetHistory.getPriceWithChange.query({
+                assetId: a.id,
+                gameInstanceId: parseInt(gameInstanceId),
+              });
+            } catch {
+              priceData[a.id] = null;
+            }
+          })
+        );
+      }
+
+      // Map backend Asset to UI AssetItem
+      const mapped: AssetItem[] = (data || []).map((a: any) => {
+        const pd = priceData[a.id];
+        const subType = a?.submarket?.type as string | undefined;
+        const isSavingsAsset = subType === 'SAVINGS';
+
+        const changePct = isSavingsAsset
+          ? (typeof a?.rate === 'number' ? a.rate : 0)
+          : (pd?.changePct ?? (typeof a?.rate === 'number' ? a.rate : 0));
+        const displayTag = isSavingsAsset
+          ? (typeof a?.rate === 'number' ? `Taux: ${a.rate}%/an` : null)
+          : (pd ? (pd.price / 100).toFixed(2) + ' EUR' : undefined);
+
+        return {
+          id: String(a.id ?? a.symbol ?? a.title ?? Math.random()),
+          name: String(a.title ?? a.symbol ?? 'Asset'),
+          tags: [
+            a?.submarket?.title ? String(a.submarket.title) : null,
+            displayTag ?? null,
+          ].filter(Boolean) as string[],
+          changePct,
+          submarketType: subType,
+        };
+      });
+      setAssets(mapped);
+    } catch (e: any) {
+      localError = e;
+      console.error('[AssetsScreen] Failed to load assets from', API_URL, e);
+      setError(e?.message ? String(e.message) : 'Impossible de charger les assets');
+    } finally {
+      setLoading(false);
+    }
+    return localError;
+  }, [gameInstanceId]);
 
   // Pause game when entering assets screen, resume when leaving (only if no nested screens)
   useFocusEffect(
@@ -112,6 +186,9 @@ export default function AssetsScreen() {
         }
 
         if (isMounted) setIsOnAssetsScreen(true);
+
+        // Refresh prices after pause is effective (so backend uses paused time)
+        await fetchAssets();
       };
 
       pauseGame();
@@ -149,38 +226,21 @@ export default function AssetsScreen() {
             console.log('[AssetsScreen] EXIT - No other assets screen, proceeding with resume');
 
             try {
-              // Check current game state before resuming
-              console.log('[AssetsScreen] EXIT - Fetching game state...');
-              const gameInstance = await trpcClient.gameInstance.getById.query({ id: gameId });
-              const isCurrentlyPaused = gameInstance?.isPaused ?? false;
+              const isWaitingForEventResume = pendingCompletion === gameId;
 
-              console.log('[AssetsScreen] EXIT - Game state: isPaused=', isCurrentlyPaused);
-
-              // Resume if game is currently paused
-              if (isCurrentlyPaused) {
-                console.log('[AssetsScreen] 🎮 Resuming game', gameId);
+              // Only resume if WE paused the game and we're not waiting for an explicit event resume.
+              if (pausedByAssetsRef.current && !isWaitingForEventResume) {
+                console.log('[AssetsScreen] 🎮 Resuming game (pausedByAssets=true)', gameId);
                 await trpcClient.gameInstance.resume.mutate({ id: gameId });
                 console.log('[AssetsScreen] ✅ Game resumed successfully');
               } else {
-                console.log('[AssetsScreen] ⚠️  Game is not paused, nothing to resume');
-              }
-
-              // If there's a pending event completion, complete it now
-              if (pendingCompletion && pendingCompletion === gameId) {
-                console.log('[AssetsScreen] 📋 Completing pending event for game', gameId);
-                await trpcClient.gameInstance.completeEvent.mutate({ id: gameId });
-                setPendingEventCompletion(null);
-                console.log('[AssetsScreen] ✅ Event completed');
+                console.log('[AssetsScreen] ⏸️  Game stays paused after assets close');
               }
 
               setPausedByAssets(false);
               setIsOnAssetsScreen(false);
             } catch (error) {
-              console.error('[AssetsScreen] ❌ Failed to resume game or complete event:', error);
-              // Clear pending completion on error to avoid retry loops
-              if (pendingCompletion === gameId) {
-                setPendingEventCompletion(null);
-              }
+              console.error('[AssetsScreen] ❌ Failed to resume game:', error);
               setPausedByAssets(false);
               setIsOnAssetsScreen(false);
             }
@@ -190,41 +250,9 @@ export default function AssetsScreen() {
           setIsOnAssetsScreen(newDepth > 0);
         }
       };
-    }, [setIsOnAssetsScreen, setPendingEventCompletion, setAssetsScreenDepth, setPausedByAssets, assetsScreenDepthRef])
+    }, [setIsOnAssetsScreen, setAssetsScreenDepth, setPausedByAssets, assetsScreenDepthRef, fetchAssets])
   );
 
-  const fetchAssets = useCallback(async () => {
-    let localError: unknown = null;
-    try {
-      setLoading(true);
-      setError(null);
-      const data: any[] = await trpcClient.asset.getAll.query();
-      // Map backend Asset to UI AssetItem
-      const mapped: AssetItem[] = (data || []).map((a: any) => ({
-        id: String(a.id ?? a.symbol ?? a.title ?? Math.random()),
-        name: String(a.title ?? a.symbol ?? 'Asset'),
-        // Basic tags mapping (extend later if backend exposes richer fields)
-        tags: [
-          a?.symbol ? String(a.symbol) : null,
-          a?.market?.title ? String(a.market.title) : null,
-        ].filter(Boolean) as string[],
-        // Map 'taux' field from database to 'changePct' for UI display
-        changePct: typeof a?.rate === 'number' ? a.rate : 0,
-      }));
-      setAssets(mapped);
-    } catch (e: any) {
-      localError = e;
-      console.error('[AssetsScreen] Failed to load assets from', API_URL, e);
-      setError(e?.message ? String(e.message) : 'Impossible de charger les assets');
-    } finally {
-      setLoading(false);
-    }
-    return localError;
-  }, []);
-
-  useEffect(() => {
-    fetchAssets();
-  }, [fetchAssets]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -341,8 +369,17 @@ function AssetCard({ asset, isDark, router, gameInstanceId, walletId }: AssetCar
         ))}
       </View>
       <View style={styles.changeRow}>
-        <Ionicons name={positive ? 'caret-up' : 'caret-down'} size={18} color="#FFB472" />
-        <Text style={{ marginLeft: 4, color: theme.text, fontFamily: CashouTheme.fonts.subheading }}>{Math.abs(asset.changePct)}%</Text>
+        {asset.submarketType === 'SAVINGS' ? (
+          <>
+            <Ionicons name="lock-closed" size={16} color="#4CAF50" />
+            <Text style={{ marginLeft: 4, color: '#4CAF50', fontFamily: CashouTheme.fonts.subheading }}>{asset.changePct}%/an garanti</Text>
+          </>
+        ) : (
+          <>
+            <Ionicons name={positive ? 'caret-up' : 'caret-down'} size={18} color="#FFB472" />
+            <Text style={{ marginLeft: 4, color: theme.text, fontFamily: CashouTheme.fonts.subheading }}>{Math.abs(asset.changePct).toFixed(2)}%</Text>
+          </>
+        )}
       </View>
     </TouchableOpacity>
   );

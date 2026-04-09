@@ -1,8 +1,9 @@
 import { ScrollView, View, Text, ActivityIndicator } from 'react-native';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LevelCard } from '@/components/level-card';
 import { DailyQuizCard } from '@/components/daily-quiz-card';
+import { ScrollingLogos } from '@/components/scrolling-logos';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { useAuth } from '@/hooks/use-auth';
 import { useHeaderOptions } from '@/hooks/use-header';
@@ -102,17 +103,26 @@ const getContextualMessage = (
 
 export default function HomeScreen() {
   const { colors, fonts, spacing } = useCashouTheme();
-  const { user, isAuthenticated, refreshUser } = useAuth();
+  const { user, isAuthenticated, authResolved, refreshUser } = useAuth();
   const router = useRouter();
 
   // Configure header for this screen
   useHeaderOptions({ showBackButton: false, title: 'Cashou' });
   const [dailyQuizStatus, setDailyQuizStatus] = useState<'todo' | 'done'>('todo');
   const [homeData, setHomeData] = useState<HomeData | null>(null);
+  const homeDataRef = React.useRef<HomeData | null>(null);
   const [isLoadingHomeData, setIsLoadingHomeData] = useState(true);
   const [portfolioNetWorth, setPortfolioNetWorth] = useState<number>(0);
   const [portfolioReturn, setPortfolioReturn] = useState<number>(0);
   const [levelCardStatus, setLevelCardStatus] = useState<'not_started' | 'in_progress' | 'completed' | 'quiz_pending'>('not_started');
+  const hasLoadedInitialHomeRef = useRef(false);
+  const isInitialHomeLoadInFlightRef = useRef(false);
+  const shouldSkipNextFocusRefreshRef = useRef(false);
+
+  // Keep ref in sync for use in setInterval (avoids stale closure)
+  React.useEffect(() => {
+    homeDataRef.current = homeData;
+  }, [homeData]);
 
   // Générer le greeting une seule fois au montage (pour éviter les changements aléatoires)
   const greeting = useMemo(() => {
@@ -170,88 +180,104 @@ export default function HomeScreen() {
     fetchPortfolio(homeData?.activeGame ?? null, homeData?.level ?? null);
   }, [homeData?.activeGame?.id]);
 
+  const fetchHomeData = useCallback(async () => {
+    if (!authResolved || !isAuthenticated) {
+      setHomeData(null);
+      setIsLoadingHomeData(false);
+      return null;
+    }
+
+    try {
+      setIsLoadingHomeData(true);
+      const result = await trpcClient.auth.getHomeData.query();
+      const data = result as HomeData;
+      setHomeData(data);
+      return data;
+    } catch (error) {
+      console.error('Error fetching home data:', error);
+      setHomeData(null);
+      return null;
+    } finally {
+      setIsLoadingHomeData(false);
+    }
+  }, [authResolved, isAuthenticated]);
+
+  const fetchDailyQuizStatus = useCallback(async () => {
+    if (!authResolved || !isAuthenticated) {
+      setDailyQuizStatus('todo');
+      return;
+    }
+
+    try {
+      const result = await trpcClient.userQuiz.hasDoneDailyTodayForCurrentUser.query();
+      setDailyQuizStatus(result.hasDone ? 'done' : 'todo');
+    } catch (error) {
+      console.error('Error fetching daily quiz status:', error);
+      setDailyQuizStatus('todo');
+    }
+  }, [authResolved, isAuthenticated]);
+
   // Fetch home data
   useEffect(() => {
-    const fetchHomeData = async () => {
-      if (!isAuthenticated) {
-        setHomeData(null);
-        setIsLoadingHomeData(false);
+    const loadInitialHomeData = async () => {
+      if (!authResolved) {
         return;
       }
 
-      try {
-        setIsLoadingHomeData(true);
-        const result = await trpcClient.auth.getHomeData.query();
-        setHomeData(result as HomeData);
-      } catch (error) {
-        console.error('Error fetching home data:', error);
-        setHomeData(null);
-      } finally {
-        setIsLoadingHomeData(false);
-      }
-    };
-
-    fetchHomeData();
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    const fetchDailyQuizStatus = async () => {
       if (!isAuthenticated) {
-        setDailyQuizStatus('todo');
+        setHomeData(null);
+        setIsLoadingHomeData(false);
+        hasLoadedInitialHomeRef.current = false;
+        isInitialHomeLoadInFlightRef.current = false;
+        shouldSkipNextFocusRefreshRef.current = false;
         return;
       }
 
-      try {
-        const result = await trpcClient.userQuiz.hasDoneDailyTodayForCurrentUser.query();
-        setDailyQuizStatus(result.hasDone ? 'done' : 'todo');
-      } catch (error) {
-        console.error('Error fetching daily quiz status:', error);
-        setDailyQuizStatus('todo');
-      }
+      isInitialHomeLoadInFlightRef.current = true;
+      shouldSkipNextFocusRefreshRef.current = true;
+      await Promise.all([fetchHomeData(), fetchDailyQuizStatus()]);
+      hasLoadedInitialHomeRef.current = true;
+      isInitialHomeLoadInFlightRef.current = false;
     };
 
-    fetchDailyQuizStatus();
-  }, [isAuthenticated]);
+    void loadInitialHomeData();
+  }, [authResolved, isAuthenticated, fetchHomeData, fetchDailyQuizStatus]);
 
   // Rafraîchir les données utilisateur et le statut du quiz quand la page revient au focus
   useFocusEffect(
     React.useCallback(() => {
-      if (isAuthenticated) {
-        refreshUser();
-
-        const refreshAll = async () => {
-          try {
-            const result = await trpcClient.auth.getHomeData.query();
-            const data = result as HomeData;
-            setHomeData(data);
-
-            // Refresh portfolio with fresh homeData
-            fetchPortfolio(data.activeGame, data.level);
-          } catch (error) {
-            console.error('Error fetching home data:', error);
-          }
-
-          try {
-            const result = await trpcClient.userQuiz.hasDoneDailyTodayForCurrentUser.query();
-            setDailyQuizStatus(result.hasDone ? 'done' : 'todo');
-          } catch (error) {
-            console.error('Error fetching daily quiz status:', error);
-            setDailyQuizStatus('todo');
-          }
-        };
-
-        refreshAll();
-
-        // Poll portfolio every 10s while the page is focused
-        const interval = setInterval(() => {
-          if (homeData?.activeGame) {
-            fetchPortfolio(homeData.activeGame, homeData.level ?? null);
-          }
-        }, 10000);
-
-        return () => clearInterval(interval);
+      if (!authResolved || !isAuthenticated) {
+        return;
       }
-    }, [isAuthenticated, refreshUser])
+
+      if (
+        shouldSkipNextFocusRefreshRef.current
+        || !hasLoadedInitialHomeRef.current
+        || isInitialHomeLoadInFlightRef.current
+      ) {
+        shouldSkipNextFocusRefreshRef.current = false;
+      } else {
+        void refreshUser();
+
+        void (async () => {
+          const data = await fetchHomeData();
+          if (data) {
+            fetchPortfolio(data.activeGame, data.level);
+          }
+          await fetchDailyQuizStatus();
+        })();
+      }
+
+      // Poll portfolio every 10s while the page is focused
+      const interval = setInterval(() => {
+        const current = homeDataRef.current;
+        if (current?.activeGame) {
+          fetchPortfolio(current.activeGame, current.level ?? null);
+        }
+      }, 10000);
+
+      return () => clearInterval(interval);
+    }, [authResolved, isAuthenticated, refreshUser, fetchHomeData, fetchDailyQuizStatus])
   );
 
   // Vérifier si le quiz du niveau est complété pour le dernier niveau complété
@@ -373,17 +399,21 @@ export default function HomeScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120 }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingBottom: 120 }}>
         {isLoadingHomeData ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl * 1.5 }}>
             <ActivityIndicator size="large" color={colors.accent} />
           </View>
         ) : (
           <>
-            {/* Greeting & Contextual Messages as chat bubbles */}
-            <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.lg, gap: spacing.sm }}>
+            {/* Scrolling logos background filling the empty space */}
+            <View style={{ flex: 1, minHeight: 120 }}>
+              <ScrollingLogos />
+            </View>
+
+            <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.lg, gap: 8 }}>
               {/* Greeting bubble */}
-              <Card variant="outlined" padding="md">
+              <Card variant="default" padding="md">
                 <Text
                   style={{
                     fontSize: 22,
@@ -397,7 +427,7 @@ export default function HomeScreen() {
 
               {/* Contextual messages — all in one card */}
               {contextualMessages.length > 0 && (
-                <Card variant="outlined" padding="md">
+                <Card variant="default" padding="md">
                   {contextualMessages.map((message, index) => (
                     <Text
                       key={index}
@@ -414,9 +444,6 @@ export default function HomeScreen() {
                   ))}
                 </Card>
               )}
-            </View>
-
-            <View style={{ height: spacing.md }} />
 
             {/* Level Card */}
             {levelCardData.hasGame || homeData?.level ? (
@@ -427,6 +454,7 @@ export default function HomeScreen() {
                 cash={levelCardData.cash}
                 currentReturn={levelCardData.currentReturn}
                 status={levelCardData.status}
+                isPaused={homeData?.activeGame?.isPaused === true}
                 stars={levelCardData.stars}
                 onPress={handleLevelPress}
               />
@@ -434,6 +462,7 @@ export default function HomeScreen() {
 
             {/* Daily Quiz Card */}
             <DailyQuizCard status={dailyQuizStatus} />
+            </View>
           </>
         )}
       </ScrollView>

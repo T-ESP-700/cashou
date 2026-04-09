@@ -3,6 +3,7 @@
 import { initTRPC } from "@trpc/server";
 import { GoalService } from "../../trpc/services/goal.service.ts";
 import { goalCreateSchema, goalIdSchema, goalUpdateSchema } from "../schemas-zod/goal-schema.ts";
+import { staticCache, cached, invalidateByPrefix } from "../../lib/cache.ts";
 
 // Initialisation de tRPC pour ce router spécifique
 const t = initTRPC.create();
@@ -18,7 +19,7 @@ export const goalRouter = t.router({
      * Pas de paramètre d'entrée requis
      */
     getAll: t.procedure.query(async () => {
-        return await goalService.findAll();
+        return cached(staticCache, "goal:all", () => goalService.findAll());
     }),
 
     /**
@@ -29,7 +30,7 @@ export const goalRouter = t.router({
     getById: t.procedure
         .input(goalIdSchema) // Validation automatique de l'entrée
         .query(async ({ input }) => {
-            return await goalService.findOne(input.id);
+            return cached(staticCache, `goal:${input.id}`, () => goalService.findOne(input.id));
         }),
 
     /**
@@ -40,7 +41,9 @@ export const goalRouter = t.router({
     create: t.procedure
         .input(goalCreateSchema) // Validation des données avant traitement
         .mutation(async ({ input }) => { // mutation = opération de modification
-            return await goalService.create(input);
+            const result = await goalService.create(input);
+            invalidateByPrefix(staticCache, "goal:");
+            return result;
         }),
 
     /**
@@ -51,7 +54,9 @@ export const goalRouter = t.router({
     update: t.procedure
         .input(goalUpdateSchema) // Validation de l'ID et des données
         .mutation(async ({ input }) => {
-            return await goalService.update(input.id, input.data);
+            const result = await goalService.update(input.id, input.data);
+            invalidateByPrefix(staticCache, "goal:");
+            return result;
         }),
 
     /**
@@ -62,7 +67,9 @@ export const goalRouter = t.router({
     delete: t.procedure
         .input(goalIdSchema) // Validation de l'ID
         .mutation(async ({ input }) => {
-            return await goalService.delete(input.id);
+            const result = await goalService.delete(input.id);
+            invalidateByPrefix(staticCache, "goal:");
+            return result;
         }),
 });
 

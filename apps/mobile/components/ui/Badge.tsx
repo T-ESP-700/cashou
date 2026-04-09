@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ViewStyle } from 'react-native';
+import { View, Text, ViewStyle, TextStyle } from 'react-native';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
 
 export type BadgeVariant = 'success' | 'error' | 'warning' | 'info' | 'neutral' | 'accent' | 'streak';
@@ -16,6 +16,8 @@ interface BadgeProps {
   showDot?: boolean;
   /** Icon to display before text */
   icon?: React.ReactNode;
+  /** Font weight override */
+  fontWeight?: TextStyle['fontWeight'];
   /** Additional style */
   style?: ViewStyle;
 }
@@ -26,6 +28,7 @@ export function Badge({
   size = 'md',
   showDot = false,
   icon,
+  fontWeight: fontWeightProp,
   style,
 }: BadgeProps) {
   const { colors, status, special, fonts, borderRadius } = useCashouTheme();
@@ -107,7 +110,7 @@ export function Badge({
           color: getTextColor(),
           fontFamily: fonts.body,
           fontSize: currentSize.fontSize,
-          fontWeight: '500',
+          fontWeight: fontWeightProp ?? '500',
         }}
       >
         {label}

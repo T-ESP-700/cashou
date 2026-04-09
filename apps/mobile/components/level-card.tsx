@@ -11,6 +11,7 @@ interface LevelCardProps {
   cash: number;
   currentReturn: number; // percentage
   status?: 'not_started' | 'in_progress' | 'completed' | 'quiz_pending';
+  isPaused?: boolean;
   stars?: number; // 1-3 from level completion
   onPress?: () => void;
 }
@@ -22,6 +23,7 @@ export function LevelCard({
   cash,
   currentReturn,
   status = 'in_progress',
+  isPaused = false,
   stars = 0,
   onPress,
 }: LevelCardProps) {
@@ -53,16 +55,18 @@ export function LevelCard({
     return (
       <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
         <Card
-          variant="outlined"
+          variant="default"
           padding="md"
-          style={{ marginHorizontal: spacing.md, marginBottom: spacing.md }}
+          style={{}}
         >
           {/* Header: Niveau X + Badge */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm + 4 }}>
-            <Text style={{ fontSize: 24, fontFamily: fonts.subheading, color: colors.text }}>
+            <Text style={{ fontSize: 24, fontFamily: fonts.body, color: colors.text }}>
               Niveau {level}
             </Text>
-            <Badge label={badgeConfig.text} variant={badgeConfig.variant} showDot />
+            <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#9CD6FF', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="lock-open-outline" size={16} color="#FFFFFF" />
+            </View>
           </View>
 
           {/* Welcome Message */}
@@ -79,6 +83,14 @@ export function LevelCard({
               Prêt à apprendre à investir ? Appuyez ici pour découvrir le niveau {level} et commencer votre aventure financière.
             </Text>
           </View>
+
+          {/* Status badge (bottom left) */}
+          <View style={{ flexDirection: 'row', marginTop: spacing.sm + 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#9CD6FF', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 }}>
+              <Ionicons name="flag-outline" size={14} color="#FFFFFF" />
+              <Text style={{ fontSize: 14, fontFamily: fonts.body, color: '#FFFFFF' }}>À commencer</Text>
+            </View>
+          </View>
         </Card>
       </TouchableOpacity>
     );
@@ -87,14 +99,14 @@ export function LevelCard({
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
       <Card
-        variant="outlined"
+        variant="default"
         padding="md"
-        style={{ marginHorizontal: spacing.md, marginBottom: spacing.md }}
+        style={{}}
       >
         {/* Line 1: Niveau X (+ stars) | Badge */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm + 4 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={{ fontSize: 24, fontFamily: fonts.subheading, color: colors.text }}>
+            <Text style={{ fontSize: 24, fontFamily: fonts.body, color: colors.text }}>
               Niveau {level}
             </Text>
             {(status === 'completed' || status === 'quiz_pending') && stars > 0 && (
@@ -110,18 +122,42 @@ export function LevelCard({
               </View>
             )}
           </View>
-          <Badge label={badgeConfig.text} variant={badgeConfig.variant} showDot />
+          {status === 'in_progress' && (
+            <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#FFB472', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="arrow-forward" size={18} color="#000000" />
+            </View>
+          )}
+          {status === 'quiz_pending' && (
+            <Badge label={badgeConfig.text} variant={badgeConfig.variant} showDot />
+          )}
+          {status === 'completed' && (
+            <Ionicons name="checkmark-circle" size={34} color="#88D498" />
+          )}
         </View>
 
-        {/* Line 2: Cash amount | Return % */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-          <Text style={{ fontSize: 32, fontFamily: fonts.subheading, color: colors.text }}>
-            {cash.toLocaleString('fr-FR')}€
-          </Text>
+        {/* Line 2: Status badge (left) + Cash amount + Return % (right) */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          {status === 'in_progress' && isPaused && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#A0A0A0', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 }}>
+              <Ionicons name="pause" size={14} color="#FFFFFF" />
+              <Text style={{ fontSize: 14, fontFamily: fonts.body, color: '#FFFFFF' }}>En pause</Text>
+            </View>
+          )}
+          {status === 'in_progress' && !isPaused && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#FFB472', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 }}>
+              <Ionicons name="play" size={14} color="#FFFFFF" />
+              <Text style={{ fontSize: 14, fontFamily: fonts.body, color: '#FFFFFF' }}>En cours</Text>
+            </View>
+          )}
 
-          <Text style={{ fontSize: 22, fontFamily: fonts.subheading, color: returnColor }}>
-            {returnArrow}{Math.abs(currentReturn)}%
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
+            <Text style={{ fontSize: 32, fontFamily: fonts.body, color: colors.text }}>
+              {cash.toLocaleString('fr-FR')}€
+            </Text>
+            <Text style={{ fontSize: 22, fontFamily: fonts.body, color: returnColor }}>
+              {currentReturn !== 0 ? returnArrow : ''}{Math.abs(currentReturn)}%
+            </Text>
+          </View>
         </View>
       </Card>
     </TouchableOpacity>

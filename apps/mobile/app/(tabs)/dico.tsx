@@ -9,6 +9,7 @@ import {
   Pressable,
   ActivityIndicator,
   RefreshControl,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -124,6 +125,7 @@ export default function DicoScreen() {
 
   // Handle entry press - open bottom sheet
   const handleEntryPress = useCallback((entry: DicoEntry) => {
+    Keyboard.dismiss();
     setSelectedEntry(entry);
     bottomSheetRef.current?.present();
   }, []);
@@ -211,14 +213,14 @@ export default function DicoScreen() {
         {/* Content */}
         <View style={styles.content}>
           {/* Title */}
-          <Text
+          {/* <Text
             style={[
               styles.title,
               { color: theme.text, fontFamily: CashouTheme.fonts.heading },
             ]}
           >
             Dico
-          </Text>
+          </Text> */}
 
           {/* Search Bar */}
           <View
@@ -266,6 +268,7 @@ export default function DicoScreen() {
             style={styles.scrollView}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
             refreshControl={
               <RefreshControl
                 refreshing={isRefreshing}
@@ -446,7 +449,7 @@ const styles = StyleSheet.create({
     borderRadius: CashouTheme.borderRadius.md,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    marginBottom: 20,
+    marginBottom: 8,
   },
   searchIcon: {
     marginRight: 12,

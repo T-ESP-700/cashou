@@ -4,6 +4,7 @@ import { z } from "zod";
 import { MarketService } from "../../trpc/services/market.service.ts";
 import {marketCreateSchema, marketUpdateSchema, marketIdSchema} from "../schemas-zod/market-schema.ts";
 import {paginationSchema, marketSearchSchema, marketIdSchema as marketBusinessIdSchema} from "../schemas-zod/market-business-schema.ts";
+import { staticCache, cached, invalidateByPrefix } from "../../lib/cache.ts";
 
 const t = initTRPC.create();
 
@@ -17,7 +18,7 @@ export const marketRouter = t.router({
      * Pas de paramètre d'entrée requis
      */
     getAll: t.procedure.query(async () => {
-        return await marketService.findAll();
+        return cached(staticCache, "market:all", () => marketService.findAll());
     }),
 
     /**
@@ -28,7 +29,7 @@ export const marketRouter = t.router({
     getById: t.procedure
         .input(marketIdSchema) // Validation automatique de l'entrée
         .query(async ({ input }) => {
-            return await marketService.findOne(input.id);
+            return cached(staticCache, `market:${input.id}`, () => marketService.findOne(input.id));
         }),
 
     /**
@@ -39,7 +40,9 @@ export const marketRouter = t.router({
     create: t.procedure
         .input(marketCreateSchema) // Validation des données avant traitement
         .mutation(async ({ input }) => { // mutation = opération de modification
-            return await marketService.create(input);
+            const result = await marketService.create(input);
+            invalidateByPrefix(staticCache, "market:");
+            return result;
         }),
 
     /**
@@ -50,7 +53,9 @@ export const marketRouter = t.router({
     update: t.procedure
         .input(marketUpdateSchema) // Validation de l'ID et des données
         .mutation(async ({ input }) => {
-            return await marketService.update(input.id, input.data);
+            const result = await marketService.update(input.id, input.data);
+            invalidateByPrefix(staticCache, "market:");
+            return result;
         }),
 
     /**
@@ -61,7 +66,9 @@ export const marketRouter = t.router({
     delete: t.procedure
         .input(marketIdSchema) // Validation de l'ID
         .mutation(async ({ input }) => {
-            return await marketService.delete(input.id);
+            const result = await marketService.delete(input.id);
+            invalidateByPrefix(staticCache, "market:");
+            return result;
         }),
 
     // ===== ROUTES MÉTIERS =====
