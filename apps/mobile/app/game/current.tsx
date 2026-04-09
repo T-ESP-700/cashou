@@ -108,7 +108,9 @@ interface EndGameResult {
 }
 
 // Constantes pour l'animation de la date
-const GAME_START_DATE = new Date('2024-01-01');
+// Use today's date as the starting point for the in-game calendar
+const today = new Date();
+const GAME_START_DATE = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 const UPDATE_INTERVAL_MS = 1000;
 const PORTFOLIO_REFRESH_INTERVAL_MS = 3_000;
 
@@ -137,6 +139,8 @@ export default function GameCurrentScreen() {
   const [isInitializing, setIsInitializing] = useState(false);
   const [holdings, setHoldings] = useState<HoldingData[]>([]);
   const [holdingValues, setHoldingValues] = useState<Record<number, number>>({});
+  const [holdingDeposited, setHoldingDeposited] = useState<Record<number, number>>({});
+  const [holdingWithdrawn, setHoldingWithdrawn] = useState<Record<number, number>>({});
   const [showNoInvestmentModal, setShowNoInvestmentModal] = useState(false);
   const [isEndingGame, setIsEndingGame] = useState(false);
   const [showEndGameModal, setShowEndGameModal] = useState(false);
@@ -321,29 +325,42 @@ export default function GameCurrentScreen() {
       const holdingsData = await trpcClient.holding.getByGameInstance.query({ gameInstanceId: gInstanceId });
       setHoldings((holdingsData as HoldingData[]) ?? []);
 
-      // Load price-based portfolio values if wallet is available
+      // Load portfolio snapshot (values + net invested from transactions)
       if (effectiveWalletId) {
         try {
-          const portfolio = await cachedQuery(
-            `portfolio:${gInstanceId}`,
-            () => trpcClient.investment.getPortfolio.query({
+          type SnapshotHolding = { assetId: number | null; totalValue: number; totalDeposited: number; totalWithdrawn: number };
+          const snapshot = await cachedQuery(
+            `snapshot:${gInstanceId}`,
+            () => trpcClient.investment.getPortfolioSnapshot.query({
               walletId: effectiveWalletId,
               gameInstanceId: gInstanceId,
             }),
             5_000,
-          ) as { items: { holding: { assetId: number | null }; totalValue: number }[] };
-          const values: Record<number, number> = {};
-          for (const item of portfolio.items) {
-            values[item.holding.assetId ?? 0] = Math.round(item.totalValue);
+          ) as { walletBalance: number; holdings: SnapshotHolding[] } | null;
+          if (snapshot) {
+            const values: Record<number, number> = {};
+            const deposited: Record<number, number> = {};
+            const withdrawn: Record<number, number> = {};
+            for (const h of snapshot.holdings) {
+              if (h.assetId != null) {
+                values[h.assetId] = Math.round(h.totalValue);
+                deposited[h.assetId] = Math.round(h.totalDeposited);
+                withdrawn[h.assetId] = Math.round(h.totalWithdrawn);
+              }
+            }
+            setHoldingValues(values);
+            setHoldingDeposited(deposited);
+            setHoldingWithdrawn(withdrawn);
           }
-          setHoldingValues(values);
         } catch (e) {
-          console.error('Error fetching portfolio values:', e);
+          console.error('Error fetching portfolio snapshot:', e);
         }
       }
     } catch (err) {
       console.error('Error fetching holdings:', err);
       setHoldings([]);
+      setHoldingDeposited({});
+      setHoldingWithdrawn({});
     }
   };
 
@@ -424,6 +441,8 @@ export default function GameCurrentScreen() {
       setIsPaused(true);
       setIsGameEnded(false);
       setHoldings([]);
+      setHoldingDeposited({});
+      setHoldingWithdrawn({});
 
       return { gameInstance, wallet };
     } catch (err) {
@@ -806,8 +825,8 @@ export default function GameCurrentScreen() {
         const holdingsData = await trpcClient.holding.getByGameInstance.query({ gameInstanceId });
         setHoldings((holdingsData as HoldingData[]) ?? []);
 
-        // Refresh portfolio snapshot (total values incl. interests + wallet balance)
-        type PortfolioSnapshot = { walletBalance: number; holdings: { assetId: number | null; totalValue: number }[] };
+        // Refresh portfolio snapshot (total values incl. interests + wallet balance + net invested)
+        type PortfolioSnapshot = { walletBalance: number; holdings: { assetId: number | null; totalValue: number; totalDeposited: number; totalWithdrawn: number }[] };
         const snapshot = await cachedQuery(
           `snapshot:${gameInstanceId}`,
           () => trpcClient.investment.getPortfolioSnapshot.query({ gameInstanceId, walletId }),
@@ -821,14 +840,20 @@ export default function GameCurrentScreen() {
             cash: Math.round(snapshot.walletBalance),
           }));
 
-          // Update holding values by assetId (totalValue = principal + interests)
+          // Update holding values and deposited/withdrawn by assetId
           const values: Record<number, number> = {};
+          const deposited: Record<number, number> = {};
+          const withdrawn: Record<number, number> = {};
           for (const h of snapshot.holdings) {
             if (h.assetId != null) {
               values[h.assetId] = Math.round(h.totalValue);
+              deposited[h.assetId] = Math.round(h.totalDeposited);
+              withdrawn[h.assetId] = Math.round(h.totalWithdrawn);
             }
           }
           setHoldingValues(values);
+          setHoldingDeposited(deposited);
+          setHoldingWithdrawn(withdrawn);
         }
       } catch (err) {
         console.warn('[GameCurrentScreen] Portfolio refresh failed (keeping last known values):', err);
@@ -1100,6 +1125,8 @@ export default function GameCurrentScreen() {
       setGameTimeState(null);
       setGameDate(GAME_START_DATE);
       setHoldings([]);
+      setHoldingDeposited({});
+      setHoldingWithdrawn({});
       setIsPaused(true);
 
       setGameInstanceId(newGame.id);
@@ -1585,6 +1612,14 @@ export default function GameCurrentScreen() {
         {holdings.map((holding) => {
           const submarketTitle = assetSubmarketMap.get(holding.asset?.id ?? 0);
           const badgeStyle = submarketTitle ? getSubmarketBadgeStyle(submarketTitle) : null;
+          const assetId = holding.asset?.id ?? 0;
+          const totalVal = holdingValues[assetId] ?? Math.round(Number(holding.quantity ?? 0));
+          const deposited = holdingDeposited[assetId] ?? Math.round(Number(holding.quantity ?? 0));
+          const withdrawn = holdingWithdrawn[assetId] ?? 0;
+          const perfAbsolute = totalVal + withdrawn - deposited;
+          const perfPercent = deposited > 0 ? Math.round((perfAbsolute / deposited) * 100) : 0;
+          const perfColor = perfAbsolute === 0 ? '#999' : perfAbsolute > 0 ? '#88D498' : '#E8889A';
+          const sign = perfAbsolute > 0 ? '+' : '';
           return (
             <TouchableOpacity
               key={holding.id}
@@ -1598,16 +1633,21 @@ export default function GameCurrentScreen() {
                     {holding.asset?.title ?? 'Asset'}
                   </Text>
                   <Text style={[styles.assetRowAmount, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
-                    {(holdingValues[holding.asset?.id ?? 0] ?? Math.round(Number(holding.quantity ?? 0))).toLocaleString('fr-FR')}€
+                    {totalVal.toLocaleString('fr-FR')}€
                   </Text>
                 </View>
-                {badgeStyle && (
-                  <View style={[styles.assetBadge, { backgroundColor: badgeStyle.bg }]}>
-                    <Text style={[styles.assetBadgeText, { color: badgeStyle.text }]}>
-                      {submarketTitle}
-                    </Text>
-                  </View>
-                )}
+                <View style={styles.assetRowBottomLine}>
+                  {badgeStyle ? (
+                    <View style={[styles.assetBadge, { backgroundColor: badgeStyle.bg }]}>
+                      <Text style={[styles.assetBadgeText, { color: badgeStyle.text }]}>
+                        {submarketTitle}
+                      </Text>
+                    </View>
+                  ) : <View />}
+                  <Text style={[styles.assetRowPerfLine, { color: perfColor, fontFamily: CashouTheme.fonts.subheading }]}>
+                    {sign}{perfPercent}% ({sign}{perfAbsolute.toLocaleString('fr-FR')}€)
+                  </Text>
+                </View>
               </View>
             </TouchableOpacity>
           );
@@ -1722,6 +1762,7 @@ export default function GameCurrentScreen() {
         visible={showEndGameModal}
         transparent
         animationType="fade"
+        statusBarTranslucent
         onRequestClose={() => {}}
       >
         <BlurView
@@ -2043,6 +2084,15 @@ const styles = StyleSheet.create({
   assetRowAmount: {
     fontSize: 22,
     fontWeight: "700",
+  },
+  assetRowBottomLine: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+  },
+  assetRowPerfLine: {
+    fontSize: 13,
+    fontWeight: "600",
   },
   bottomControls: {
     position: "absolute",

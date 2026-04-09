@@ -17,6 +17,11 @@ interface User {
   maxStreak?: number;
 }
 
+interface UpdateProfileInput {
+  name?: string;
+  username?: string;
+}
+
 interface UseAuthReturn {
   user: User | null;
   isLoading: boolean;
@@ -25,15 +30,15 @@ interface UseAuthReturn {
   error: string | null;
   refreshUser: () => Promise<void>;
   logout: () => Promise<void>;
+  updateProfile: (input: UpdateProfileInput) => Promise<void>;
 }
 
 const AuthContext = createContext<UseAuthReturn | undefined>(undefined);
 
-// Configuration for retry logic
 const RETRY_CONFIG = {
   maxRetries: 3,
-  retryDelay: 1000, // 1 second
-  backoffMultiplier: 2, // Exponential backoff
+  retryDelay: 1000,
+  backoffMultiplier: 2,
 };
 
 function useProvideAuth(): UseAuthReturn {
@@ -47,19 +52,17 @@ function useProvideAuth(): UseAuthReturn {
   const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
   const isNetworkError = (err: any): boolean => {
-    // Check for common network error patterns
     return (
       err instanceof TypeError &&
       (err.message === 'Network request failed' || err.message.includes('fetch'))
     ) || (
-      err?.message?.includes('network') ||
-      err?.message?.includes('timeout') ||
-      err?.message?.includes('ECONNREFUSED')
-    );
+        err?.message?.includes('network') ||
+        err?.message?.includes('timeout') ||
+        err?.message?.includes('ECONNREFUSED')
+      );
   };
 
   const isAuthError = (err: any): boolean => {
-    // Check for 401 Unauthorized or token invalid errors
     return (
       err?.message?.includes('401') ||
       err?.message?.includes('Unauthorized') ||
@@ -72,14 +75,12 @@ function useProvideAuth(): UseAuthReturn {
     try {
       console.log('[useAuth] Starting fetchUser...');
 
-      // Only set loading on initial load or forced refresh
       if (isInitialLoadRef.current || forceRetry) {
         setIsLoading(true);
       }
 
       setError(null);
 
-      // Check if token exists
       const token = await tokenStorage.getToken();
       console.log('[useAuth] Token exists:', !!token);
       if (!token) {
@@ -91,7 +92,6 @@ function useProvideAuth(): UseAuthReturn {
         return;
       }
 
-      // Fetch user data from backend with retry logic
       let lastError: any = null;
       let attempt = 0;
 
@@ -101,13 +101,11 @@ function useProvideAuth(): UseAuthReturn {
           const response = await trpcClient.auth.me.query();
           console.log('[useAuth] User data received:', response);
 
-          // Extract user from response (backend returns { session, user })
           const userData = (response as any).user as User;
           console.log('[useAuth] Extracted user:', userData);
           setUser(userData);
           console.log('[useAuth] User state updated');
 
-          // Reset retry count on success
           retryCountRef.current = 0;
           isInitialLoadRef.current = false;
           return;
@@ -123,7 +121,6 @@ function useProvideAuth(): UseAuthReturn {
             break; // Don't retry on auth errors
           }
 
-          // Check if it's a network error and we should retry
           if (isNetworkError(err) && attempt < RETRY_CONFIG.maxRetries) {
             const delay = RETRY_CONFIG.retryDelay * Math.pow(RETRY_CONFIG.backoffMultiplier, attempt);
             console.warn(`[useAuth] Network error, retrying in ${delay}ms...`, err);
@@ -132,12 +129,10 @@ function useProvideAuth(): UseAuthReturn {
             continue;
           }
 
-          // Other errors or max retries reached
           throw err;
         }
       }
 
-      // If we get here, we've exhausted retries
       throw lastError;
     } catch (err) {
       if (isNetworkError(err)) {
@@ -165,30 +160,24 @@ function useProvideAuth(): UseAuthReturn {
       setIsLoading(true);
       console.log('[useAuth] Logging out...', skipBackendCall ? '(skipping backend call)' : '');
 
-      // Only call backend if we have a valid token and not triggered by 401
       if (!skipBackendCall) {
         const token = await tokenStorage.getToken();
         if (token) {
           try {
-            // Call logout endpoint (with timeout)
             const timeoutPromise = new Promise((_, reject) =>
               setTimeout(() => reject(new Error('Logout timeout')), 5000)
             );
-
             await Promise.race([
               trpcClient.auth.logout.mutate(),
-              timeoutPromise
+              timeoutPromise,
             ]);
-
             console.log('[useAuth] Logout successful');
           } catch (err) {
             console.error('[useAuth] Logout backend error:', err);
-            // Don't throw, always proceed with local cleanup
           }
         }
       }
     } finally {
-      // Always clear local state and token
       await tokenStorage.removeToken();
       setUser(null);
       setError(null);
@@ -196,32 +185,44 @@ function useProvideAuth(): UseAuthReturn {
       setAuthResolved(true);
       isInitialLoadRef.current = true; // Reset for next login
       retryCountRef.current = 0;
-      // Reset the auth error handling flag so future 401s are handled
       resetAuthErrorHandling();
       console.log('[useAuth] Logout completed, local state cleared');
     }
   }, []);
 
-  // Set up auth error handler for tRPC
+  const updateProfile = useCallback(async (input: UpdateProfileInput) => {
+    console.log('[useAuth] Updating profile...', input);
+
+    const updated = await trpcClient.user.update.mutate(input);
+
+    // Optimistically patch the local user state so the UI
+    // updates instantly without a round-trip to auth.me
+    setUser(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        name: updated.name ?? prev.name,
+        username: updated.username ?? prev.username,
+      };
+    });
+
+    console.log('[useAuth] Profile updated locally:', updated);
+  }, []);
+
   useEffect(() => {
     setAuthErrorHandler(() => {
       console.log('[useAuth] Auth error handler triggered, logging out (skip backend)...');
-      // Skip backend call since we know the token is already invalid (401)
       logout(true);
     });
   }, [logout]);
 
-  // Fetch user on mount
   useEffect(() => {
     fetchUser();
   }, [fetchUser]);
 
-  // Rafraîchir les données utilisateur quand l'app revient au premier plan
-  // Cela permet de mettre à jour le streak automatiquement
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
       if (nextAppState === 'active' && user) {
-        // L'app revient au premier plan et l'utilisateur est connecté
         console.log('[useAuth] App became active, refreshing user data...');
         fetchUser();
       }
@@ -241,8 +242,9 @@ function useProvideAuth(): UseAuthReturn {
       error,
       refreshUser: fetchUser,
       logout,
+      updateProfile,
     }),
-    [user, isLoading, authResolved, error, fetchUser, logout],
+    [user, isLoading, authResolved, error, fetchUser, logout, updateProfile],
   );
 
   return contextValue;

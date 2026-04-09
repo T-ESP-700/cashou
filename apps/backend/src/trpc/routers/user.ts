@@ -181,6 +181,7 @@ export const userRouter = router({
       z.object({
         id: z.string(),
         email: z.string().email().optional(),
+        name: z.string().optional(),
         username: z.string().min(3).optional(),
         password: z.string().min(8).optional(),
         role: z.enum(['USER', 'ADMIN']).optional(),
@@ -307,86 +308,63 @@ export const userRouter = router({
     }),
 
   // Update own profile
+  // packages/api/src/router/user.ts
   updateProfile: protectedProcedure
     .input(
       z.object({
+        name: z.string().min(2).optional(),
         username: z.string().min(3).optional(),
-        currentPassword: z.string().optional(),
-        newPassword: z.string().min(8).optional(),
+        image: z.string().nullable().optional(),
       })
     )
-    .mutation(async ({ input, ctx }) => {
-      const userId = ctx.session?.user?.id;
-      if (!userId) {
-        throw new TRPCError({
-          code: 'UNAUTHORIZED',
-          message: 'Authentication required',
-        });
-      }
-      const updateData: any = {};
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
 
-      // If changing password, verify current password
-      if (input.newPassword) {
-        if (!input.currentPassword) {
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: 'Current password is required to change password',
-          });
-        }
-
-        const user = await prisma.user.findUnique({
-          where: { id: userId },
-        });
-
-        const isValid = await hash.verify(input.currentPassword, user!.hashedPassword);
-        if (!isValid) {
-          throw new TRPCError({
-            code: 'UNAUTHORIZED',
-            message: 'Current password is incorrect',
-          });
-        }
-
-        updateData.hashedPassword = await hash.password(input.newPassword);
-      }
-
-      // Update username if provided
+      // Vérif username unique si changé
       if (input.username) {
         const existing = await prisma.user.findFirst({
           where: {
-            username: input.username,
-            id: { not: userId },
+            AND: [
+              { id: { not: userId } },
+              { username: input.username },
+            ],
           },
         });
-
         if (existing) {
           throw new TRPCError({
             code: 'CONFLICT',
-            message: 'Username already exists',
+            message: 'Ce nom d\'utilisateur est déjà pris',
           });
         }
-
-        updateData.username = input.username;
       }
 
-      // Update user
       const user = await prisma.user.update({
         where: { id: userId },
-        data: updateData,
+        data: {
+          ...(input.name !== undefined && { name: input.name }),
+          ...(input.username !== undefined && { username: input.username }),
+          ...(input.image !== undefined && { image: input.image }),
+          updatedAt: new Date(),
+        },
         select: {
           id: true,
+          name: true,
           email: true,
           username: true,
-          level: true,
+          image: true,
+          levelId: true,
           points: true,
-          role: true,
+          currentStreak: true,
+          maxStreak: true,
+          badges: true,
+          createdAt: true,
+          updatedAt: true,
         },
       });
 
-      return {
-        success: true,
-        user,
-      };
+      return { success: true, user };
     }),
+
 
   // Update Expo push token for push notifications
   updateExpoPushToken: protectedProcedure

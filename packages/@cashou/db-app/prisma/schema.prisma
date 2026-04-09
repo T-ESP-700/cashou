@@ -11,6 +11,11 @@ datasource db {
   url      = env("CASHOU_DB_URL")
 }
 
+enum UserRole {
+  USER
+  ADMIN
+}
+
 // Énumérations
 enum QuizType {
   DAILY @map("Daily")

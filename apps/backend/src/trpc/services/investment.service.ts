@@ -514,16 +514,45 @@ export class InvestmentService {
     const cacheKey = `snapshot:${gameInstanceId}:${walletId}`;
     return cached(gameCache, cacheKey, async () => {
       const portfolio = await this.getPortfolio(walletId, gameInstanceId);
+
+      // Fetch all BUY/SELL transactions for this game instance to compute net invested per asset
+      const transactions = await this.prisma.transaction.findMany({
+        where: {
+          gameInstanceId,
+          walletId,
+          type: { in: ["BUY", "SELL"] },
+        },
+        select: { assetId: true, type: true, totalValue: true },
+      });
+
+      // Aggregate deposits (BUY) and withdrawals (SELL) per asset
+      const depositsMap: Record<number, number> = {};
+      const withdrawalsMap: Record<number, number> = {};
+      for (const tx of transactions) {
+        if (tx.assetId == null) continue;
+        const val = tx.totalValue ? Math.abs(Number(tx.totalValue)) : 0;
+        if (tx.type === "BUY") {
+          depositsMap[tx.assetId] = (depositsMap[tx.assetId] ?? 0) + val;
+        } else if (tx.type === "SELL") {
+          withdrawalsMap[tx.assetId] = (withdrawalsMap[tx.assetId] ?? 0) + val;
+        }
+      }
+
       return {
         totalValue: portfolio.totalValue,
         walletBalance: portfolio.walletBalance,
-        holdings: portfolio.items.map((item) => ({
-          assetId: item.holding.assetId,
-          assetName: item.holding.asset.name,
-          currentValue: item.currentValue,
-          totalValue: item.totalValue,
-          change: item.interests,
-        })),
+        holdings: portfolio.items.map((item) => {
+          const assetId = item.holding.assetId;
+          return {
+            assetId,
+            assetName: item.holding.asset.name,
+            currentValue: item.currentValue,
+            totalValue: item.totalValue,
+            change: item.interests,
+            totalDeposited: depositsMap[assetId] ?? 0,
+            totalWithdrawn: withdrawalsMap[assetId] ?? 0,
+          };
+        }),
       };
     });
   }

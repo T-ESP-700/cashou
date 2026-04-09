@@ -36,6 +36,18 @@ export const auth = betterAuth({
   advanced: {
     disableCSRFCheck: process.env.NODE_ENV === 'development', // Disable CSRF in development for mobile
   },
+  user: {
+    additionalFields: {
+      username: {
+        type: 'string',
+        required: false,
+      },
+      discriminator: {
+        type: 'string',
+        required: false,
+      },
+    },
+  },
 });
 
 // Password hashing utilities
