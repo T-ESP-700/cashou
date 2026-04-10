@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, Pressable, ScrollView, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Pressable, ScrollView, ActivityIndicator, Modal, InteractionManager } from 'react-native';
 import { BlurView } from 'expo-blur';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -83,6 +83,7 @@ export default function DailyQuizScreen() {
 
   // Initialiser à null pour ne rien afficher tant que les données ne sont pas chargées
   const [quizState, setQuizState] = useState<QuizState | null>(null);
+  const [isCompletedModalVisible, setIsCompletedModalVisible] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswerId, setSelectedAnswerId] = useState<number | null>(null);
@@ -142,6 +143,7 @@ export default function DailyQuizScreen() {
         setCorrectionQuestionIndex(0);
         setSelectedAnswerId(null);
         setQuizState(null);
+        setIsCompletedModalVisible(false);
 
         let quizData = null;
 
@@ -485,8 +487,24 @@ export default function DailyQuizScreen() {
     if (quizState === 'completed') {
       const messageArray = hasPassed ? congratulationMessages : encouragementMessages;
       setCompletedMessage(messageArray[Math.floor(Math.random() * messageArray.length)]);
+      setIsCompletedModalVisible(true);
     }
   }, [quizState === 'completed']);
+
+  const closeCompletedModalAndNavigate = useCallback((target: 'summary' | 'home' | 'history') => {
+    setIsCompletedModalVisible(false);
+    InteractionManager.runAfterInteractions(() => {
+      if (target === 'summary' && gameInstanceId) {
+        router.push({ pathname: '/(tabs)/summary', params: { gameId: gameInstanceId.toString() } });
+        return;
+      }
+      if (target === 'history') {
+        router.push('/(tabs)/history');
+        return;
+      }
+      router.replace('/(tabs)/');
+    });
+  }, [gameInstanceId, router]);
 
   // Espace en bas (tab bar cachée pendant question/correction)
   const bottomSafeArea = insets.bottom + 80;
@@ -664,14 +682,14 @@ export default function DailyQuizScreen() {
 
       {/* Modale de résultat (style endGame) */}
       <Modal
-        visible={quizState === 'completed'}
+        visible={isCompletedModalVisible}
         transparent
         animationType="fade"
         onRequestClose={() => {
           if (isLevelQuiz && gameInstanceId) {
-            router.push({ pathname: '/(tabs)/summary', params: { gameId: gameInstanceId.toString() } });
+            closeCompletedModalAndNavigate('summary');
           } else {
-            router.replace('/(tabs)/');
+            closeCompletedModalAndNavigate('home');
           }
         }}
       >
@@ -682,9 +700,9 @@ export default function DailyQuizScreen() {
         >
           <Pressable style={styles.modalOverlay} onPress={() => {
             if (isLevelQuiz && gameInstanceId) {
-              router.push({ pathname: '/(tabs)/summary', params: { gameId: gameInstanceId.toString() } });
+              closeCompletedModalAndNavigate('summary');
             } else {
-              router.replace('/(tabs)/');
+              closeCompletedModalAndNavigate('home');
             }
           }}>
             <Pressable onPress={(e) => e.stopPropagation()} style={[styles.modalCardBackdrop, { backgroundColor: colors.secondary }]}>
@@ -721,6 +739,7 @@ export default function DailyQuizScreen() {
                     label="Correction"
                     iconName="eye-outline"
                     onPress={() => {
+                      setIsCompletedModalVisible(false);
                       setCorrectionQuestionIndex(0);
                       setQuizState('correction');
                     }}
@@ -730,14 +749,14 @@ export default function DailyQuizScreen() {
                       label="Recap"
                       iconName="document-text-outline"
                       onPress={() => {
-                        router.push({ pathname: '/(tabs)/summary', params: { gameId: gameInstanceId!.toString() } });
+                        closeCompletedModalAndNavigate('summary');
                       }}
                     />
                   ) : (
                     <ActionPillButton
                       label="Historique"
                       iconName="time-outline"
-                      onPress={() => router.push('/(tabs)/history')}
+                      onPress={() => closeCompletedModalAndNavigate('history')}
                     />
                   )}
                 </View>
