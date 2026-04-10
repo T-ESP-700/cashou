@@ -14,6 +14,15 @@ export class QuizService {
         this.prisma = prismaClient || defaultPrisma;
     }
 
+    private getParisDateKey(date: Date): string {
+        return new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Europe/Paris',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        }).format(date);
+    }
+
     /**
      * Récupère tous les quiz
      * @returns Promise<Quiz[]> - Liste complète des quiz triés par date décroissante (sans relations)
@@ -99,28 +108,17 @@ export class QuizService {
      * @returns Promise<Quiz | null> - Le Daily Quiz du jour ou null si inexistant
      */
     async getTodaysDailyQuiz(): Promise<Quiz | null> {
-        const now = new Date();
-        const startOfTodayUTC = new Date(Date.UTC(
-            now.getUTCFullYear(),
-            now.getUTCMonth(),
-            now.getUTCDate()
-        ));
-
-        const endOfTodayUTC = new Date(startOfTodayUTC);
-        endOfTodayUTC.setUTCDate(endOfTodayUTC.getUTCDate() + 1);
-
-        return this.prisma.quiz.findFirst({
-            where: {
-                type: 'DAILY',
-                date: {
-                    gte: startOfTodayUTC,
-                    lt: endOfTodayUTC
-                }
-            },
-            orderBy: {
-                date: 'desc'
-            }
+        const todayKey = this.getParisDateKey(new Date());
+        const dailyQuizzes = await this.prisma.quiz.findMany({
+            where: { type: 'DAILY' },
+            orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+            take: 120,
         });
+
+        return dailyQuizzes.find((quiz) => {
+            const quizRefDate = quiz.date ?? quiz.createdAt;
+            return this.getParisDateKey(new Date(quizRefDate)) === todayKey;
+        }) ?? null;
     }
 
     /**
@@ -129,23 +127,16 @@ export class QuizService {
      * @returns Promise<boolean> - true si un Daily Quiz existe pour cette date
      */
     async dailyQuizExists(date: string): Promise<boolean> {
-        const targetDate = new Date(date);
-        targetDate.setHours(0, 0, 0, 0); // Début de journée
-
-        const nextDay = new Date(targetDate);
-        nextDay.setDate(nextDay.getDate() + 1); // Fin de journée
-
-        const quiz = await this.prisma.quiz.findFirst({
-            where: {
-                type: 'DAILY',
-                date: {
-                    gte: targetDate,
-                    lt: nextDay
-                }
-            }
+        const targetKey = this.getParisDateKey(new Date(date));
+        const dailyQuizzes = await this.prisma.quiz.findMany({
+            where: { type: 'DAILY' },
+            select: { date: true, createdAt: true },
         });
 
-        return quiz !== null;
+        return dailyQuizzes.some((quiz) => {
+            const quizRefDate = quiz.date ?? quiz.createdAt;
+            return this.getParisDateKey(new Date(quizRefDate)) === targetKey;
+        });
     }
 
     /**

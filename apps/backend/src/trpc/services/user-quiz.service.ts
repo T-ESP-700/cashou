@@ -17,6 +17,15 @@ export class UserQuizService {
         this.levelCompletionService = new LevelCompletionService(prismaClient);
     }
 
+    private getParisDateKey(date: Date): string {
+        return new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Europe/Paris',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        }).format(date);
+    }
+
     /**
      * Récupère toutes les participations aux quiz
      * @returns Promise<UserQuiz[]> - Liste complète des participations triées par date de création décroissante
@@ -190,11 +199,7 @@ export class UserQuizService {
      * @param userId - Identifiant de l'utilisateur (string)
      */
     private async updateStreaksIfTodaysQuiz(quizId: number, userId: string): Promise<void> {
-        // Vérifier si c'est le quiz du jour
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
+        const todayParisKey = this.getParisDateKey(new Date());
 
         const quiz = await this.prisma.quiz.findUnique({
             where: { id: quizId }
@@ -206,11 +211,8 @@ export class UserQuizService {
 
         // Vérifier si c'est le quiz du jour (même logique que hasDoneDailyToday)
         const quizDate = quiz.date ? new Date(quiz.date) : new Date(quiz.createdAt);
-        const quizDateStart = new Date(quizDate);
-        quizDateStart.setHours(0, 0, 0, 0);
-
-        // Vérifier si la date du quiz correspond à aujourd'hui
-        if (quizDateStart.getTime() < today.getTime() || quizDateStart.getTime() >= tomorrow.getTime()) {
+        const quizParisKey = this.getParisDateKey(quizDate);
+        if (quizParisKey !== todayParisKey) {
             return; // Ce n'est pas le quiz du jour, on ne fait rien
         }
 
@@ -836,32 +838,16 @@ export class UserQuizService {
      * Trouve d'abord le quiz Daily du jour (par date ou createdAt), puis vérifie si l'utilisateur l'a complété
      */
     async hasDoneDailyToday(userId: number | string) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-
-        // Trouver le quiz Daily du jour (priorité au champ date, sinon createdAt)
-        const todaysDailyQuiz = await this.prisma.quiz.findFirst({
-            where: {
-                type: 'DAILY',
-                OR: [
-                    {
-                        date: {
-                            gte: today,
-                            lt: tomorrow
-                        }
-                    },
-                    {
-                        date: null,
-                        createdAt: {
-                            gte: today,
-                            lt: tomorrow
-                        }
-                    }
-                ]
-            }
+        const todayParisKey = this.getParisDateKey(new Date());
+        const dailyQuizzes = await this.prisma.quiz.findMany({
+            where: { type: 'DAILY' },
+            orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+            take: 120,
         });
+        const todaysDailyQuiz = dailyQuizzes.find((quiz) => {
+            const quizRefDate = quiz.date ?? quiz.createdAt;
+            return this.getParisDateKey(new Date(quizRefDate)) === todayParisKey;
+        }) ?? null;
 
         if (!todaysDailyQuiz) {
             return {

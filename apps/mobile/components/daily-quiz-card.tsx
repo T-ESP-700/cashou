@@ -12,7 +12,6 @@ interface DailyQuizCardProps {
 
 const getTimeUntilMidnightParis = () => {
   const now = new Date();
-  // Get current hour/minute in Paris timezone
   const parisTime = new Intl.DateTimeFormat('fr-FR', {
     timeZone: 'Europe/Paris',
     hour: 'numeric',
@@ -20,7 +19,6 @@ const getTimeUntilMidnightParis = () => {
     second: 'numeric',
     hour12: false,
   }).formatToParts(now);
-
   const h = parseInt(parisTime.find(p => p.type === 'hour')?.value ?? '0');
   const m = parseInt(parisTime.find(p => p.type === 'minute')?.value ?? '0');
   const s = parseInt(parisTime.find(p => p.type === 'second')?.value ?? '0');
@@ -58,7 +56,10 @@ export function DailyQuizCard({
     if (status === 'done') {
       router.push('/(tabs)/history');
     } else {
-      router.push('/(tabs)/daily-quiz');
+      router.push({
+        pathname: '/(tabs)/daily-quiz',
+        params: { source: 'home' },
+      });
     }
   };
 

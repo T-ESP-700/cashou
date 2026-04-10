@@ -57,6 +57,12 @@ export default function DailyQuizScreen() {
     ? showCompletedParam[0] === 'true'
     : showCompletedParam === 'true';
 
+  // source permet de distinguer le contexte d'ouverture du screen
+  const sourceParam = params?.source;
+  const source = Array.isArray(sourceParam)
+    ? sourceParam[0]
+    : sourceParam;
+
   // Récupérer le quizId si fourni (pour les quiz depuis l'historique ou quiz de niveau)
   const quizIdParam = params?.quizId;
   const specificQuizId = Array.isArray(quizIdParam)
@@ -72,6 +78,8 @@ export default function DailyQuizScreen() {
 
   // Un quiz est un "quiz de niveau" si on a à la fois un quizId ET un gameInstanceId
   const isLevelQuiz = !!(specificQuizId && gameInstanceId && !isNaN(gameInstanceId));
+  const shouldUseSpecificQuizId = source === 'history' || source === 'level_endgame' || isLevelQuiz;
+  const resolvedQuizId = shouldUseSpecificQuizId ? specificQuizId : undefined;
 
   // Initialiser à null pour ne rien afficher tant que les données ne sont pas chargées
   const [quizState, setQuizState] = useState<QuizState | null>(null);
@@ -118,27 +126,28 @@ export default function DailyQuizScreen() {
 
   useEffect(() => {
     const fetchQuiz = async () => {
-      // Ne pas recharger si on est déjà en mode correction
-      // Cela évite de réinitialiser l'état quand on navigue dans la correction
-      if (quizState === 'correction') {
-        return;
-      }
-
       try {
         // Toujours mettre isLoading à true au début pour masquer le contenu
         // Sauf si on vient de l'historique ET que showCompleted est true (on sait déjà ce qu'on veut afficher)
-        if (!(specificQuizId && showCompleted)) {
+        if (!(resolvedQuizId && showCompleted)) {
           setIsLoading(true);
         }
         setError(null);
-        // Réinitialiser l'état pour éviter d'afficher l'ancien état
+        // Réinitialiser tout l'état pour éviter d'afficher l'ancien quiz/correction
+        setQuiz(null);
+        setQuestions([]);
+        setUserAnswers(new Map());
+        setLevelUserQuizId(null);
+        setCurrentQuestionIndex(0);
+        setCorrectionQuestionIndex(0);
+        setSelectedAnswerId(null);
         setQuizState(null);
 
         let quizData = null;
 
         // Si un quizId spécifique est fourni, charger ce quiz
-        if (specificQuizId) {
-          const quizId = parseInt(specificQuizId);
+        if (resolvedQuizId) {
+          const quizId = parseInt(resolvedQuizId);
           if (!isNaN(quizId)) {
             quizData = await trpcClient.quiz.getById.query({ id: quizId });
           }
@@ -190,7 +199,7 @@ export default function DailyQuizScreen() {
 
             let isQuizCompleted = false;
 
-            if (specificQuizId && showCompleted) {
+            if (resolvedQuizId && showCompleted) {
               isQuizCompleted = true;
             } else {
               try {
@@ -307,7 +316,7 @@ export default function DailyQuizScreen() {
 
     fetchQuiz();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, showCompleted, specificQuizId]); // Ne pas inclure quizState dans les dépendances pour éviter les rechargements
+  }, [user, showCompleted, resolvedQuizId, source, gameInstanceId, isLevelQuiz]); // Ne pas inclure quizState dans les dépendances pour éviter les rechargements
 
   // Rafraîchir les données utilisateur quand on quitte la page (si le quiz est complété)
   // Cela permet de mettre à jour le currentStreak et le statut du quiz sur la page d'accueil
