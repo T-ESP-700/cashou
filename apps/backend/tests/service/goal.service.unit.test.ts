@@ -1,7 +1,7 @@
 // tests/service/goal.service.unit.test.ts
 // Tests unitaires du service d'objectifs sans `any` (ESLint friendly)
 import { describe, it, expect } from "bun:test";
-import type { Prisma, Goal, PrismaClient } from "@prisma/client";
+import type { Prisma, Goal, PrismaClient } from "@cashou/db-app";
 import { GoalService } from "../../src/trpc/services/goal.service";
 
 type Call =

@@ -12,7 +12,7 @@
  *          quizPassed becomes true permanently after session B.
  *          Stars remain 2 (not 3) because no single session had all three.
  */
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 
 export interface LevelCompletionCriteria {

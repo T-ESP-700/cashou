@@ -1,6 +1,8 @@
 // Service pour gérer la vérification de l'activité utilisateur et des streaks à la connexion
 import defaultPrisma from '../database.ts';
-import type { PrismaClient } from '@prisma/client';
+// Import depuis @cashou/db-app (et non @prisma/client) car Bun crée des copies séparées
+// de @prisma/client par contexte de résolution, ce qui cause des types incompatibles
+import type { PrismaClient } from '@cashou/db-app';
 
 const LAST_ACTIVITY_THROTTLE_MS = 60 * 1000;
 const PARIS_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {

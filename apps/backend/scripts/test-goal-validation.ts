@@ -127,9 +127,6 @@ async function testLevel1GoalValidation() {
     console.log(`   Valeur initiale: ${buyAmount}€`);
     console.log(`   Après 1 an (+${interestRate}%): ${assetValueAfter1Year.toFixed(2)}€`);
 
-    // Mettre à jour le prix unitaire pour simuler les intérêts
-    const newUnitPrice = assetValueAfter1Year / quantity;
-
     // Note: on ne modifie pas la transaction existante, le service endGame 
     // utilise le lastPrice de la transaction, donc on crée une transaction "INTEREST"
     // Pour ce test, on va simplement faire un check manuel

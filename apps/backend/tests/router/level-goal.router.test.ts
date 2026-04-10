@@ -1,6 +1,6 @@
 // tests/router/level-goal.router.test.ts
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import type { LevelGoal } from "@prisma/client";
+import type { LevelGoal } from "@cashou/db-app";
 import { levelGoalRouter } from "../../src/trpc/routers/level-goal.router";
 import { LevelGoalService } from "../../src/trpc/services/level-goal.service";
 
@@ -39,51 +39,45 @@ const original = {
 beforeEach(() => {
     calls.length = 0;
 
-    LevelGoalService.prototype.findAll = (async function (this: unknown): Promise<LevelGoal[]> {
+    LevelGoalService.prototype.findAll = async function (): Promise<LevelGoal[]> {
         calls.push({ method: "findAll" });
         return [makeLevelGoal(1, { levelId: 1, goalId: 1 })];
-    });
+    };
 
-    LevelGoalService.prototype.findOne = (async function (this: unknown, id: number): Promise<LevelGoal | null> {
+    LevelGoalService.prototype.findOne = async function (id: number): Promise<LevelGoal | null> {
         calls.push({ method: "findOne", args: { id } });
         if (id === 404) return null;
         return makeLevelGoal(id);
-    });
+    };
 
-    LevelGoalService.prototype.findByLevelId = (async function (this: unknown, levelId: number): Promise<LevelGoal[]> {
+    LevelGoalService.prototype.findByLevelId = async function (levelId: number): Promise<LevelGoal[]> {
         calls.push({ method: "findByLevelId", args: { levelId } });
         return [makeLevelGoal(1, { levelId })];
-    });
+    };
 
-    LevelGoalService.prototype.findByGoalId = (async function (this: unknown, goalId: number): Promise<LevelGoal[]> {
+    LevelGoalService.prototype.findByGoalId = async function (goalId: number): Promise<LevelGoal[]> {
         calls.push({ method: "findByGoalId", args: { goalId } });
         return [makeLevelGoal(1, { goalId })];
-    });
+    };
 
-    LevelGoalService.prototype.create = (async function (this: unknown, data: Partial<LevelGoal>): Promise<LevelGoal> {
+    LevelGoalService.prototype.create = async function (data: Partial<LevelGoal>): Promise<LevelGoal> {
         calls.push({ method: "create", args: { data } });
         return makeLevelGoal(123, data);
-    });
+    };
 
-    LevelGoalService.prototype.update = (async function (this: unknown, id: number, data: Partial<LevelGoal>): Promise<LevelGoal> {
+    LevelGoalService.prototype.update = async function (id: number, data: Partial<LevelGoal>): Promise<LevelGoal> {
         calls.push({ method: "update", args: { id, data } });
         return makeLevelGoal(id, data);
-    });
+    };
 
-    LevelGoalService.prototype.delete = (async function (this: unknown, id: number): Promise<Pick<LevelGoal, "id">> {
+    LevelGoalService.prototype.delete = async function (id: number): Promise<Pick<LevelGoal, "id">> {
         calls.push({ method: "delete", args: { id } });
         return { id };
-    }) as unknown as typeof LevelGoalService.prototype.delete;
+    } as typeof LevelGoalService.prototype.delete;
 });
 
 afterEach(() => {
-    LevelGoalService.prototype.findAll = original.findAll;
-    LevelGoalService.prototype.findOne = original.findOne;
-    LevelGoalService.prototype.findByLevelId = original.findByLevelId;
-    LevelGoalService.prototype.findByGoalId = original.findByGoalId;
-    LevelGoalService.prototype.create = original.create;
-    LevelGoalService.prototype.update = original.update;
-    LevelGoalService.prototype.delete = original.delete;
+    Object.assign(LevelGoalService.prototype, original);
 });
 
 type Ctx = Parameters<typeof levelGoalRouter.createCaller>[0];

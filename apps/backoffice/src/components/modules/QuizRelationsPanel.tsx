@@ -90,11 +90,11 @@ export function QuizRelationsPanel() {
 
       <div className="mt-4 space-y-3">
         {attached
-          .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
           .map((link) => {
             const question = questions.find((item) => item.id === link.questionId)
             const prefix =
-              typeof link.position === 'number' ? `${link.position}. ` : ''
+              typeof link.order === 'number' ? `${link.order}. ` : ''
             return (
               <div
                 key={link.id}

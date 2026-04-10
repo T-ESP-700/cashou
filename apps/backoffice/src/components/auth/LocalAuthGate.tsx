@@ -62,8 +62,8 @@ export function LocalAuthGate({ children }: { children: React.ReactNode }) {
       setUser(result.user)
       await setApiToken(result.token)
       setStatus('signed_in')
-    } catch (err: any) {
-      setError(err?.message || 'Erreur de connexion')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erreur de connexion')
     }
   }
 
