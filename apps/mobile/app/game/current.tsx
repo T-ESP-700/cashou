@@ -1086,6 +1086,7 @@ export default function GameCurrentScreen() {
     router.push({
       pathname: '/(tabs)/daily-quiz',
       params: {
+        source: 'level_endgame',
         quizId: levelQuizId.toString(),
         gameInstanceId: gameInstanceId ? gameInstanceId.toString() : '',
       },
