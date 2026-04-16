@@ -795,33 +795,32 @@ async function main() {
 
   console.log(`✅ 2 Daily Quiz vérifiés/créés (hier et aujourd'hui) avec 3 questions chacun`);
 
-  // Optional: create a UserLevelCompletion for demo stars if a user exists
+  // Optional: create a UserLevelCompletion for demo stars — only for the dedicated test user
+  // IMPORTANT: never overwrite real user data with demo values (use findUnique, not findFirst)
   const demoUser = await prisma.user.findFirst({
     where: { email: 'test-stars@cashou.fr' }
-  }) ?? await prisma.user.findFirst({ take: 1 });
+  });
   if (demoUser) {
-    await (prisma as any).userLevelCompletion.upsert({
-      where: {
-        userId_levelId: { userId: demoUser.id, levelId: level.id }
-      },
-      create: {
-        userId: demoUser.id,
-        levelId: level.id,
-        stars: 2,
-        mandatoryGoalsMet: true,
-        bonusGoalsMet: false,
-        quizPassed: true,
-        completedAt: new Date()
-      },
-      update: {
-        stars: 2,
-        mandatoryGoalsMet: true,
-        bonusGoalsMet: false,
-        quizPassed: true,
-        completedAt: new Date()
-      }
+    // Only CREATE if no completion exists — never overwrite existing real data
+    const existing = await (prisma as any).userLevelCompletion.findUnique({
+      where: { userId_levelId: { userId: demoUser.id, levelId: level.id } }
     });
-    console.log(`✅ UserLevelCompletion créée pour démo (user: ${demoUser.email ?? demoUser.id}, level 1, 2 étoiles)`);
+    if (!existing) {
+      await (prisma as any).userLevelCompletion.create({
+        data: {
+          userId: demoUser.id,
+          levelId: level.id,
+          stars: 2,
+          mandatoryGoalsMet: true,
+          bonusGoalsMet: false,
+          quizPassed: true,
+          completedAt: new Date()
+        }
+      });
+      console.log(`✅ UserLevelCompletion créée pour démo (user: ${demoUser.email}, level 1, 2 étoiles)`);
+    } else {
+      console.log(`ℹ️  UserLevelCompletion existante pour ${demoUser.email} — non écrasée`);
+    }
   }
 
   console.log('\n✨ ========================================');
