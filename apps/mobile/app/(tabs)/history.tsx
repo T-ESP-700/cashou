@@ -196,6 +196,7 @@ export default function HistoryScreen() {
         source: 'history',
         quizId: dayStatus.quizId.toString(),
         showCompleted: dayStatus.isCompleted ? 'true' : 'false',
+        initialView: dayStatus.isCompleted ? 'correction' : 'question',
       },
     });
   };
