@@ -731,6 +731,7 @@ export default function DailyQuizScreen() {
                       iconName="document-text-outline"
                       onPress={() => {
                         router.push({ pathname: '/(tabs)/summary', params: { gameId: gameInstanceId!.toString() } });
+                        setQuizState(null);
                       }}
                     />
                   ) : (
