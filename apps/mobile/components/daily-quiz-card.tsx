@@ -62,7 +62,7 @@ export function DailyQuizCard({
   const iconName = isTodo ? 'lock-open-outline' : 'checkmark';
   const textColor = isTodo ? '#006DBB' : '#3D7248';
   const iconColor = isTodo ? '#006DBB' : '#3D7248';
-  const remainingPercent = Math.max(0, Math.min(100, (1 - timeInfo.progress) * 100));
+  const elapsedPercent = Math.max(0, Math.min(100, timeInfo.progress * 100));
   const timerWidth = 48;
   const timerHeight = 32;
   const timerStroke = 2;
@@ -71,7 +71,7 @@ export function DailyQuizCard({
   const timerPathHeight = timerHeight - timerStroke;
   const effectiveTimerRadius = Math.min(timerRadius, timerPathWidth / 2, timerPathHeight / 2);
   const timerPerimeter = 2 * (timerPathWidth + timerPathHeight - (4 * effectiveTimerRadius)) + (2 * Math.PI * effectiveTimerRadius);
-  const timerProgressLength = (remainingPercent / 100) * timerPerimeter;
+  const timerProgressLength = (elapsedPercent / 100) * timerPerimeter;
   const timerBgColor = isTodo ? '#9CD6FF' : '#88D498';
   const timerProgressColor = isTodo ? '#006DBB' : '#3D7248';
   const timerX = timerStroke / 2;
