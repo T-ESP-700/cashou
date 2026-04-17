@@ -60,7 +60,7 @@ export function DailyQuizCard({
   const isTodo = status === 'todo';
   const ringColor = isTodo ? '#9CD6FF' : '#88D498';
   const iconName = isTodo ? 'lock-open-outline' : 'checkmark';
-  const textColor = isTodo ? '#006DBB' : colors.text;
+  const textColor = isTodo ? '#006DBB' : '#3D7248';
   const iconColor = isTodo ? '#006DBB' : '#3D7248';
   const remainingPercent = Math.max(0, Math.min(100, (1 - timeInfo.progress) * 100));
   const timerWidth = 48;
