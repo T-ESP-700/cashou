@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
-import { Card, Badge } from '@/components/ui';
+import { Card } from '@/components/ui';
 
 interface DailyQuizCardProps {
   status?: 'todo' | 'done';
@@ -44,13 +44,12 @@ export function DailyQuizCard({
   const [timeInfo, setTimeInfo] = useState(getTimeUntilMidnightParis());
 
   useEffect(() => {
-    if (status !== 'done') return;
     setTimeInfo(getTimeUntilMidnightParis());
     const interval = setInterval(() => {
       setTimeInfo(getTimeUntilMidnightParis());
     }, 60000);
     return () => clearInterval(interval);
-  }, [status]);
+  }, []);
 
   const handlePress = () => {
     if (status === 'done') {
@@ -72,16 +71,39 @@ export function DailyQuizCard({
         padding="md"
         style={{}}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ flexDirection: 'row', alignItems: status === 'todo' ? 'flex-start' : 'center', justifyContent: 'space-between', marginBottom: status === 'todo' ? spacing.sm + 4 : 0 }}>
           <Text style={{ fontSize: 24, fontFamily: fonts.body, color: colors.text }}>
             Daily Quiz
           </Text>
           {status === 'todo' ? (
-            <Badge
-              label="À faire"
-              variant="accent"
-              fontWeight="400"
-            />
+            <View style={{ alignItems: 'center', gap: 4 }}>
+              <View style={{ width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center' }}>
+                <Svg width={RING_SIZE} height={RING_SIZE} style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}>
+                  <Circle
+                    cx={RING_SIZE / 2}
+                    cy={RING_SIZE / 2}
+                    r={RADIUS}
+                    stroke={colors.borderLight}
+                    strokeWidth={STROKE_WIDTH}
+                    fill="none"
+                  />
+                  <Circle
+                    cx={RING_SIZE / 2}
+                    cy={RING_SIZE / 2}
+                    r={RADIUS}
+                    stroke="#9CD6FF"
+                    strokeWidth={STROKE_WIDTH}
+                    fill="none"
+                    strokeDasharray={`${CIRCUMFERENCE}`}
+                    strokeDashoffset={strokeDashoffset}
+                    strokeLinecap="round"
+                  />
+                </Svg>
+                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#9CD6FF', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="lock-open-outline" size={16} color="#FFFFFF" />
+                </View>
+              </View>
+            </View>
           ) : (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               {/* Circular progress with time */}
@@ -119,6 +141,17 @@ export function DailyQuizCard({
             </View>
           )}
         </View>
+        {status === 'todo' && (
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#9CD6FF', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 }}>
+              <Ionicons name="flag-outline" size={14} color="#FFFFFF" />
+              <Text style={{ fontSize: 14, fontFamily: fonts.body, color: '#FFFFFF' }}>À commencer</Text>
+            </View>
+            <Text style={{ fontSize: 16, fontFamily: fonts.body, color: colors.text, opacity: 0.7 }}>
+              {timeInfo.hours}h {timeInfo.minutes}m
+            </Text>
+          </View>
+        )}
       </Card>
     </TouchableOpacity>
   );
