@@ -61,7 +61,7 @@ export function DailyQuizCard({
   const ringColor = isTodo ? '#9CD6FF' : '#88D498';
   const iconName = isTodo ? 'lock-open-outline' : 'checkmark';
   const textColor = isTodo ? '#006DBB' : colors.text;
-  const iconColor = isTodo ? '#006DBB' : '#FFFFFF';
+  const iconColor = isTodo ? '#006DBB' : '#3D7248';
   const remainingPercent = Math.max(0, Math.min(100, (1 - timeInfo.progress) * 100));
   const timerWidth = 48;
   const timerHeight = 32;
@@ -72,7 +72,8 @@ export function DailyQuizCard({
   const effectiveTimerRadius = Math.min(timerRadius, timerPathWidth / 2, timerPathHeight / 2);
   const timerPerimeter = 2 * (timerPathWidth + timerPathHeight - (4 * effectiveTimerRadius)) + (2 * Math.PI * effectiveTimerRadius);
   const timerProgressLength = (remainingPercent / 100) * timerPerimeter;
-  const timerProgressColor = '#006DBB';
+  const timerBgColor = isTodo ? '#9CD6FF' : '#88D498';
+  const timerProgressColor = isTodo ? '#006DBB' : '#3D7248';
   const timerX = timerStroke / 2;
   const timerY = timerStroke / 2;
   const topSegmentLength = timerPathWidth - (2 * effectiveTimerRadius);
@@ -120,8 +121,8 @@ export function DailyQuizCard({
                   height={timerPathHeight}
                   rx={timerRadius}
                   ry={timerRadius}
-                  fill="#9CD6FF"
-                  stroke="#9CD6FF"
+                  fill={timerBgColor}
+                  stroke={timerBgColor}
                   strokeWidth={timerStroke}
                 />
                 <Path
