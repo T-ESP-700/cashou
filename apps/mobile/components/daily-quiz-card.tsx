@@ -2,7 +2,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Rect, Path } from 'react-native-svg';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { Card } from '@/components/ui';
 
@@ -31,16 +31,11 @@ const getTimeUntilMidnightParis = () => {
   return { hours, minutes, progress };
 };
 
-const RING_SIZE = 38;
-const STROKE_WIDTH = 3;
-const RADIUS = (RING_SIZE - STROKE_WIDTH) / 2;
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-
 export function DailyQuizCard({
   status = 'todo',
 }: DailyQuizCardProps) {
   const router = useRouter();
-  const { colors, fonts, spacing } = useCashouTheme();
+  const { colors, fonts } = useCashouTheme();
   const [timeInfo, setTimeInfo] = useState(getTimeUntilMidnightParis());
 
   useEffect(() => {
@@ -62,7 +57,40 @@ export function DailyQuizCard({
     }
   };
 
-  const strokeDashoffset = CIRCUMFERENCE * (1 - timeInfo.progress);
+  const isTodo = status === 'todo';
+  const ringColor = isTodo ? '#9CD6FF' : '#88D498';
+  const iconName = isTodo ? 'lock-open-outline' : 'checkmark';
+  const textColor = isTodo ? '#006DBB' : colors.text;
+  const iconColor = isTodo ? '#006DBB' : '#FFFFFF';
+  const remainingPercent = Math.max(0, Math.min(100, (1 - timeInfo.progress) * 100));
+  const timerWidth = 48;
+  const timerHeight = 32;
+  const timerStroke = 2;
+  const timerRadius = 16;
+  const timerPathWidth = timerWidth - timerStroke;
+  const timerPathHeight = timerHeight - timerStroke;
+  const effectiveTimerRadius = Math.min(timerRadius, timerPathWidth / 2, timerPathHeight / 2);
+  const timerPerimeter = 2 * (timerPathWidth + timerPathHeight - (4 * effectiveTimerRadius)) + (2 * Math.PI * effectiveTimerRadius);
+  const timerProgressLength = (remainingPercent / 100) * timerPerimeter;
+  const timerProgressColor = '#006DBB';
+  const timerX = timerStroke / 2;
+  const timerY = timerStroke / 2;
+  const topSegmentLength = timerPathWidth - (2 * effectiveTimerRadius);
+  const topMiddleX = timerX + effectiveTimerRadius + (topSegmentLength / 2);
+  const rightX = timerX + timerPathWidth;
+  const bottomY = timerY + timerPathHeight;
+  const timerPathD = [
+    `M ${topMiddleX} ${timerY}`,
+    `H ${rightX - effectiveTimerRadius}`,
+    `A ${effectiveTimerRadius} ${effectiveTimerRadius} 0 0 1 ${rightX} ${timerY + effectiveTimerRadius}`,
+    `V ${bottomY - effectiveTimerRadius}`,
+    `A ${effectiveTimerRadius} ${effectiveTimerRadius} 0 0 1 ${rightX - effectiveTimerRadius} ${bottomY}`,
+    `H ${timerX + effectiveTimerRadius}`,
+    `A ${effectiveTimerRadius} ${effectiveTimerRadius} 0 0 1 ${timerX} ${bottomY - effectiveTimerRadius}`,
+    `V ${timerY + effectiveTimerRadius}`,
+    `A ${effectiveTimerRadius} ${effectiveTimerRadius} 0 0 1 ${timerX + effectiveTimerRadius} ${timerY}`,
+    `H ${topMiddleX}`,
+  ].join(' ');
 
   return (
     <TouchableOpacity onPress={handlePress} activeOpacity={0.7}>
@@ -71,87 +99,50 @@ export function DailyQuizCard({
         padding="md"
         style={{}}
       >
-        <View style={{ flexDirection: 'row', alignItems: status === 'todo' ? 'flex-start' : 'center', justifyContent: 'space-between', marginBottom: status === 'todo' ? spacing.sm + 4 : 0 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Text style={{ fontSize: 24, fontFamily: fonts.body, color: colors.text }}>
             Daily Quiz
           </Text>
-          {status === 'todo' ? (
-            <View style={{ alignItems: 'center', gap: 4 }}>
-              <View style={{ width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center' }}>
-                <Svg width={RING_SIZE} height={RING_SIZE} style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}>
-                  <Circle
-                    cx={RING_SIZE / 2}
-                    cy={RING_SIZE / 2}
-                    r={RADIUS}
-                    stroke={colors.borderLight}
-                    strokeWidth={STROKE_WIDTH}
-                    fill="none"
-                  />
-                  <Circle
-                    cx={RING_SIZE / 2}
-                    cy={RING_SIZE / 2}
-                    r={RADIUS}
-                    stroke="#9CD6FF"
-                    strokeWidth={STROKE_WIDTH}
-                    fill="none"
-                    strokeDasharray={`${CIRCUMFERENCE}`}
-                    strokeDashoffset={strokeDashoffset}
-                    strokeLinecap="round"
-                  />
-                </Svg>
-                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#9CD6FF', alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="lock-open-outline" size={16} color="#FFFFFF" />
-                </View>
-              </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View
+              style={{
+                width: timerWidth,
+                height: timerHeight,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              <Svg width={timerWidth} height={timerHeight} style={{ position: 'absolute' }}>
+                <Rect
+                  x={timerX}
+                  y={timerY}
+                  width={timerPathWidth}
+                  height={timerPathHeight}
+                  rx={timerRadius}
+                  ry={timerRadius}
+                  fill="#9CD6FF"
+                  stroke="#9CD6FF"
+                  strokeWidth={timerStroke}
+                />
+                <Path
+                  d={timerPathD}
+                  fill="none"
+                  stroke={timerProgressColor}
+                  strokeWidth={timerStroke}
+                  strokeLinecap="round"
+                  strokeDasharray={`${timerProgressLength} ${Math.max(timerPerimeter - timerProgressLength, 0)}`}
+                />
+              </Svg>
+              <Text style={{ fontSize: 13, textAlign: 'center', fontFamily: fonts.body, color: textColor }}>
+                {timeInfo.hours}h
+              </Text>
             </View>
-          ) : (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              {/* Circular progress with time */}
-              <View style={{ width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center' }}>
-                <Svg width={RING_SIZE} height={RING_SIZE} style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}>
-                  <Circle
-                    cx={RING_SIZE / 2}
-                    cy={RING_SIZE / 2}
-                    r={RADIUS}
-                    stroke={colors.borderLight}
-                    strokeWidth={STROKE_WIDTH}
-                    fill="none"
-                  />
-                  <Circle
-                    cx={RING_SIZE / 2}
-                    cy={RING_SIZE / 2}
-                    r={RADIUS}
-                    stroke="#88D498"
-                    strokeWidth={STROKE_WIDTH}
-                    fill="none"
-                    strokeDasharray={`${CIRCUMFERENCE}`}
-                    strokeDashoffset={strokeDashoffset}
-                    strokeLinecap="round"
-                  />
-                </Svg>
-                <Text style={{ fontSize: 10, fontFamily: fonts.body, color: colors.text, opacity: 0.6 }}>
-                  {timeInfo.hours}h
-                </Text>
-              </View>
 
-              {/* Green check bubble */}
-              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#88D498', alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="checkmark" size={18} color="#FFFFFF" />
-              </View>
+            <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: ringColor, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name={iconName} size={18} color={iconColor} />
             </View>
-          )}
-        </View>
-        {status === 'todo' && (
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#9CD6FF', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 }}>
-              <Ionicons name="flag-outline" size={14} color="#FFFFFF" />
-              <Text style={{ fontSize: 14, fontFamily: fonts.body, color: '#FFFFFF' }}>À commencer</Text>
-            </View>
-            <Text style={{ fontSize: 16, fontFamily: fonts.body, color: colors.text, opacity: 0.7 }}>
-              {timeInfo.hours}h {timeInfo.minutes}m
-            </Text>
           </View>
-        )}
+        </View>
       </Card>
     </TouchableOpacity>
   );
