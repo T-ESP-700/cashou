@@ -59,6 +59,12 @@ export const CashouTheme = {
     special: {
       streak: "#E87F00",
       streakLight: "#E87F0020",
+      pillBlueLight: "#9CD6FF",
+      pillBlueDark: "#006DBB",
+      pillGreenLight: "#88D498",
+      pillGreenDark: "#3D7248",
+      pillOrangeLight: "#FFB472",
+      pillOrangeDark: "#4C2E14",
       gold: "#FFD700",
       goldLight: "#FFD70020",
       white: "#FFFFFF",
