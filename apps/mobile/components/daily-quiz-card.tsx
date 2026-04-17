@@ -8,6 +8,7 @@ import { Card } from '@/components/ui';
 
 interface DailyQuizCardProps {
   status?: 'todo' | 'done';
+  streak?: number;
 }
 
 const getTimeUntilMidnightParis = () => {
@@ -33,9 +34,10 @@ const getTimeUntilMidnightParis = () => {
 
 export function DailyQuizCard({
   status = 'todo',
+  streak = 0,
 }: DailyQuizCardProps) {
   const router = useRouter();
-  const { colors, fonts } = useCashouTheme();
+  const { colors, fonts, special } = useCashouTheme();
   const [timeInfo, setTimeInfo] = useState(getTimeUntilMidnightParis());
 
   useEffect(() => {
@@ -101,9 +103,28 @@ export function DailyQuizCard({
         style={{}}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={{ fontSize: 24, fontFamily: fonts.body, color: colors.text }}>
-            Daily Quiz
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ fontSize: 24, fontFamily: fonts.body, color: colors.text }}>
+              Daily Quiz
+            </Text>
+            <View
+              style={{
+                minWidth: timerWidth,
+                height: timerHeight,
+                justifyContent: 'center',
+                backgroundColor: colors.primary,
+                borderRadius: timerRadius,
+                paddingHorizontal: 8,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 18, fontFamily: fonts.body, fontWeight: '700', color: '#4C2E14' }}>
+                  {streak}
+                </Text>
+                <Ionicons name="flame" size={18} color="#E53935" style={{ marginLeft: 2, marginRight: -2 }} />
+              </View>
+            </View>
+          </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <View
               style={{

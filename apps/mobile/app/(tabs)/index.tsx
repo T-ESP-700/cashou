@@ -461,7 +461,7 @@ export default function HomeScreen() {
             ) : null}
 
             {/* Daily Quiz Card */}
-            <DailyQuizCard status={dailyQuizStatus} />
+            <DailyQuizCard status={dailyQuizStatus} streak={homeData?.user.currentStreak ?? 0} />
             </View>
           </>
         )}
