@@ -47,27 +47,30 @@ export class GameTimeService {
    * Uses createdAt as game start time
    */
   calculateElapsedTime(gameInstance: GameInstanceWithLevel): number {
-    // If paused without pausedAt (created in preparation mode, never started), elapsed = 0
-    if (gameInstance.isPaused && !gameInstance.pausedAt) {
+    // If paused without pausedAt and NOT ended: preparation mode (never started), elapsed = 0
+    if (gameInstance.isPaused && !gameInstance.pausedAt && !gameInstance.isEnded) {
       return 0;
     }
 
-    const now = new Date();
+    // Use endedAt as reference time for ended games, otherwise use now
+    const referenceTime = gameInstance.isEnded && gameInstance.endedAt
+      ? new Date(gameInstance.endedAt)
+      : new Date();
     const startTime = new Date(gameInstance.createdAt);
 
     // Total real time since start
     let totalElapsed = Math.floor(
-      (now.getTime() - startTime.getTime()) / 1000
+      (referenceTime.getTime() - startTime.getTime()) / 1000
     );
 
     // Subtract accumulated pause duration
     const pausedDuration = gameInstance.totalPausedDuration ?? 0;
     totalElapsed -= pausedDuration;
 
-    // If currently paused, also subtract current pause duration
-    if (gameInstance.isPaused && gameInstance.pausedAt) {
+    // If currently paused (and not ended), also subtract current pause duration
+    if (gameInstance.isPaused && gameInstance.pausedAt && !gameInstance.isEnded) {
       const currentPauseDuration = Math.floor(
-        (now.getTime() - new Date(gameInstance.pausedAt).getTime()) / 1000
+        (referenceTime.getTime() - new Date(gameInstance.pausedAt).getTime()) / 1000
       );
       totalElapsed -= currentPauseDuration;
     }
@@ -206,12 +209,15 @@ export class GameTimeService {
     gameInstance: GameInstanceWithLevel,
     sinceDate: Date
   ): number {
-    // If paused without pausedAt (never started), elapsed = 0
-    if (gameInstance.isPaused && !gameInstance.pausedAt) {
+    // If paused without pausedAt and NOT ended: preparation mode (never started), elapsed = 0
+    if (gameInstance.isPaused && !gameInstance.pausedAt && !gameInstance.isEnded) {
       return 0;
     }
 
-    const now = new Date();
+    // Use endedAt as reference time for ended games, otherwise use now
+    const referenceTime = gameInstance.isEnded && gameInstance.endedAt
+      ? new Date(gameInstance.endedAt)
+      : new Date();
     const startTime = new Date(sinceDate);
     const gameStartTime = new Date(gameInstance.createdAt);
 
@@ -220,7 +226,7 @@ export class GameTimeService {
 
     // Total real time since the effective start
     let totalElapsed = Math.floor(
-      (now.getTime() - effectiveStartTime.getTime()) / 1000
+      (referenceTime.getTime() - effectiveStartTime.getTime()) / 1000
     );
 
     // Calculate pause duration that occurred during this period
@@ -228,23 +234,23 @@ export class GameTimeService {
 
     // Calculate what fraction of the total game time is since our start date
     const gameElapsedSinceCreation = Math.floor(
-      (now.getTime() - gameStartTime.getTime()) / 1000
+      (referenceTime.getTime() - gameStartTime.getTime()) / 1000
     );
 
     // Proportionally subtract pause duration
     if (gameElapsedSinceCreation > 0) {
-      const pauseFraction = (now.getTime() - effectiveStartTime.getTime()) /
-                           (now.getTime() - gameStartTime.getTime());
+      const pauseFraction = (referenceTime.getTime() - effectiveStartTime.getTime()) /
+                           (referenceTime.getTime() - gameStartTime.getTime());
       const pauseToSubtract = Math.floor(pausedDuration * pauseFraction);
       totalElapsed -= pauseToSubtract;
     }
 
-    // If currently paused, also subtract current pause duration proportionally
-    if (gameInstance.isPaused && gameInstance.pausedAt) {
+    // If currently paused (and not ended), also subtract current pause duration proportionally
+    if (gameInstance.isPaused && gameInstance.pausedAt && !gameInstance.isEnded) {
       const pauseStartTime = new Date(gameInstance.pausedAt);
       if (pauseStartTime > effectiveStartTime) {
         const currentPauseDuration = Math.floor(
-          (now.getTime() - pauseStartTime.getTime()) / 1000
+          (referenceTime.getTime() - pauseStartTime.getTime()) / 1000
         );
         totalElapsed -= currentPauseDuration;
       }

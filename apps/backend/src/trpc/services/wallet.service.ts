@@ -69,7 +69,7 @@ export class WalletService {
      // 🔢 Convert Decimal to number for API output
      return {
        ...wallet,
-       amount: wallet.amount ? new Prisma.Decimal(Number(wallet.amount)) : wallet.amount,
+       amount: wallet.amount ? Number(wallet.amount) : wallet.amount,
      };
    }
 

@@ -133,14 +133,17 @@ export class AssetHistoryService {
         const historyStartDay = level.historyStartDay ?? 0;
 
         // Calculate current game day
-        // If game is paused without pausedAt (e.g. created in preparation mode), game day = 0
+        // If game is paused without pausedAt and NOT ended (preparation mode, never started), game day = 0
         let currentGameDay = 0;
-        if (gameInstance.isPaused && !gameInstance.pausedAt) {
+        if (gameInstance.isPaused && !gameInstance.pausedAt && !gameInstance.isEnded) {
             currentGameDay = 0;
         } else {
-            const now = gameInstance.isPaused && gameInstance.pausedAt
-                ? gameInstance.pausedAt.getTime()
-                : Date.now();
+            // For ended games, use endedAt as reference; for paused games, use pausedAt; otherwise now
+            const now = gameInstance.isEnded && gameInstance.endedAt
+                ? new Date(gameInstance.endedAt).getTime()
+                : gameInstance.isPaused && gameInstance.pausedAt
+                    ? gameInstance.pausedAt.getTime()
+                    : Date.now();
             const elapsedMs = now - gameInstance.createdAt.getTime();
             const elapsedRealSeconds = Math.max(0, elapsedMs / 1000 - (gameInstance.totalPausedDuration ?? 0));
             currentGameDay = Math.min(
