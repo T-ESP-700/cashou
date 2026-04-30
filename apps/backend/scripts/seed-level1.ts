@@ -1,9 +1,55 @@
 import { PrismaClient } from '@cashou/db-app';
+import { auth } from '@cashou/auth/server';
 
 const prisma = new PrismaClient();
 
+// Credentials from login-form.tsx
+const TEST_USER_EMAIL = 'test@gmail.com';
+const TEST_USER_PASSWORD = 'azerty123456';
+const TEST_USER_NAME = 'Test User';
+
 async function main() {
   console.log('🌱 Début du seeding du niveau 1: Premier pas dans l\'épargne...');
+
+  // 0. Créer l'utilisateur de test
+  console.log('👤 Création de l\'utilisateur de test...');
+  let testUser = await prisma.user.findFirst({
+    where: { email: TEST_USER_EMAIL }
+  });
+
+  if (!testUser) {
+    try {
+      const signUpResult = await auth.api.signUpEmail({
+        body: {
+          email: TEST_USER_EMAIL,
+          password: TEST_USER_PASSWORD,
+          name: TEST_USER_NAME
+        }
+      });
+
+      if (signUpResult.user) {
+        testUser = await prisma.user.findUnique({
+          where: { id: signUpResult.user.id }
+        });
+        console.log(`✅ Utilisateur créé: ${testUser?.email} (ID: ${testUser?.id})`);
+      } else {
+        console.log('⚠️  Échec de la création de l\'utilisateur via Better-Auth');
+      }
+    } catch (error: unknown) {
+      // Si l'utilisateur existe déjà (erreur 422), on le récupère
+      const err = error as { status?: number; message?: string };
+      if (err?.status === 422 || err?.message?.includes('already exists')) {
+        testUser = await prisma.user.findFirst({
+          where: { email: TEST_USER_EMAIL }
+        });
+        console.log(`ℹ️  Utilisateur existe déjà: ${testUser?.email} (ID: ${testUser?.id})`);
+      } else {
+        console.error('❌ Erreur lors de la création de l\'utilisateur:', error);
+      }
+    }
+  } else {
+    console.log(`ℹ️  Utilisateur existe déjà: ${testUser.email} (ID: ${testUser.id})`);
+  }
 
   // 1. Créer le Market "Épargne & Sécurité"
   console.log("📊 Création du marché Livret, plans et compte épargne...");
@@ -150,7 +196,7 @@ async function main() {
         title: 'Premier pas dans l\'épargne',
         number: 1,
         duration: 1825,
-        speed: 5258000,
+        speed: 1314000,
         startBalance: 2000,
         pointsRequired: 0,
         description: 'Découvre les bases de l\'épargne avec des produits sécurisés. Apprends à gérer ton capital sans risque et à comprendre les notions essentielles de la finance personnelle.',
@@ -751,33 +797,32 @@ async function main() {
 
   console.log(`✅ 2 Daily Quiz vérifiés/créés (hier et aujourd'hui) avec 3 questions chacun`);
 
-  // Optional: create a UserLevelCompletion for demo stars if a user exists
+  // Optional: create a UserLevelCompletion for demo stars — only for the dedicated test user
+  // IMPORTANT: never overwrite real user data with demo values (use findUnique, not findFirst)
   const demoUser = await prisma.user.findFirst({
     where: { email: 'test-stars@cashou.fr' }
-  }) ?? await prisma.user.findFirst({ take: 1 });
+  });
   if (demoUser) {
-    await (prisma as any).userLevelCompletion.upsert({
-      where: {
-        userId_levelId: { userId: demoUser.id, levelId: level.id }
-      },
-      create: {
-        userId: demoUser.id,
-        levelId: level.id,
-        stars: 2,
-        mandatoryGoalsMet: true,
-        bonusGoalsMet: false,
-        quizPassed: true,
-        completedAt: new Date()
-      },
-      update: {
-        stars: 2,
-        mandatoryGoalsMet: true,
-        bonusGoalsMet: false,
-        quizPassed: true,
-        completedAt: new Date()
-      }
+    // Only CREATE if no completion exists — never overwrite existing real data
+    const existing = await (prisma as any).userLevelCompletion.findUnique({
+      where: { userId_levelId: { userId: demoUser.id, levelId: level.id } }
     });
-    console.log(`✅ UserLevelCompletion créée pour démo (user: ${demoUser.email ?? demoUser.id}, level 1, 2 étoiles)`);
+    if (!existing) {
+      await (prisma as any).userLevelCompletion.create({
+        data: {
+          userId: demoUser.id,
+          levelId: level.id,
+          stars: 2,
+          mandatoryGoalsMet: true,
+          bonusGoalsMet: false,
+          quizPassed: true,
+          completedAt: new Date()
+        }
+      });
+      console.log(`✅ UserLevelCompletion créée pour démo (user: ${demoUser.email}, level 1, 2 étoiles)`);
+    } else {
+      console.log(`ℹ️  UserLevelCompletion existante pour ${demoUser.email} — non écrasée`);
+    }
   }
 
   console.log('\n✨ ========================================');
@@ -793,6 +838,9 @@ async function main() {
   console.log(`   - 2 Goals: ${goal.title}, ${bonusGoal.title}`);
   console.log(`   - 1 Quiz MCQ avec ${createdQuestions.length} questions`);
   console.log(`   - 2 Daily Quiz (hier et aujourd'hui)`);
+  if (testUser) {
+    console.log(`   - 1 User de test: ${testUser.email}`);
+  }
   console.log('========================================\n');
 }
 

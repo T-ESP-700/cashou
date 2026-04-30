@@ -59,7 +59,7 @@ export const backofficeAuthRouter = router({
           id: user.id,
           email: user.email,
           name: user.name,
-          roles: user.roles.map((ur) => ur.role.name),
+          roles: user.roles.map((ur: { role: { name: string } }) => ur.role.name),
         },
         token,
       }
@@ -104,10 +104,10 @@ export const backofficeAuthRouter = router({
             id: user.id,
             email: user.email,
             name: user.name,
-            roles: user.roles.map((ur) => ur.role.name),
+            roles: user.roles.map((ur: { role: { name: string } }) => ur.role.name),
           },
         }
-      } catch (error) {
+      } catch {
         throw new TRPCError({
           code: 'UNAUTHORIZED',
           message: 'Token invalide',

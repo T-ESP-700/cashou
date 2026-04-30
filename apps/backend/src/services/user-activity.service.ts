@@ -1,14 +1,26 @@
 // Service pour gérer la vérification de l'activité utilisateur et des streaks à la connexion
 import defaultPrisma from '../database.ts';
-import type { PrismaClient } from '@prisma/client';
+// Import depuis @cashou/db-app (et non @prisma/client) car Bun crée des copies séparées
+// de @prisma/client par contexte de résolution, ce qui cause des types incompatibles
+import type { PrismaClient } from '@cashou/db-app';
 
 const LAST_ACTIVITY_THROTTLE_MS = 60 * 1000;
+const PARIS_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Europe/Paris',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
 
 export class UserActivityService {
   private prisma: PrismaClient;
 
   constructor(prismaClient?: PrismaClient) {
     this.prisma = prismaClient || defaultPrisma;
+  }
+
+  private getParisDateKey(date: Date): string {
+    return PARIS_DATE_FORMATTER.format(date);
   }
 
   /**
@@ -19,8 +31,7 @@ export class UserActivityService {
   async checkAndUpdateUserActivity(userId: string): Promise<void> {
     try {
       const now = new Date();
-      const today = new Date(now);
-      today.setHours(0, 0, 0, 0);
+      const todayParisKey = this.getParisDateKey(now);
 
       // Récupérer l'utilisateur avec lastActivity
       const user = await this.prisma.user.findUnique({
@@ -47,10 +58,9 @@ export class UserActivityService {
 
       // Cas 2: lastActivity n'est pas null
       const lastActivityDate = new Date(user.lastActivity);
-      const lastActivityDay = new Date(lastActivityDate);
-      lastActivityDay.setHours(0, 0, 0, 0);
+      const lastActivityParisKey = this.getParisDateKey(lastActivityDate);
 
-      if (lastActivityDay.getTime() === today.getTime()) {
+      if (lastActivityParisKey === todayParisKey) {
         // Si l'activité du jour a déjà été touchée très récemment, éviter un UPDATE inutile.
         if (now.getTime() - lastActivityDate.getTime() < LAST_ACTIVITY_THROTTLE_MS) {
           return;
@@ -64,33 +74,21 @@ export class UserActivityService {
       }
 
       // Si c'est une date antérieure → vérifier le quiz de la veille
-      if (lastActivityDay.getTime() < today.getTime()) {
-        // Calculer la date d'hier
-        const yesterday = new Date(today);
+      if (lastActivityDate.getTime() < now.getTime()) {
+        const yesterday = new Date(now);
         yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayEnd = new Date(yesterday);
-        yesterdayEnd.setHours(23, 59, 59, 999);
+        const yesterdayParisKey = this.getParisDateKey(yesterday);
 
-        // Trouver le quiz Daily d'hier
-        const yesterdayQuiz = await this.prisma.quiz.findFirst({
-          where: {
-            type: 'DAILY',
-            OR: [
-              {
-                date: {
-                  gte: yesterday,
-                  lte: yesterdayEnd,
-                },
-              },
-              {
-                date: null,
-                createdAt: {
-                  gte: yesterday,
-                  lte: yesterdayEnd,
-                },
-              },
-            ],
-          },
+        // Trouver le quiz Daily d'hier (date Paris)
+        const dailyQuizzes = await this.prisma.quiz.findMany({
+          where: { type: 'DAILY' },
+          select: { id: true, date: true, createdAt: true },
+          orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+          take: 120,
+        });
+        const yesterdayQuiz = dailyQuizzes.find((quiz) => {
+          const refDate = quiz.date ?? quiz.createdAt;
+          return this.getParisDateKey(new Date(refDate)) === yesterdayParisKey;
         });
 
         // Si un quiz existe pour hier, vérifier s'il a été complété

@@ -147,6 +147,18 @@ export class EndGameService {
      * @returns EndGameResult - Résultat de la fin de partie
      */
     async endGame(gameInstanceId: number): Promise<EndGameResult> {
+        // Guard: if the game is already ended (e.g. by the trigger service),
+        // return the read-only result instead of recalculating with stale state.
+        // Without this, the second call sees isPaused=true/pausedAt=null and
+        // all time-based calculations return 0, giving a 0% performance.
+        const existing = await this.prisma.gameInstance.findUnique({
+            where: { id: gameInstanceId },
+            select: { isEnded: true },
+        });
+        if (existing?.isEnded) {
+            return this.getEndGameResult(gameInstanceId);
+        }
+
         // 1. Recuperer l'instance de jeu avec toutes ses donnees
         const gameInstance = await this.prisma.gameInstance.findUnique({
             where: { id: gameInstanceId },

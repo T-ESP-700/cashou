@@ -1,7 +1,7 @@
 // tests/service/level.service.unit.test.ts
 // Tests unitaires du service de niveaux sans `any` (ESLint friendly)
 import { describe, it, expect } from "bun:test";
-import type { Prisma, Level, PrismaClient } from "@prisma/client";
+import type { Prisma, Level, PrismaClient } from "@cashou/db-app";
 import { LevelService } from "../../src/trpc/services/level.service";
 
 type Call =

@@ -1,6 +1,8 @@
 // Service métier pour la gestion des impacts du jeu
 // Couche d'abstraction entre les routers et la base de données
-import type { Impact, PrismaClient } from "@prisma/client";
+// Import depuis @cashou/db-app (et non @prisma/client) car Bun crée des copies séparées
+// de @prisma/client par contexte de résolution, ce qui cause des types incompatibles
+import type { Impact, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {ImpactCreateSchema, ImpactDataSchema} from "../schemas-zod/impact-schema.ts";
 

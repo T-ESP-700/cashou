@@ -74,7 +74,7 @@ export async function createContext({ req }: { req: Request }): Promise<Context>
           id: admin.id,
           email: admin.email,
           name: admin.name,
-          roles: admin.roles.map((ur) => ur.role.name),
+          roles: admin.roles.map((ur: { role: { name: string } }) => ur.role.name),
         };
       }
     }

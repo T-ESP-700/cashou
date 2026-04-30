@@ -3,7 +3,7 @@ import { describe, it, expect } from "bun:test";
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import type { Prisma, Level, PrismaClient } from "@prisma/client";
+import type { Prisma, Level, PrismaClient } from "@cashou/db-app";
 import { LevelService } from "../../src/trpc/services/level.service";
 
 const __filename = fileURLToPath(import.meta.url);

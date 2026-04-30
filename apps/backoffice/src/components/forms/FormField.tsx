@@ -1,7 +1,7 @@
-import { UseFormRegister, FieldErrors, Path } from 'react-hook-form';
+import { UseFormRegister, FieldErrors, Path, FieldValues } from 'react-hook-form';
 import { cn } from '@/lib/utils';
 
-interface FormFieldProps<T extends Record<string, any>> {
+interface FormFieldProps<T extends FieldValues> {
   label: string;
   name: Path<T>;
   register: UseFormRegister<T>;
@@ -13,7 +13,7 @@ interface FormFieldProps<T extends Record<string, any>> {
   step?: string;
 }
 
-export function FormField<T extends Record<string, any>>({
+export function FormField<T extends FieldValues>({
   label,
   name,
   register,

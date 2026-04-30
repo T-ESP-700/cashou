@@ -2,7 +2,7 @@
  * Test script pour valider la chaine complete du jeu
  * Simule: authentification, demarrer niveau 1, acheter/vendre asset, terminer partie, verifier interets
  */
-import { PrismaClient } from '@cashou/db-app';
+import { PrismaClient, GameInstance, Wallet, User, Level, Asset, LevelGoal, Goal } from '@cashou/db-app';
 import { auth } from '@cashou/auth/server';
 import { InvestmentService } from '../src/trpc/services/investment.service';
 import { EndGameService } from '../src/trpc/services/end-game.service';
@@ -24,12 +24,16 @@ const INTEREST_TOLERANCE = 0.01; // tolerance pour la verification des interets
 // Symboles des assets accessibles au niveau 1
 const LEVEL1_ASSET_SYMBOLS = ['LIVRET_A', 'LIVRET_DDS'];
 
+type LevelWithGoals = Level & {
+    levelGoals: (LevelGoal & { goal: Goal | null })[];
+};
+
 interface TestContext {
-    gameInstance: any;
-    wallet: any;
-    testUser: any;
-    level: any;
-    selectedAsset: any;
+    gameInstance: GameInstance | null;
+    wallet: Wallet | null;
+    testUser: User | null;
+    level: LevelWithGoals | null;
+    selectedAsset: Asset | null;
 }
 
 async function cleanupTestData(ctx: Partial<TestContext>) {
@@ -85,7 +89,7 @@ async function healthyGame(): Promise<boolean> {
             throw new Error('Niveau 1 non trouve. Lancez: bun run scripts/seed-level1.ts');
         }
         console.log(`   OK: Niveau "${ctx.level.title}" (duration: ${ctx.level.duration}j, speed: ${ctx.level.speed}x)`);
-        console.log(`   OK: Goals: ${ctx.level.levelGoals.map((lg: any) => lg.goal?.title).join(', ')}`);
+        console.log(`   OK: Goals: ${ctx.level.levelGoals.map((lg) => lg.goal?.title).join(', ')}`);
 
         // Recuperer les assets accessibles au niveau 1
         const accessibleAssets = await prisma.asset.findMany({
@@ -324,8 +328,8 @@ async function healthyGame(): Promise<boolean> {
 
             // Calcul via service
             const calculatedInterests = investmentService.calculateInterests(
-                remainingHolding as any,
-                gameInstanceWithLevel as any
+                remainingHolding,
+                gameInstanceWithLevel!
             );
 
             console.log(`   Temps reel simule: ${elapsedRealSeconds} secondes`);

@@ -1,17 +1,9 @@
 // tests/router/level.router.test.ts
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import type { Level } from "@prisma/client";
+import { describe, it, expect } from "bun:test";
+import type { Level } from "@cashou/db-app";
 import { levelRouter } from "../../src/trpc/routers/level.router";
 import { LevelService } from "../../src/trpc/services/level.service";
-
-type Call =
-    | { method: "findAll"; args?: undefined }
-    | { method: "findOne"; args: { id: number } }
-    | { method: "create"; args: { data: Partial<Level> } }
-    | { method: "update"; args: { id: number; data: Partial<Level> } }
-    | { method: "delete"; args: { id: number } };
-
-const calls: Call[] = [];
+import { createRouterTestSetup } from "../helpers/router-test-factory";
 
 function makeLevel(id: number, over: Partial<Level> = {}): Level {
   const now = new Date();
@@ -29,51 +21,8 @@ function makeLevel(id: number, over: Partial<Level> = {}): Level {
   };
 }
 
-const original = {
-  findAll: LevelService.prototype.findAll,
-  findOne: LevelService.prototype.findOne,
-  create: LevelService.prototype.create,
-  update: LevelService.prototype.update,
-  delete: LevelService.prototype.delete,
-};
-
-beforeEach(() => {
-  calls.length = 0;
-
-  LevelService.prototype.findAll = (async function (this: unknown): Promise<Level[]> {
-    calls.push({ method: "findAll" });
-    return [makeLevel(1, { title: "N1" })];
-  });
-
-  LevelService.prototype.findOne = (async function (this: unknown, id: number): Promise<Level | null> {
-    calls.push({ method: "findOne", args: { id } });
-    if (id === 404) return null;
-    return makeLevel(id);
-  });
-
-  LevelService.prototype.create = (async function (this: unknown, data: Partial<Level>): Promise<Level> {
-    calls.push({ method: "create", args: { data } });
-    return makeLevel(123, data);
-  });
-
-  LevelService.prototype.update = (async function (this: unknown, id: number, data: Partial<Level>): Promise<Level> {
-    calls.push({ method: "update", args: { id, data } });
-    return makeLevel(id, data);
-  });
-
-  LevelService.prototype.delete = (async function (this: unknown, id: number): Promise<Pick<Level, "id">> {
-    calls.push({ method: "delete", args: { id } });
-    return { id };
-  }) as unknown as typeof LevelService.prototype.delete;
-});
-
-afterEach(() => {
-  LevelService.prototype.findAll = original.findAll;
-  LevelService.prototype.findOne = original.findOne;
-  LevelService.prototype.create = original.create;
-  LevelService.prototype.update = original.update;
-  LevelService.prototype.delete = original.delete;
-});
+// Configuration automatique des mocks avec le helper
+const { calls } = createRouterTestSetup(LevelService, makeLevel);
 
 type Ctx = Parameters<typeof levelRouter.createCaller>[0];
 
