@@ -1,8 +1,11 @@
 // Service métier pour la gestion des participations aux quiz (UserQuiz)
 // Couche d'abstraction entre les routers et la base de données
 import type { UserQuiz, Quiz, PrismaClient } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import defaultPrisma from "../../database.ts";
 import type {UserQuizCreateSchema, UserQuizDataSchema} from "../schemas-zod/user-quiz-schema.ts";
+
+type TxClient = Prisma.TransactionClient;
 
 export class UserQuizService {
     private prisma: PrismaClient;
@@ -176,7 +179,7 @@ export class UserQuizService {
      * @param quizId - Identifiant du quiz
      * @param userId - Identifiant de l'utilisateur (string)
      */
-    private async updateStreaksIfTodaysQuiz(quizId: number, userId: string, tx?: any): Promise<void> {
+    private async updateStreaksIfTodaysQuiz(quizId: number, userId: string, tx?: TxClient): Promise<void> {
         const db = tx || this.prisma;
 
         // Vérifier si c'est le quiz du jour

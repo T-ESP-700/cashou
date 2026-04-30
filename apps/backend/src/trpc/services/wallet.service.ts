@@ -131,14 +131,9 @@ export class WalletService {
    * @param amountToAdd - Montant à ajouter
    */
   async addAmount(id: number, amountToAdd: number): Promise<Wallet> {
-    return this.prisma.$transaction(async (tx) => {
-      const wallet = await tx.wallet.findUnique({ where: { id } });
-      if (!wallet) throw new Error("Portefeuille introuvable");
-      const current = wallet.amount ? Number(wallet.amount) : 0;
-      return tx.wallet.update({
-        where: { id },
-        data: { amount: (current + amountToAdd).toString() },
-      });
+    return this.prisma.wallet.update({
+      where: { id },
+      data: { amount: { increment: amountToAdd } },
     });
   }
 }

@@ -404,10 +404,15 @@ export class InvestmentService {
       return;
     }
 
-    const holdings = await this.holdingService.findByGameInstance(gameInstanceId);
-
     // Transaction atomique pour garantir que tous les intérêts sont appliqués ou aucun
+    // Les holdings sont lus dans la transaction pour éviter les données stale
     await this.prisma.$transaction(async (tx) => {
+      const holdings = await tx.holding.findMany({
+        where: { gameInstanceId },
+        orderBy: { createdAt: "desc" },
+        include: { asset: true, wallet: true },
+      });
+
       for (const holding of holdings) {
         const holdingWithAsset = holding as HoldingWithAsset;
         const interests = this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
