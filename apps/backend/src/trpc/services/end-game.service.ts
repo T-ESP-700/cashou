@@ -441,7 +441,7 @@ export class EndGameService {
                 title: allMandatoryGoalsValidated ? "Bravo !" : "Dommage !",
                 primaryMessage: "",
                 secondaryMessage: null,
-                tip: allMandatoryGoalsValidated ? null : (gameInstance.level?.tip ?? null),
+                tip: gameInstance.level?.tip ?? null,
             },
             ...(completion && {
                 stars: completion.stars,

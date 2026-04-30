@@ -132,7 +132,7 @@ model Level {
   pointsRequired  Int?     @map("points_required")
   historyStartDay Int?     @map("history_start_day") // Day index in AssetHistory where the game begins
   description     String?
-  tip            String?  @map("tip")
+  tip            String?
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 

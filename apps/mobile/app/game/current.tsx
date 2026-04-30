@@ -2161,7 +2161,7 @@ const styles = StyleSheet.create({
     fontWeight: 'normal',
     lineHeight: 18,
     marginTop: 12,
-    opacity: 0.7,
+    opacity: 1,
   },
   endGameStarsRow: {
     alignSelf: "center",
