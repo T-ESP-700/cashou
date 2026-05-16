@@ -17,6 +17,8 @@ import { useNotifications } from '@/hooks/use-notifications';
 import { useAuth } from '@/hooks/use-auth';
 import { useHeader, useGameHeaderSubtitle } from '@/hooks/use-header';
 import { useGameRealtime } from '@/hooks/use-game-realtime';
+import { useOptionalLevel1Tour } from '@/contexts/level1-tour-context';
+import { Level1TourStep, isLivretAAsset, isSavingsLivretOtherThanA, tourBubbleForStep } from '@/constants/level1-tour';
 
 // UI representation of an asset for display purposes
 type AssetItem = {
@@ -32,6 +34,7 @@ export default function AssetsScreen() {
   const { colors: theme, isDark, status } = useCashouTheme();
   const router = useRouter();
   const params = useLocalSearchParams();
+  const level1TourMain = useOptionalLevel1Tour();
   const { setIsOnAssetsScreen, activeGameInstanceId, pendingEventCompletion, setAssetsScreenDepth, assetsScreenDepthRef, setPausedByAssets, pausedByAssets } = useNotifications();
   const { user } = useAuth();
 
@@ -265,6 +268,14 @@ export default function AssetsScreen() {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+        {level1TourMain?.sessionActive &&
+          level1TourMain.step === Level1TourStep.SecondEventOpenAssets && (
+            <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
+              <Text style={{ color: theme.text, fontFamily: CashouTheme.fonts.body, fontSize: 14, lineHeight: 20 }}>
+                {tourBubbleForStep(Level1TourStep.SecondEventOpenAssets, level1TourMain.eventPhase)}
+              </Text>
+            </View>
+          )}
           {/* Section title */}
         {!isSearching && (
           <View style={[styles.sectionHeader, { backgroundColor: theme.secondary }]}>
@@ -350,16 +361,49 @@ interface AssetCardProps {
 function AssetCard({ asset, isDark, router, gameInstanceId, walletId }: AssetCardProps) {
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const positive = asset.changePct >= 0;
+  const level1Tour = useOptionalLevel1Tour();
 
   const handlePress = () => {
+    const t = level1Tour;
+    if (t?.sessionActive && t.step === Level1TourStep.SelectLivretAForWithdraw) {
+      if (!isLivretAAsset({ title: asset.name })) return;
+    }
+    if (t?.sessionActive && t.step === Level1TourStep.WithdrawAndMoveToOtherLivret) {
+      if (
+        !isSavingsLivretOtherThanA({
+          title: asset.name,
+          symbol: null,
+          submarket: { type: asset.submarketType ?? null },
+        })
+      ) {
+        return;
+      }
+    }
     const params = new URLSearchParams({ id: asset.id });
     if (gameInstanceId) params.append('gameInstanceId', gameInstanceId);
     if (walletId) params.append('walletId', walletId);
     router.push(`/game/asset-detail?${params.toString()}`);
   };
 
+  const cardDisabled = Boolean(
+    level1Tour?.sessionActive &&
+      ((level1Tour.step === Level1TourStep.SelectLivretAForWithdraw &&
+        !isLivretAAsset({ title: asset.name })) ||
+        (level1Tour.step === Level1TourStep.WithdrawAndMoveToOtherLivret &&
+          !isSavingsLivretOtherThanA({
+            title: asset.name,
+            symbol: null,
+            submarket: { type: asset.submarketType ?? null },
+          })))
+  );
+
   return (
-    <TouchableOpacity activeOpacity={0.8} style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={handlePress}>
+    <TouchableOpacity
+      activeOpacity={0.8}
+      style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border, opacity: cardDisabled ? 0.35 : 1 }]}
+      disabled={cardDisabled}
+      onPress={handlePress}
+    >
       <Text style={[styles.cardTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>{asset.name}</Text>
       <View style={styles.tagsRow}>
         {asset.tags.map((t) => (

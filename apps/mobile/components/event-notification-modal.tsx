@@ -12,12 +12,16 @@ import { useRouter, usePathname } from 'expo-router';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { useNotifications } from '@/hooks/use-notifications';
 import { ActionPillButton } from '@/components/ui';
+import { useOptionalLevel1Tour } from '@/contexts/level1-tour-context';
+import { tourBubbleForStep, Level1TourStep } from '@/constants/level1-tour';
 
 export function EventNotificationModal() {
   const { colors, isDark } = useCashouTheme();
   const router = useRouter();
   const pathname = usePathname();
   const { eventNotification, clearEventNotification, setPendingEventCompletion, setRequestedAssetsSheetGameId } = useNotifications();
+  const level1Tour = useOptionalLevel1Tour();
+  const restrictSecondEvent = Boolean(level1Tour?.restrictEventModalToAssetsOnly);
 
   const isVisible = eventNotification !== null;
 
@@ -75,7 +79,7 @@ export function EventNotificationModal() {
         tint={isDark ? 'dark' : 'light'}
         style={styles.blur}
       >
-        <Pressable style={styles.overlay} onPress={handleClose}>
+        <Pressable style={styles.overlay} onPress={restrictSecondEvent ? undefined : handleClose}>
           <View
             onStartShouldSetResponder={() => true}
             style={[styles.cardBackdrop, { backgroundColor: colors.secondary }]}
@@ -96,19 +100,27 @@ export function EventNotificationModal() {
                 {eventNotification.body ?? 'Un événement vient de se produire dans le jeu. Consultez vos assets pour voir les changements.'}
               </Text>
 
+              {restrictSecondEvent && level1Tour && (
+                <Text allowFontScaling={false} style={[styles.tourHint, { color: colors.text }]}>
+                  {tourBubbleForStep(Level1TourStep.SecondEventOpenAssets, level1Tour.eventPhase)}
+                </Text>
+              )}
+
               {/* Buttons */}
               <View style={styles.actions}>
-                <ActionPillButton
-                  label="Plus tard"
-                  iconName="checkmark"
-                  onPress={handleClose}
-                  style={{ flex: 1 }}
-                />
+                {!restrictSecondEvent && (
+                  <ActionPillButton
+                    label="Plus tard"
+                    iconName="checkmark"
+                    onPress={handleClose}
+                    style={{ flex: 1 }}
+                  />
+                )}
                 <ActionPillButton
                   label="Investir"
                   iconName="add"
                   onPress={handleGoToAssets}
-                  style={{ flex: 1 }}
+                  style={{ flex: restrictSecondEvent ? undefined : 1, width: restrictSecondEvent ? '100%' as const : undefined }}
                 />
               </View>
             </View>
@@ -170,6 +182,15 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     opacity: 0.85,
     marginBottom: 16,
+  },
+  tourHint: {
+    fontSize: 13,
+    fontFamily: 'Anybody',
+    textAlign: 'center',
+    lineHeight: 19,
+    opacity: 0.9,
+    marginBottom: 12,
+    paddingHorizontal: 4,
   },
   actions: {
     flexDirection: 'row',
