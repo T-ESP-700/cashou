@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,15 @@ import { useGameRealtime } from '@/hooks/use-game-realtime';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useAuth } from '@/hooks/use-auth';
 import { ActionPillButton } from '@/components/ui/ActionPillButton';
+import { useOptionalLevel1Tour } from '@/contexts/level1-tour-context';
+import {
+  Level1TourStep,
+  isLivretAAsset,
+  isSavingsLivretOtherThanA,
+  tourBubbleForStep,
+  tourStepHeadline,
+} from '@/constants/level1-tour';
+import { Level1TourCallout } from '@/components/level1-tour-callout';
 
 type TransactionType = 'buy' | 'sell';
 
@@ -43,6 +52,7 @@ export default function TransactionScreen() {
   const params = useLocalSearchParams();
   const { activeGameInstanceId, pendingEventCompletion, setAssetsScreenDepth, assetsScreenDepthRef, setIsOnAssetsScreen, setPausedByAssets, setRequestedAssetsSheetGameId } = useNotifications();
   const { user } = useAuth();
+  const level1Tour = useOptionalLevel1Tour();
 
   // Keep the game header (Niveau X + date) — only ensure back button is shown
   const { setOptions: setHeaderOptions } = useHeader();
@@ -191,9 +201,10 @@ export default function TransactionScreen() {
           try {
             const portfolio = await trpcClient.investment.getPortfolio.query({
               walletId,
-              gameInstanceId: parseInt(gameInstanceId as string, 10),
+              gameInstanceId,
             });
-            const item = portfolio.items.find((i: any) => i.holding.assetId === assetId);
+            const aid = assetId;
+            const item = portfolio.items.find((i: any) => i.holding.assetId === aid);
             if (item) {
               setCurrentHolding(Math.round(item.currentValue)); // raw quantity (for backend)
               setCurrentHoldingValue(Math.round(item.totalValue)); // with interests (for display)
@@ -222,6 +233,54 @@ export default function TransactionScreen() {
 
     fetchData();
   }, [assetId, walletId, type]);
+
+  const tourDepositHere =
+    Boolean(
+      level1Tour?.sessionActive &&
+        level1Tour.step === Level1TourStep.DepositOnLivretA &&
+        type === 'buy' &&
+        asset &&
+        isLivretAAsset(asset),
+    );
+
+  const tourLivretPrefillAppliedRef = useRef(false);
+
+  useEffect(() => {
+    if (!tourDepositHere) {
+      tourLivretPrefillAppliedRef.current = false;
+      return;
+    }
+    if (tourLivretPrefillAppliedRef.current || amount !== '') return;
+    if (!asset) return;
+    const min = asset.minAmount != null ? Number(asset.minAmount) : 1;
+    const maxFromCap =
+      asset.maxAmount != null
+        ? Math.max(0, Number(asset.maxAmount) - currentHolding)
+        : walletBalance;
+    const cap = Math.min(walletBalance, maxFromCap);
+    if (cap <= 0) return;
+    const target = Math.max(min, Math.min(200, Math.floor(cap)));
+    const suggested = Math.min(cap, target);
+    if (suggested >= min) {
+      tourLivretPrefillAppliedRef.current = true;
+      setAmount(String(Math.floor(suggested)));
+    }
+  }, [tourDepositHere, amount, asset, walletBalance, currentHolding]);
+
+  const tourFocusedPillStyle = useMemo(
+    () =>
+      Platform.OS === 'android'
+        ? { borderWidth: 3, borderColor: '#FFFFFF', elevation: 20 }
+        : {
+            borderWidth: 3,
+            borderColor: '#FFFFFF',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: 0.4,
+            shadowRadius: 8,
+          },
+    [],
+  );
 
   const handleQuickAmount = (value: number) => {
     setAmount(value.toString());
@@ -279,9 +338,16 @@ export default function TransactionScreen() {
   };
 
   const goBackToCurrentWithSheet = () => {
-    // Signal current.tsx to re-open the assets bottom sheet so the user
-    // can perform more transactions without the game resuming.
-    if (gameInstanceId) {
+    const shouldReopenAssetsSheet =
+      !(
+        level1Tour?.sessionActive &&
+        level1Tour.step === Level1TourStep.WithdrawAndMoveToOtherLivret &&
+        type === 'buy'
+      );
+
+    // Re-open the assets sheet when the user may need to keep browsing assets,
+    // but return directly to the game once the tutorial move is completed.
+    if (shouldReopenAssetsSheet && gameInstanceId) {
       setRequestedAssetsSheetGameId(gameInstanceId);
     }
     // Pop back to /game/current: go back twice (transaction → asset-detail → current)
@@ -301,6 +367,28 @@ export default function TransactionScreen() {
       return;
     }
 
+    const tr = level1Tour;
+    if (tr?.sessionActive && asset) {
+      if (tr.step === Level1TourStep.DepositOnLivretA) {
+        if (type !== 'buy' || !isLivretAAsset(asset)) {
+          showAlert('Tutoriel', tourBubbleForStep(tr.step, tr.eventPhase));
+          return;
+        }
+      }
+      if (tr.step === Level1TourStep.SelectLivretAForWithdraw) {
+        if (type !== 'sell' || !isLivretAAsset(asset)) {
+          showAlert('Tutoriel', tourBubbleForStep(tr.step, tr.eventPhase));
+          return;
+        }
+      }
+      if (tr.step === Level1TourStep.WithdrawAndMoveToOtherLivret) {
+        if (type !== 'buy' || !isSavingsLivretOtherThanA(asset)) {
+          showAlert('Tutoriel', tourBubbleForStep(tr.step, tr.eventPhase));
+          return;
+        }
+      }
+    }
+
     const numAmount = parseFloat(amount);
 
     try {
@@ -316,6 +404,14 @@ export default function TransactionScreen() {
           amount: numAmount,
           gameInstanceId,
         });
+        if (
+          tr?.sessionActive &&
+          tr.step === Level1TourStep.WithdrawAndMoveToOtherLivret &&
+          asset &&
+          isSavingsLivretOtherThanA(asset)
+        ) {
+          await tr.goToStep(Level1TourStep.SecondEventResume);
+        }
         alertTitle = 'Achat effectué';
         alertMessage = `Vous avez investi ${Math.round(numAmount)} EUR dans ${asset?.title}`;
       } else {
@@ -381,10 +477,16 @@ export default function TransactionScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         keyboardShouldPersistTaps="handled"
       >
+        {tourDepositHere && (
+          <Level1TourCallout
+            title={tourStepHeadline(Level1TourStep.DepositOnLivretA)}
+            message={tourBubbleForStep(Level1TourStep.DepositOnLivretA, level1Tour?.eventPhase ?? 0)}
+          />
+        )}
         {/* Header */}
         <View style={[styles.header, { backgroundColor: theme.card, shadowColor: theme.border }]}>
           <Ionicons
-            name={isSavings ? (isBuy ? 'download-outline' : 'upload-outline') : (isBuy ? 'arrow-down-circle' : 'arrow-up-circle')}
+            name={isSavings ? (isBuy ? 'download-outline' : 'arrow-up-circle') : (isBuy ? 'arrow-down-circle' : 'arrow-up-circle')}
             size={48}
             color={theme.accent}
           />
@@ -496,6 +598,7 @@ export default function TransactionScreen() {
           onPress={handleSubmit}
           disabled={isSubmitting || !amount}
           isLoading={isSubmitting}
+          style={tourDepositHere ? tourFocusedPillStyle : undefined}
         />
       </View>
     </KeyboardAvoidingView>

@@ -26,6 +26,7 @@ import { useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/hooks/use-auth';
 import { HeaderProvider, useHeader } from '@/hooks/use-header';
 import { NotificationProvider } from '@/hooks/use-notifications';
+import { Level1TourProvider } from '@/contexts/level1-tour-context';
 import { AlertProvider } from '@/hooks/use-alert';
 import { ThemePreferenceProvider, useThemePreference } from '@/hooks/use-theme-provider';
 import { CashouHeader } from '@/components/cashou-header';
@@ -61,7 +62,6 @@ function RootNavigatorContent() {
   const inGame = segments[0] === 'game';
   // const isInitialRoute = (segments as string[]).length === 0;
 
-  console.log('[RootNavigator] segments:', segments, 'isAuthenticated:', isAuthenticated);
 
   // Handle redirects BEFORE rendering Stack
   if (!isAuthenticated && (inTabs || inGame)) {
@@ -148,9 +148,11 @@ export default function RootLayout() {
       <ThemePreferenceProvider>
         <AuthProvider>
           <NotificationProvider>
-            <BottomSheetModalProvider>
-              <RootLayoutInner />
-            </BottomSheetModalProvider>
+            <Level1TourProvider>
+              <BottomSheetModalProvider>
+                <RootLayoutInner />
+              </BottomSheetModalProvider>
+            </Level1TourProvider>
           </NotificationProvider>
         </AuthProvider>
       </ThemePreferenceProvider>

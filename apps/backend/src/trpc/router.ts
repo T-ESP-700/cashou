@@ -2,6 +2,7 @@ import { router, publicProcedure } from './index';
 import { userRouter } from './routers/user';
 import { authRouter } from './routers/auth';
 import { levelRouter } from './routers/level.router';
+import { levelCompletionRouter } from './routers/level-completion.router';
 import { eventRouter } from './routers/event.router';
 import { goalRouter } from './routers/goal.router';
 import { levelGoalRouter } from './routers/level-goal.router';
@@ -43,6 +44,7 @@ export const trpcRouter = router({
 
   // Game system
   level: levelRouter,
+  levelCompletion: levelCompletionRouter,
   event: eventRouter,
   goal: goalRouter,
   levelGoal: levelGoalRouter,
