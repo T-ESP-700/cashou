@@ -406,9 +406,24 @@ model GameInstance {
   notifications Notification[]
   holdings      Holding[]
   gameInstanceEvents GameInstanceEvent[]
+  pauseIntervals GameInstancePauseInterval[]
   userQuiz      UserQuiz[]
 
   @@map("game_instances")
+}
+
+model GameInstancePauseInterval {
+  id             Int      @id @default(autoincrement())
+  gameInstanceId Int      @map("game_instance_id")
+  startedAt      DateTime @map("started_at")
+  endedAt        DateTime? @map("ended_at")
+  reason         String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  gameInstance GameInstance @relation(fields: [gameInstanceId], references: [id], onDelete: Cascade)
+
+  @@map("game_instance_pause_intervals")
 }
 
 model GameInstanceEvent {

@@ -45,7 +45,7 @@ export class InvestmentService {
     this.prisma = prismaClient || defaultPrisma;
     this.holdingService = new HoldingService(this.prisma);
     this.walletService = new WalletService(this.prisma);
-    this.gameTimeService = new GameTimeService();
+    this.gameTimeService = new GameTimeService(this.prisma);
     this.assetHistoryService = new AssetHistoryService(this.prisma);
   }
 
@@ -344,7 +344,7 @@ export class InvestmentService {
     // Fallback: rate-based calculation (for levels without price history)
     if (asset.rate) {
       const annualRate = asset.rate;
-      const elapsedRealSeconds = this.gameTimeService.calculateElapsedTimeSince(
+      const elapsedRealSeconds = await this.gameTimeService.calculateElapsedTimeSince(
         gameInstance,
         new Date(holding.acquiredAt)
       );
