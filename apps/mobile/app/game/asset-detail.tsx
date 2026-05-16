@@ -1,10 +1,11 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,6 +18,15 @@ import { useHeader, useGameHeaderSubtitle } from '@/hooks/use-header';
 import { useGameRealtime } from '@/hooks/use-game-realtime';
 import { PriceChart } from '@/components/price-chart';
 import { ActionPillButton } from '@/components/ui/ActionPillButton';
+import { useOptionalLevel1Tour } from '@/contexts/level1-tour-context';
+import {
+  Level1TourStep,
+  isLivretAAsset,
+  isSavingsLivretOtherThanA,
+  tourBubbleForStep,
+  tourStepHeadline,
+} from '@/constants/level1-tour';
+import { Level1TourCallout } from '@/components/level1-tour-callout';
 
 export default function AssetDetailScreen() {
   const { colors: theme, isDark, status } = useCashouTheme();
@@ -24,6 +34,7 @@ export default function AssetDetailScreen() {
   const params = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const { setAssetsScreenDepth, assetsScreenDepthRef } = useNotifications();
+  const level1Tour = useOptionalLevel1Tour();
 
   // Keep the game header (Niveau X + date) — only ensure back button is shown
   const { setOptions: setHeaderOptions } = useHeader();
@@ -156,6 +167,44 @@ export default function AssetDetailScreen() {
   const isSavings = submarketType === 'SAVINGS';
   const isStock = submarketType === 'STOCK';
 
+  useEffect(() => {
+    if (!asset || !level1Tour?.sessionActive) return;
+    const t = level1Tour;
+    if (t.step === Level1TourStep.DepositOnLivretA && !isLivretAAsset(asset)) {
+      void t.abortTour();
+      return;
+    }
+    if (t.step === Level1TourStep.SelectLivretAForWithdraw && !isLivretAAsset(asset)) {
+      void t.abortTour();
+      return;
+    }
+    if (t.step === Level1TourStep.WithdrawAndMoveToOtherLivret) {
+      const okOther = isSavingsLivretOtherThanA(asset);
+      const okA = isLivretAAsset(asset);
+      if (!okOther && !okA) void t.abortTour();
+    }
+  }, [asset?.id, level1Tour?.sessionActive, level1Tour?.step]);
+
+  const livretAAsset = asset ? isLivretAAsset(asset) : false;
+  const tourDeposit = level1Tour?.sessionActive && level1Tour.step === Level1TourStep.DepositOnLivretA;
+  const tourWithdrawA = level1Tour?.sessionActive && level1Tour.step === Level1TourStep.SelectLivretAForWithdraw;
+  const tourMove = level1Tour?.sessionActive && level1Tour.step === Level1TourStep.WithdrawAndMoveToOtherLivret;
+
+  const tourFocusedPillStyle = useMemo(
+    () =>
+      Platform.OS === 'android'
+        ? { borderWidth: 3, borderColor: '#FFFFFF', elevation: 20 }
+        : {
+            borderWidth: 3,
+            borderColor: '#FFFFFF',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: 0.4,
+            shadowRadius: 8,
+          },
+    [],
+  );
+
   // Badge colors per submarket type (same as current.tsx)
   const getSubmarketBadgeStyle = (submarketTitle: string) => {
     const lower = submarketTitle.toLowerCase();
@@ -187,6 +236,24 @@ export default function AssetDetailScreen() {
           </View>
         ) : asset ? (
           <>
+            {tourDeposit && (
+              <Level1TourCallout
+                title={tourStepHeadline(Level1TourStep.DepositOnLivretA)}
+                message={tourBubbleForStep(Level1TourStep.DepositOnLivretA, level1Tour?.eventPhase ?? 0)}
+              />
+            )}
+            {tourWithdrawA && livretAAsset && (
+              <Level1TourCallout
+                title={tourStepHeadline(Level1TourStep.SelectLivretAForWithdraw)}
+                message={tourBubbleForStep(Level1TourStep.SelectLivretAForWithdraw, level1Tour?.eventPhase ?? 0)}
+              />
+            )}
+            {tourMove && (
+              <Level1TourCallout
+                title={tourStepHeadline(Level1TourStep.WithdrawAndMoveToOtherLivret)}
+                message={tourBubbleForStep(Level1TourStep.WithdrawAndMoveToOtherLivret, level1Tour?.eventPhase ?? 0)}
+              />
+            )}
             {/* Header Section with Title and Symbol */}
             <View style={[styles.headerSection, { backgroundColor: theme.card }]}>
               <Text style={[styles.assetTitle, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>
@@ -437,12 +504,19 @@ export default function AssetDetailScreen() {
             label={isSavings ? 'Déposer' : 'Acheter'}
             iconName={isSavings ? 'download-outline' : 'arrow-down-circle'}
             onPress={handleBuy}
+            disabled={
+              Boolean((tourWithdrawA && livretAAsset) || (tourMove && livretAAsset))
+            }
+            style={tourDeposit && livretAAsset ? tourFocusedPillStyle : undefined}
           />
           <ActionPillButton
             label={isSavings ? 'Retirer' : 'Vendre'}
-            iconName={isSavings ? 'upload-outline' : 'arrow-up-circle'}
+            iconName={isSavings ? 'arrow-up-circle' : 'arrow-up-circle'}
             onPress={handleSell}
-            disabled={currentHolding === 0}
+            disabled={
+              currentHolding === 0 ||
+              Boolean((tourDeposit && livretAAsset) || (tourMove && !livretAAsset && isSavings))
+            }
           />
         </View>
       )}

@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, u
 import { AppState, AppStateStatus } from 'react-native';
 import type { ReactNode } from 'react';
 import { trpcClient, setAuthErrorHandler, resetAuthErrorHandling } from '@/lib/trpc';
+import { clearLevel1TourOnLogout } from '@/lib/level1-tour-logout-bridge';
 import { tokenStorage } from '@/lib/token-storage';
 
 interface User {
@@ -118,6 +119,7 @@ function useProvideAuth(): UseAuthReturn {
             console.log('[useAuth] Token expired or invalid, clearing session');
             setUser(null);
             await tokenStorage.removeToken();
+            clearLevel1TourOnLogout();
             break; // Don't retry on auth errors
           }
 
@@ -146,6 +148,7 @@ function useProvideAuth(): UseAuthReturn {
         setError(err instanceof Error ? err.message : 'Failed to fetch user');
         setUser(null);
         await tokenStorage.removeToken();
+        clearLevel1TourOnLogout();
       }
     } finally {
       setIsLoading(false);
@@ -179,6 +182,7 @@ function useProvideAuth(): UseAuthReturn {
       }
     } finally {
       await tokenStorage.removeToken();
+      clearLevel1TourOnLogout();
       setUser(null);
       setError(null);
       setIsLoading(false);

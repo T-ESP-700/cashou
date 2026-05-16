@@ -211,4 +211,25 @@ export class LevelCompletionService {
             where: { userId },
         });
     }
+
+    /**
+     * True if the user has any UserLevelCompletion row for a level with the given number
+     * (used to skip the level-1 guided tour after the level was completed at least once).
+     */
+    async hasCompletionForLevelNumber(
+        userId: string,
+        levelNumber: number
+    ): Promise<boolean> {
+        const level = await this.prisma.level.findFirst({
+            where: { number: levelNumber },
+            select: { id: true },
+        });
+        if (!level) {
+            return false;
+        }
+        const completion = await this.prisma.userLevelCompletion.findUnique({
+            where: { userId_levelId: { userId, levelId: level.id } },
+        });
+        return completion !== null;
+    }
 }
