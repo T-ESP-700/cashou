@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import { ExpoPushService } from "./expo-push.service.ts";
+import { GamePauseIntervalService } from "./game-pause-interval.service.ts";
 import { broadcastToGame, broadcastGameState } from "../../ws/game-socket.ts";
 
 type PrismaTx = Prisma.TransactionClient;
@@ -26,10 +27,12 @@ interface ProcessEventResult {
 export class GameEventProcessorService {
   private prisma: PrismaClient;
   private expoPushService: ExpoPushService;
+  private gamePauseIntervalService: GamePauseIntervalService;
 
   constructor(prismaClient?: PrismaClient) {
     this.prisma = prismaClient || defaultPrisma;
     this.expoPushService = new ExpoPushService();
+    this.gamePauseIntervalService = new GamePauseIntervalService(this.prisma);
   }
 
   private buildPendingPayload(
@@ -296,6 +299,12 @@ export class GameEventProcessorService {
             pausedAt: pauseTimestamp,
           },
         });
+        await this.gamePauseIntervalService.startPause(
+          gameInstance.id,
+          pauseTimestamp,
+          "event_pause",
+          tx,
+        );
 
         await tx.notification.create({
           data: {
