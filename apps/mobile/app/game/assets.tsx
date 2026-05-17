@@ -269,10 +269,10 @@ export default function AssetsScreen() {
 
       <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
         {level1TourMain?.sessionActive &&
-          level1TourMain.step === Level1TourStep.SecondEventOpenAssets && (
+          level1TourMain.step === Level1TourStep.PostEventOpenAssets && (
             <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
               <Text style={{ color: theme.text, fontFamily: CashouTheme.fonts.body, fontSize: 14, lineHeight: 20 }}>
-                {tourBubbleForStep(Level1TourStep.SecondEventOpenAssets, level1TourMain.eventPhase)}
+                {tourBubbleForStep(Level1TourStep.PostEventOpenAssets, level1TourMain.eventPhase)}
               </Text>
             </View>
           )}

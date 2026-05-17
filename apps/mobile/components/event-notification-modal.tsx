@@ -21,7 +21,10 @@ export function EventNotificationModal() {
   const pathname = usePathname();
   const { eventNotification, clearEventNotification, setPendingEventCompletion, setShouldOpenAssetsSheet } = useNotifications();
   const level1Tour = useOptionalLevel1Tour();
-  const restrictSecondEvent = Boolean(level1Tour?.restrictEventModalToAssetsOnly);
+  const restrictToAssetsOnly =
+    Boolean(level1Tour?.sessionActive) &&
+    (level1Tour?.eventPhase ?? 0) === 0 &&
+    level1Tour?.step !== Level1TourStep.Done;
 
   const isVisible = eventNotification !== null;
 
@@ -79,7 +82,7 @@ export function EventNotificationModal() {
         tint={isDark ? 'dark' : 'light'}
         style={styles.blur}
       >
-        <Pressable style={styles.overlay} onPress={restrictSecondEvent ? undefined : handleClose}>
+        <Pressable style={styles.overlay} onPress={restrictToAssetsOnly ? undefined : handleClose}>
           <View
             onStartShouldSetResponder={() => true}
             style={[styles.cardBackdrop, { backgroundColor: colors.secondary }]}
@@ -100,15 +103,15 @@ export function EventNotificationModal() {
                 {eventNotification.body ?? 'Un événement vient de se produire dans le jeu. Consultez vos assets pour voir les changements.'}
               </Text>
 
-              {restrictSecondEvent && level1Tour && (
+              {restrictToAssetsOnly && level1Tour && (
                 <Text allowFontScaling={false} style={[styles.tourHint, { color: colors.text }]}>
-                  {tourBubbleForStep(Level1TourStep.SecondEventOpenAssets, level1Tour.eventPhase)}
+                  {tourBubbleForStep(Level1TourStep.PostEventOpenAssets, level1Tour.eventPhase)}
                 </Text>
               )}
 
               {/* Buttons */}
-              <View style={styles.actions}>
-                {!restrictSecondEvent && (
+              <View style={[styles.actions, restrictToAssetsOnly && styles.actionsSingle]}>
+                {!restrictToAssetsOnly && (
                   <ActionPillButton
                     label="Plus tard"
                     iconName="checkmark"
@@ -120,7 +123,7 @@ export function EventNotificationModal() {
                   label="Investir"
                   iconName="add"
                   onPress={handleGoToAssets}
-                  style={{ flex: restrictSecondEvent ? undefined : 1, width: restrictSecondEvent ? '100%' as const : undefined }}
+                  style={restrictToAssetsOnly ? styles.investOnlyButton : { flex: 1 }}
                 />
               </View>
             </View>
@@ -196,6 +199,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 8,
+    width: '100%',
+  },
+  actionsSingle: {
+    justifyContent: 'center',
+  },
+  investOnlyButton: {
     width: '100%',
   },
 });

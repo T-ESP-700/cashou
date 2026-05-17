@@ -136,7 +136,6 @@ export class AssetHistoryService {
         // If game is paused without pausedAt and not ended (e.g. created in preparation mode), game day = 0
         let currentGameDay = 0;
         if (gameInstance.isPaused && !gameInstance.pausedAt && !gameInstance.isEnded) {
-        if (gameInstance.isPaused && !gameInstance.pausedAt && !gameInstance.isEnded) {
             currentGameDay = 0;
         } else {
             const now = gameInstance.isEnded && gameInstance.endedAt

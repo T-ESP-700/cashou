@@ -1074,6 +1074,13 @@ export default function GameCurrentScreen() {
   const localFormattedDate = gameInstanceId
     ? `${String(gameDate.getDate()).padStart(2, '0')}/${String(gameDate.getMonth() + 1).padStart(2, '0')}/${gameDate.getFullYear()}`
     : null;
+  const tutorialOverlayVisible =
+    tour.sessionActive &&
+    (tour.step === Level1TourStep.OpenInvestSheet ||
+      tour.step === Level1TourStep.CloseSheetAndPressStart ||
+      tour.step === Level1TourStep.FirstEventResume ||
+      tour.step === Level1TourStep.PostEventOpenAssets ||
+      tour.step === Level1TourStep.PostEventResume);
   // Don't inject subtitle until level is loaded (avoids header flicker)
   useGameHeaderSubtitle(
     stats.level > 0 ? (formattedGameDate ?? localFormattedDate) : null,
@@ -1093,8 +1100,8 @@ export default function GameCurrentScreen() {
 
   // Dim header when assets bottom sheet is open
   useEffect(() => {
-    setHeaderOptions({ dimmed: isAssetsSheetOpen });
-  }, [isAssetsSheetOpen, setHeaderOptions]);
+    setHeaderOptions({ dimmed: tutorialOverlayVisible });
+  }, [tutorialOverlayVisible, setHeaderOptions]);
 
   // Auto-show level info modal for new games (when no gameId is passed)
   useEffect(() => {
@@ -1165,7 +1172,7 @@ export default function GameCurrentScreen() {
       void (async () => {
         const t = tourRef.current;
         if (t.step === Level1TourStep.WaitFirstEvent && t.eventPhase === 0) {
-          await t.goToStep(Level1TourStep.SecondEventOpenAssets);
+          await t.goToStep(Level1TourStep.PostEventOpenAssets);
         }
       })();
     }
@@ -1183,7 +1190,7 @@ export default function GameCurrentScreen() {
   useEffect(() => {
     const t = tourRef.current;
     if (!t.sessionActive) return;
-    if (t.step !== Level1TourStep.SecondEventOpenAssets) return;
+    if (t.step !== Level1TourStep.PostEventOpenAssets) return;
     if (!isAssetsSheetOpen) return;
     void t.goToStep(Level1TourStep.SelectLivretAForWithdraw);
   }, [tour.sessionActive, tour.step, isAssetsSheetOpen]);
@@ -1229,8 +1236,18 @@ export default function GameCurrentScreen() {
     fetchLevelQuizId();
   }, [levelData?.level?.id]);
 
-  const handleOpenRecap = () => {
+  const handleOpenRecap = async () => {
     if (!gameInstanceId) return;
+    if (
+      endGameResult?.success &&
+      levelQuizId &&
+      tour.sessionActive &&
+      tour.step === Level1TourStep.AwaitEndGameChoice
+    ) {
+      await tour.goToStep(Level1TourStep.SummaryQuizPrompt);
+    } else if (tour.sessionActive && tour.step === Level1TourStep.AwaitEndGameChoice) {
+      await tour.abortTour();
+    }
     setShowEndGameModal(false);
     trpcClient.notification.markGameEndAsRead.mutate({ gameInstanceId }).catch(console.error);
     router.replace({
@@ -1239,11 +1256,14 @@ export default function GameCurrentScreen() {
     });
   };
 
-  const handleOpenQuiz = () => {
+  const handleOpenQuiz = async () => {
     if (!endGameResult?.success) return;
     if (!levelQuizId) {
       showAlert('Quiz indisponible', "Aucun quiz n'est associe a ce niveau pour le moment.");
       return;
+    }
+    if (tour.sessionActive) {
+      await tour.abortTour();
     }
     setShowEndGameModal(false);
     if (gameInstanceId) {
@@ -1376,33 +1396,7 @@ export default function GameCurrentScreen() {
     [tour.sessionActive, tour.step],
   );
 
-  const assetsListForSheet = useMemo(() => {
-    if (!tourRestrictsAssetPicker) return filteredAssets;
-    if (
-      tour.step === Level1TourStep.SelectLivretAInSheet ||
-      tour.step === Level1TourStep.SelectLivretAForWithdraw
-    ) {
-      const only = filteredAssets.filter((a: { title?: string | null; symbol?: string | null }) =>
-        isLivretAAsset({ title: a.title, symbol: a.symbol }),
-      );
-      return only.length > 0 ? only : filteredAssets;
-    }
-    if (tour.step === Level1TourStep.WithdrawAndMoveToOtherLivret) {
-      const only = filteredAssets.filter((a: {
-        title?: string | null;
-        symbol?: string | null;
-        submarket?: { type?: string | null } | null;
-      }) =>
-        isSavingsLivretOtherThanA({
-          title: a.title,
-          symbol: a.symbol,
-          submarket: a.submarket,
-        }),
-      );
-      return only.length > 0 ? only : filteredAssets;
-    }
-    return filteredAssets;
-  }, [tourRestrictsAssetPicker, tour.step, filteredAssets]);
+  const assetsListForSheet = filteredAssets;
 
   // Map assetId → submarket info for badge display
   const assetSubmarketMap = useMemo(() => {
@@ -2023,13 +2017,17 @@ export default function GameCurrentScreen() {
                   <ActionPillButton
                     label="Récap"
                     customIcon={<RecapActionIcon width={22} height={22} />}
-                    onPress={handleOpenRecap}
+                    onPress={() => {
+                      void handleOpenRecap();
+                    }}
                     style={{ flex: 1 }}
                   />
                   <ActionPillButton
                     label="Quiz"
                     customIcon={<QuizActionIcon width={18} height={18} />}
-                    onPress={handleOpenQuiz}
+                    onPress={() => {
+                      void handleOpenQuiz();
+                    }}
                     style={{ flex: 1 }}
                   />
                 </>
@@ -2163,7 +2161,10 @@ export default function GameCurrentScreen() {
                 key={asset.id}
                 style={[
                   styles.assetsSheetRow,
-                  { backgroundColor: theme.card },
+                  {
+                    backgroundColor: theme.card,
+                    opacity: tourRestrictsAssetPicker && !tourHighlightThisRow ? 0.24 : 1,
+                  },
                   tourHighlightThisRow && { borderWidth: 2, borderColor: theme.accent },
                 ]}
                 activeOpacity={0.7}
@@ -2224,14 +2225,7 @@ export default function GameCurrentScreen() {
       </BottomSheetModal>
 
       <Level1TourOverlay
-        visible={
-          tour.sessionActive &&
-          (tour.step === Level1TourStep.OpenInvestSheet ||
-            tour.step === Level1TourStep.CloseSheetAndPressStart ||
-            tour.step === Level1TourStep.FirstEventResume ||
-            tour.step === Level1TourStep.SecondEventOpenAssets ||
-            tour.step === Level1TourStep.SecondEventResume)
-        }
+        visible={tutorialOverlayVisible}
         message={tourBubbleForStep(tour.step, tour.eventPhase)}
         reserveBottomPx={bottomChromeHeight}
       />
@@ -2262,7 +2256,7 @@ export default function GameCurrentScreen() {
                 style={
                   tour.sessionActive &&
                   (tour.step === Level1TourStep.OpenInvestSheet ||
-                    tour.step === Level1TourStep.SecondEventOpenAssets)
+                    tour.step === Level1TourStep.PostEventOpenAssets)
                     ? tourFocusedPillStyle
                     : undefined
                 }
@@ -2298,7 +2292,7 @@ export default function GameCurrentScreen() {
                 style={
                   tour.sessionActive &&
                   (tour.step === Level1TourStep.OpenInvestSheet ||
-                    tour.step === Level1TourStep.SecondEventOpenAssets)
+                    tour.step === Level1TourStep.PostEventOpenAssets)
                     ? tourFocusedPillStyle
                     : undefined
                 }
@@ -2311,12 +2305,12 @@ export default function GameCurrentScreen() {
                 disabled={
                   tour.sessionActive &&
                   tour.step !== Level1TourStep.FirstEventResume &&
-                  tour.step !== Level1TourStep.SecondEventResume
+                  tour.step !== Level1TourStep.PostEventResume
                 }
                 style={
                   tour.sessionActive &&
                   (tour.step === Level1TourStep.FirstEventResume ||
-                    tour.step === Level1TourStep.SecondEventResume)
+                    tour.step === Level1TourStep.PostEventResume)
                     ? tourFocusedPillStyle
                     : undefined
                 }
@@ -2331,7 +2325,7 @@ export default function GameCurrentScreen() {
                 style={
                   tour.sessionActive &&
                   (tour.step === Level1TourStep.OpenInvestSheet ||
-                    tour.step === Level1TourStep.SecondEventOpenAssets)
+                    tour.step === Level1TourStep.PostEventOpenAssets)
                     ? tourFocusedPillStyle
                     : undefined
                 }
@@ -2344,7 +2338,7 @@ export default function GameCurrentScreen() {
                 style={
                   tour.sessionActive &&
                   (tour.step === Level1TourStep.FirstEventResume ||
-                    tour.step === Level1TourStep.SecondEventResume)
+                    tour.step === Level1TourStep.PostEventResume)
                     ? tourFocusedPillStyle
                     : undefined
                 }
@@ -2358,7 +2352,7 @@ export default function GameCurrentScreen() {
               style={
                 tour.sessionActive &&
                 (tour.step === Level1TourStep.OpenInvestSheet ||
-                  tour.step === Level1TourStep.SecondEventOpenAssets)
+                  tour.step === Level1TourStep.PostEventOpenAssets)
                   ? tourFocusedPillStyle
                   : undefined
               }

@@ -62,27 +62,22 @@ export class GameTimeService {
       return 0;
     }
 
-    const now = gameInstance.isEnded && gameInstance.endedAt
-      ? new Date(gameInstance.endedAt)
-      : new Date();
+    const referenceTime =
+      gameInstance.isEnded && gameInstance.endedAt
+        ? new Date(gameInstance.endedAt)
+        : gameInstance.isPaused && gameInstance.pausedAt
+          ? new Date(gameInstance.pausedAt)
+          : new Date();
     const startTime = new Date(gameInstance.createdAt);
 
-    // Total real time since start
+    // Total real time since start (clock frozen at referenceTime when paused/ended)
     let totalElapsed = Math.floor(
       (referenceTime.getTime() - startTime.getTime()) / 1000
     );
 
-    // Subtract accumulated pause duration
+    // Subtract accumulated pause duration from completed pauses
     const pausedDuration = gameInstance.totalPausedDuration ?? 0;
     totalElapsed -= pausedDuration;
-
-    // If currently paused (and not ended), also subtract current pause duration
-    if (gameInstance.isPaused && gameInstance.pausedAt && !gameInstance.isEnded) {
-      const currentPauseDuration = Math.floor(
-        (referenceTime.getTime() - new Date(gameInstance.pausedAt).getTime()) / 1000
-      );
-      totalElapsed -= currentPauseDuration;
-    }
 
     return Math.max(0, totalElapsed);
   }
