@@ -85,6 +85,7 @@ function RootNavigatorContent() {
           subtitle={headerOptions.subtitle}
           showBackButton={headerOptions.showBackButton}
           isPaused={headerOptions.isPaused}
+          dimmed={headerOptions.dimmed}
           onTitlePress={headerOptions.onTitlePress}
           onMenuPress={headerOptions.onMenuPress}
           onBackPress={headerOptions.onBackPress}

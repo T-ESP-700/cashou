@@ -16,10 +16,12 @@ export const Level1TourStep = {
   CloseSheetAndPressStart: 'CloseSheetAndPressStart',
   WaitFirstEvent: 'WaitFirstEvent',
   FirstEventResume: 'FirstEventResume',
-  SecondEventOpenAssets: 'SecondEventOpenAssets',
+  PostEventOpenAssets: 'PostEventOpenAssets',
   SelectLivretAForWithdraw: 'SelectLivretAForWithdraw',
   WithdrawAndMoveToOtherLivret: 'WithdrawAndMoveToOtherLivret',
-  SecondEventResume: 'SecondEventResume',
+  PostEventResume: 'PostEventResume',
+  AwaitEndGameChoice: 'AwaitEndGameChoice',
+  SummaryQuizPrompt: 'SummaryQuizPrompt',
   Done: 'Done',
 } as const;
 
@@ -78,25 +80,28 @@ export function tourStepHeadline(step: Level1TourStep | null): string {
 export function tourBubbleForStep(step: Level1TourStep | null, eventPhase: number): string {
   switch (step) {
     case Level1TourStep.OpenInvestSheet:
-      return "Avant de lancer le temps, ouvrez les placements : touchez « Investir » pour voir les actifs.";
+      return "Avant de lancer la partie, ouvres les assets : appuie sur « Investir » pour voir les actifs disponibles.";
     case Level1TourStep.SelectLivretAInSheet:
-      return "Seul le Livret A est affiché : touchez la ligne pour ouvrir sa fiche, puis « Déposer » pour placer de l'argent.";
+      return "Seul le Livret A est disponible pour l'instant :appuie dessus pour ouvrir sa fiche, puis sur « Déposer » pour placer de l'argent.";
     case Level1TourStep.DepositOnLivretA:
       return "Sur la fiche, touchez « Déposer », choisissez un montant (un montant vous est proposé), puis confirmez. Vous devez avoir au moins un versement avant de lancer la partie.";
     case Level1TourStep.CloseSheetAndPressStart:
-      return "Fermez la liste des actifs, puis touchez « Commencer » pour démarrer la partie.";
+      return "Appues sur « Commencer » pour démarrer la partie.";
     case Level1TourStep.WaitFirstEvent:
       return "Jouez jusqu'à l'événement du niveau. Quand il arrive, ouvrez les actifs pour déplacer votre argent.";
     case Level1TourStep.FirstEventResume:
       return "Quand vous êtes prêt, touchez « Reprendre » pour continuer la partie.";
-    case Level1TourStep.SecondEventOpenAssets:
+    case Level1TourStep.PostEventOpenAssets:
       return "L'événement a changé la situation du Livret A : touchez « Investir » pour ouvrir les actifs et déplacer votre argent.";
     case Level1TourStep.SelectLivretAForWithdraw:
-      return "Seul le Livret A est affiché : ouvrez-le, touchez « Retirer », puis validez pour libérer du cash.";
+      return "Seul le Livret A est disponible pour l'instant : ouvrez-le, touchez « Retirer », puis validez pour libérer du cash.";
     case Level1TourStep.WithdrawAndMoveToOtherLivret:
-      return "Seuls les autres livrets d'épargne sont listés : choisissez-en un et déposez l'argent retiré du Livret A.";
-    case Level1TourStep.SecondEventResume:
-      return "Touchez « Reprendre » pour continuer après vos opérations sur les livrets.";
+      return "Seuls le livret DDS est maintenant disponible : choisissez-en un et déposez l'argent retiré du Livret A.";
+    case Level1TourStep.PostEventResume:
+      return "Appuies sur « Reprendre » pour que la partie continue!";
+    case Level1TourStep.SummaryQuizPrompt:
+      return 'Fais le quiz pour gagner la troisième étoile.';
+    case Level1TourStep.AwaitEndGameChoice:
     case Level1TourStep.Done:
       return '';
     default:

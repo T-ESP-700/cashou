@@ -201,7 +201,7 @@ export function Level1TourProvider({ children }: { children: React.ReactNode }) 
         holdingsHasOtherSavings(holdings) &&
         livretAQuantity(holdings) <= 0
       ) {
-        await applyState(Level1TourStep.SecondEventResume, eventPhaseRef.current);
+        await applyState(Level1TourStep.PostEventResume, eventPhaseRef.current);
       }
     },
     [applyState]
@@ -214,11 +214,10 @@ export function Level1TourProvider({ children }: { children: React.ReactNode }) 
       await applyState(Level1TourStep.WaitFirstEvent, 1);
       return;
     }
-    if (s === Level1TourStep.SecondEventResume) {
-      await applyState(Level1TourStep.Done, 1);
-      clearSession();
+    if (s === Level1TourStep.PostEventResume) {
+      await applyState(Level1TourStep.AwaitEndGameChoice, 1);
     }
-  }, [applyState, clearSession]);
+  }, [applyState]);
 
   const notifyGameClockStarted = useCallback(async () => {
     if (!storageContextRef.current) return;
@@ -226,7 +225,10 @@ export function Level1TourProvider({ children }: { children: React.ReactNode }) 
   }, [applyState]);
 
   const restrictEventModalToAssetsOnly =
-    sessionActive && step === Level1TourStep.SecondEventOpenAssets;
+    sessionActive &&
+    eventPhase === 0 &&
+    (step === Level1TourStep.WaitFirstEvent ||
+      step === Level1TourStep.PostEventOpenAssets);
 
   const resetTourDev = useCallback(async () => {
     try {
