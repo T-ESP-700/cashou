@@ -61,6 +61,19 @@ export const assetRouter = t.router({
         }),
 
     /**
+     * Récupère les actifs disponibles pour une partie donnée.
+     * Endpoint: GET http://localhost:3000/trpc/asset.getAvailableForGame?input={"gameInstanceId":1}
+     * @input {gameInstanceId: number} - ID de la partie
+     */
+    getAvailableForGame: t.procedure
+        .input(z.object({
+            gameInstanceId: z.number().min(1, "L'ID de la partie doit être un nombre > 0")
+        }))
+        .query(async ({ input }) => {
+            return await assetService.findAvailableForGame(input.gameInstanceId);
+        }),
+
+    /**
      * Crée un nouvel actif
      * Endpoint: POST http://localhost:3000/trpc/asset.create
      * @input AssetCreateSchema - Données de l'actif à créer, validées automatiquement

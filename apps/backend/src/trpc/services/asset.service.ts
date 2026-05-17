@@ -98,6 +98,48 @@ export class AssetService {
     }
 
     /**
+     * Récupère les actifs autorisés pour la partie en cours.
+     * La source de vérité est la table level_assets seedée par niveau.
+     * Fallback: si aucun mapping n'existe encore pour un ancien seed, on retourne
+     * tous les actifs pour préserver le fonctionnement historique.
+     */
+    async findAvailableForGame(gameInstanceId: number): Promise<Asset[]> {
+        const gameInstance = await this.prisma.gameInstance.findUnique({
+            where: { id: gameInstanceId },
+            select: { levelId: true },
+        });
+
+        if (!gameInstance?.levelId) {
+            return [];
+        }
+
+        const levelAssets = await this.prisma.levelAsset.findMany({
+            where: { levelId: gameInstance.levelId },
+            include: {
+                asset: {
+                    include: {
+                        market: true,
+                        submarket: true,
+                        field: true,
+                        assetHistories: true,
+                        eventAssets: true,
+                        transactions: true,
+                    },
+                },
+            },
+            orderBy: {
+                asset: { title: 'asc' },
+            },
+        });
+
+        if (levelAssets.length > 0) {
+            return levelAssets.map((levelAsset) => levelAsset.asset);
+        }
+
+        return this.findAll();
+    }
+
+    /**
      * Crée un nouvel actif
      * @param data - Données de l'actif validées par le schéma Zod
      * @returns Promise<Asset> - L'actif créé avec son ID généré
