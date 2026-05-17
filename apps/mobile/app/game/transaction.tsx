@@ -410,7 +410,7 @@ export default function TransactionScreen() {
           asset &&
           isSavingsLivretOtherThanA(asset)
         ) {
-          await tr.goToStep(Level1TourStep.SecondEventResume);
+          await tr.goToStep(Level1TourStep.PostEventResume);
         }
         alertTitle = 'Achat effectué';
         alertMessage = `Vous avez investi ${Math.round(numAmount)} EUR dans ${asset?.title}`;
