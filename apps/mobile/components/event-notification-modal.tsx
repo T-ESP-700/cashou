@@ -17,7 +17,7 @@ export function EventNotificationModal() {
   const { colors, isDark } = useCashouTheme();
   const router = useRouter();
   const pathname = usePathname();
-  const { eventNotification, clearEventNotification, setPendingEventCompletion, setShouldOpenAssetsSheet } = useNotifications();
+  const { eventNotification, clearEventNotification, setPendingEventCompletion, setRequestedAssetsSheetGameId } = useNotifications();
 
   const isVisible = eventNotification !== null;
 
@@ -47,11 +47,11 @@ export function EventNotificationModal() {
     clearEventNotification();
 
     // Signal current.tsx to open the assets bottom sheet
-    setShouldOpenAssetsSheet(true);
+    setRequestedAssetsSheetGameId(gameInstanceId);
 
     if (!isOnCurrentScreen) {
-      // Navigate to /game/current — the shouldOpenAssetsSheet effect will fire on mount
-      router.push({
+      // Navigate to /game/current — the assets sheet request will be consumed on mount
+      router.replace({
         pathname: '/game/current',
         params: { gameId: gameInstanceId.toString() },
       });

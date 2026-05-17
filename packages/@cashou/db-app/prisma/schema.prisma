@@ -140,6 +140,7 @@ model Level {
   users         User[]
   gameInstances        GameInstance[]
   levelGoals           LevelGoal[]
+  levelAssets          LevelAsset[]
   levelEvents          LevelEvent[]
   quiz                 Quiz[]
   userLevelCompletions UserLevelCompletion[]
@@ -194,6 +195,20 @@ model LevelGoal {
   goal  Goal  @relation(fields: [goalId], references: [id])
 
   @@map("level_goals")
+}
+
+model LevelAsset {
+  id        Int      @id @default(autoincrement())
+  levelId   Int      @map("level_id")
+  assetId   Int      @map("asset_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  level Level @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([levelId, assetId])
+  @@map("level_assets")
 }
 
 model LevelEvent {
@@ -303,6 +318,7 @@ model Asset {
   field          Field?         @relation(fields: [fieldId], references: [id])
   assetHistories AssetHistory[]
   eventAssets    EventAsset[]
+  levelAssets    LevelAsset[]
   transactions   Transaction[]
   impacts        Impact[]
   holdings       Holding[]

@@ -206,6 +206,16 @@ async function main() {
   }
   console.log(`✅ Niveau créé: ${level.title} (Niveau ${level.number})`);
 
+  await prisma.levelAsset.deleteMany({ where: { levelId: level.id } });
+  await prisma.levelAsset.createMany({
+    data: [
+      { levelId: level.id, assetId: livretA.id },
+      { levelId: level.id, assetId: livretLED.id },
+    ],
+    skipDuplicates: true,
+  });
+  console.log(`✅ Assets du niveau liés: ${livretA.symbol}, ${livretLED.symbol}`);
+
   // 6. Créer l'Event "Baisse du livret A"
   console.log('🎯 Création de l\'événement...');
   let event = await prisma.event.findFirst({

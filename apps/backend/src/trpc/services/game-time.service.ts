@@ -209,15 +209,13 @@ export class GameTimeService {
     gameInstance: GameInstanceWithLevel,
     sinceDate: Date
   ): number {
-    // If paused without pausedAt and NOT ended: preparation mode (never started), elapsed = 0
-    if (gameInstance.isPaused && !gameInstance.pausedAt && !gameInstance.isEnded) {
-      return 0;
-    }
-
-    // Use endedAt as reference time for ended games, otherwise use now
+    // Freeze elapsed time while the game is paused (including preparation mode).
+    // This ensures holdings bought before the first start do not accrue interests.
     const referenceTime = gameInstance.isEnded && gameInstance.endedAt
       ? new Date(gameInstance.endedAt)
-      : new Date();
+      : gameInstance.isPaused && gameInstance.pausedAt
+        ? new Date(gameInstance.pausedAt)
+        : new Date();
     const startTime = new Date(sinceDate);
     const gameStartTime = new Date(gameInstance.createdAt);
 
@@ -246,9 +244,10 @@ export class GameTimeService {
     }
 
     // If currently paused (and not ended), also subtract current pause duration proportionally
+    // only when referenceTime is still "now" (i.e. no pausedAt frozen reference).
     if (gameInstance.isPaused && gameInstance.pausedAt && !gameInstance.isEnded) {
       const pauseStartTime = new Date(gameInstance.pausedAt);
-      if (pauseStartTime > effectiveStartTime) {
+      if (referenceTime.getTime() > pauseStartTime.getTime() && pauseStartTime > effectiveStartTime) {
         const currentPauseDuration = Math.floor(
           (referenceTime.getTime() - pauseStartTime.getTime()) / 1000
         );
