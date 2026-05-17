@@ -36,7 +36,8 @@
     "db:seed:level3": "bun run scripts/seed-level3.ts",
     "db:seed:level4": "bun run scripts/seed-level4.ts",
     "db:seed:level5": "bun run scripts/seed-level5.ts",
-    "db:seed:level6": "bun run scripts/seed-level6.ts"
+    "db:seed:level6": "bun run scripts/seed-level6.ts",
+    "db:seed:20lvl": "bun run scripts/20lvlseed.ts"
   },
   "dependencies": {
     "@cashou/auth": "workspace:*",
