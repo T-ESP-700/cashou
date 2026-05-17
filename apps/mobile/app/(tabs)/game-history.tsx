@@ -146,7 +146,7 @@ export default function LevelsScreen() {
 
     // Partie en cours : aller sur la partie (même si niveau déjà complété)
     if (level.hasActiveGame && level.gameId) {
-      router.push({
+      router.replace({
         pathname: '/game/current',
         params: {
           levelId: level.id.toString(),
@@ -157,7 +157,7 @@ export default function LevelsScreen() {
     }
 
     if (level.status === 'current') {
-      router.push({
+      router.replace({
         pathname: '/game/current',
         params: { levelId: level.id.toString() },
       });

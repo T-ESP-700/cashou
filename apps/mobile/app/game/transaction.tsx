@@ -41,7 +41,7 @@ export default function TransactionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
-  const { activeGameInstanceId, pendingEventCompletion, setAssetsScreenDepth, assetsScreenDepthRef, setIsOnAssetsScreen, setPausedByAssets, setShouldOpenAssetsSheet } = useNotifications();
+  const { activeGameInstanceId, pendingEventCompletion, setAssetsScreenDepth, assetsScreenDepthRef, setIsOnAssetsScreen, setPausedByAssets, setRequestedAssetsSheetGameId } = useNotifications();
   const { user } = useAuth();
 
   // Keep the game header (Niveau X + date) — only ensure back button is shown
@@ -281,7 +281,9 @@ export default function TransactionScreen() {
   const goBackToCurrentWithSheet = () => {
     // Signal current.tsx to re-open the assets bottom sheet so the user
     // can perform more transactions without the game resuming.
-    setShouldOpenAssetsSheet(true);
+    if (gameInstanceId) {
+      setRequestedAssetsSheetGameId(gameInstanceId);
+    }
     // Pop back to /game/current: go back twice (transaction → asset-detail → current)
     router.back();
     setTimeout(() => router.back(), 50);

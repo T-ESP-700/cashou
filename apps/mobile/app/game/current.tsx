@@ -123,7 +123,7 @@ export default function GameCurrentScreen() {
   const { showAlert } = useAlert();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { pendingEventCompletion, setPendingEventCompletion, isOnAssetsScreen, setActiveGameInstanceId, eventNotification, triggerPendingEventCheck, shouldOpenAssetsSheet, setShouldOpenAssetsSheet } = useNotifications();
+  const { pendingEventCompletion, setPendingEventCompletion, isOnAssetsScreen, setActiveGameInstanceId, eventNotification, triggerPendingEventCheck, requestedAssetsSheetGameId, setRequestedAssetsSheetGameId } = useNotifications();
   const { setOptions: setHeaderOptions } = useHeader();
   const { state: realtimeState, setGameInstanceId: setRealtimeGameInstanceId, formattedGameDate } = useGameRealtime();
 
@@ -764,18 +764,20 @@ export default function GameCurrentScreen() {
   // Quand la modale d'event demande d'ouvrir le sheet assets,
   // on garde la partie en pause jusqu'à ce que le joueur clique explicitement sur "Reprendre".
   useEffect(() => {
-    if (!shouldOpenAssetsSheet) return;
+    if (!requestedAssetsSheetGameId) return;
     // Attendre que gameInstanceId et walletId soient initialisés avant d'ouvrir le sheet
     if (!gameInstanceId || !walletId) return;
-    setShouldOpenAssetsSheet(false);
+    if (requestedAssetsSheetGameId !== gameInstanceId) return;
+
+    setRequestedAssetsSheetGameId(null);
     setIsAssetsSheetOpen(true); // Freeze date animation immediately
 
     const openAssetsFromEvent = async () => {
-      handleAddAsset();
+      await handleAddAsset();
     };
 
     openAssetsFromEvent();
-  }, [shouldOpenAssetsSheet, gameInstanceId, walletId]);
+  }, [requestedAssetsSheetGameId, gameInstanceId, walletId, handleAddAsset, setRequestedAssetsSheetGameId]);
 
   // Fetch triggered impacts on mount and when eventNotification changes
   useEffect(() => {
@@ -1003,6 +1005,14 @@ export default function GameCurrentScreen() {
     setHeaderOptions({
       showBackButton: true,
       title: `Niveau ${stats.level}`,
+      onBackPress: () => {
+        const canGoBack = 'canGoBack' in router && typeof router.canGoBack === 'function' && router.canGoBack();
+        if (canGoBack) {
+          router.back();
+          return;
+        }
+        router.replace('/(tabs)');
+      },
       onTitlePress: isGameEnded ? undefined : () => setShowLevelInfoModal(true),
     });
   }, [setHeaderOptions, stats.level, isGameEnded]);
@@ -1154,25 +1164,27 @@ export default function GameCurrentScreen() {
     }
   };
 
-  // Fetch all assets for the bottom sheet
-  const fetchAllAssets = useCallback(async () => {
+  // Fetch only the assets available for the current game level
+  const fetchAvailableAssets = useCallback(async () => {
+    if (!gameInstanceId) return;
+
     try {
       setAssetsLoading(true);
-      const data = await trpcClient.asset.getAll.query();
+      const data = await trpcClient.asset.getAvailableForGame.query({ gameInstanceId });
       setAllAssets(data as any[]);
     } catch (err) {
       console.error('Error fetching assets:', err);
     } finally {
       setAssetsLoading(false);
     }
-  }, []);
+  }, [gameInstanceId]);
 
-  // Fetch all assets on mount for submarket badges
+  // Fetch available assets on mount for submarket badges
   useEffect(() => {
     if (gameInstanceId) {
-      fetchAllAssets();
+      fetchAvailableAssets();
     }
-  }, [gameInstanceId, fetchAllAssets]);
+  }, [gameInstanceId, fetchAvailableAssets]);
 
   // Extract unique submarkets from assets
   const submarkets = useMemo(() => {
@@ -1251,8 +1263,11 @@ export default function GameCurrentScreen() {
     // En mode préparation (avant "Démarrer"), pas de pause/resume
     if (!gameHasBeenStarted) {
       if (index < 0) {
+        setIsAssetsSheetOpen(false);
         setAssetsSearchQuery('');
         setSelectedSubmarketId(null);
+      } else {
+        setIsAssetsSheetOpen(true);
       }
       return;
     }
@@ -1304,9 +1319,12 @@ export default function GameCurrentScreen() {
     }
   }, [gameInstanceId, gameHasBeenStarted, isPaused, isAwaitingEventResume]);
 
-  const handleAddAsset = async () => {
+  const handleAddAsset = useCallback(async () => {
     if (!gameInstanceId || !walletId) {
       showAlert('Erreur', 'Initialisation en cours, veuillez patienter...');
+      return;
+    }
+    if (isAssetsSheetOpen) {
       return;
     }
     // Mark sheet as open immediately to freeze date animation
@@ -1322,10 +1340,10 @@ export default function GameCurrentScreen() {
     }
     // Fetch assets if not loaded yet
     if (allAssets.length === 0) {
-      fetchAllAssets();
+      fetchAvailableAssets();
     }
     assetsSheetRef.current?.present();
-  };
+  }, [allAssets.length, fetchAvailableAssets, gameHasBeenStarted, gameInstanceId, isAssetsSheetOpen, showAlert, walletId]);
 
   const handleResumeAfterEvent = async () => {
     if (!gameInstanceId || !isAwaitingEventResume) {

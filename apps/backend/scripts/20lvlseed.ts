@@ -205,6 +205,71 @@ const ASSETS: AssetDef[] = [
     description: "Organisme de Placement Collectif Immobilier : mêle immobilier et actifs liquides." },
 ];
 
+const LIVRET_SYMBOLS = ASSETS
+  .filter((asset) => asset.submarket === 'LIVRETS')
+  .map((asset) => asset.symbol);
+const FONDS_EUROS_SYMBOLS = ASSETS
+  .filter((asset) => asset.submarket === 'AV' && asset.field === 'fonds_euros')
+  .map((asset) => asset.symbol);
+const UC_SYMBOLS = ASSETS
+  .filter((asset) => asset.submarket === 'AV' && asset.field === 'uc')
+  .map((asset) => asset.symbol);
+const PEA_SYMBOLS = ASSETS
+  .filter((asset) => asset.submarket === 'PEA')
+  .map((asset) => asset.symbol);
+const OBLIGATION_SYMBOLS = ASSETS
+  .filter((asset) => asset.submarket === 'OBLIGATIONS')
+  .map((asset) => asset.symbol);
+const ETF_PEA_SYMBOLS = ASSETS
+  .filter((asset) => asset.submarket === 'ETF_PEA')
+  .map((asset) => asset.symbol);
+const CTO_SYMBOLS = ASSETS
+  .filter((asset) => asset.submarket === 'CTO')
+  .map((asset) => asset.symbol);
+const ALTERNATIF_SYMBOLS = ASSETS
+  .filter((asset) => asset.submarket === 'ALTERNATIFS')
+  .map((asset) => asset.symbol);
+
+function getAvailableAssetSymbolsForLevel(levelNumber: number): string[] {
+  if (levelNumber <= 1) {
+    return ['C20_LIVRET_A'];
+  }
+  if (levelNumber === 2) {
+    return ['C20_LIVRET_A', 'C20_LDDS'];
+  }
+  if (levelNumber === 3) {
+    return [...LIVRET_SYMBOLS];
+  }
+  if (levelNumber === 4) {
+    return [...LIVRET_SYMBOLS, ...FONDS_EUROS_SYMBOLS];
+  }
+  if (levelNumber <= 6) {
+    return [...LIVRET_SYMBOLS, ...FONDS_EUROS_SYMBOLS, ...UC_SYMBOLS];
+  }
+  if (levelNumber <= 8) {
+    return [...LIVRET_SYMBOLS, ...FONDS_EUROS_SYMBOLS, ...UC_SYMBOLS, ...PEA_SYMBOLS];
+  }
+  if (levelNumber === 9) {
+    return [...LIVRET_SYMBOLS, ...FONDS_EUROS_SYMBOLS, ...UC_SYMBOLS, ...PEA_SYMBOLS, ...OBLIGATION_SYMBOLS];
+  }
+  if (levelNumber === 10) {
+    return [...LIVRET_SYMBOLS, ...FONDS_EUROS_SYMBOLS, ...UC_SYMBOLS, ...PEA_SYMBOLS, ...OBLIGATION_SYMBOLS, ...ETF_PEA_SYMBOLS];
+  }
+  if (levelNumber <= 15) {
+    return [...LIVRET_SYMBOLS, ...FONDS_EUROS_SYMBOLS, ...UC_SYMBOLS, ...PEA_SYMBOLS, ...OBLIGATION_SYMBOLS, ...ETF_PEA_SYMBOLS, ...CTO_SYMBOLS];
+  }
+  return [
+    ...LIVRET_SYMBOLS,
+    ...FONDS_EUROS_SYMBOLS,
+    ...UC_SYMBOLS,
+    ...PEA_SYMBOLS,
+    ...OBLIGATION_SYMBOLS,
+    ...ETF_PEA_SYMBOLS,
+    ...CTO_SYMBOLS,
+    ...ALTERNATIF_SYMBOLS,
+  ];
+}
+
 // ---------------------------------------------------------------------------
 // Définitions des 20 niveaux
 // ---------------------------------------------------------------------------
@@ -1852,6 +1917,9 @@ async function main() {
   for (const def of ASSETS) {
     const asset = assetsBySymbol[def.symbol];
     await prisma.assetHistory.deleteMany({ where: { assetId: asset.id } });
+    if (def.submarket === 'LIVRETS') {
+      continue;
+    }
     const history = generatePriceHistory(asset.id, 10000, def.rate, def.volatility);
     for (let i = 0; i < history.length; i += 500) {
       await prisma.assetHistory.createMany({ data: history.slice(i, i + 500), skipDuplicates: true });
@@ -1884,6 +1952,16 @@ async function main() {
     } else {
       level = await prisma.level.create({ data: { number: lvl.number, ...levelData } });
     }
+
+    const availableAssetSymbols = getAvailableAssetSymbolsForLevel(lvl.number);
+    await prisma.levelAsset.deleteMany({ where: { levelId: level.id } });
+    await prisma.levelAsset.createMany({
+      data: availableAssetSymbols.map((symbol) => ({
+        levelId: level.id,
+        assetId: assetsBySymbol[symbol].id,
+      })),
+      skipDuplicates: true,
+    });
 
     // 6.2 Goals (obligatoire + bonus)
     const goalSpecs = [
