@@ -1,4 +1,14 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Modal,
+  TextInput,
+  Platform,
+} from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,6 +27,16 @@ import { useHeader, useGameHeaderSubtitle } from '@/hooks/use-header';
 import { useNotifications } from '@/hooks/use-notifications';
 import { LevelInfoModal } from '@/components/level-info-modal';
 import { ActionPillButton, GoalStarIcon } from '@/components/ui';
+import { Level1TourOverlay } from '@/components/level1-tour-overlay';
+import { Level1TourCallout } from '@/components/level1-tour-callout';
+import { useLevel1Tour } from '@/contexts/level1-tour-context';
+import {
+  Level1TourStep,
+  tourBubbleForStep,
+  tourStepHeadline,
+  isLivretAAsset,
+  isSavingsLivretOtherThanA,
+} from '@/constants/level1-tour';
 import QuizActionIcon from '@/assets/images/quiz-action.svg';
 import RecapActionIcon from '@/assets/images/recap-action.svg';
 
@@ -33,6 +53,7 @@ interface AssetData {
   symbol: string | null;
   rate: number | null;
   description: string | null;
+  submarket?: { type?: string | null; title?: string | null } | null;
 }
 
 interface HoldingData {
@@ -124,6 +145,10 @@ export default function GameCurrentScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { pendingEventCompletion, setPendingEventCompletion, isOnAssetsScreen, setActiveGameInstanceId, eventNotification, triggerPendingEventCheck, requestedAssetsSheetGameId, setRequestedAssetsSheetGameId } = useNotifications();
+  const tour = useLevel1Tour();
+  const tourRef = useRef(tour);
+  tourRef.current = tour;
+  const level1TourInitSeqRef = useRef(0);
   const { setOptions: setHeaderOptions } = useHeader();
   const { state: realtimeState, setGameInstanceId: setRealtimeGameInstanceId, formattedGameDate } = useGameRealtime();
 
@@ -154,6 +179,10 @@ export default function GameCurrentScreen() {
 
   // Assets bottom sheet state
   const assetsSheetRef = useRef<BottomSheetModal>(null);
+  const [bottomChromeHeight, setBottomChromeHeight] = useState(() =>
+    Math.round(96 + insets.bottom),
+  );
+  const prevPendingEventRef = useRef(false);
   const skipResumeOnCloseRef = useRef(false); // Don't resume game when closing sheet to navigate to asset-detail
   const navigatedToAssetDetailRef = useRef(false); // Track if we navigated away to asset-detail
   const [allAssets, setAllAssets] = useState<any[]>([]);
@@ -183,6 +212,21 @@ export default function GameCurrentScreen() {
     timePassed: '0m',
     successes: 0,
   });
+
+  const tourFocusedPillStyle = useMemo(
+    () =>
+      Platform.OS === 'android'
+        ? { borderWidth: 3, borderColor: '#FFFFFF', elevation: 20 }
+        : {
+            borderWidth: 3,
+            borderColor: '#FFFFFF',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: 0.4,
+            shadowRadius: 8,
+          },
+    [],
+  );
 
   // === Realtime provider sync ===
   // Register the gameInstanceId with the centralized realtime provider.
@@ -322,7 +366,24 @@ export default function GameCurrentScreen() {
     const effectiveWalletId = wId ?? walletId;
     try {
       const holdingsData = await trpcClient.holding.getByGameInstance.query({ gameInstanceId: gInstanceId });
-      setHoldings((holdingsData as HoldingData[]) ?? []);
+      const hd = (holdingsData as HoldingData[]) ?? [];
+      setHoldings(hd);
+      const tr = tourRef.current;
+      if (tr.sessionActive) {
+        await tr.syncHoldings(
+          hd.map((h) => ({
+            quantity: h.quantity,
+            asset: h.asset
+              ? {
+                  id: h.asset.id,
+                  title: h.asset.title,
+                  symbol: h.asset.symbol,
+                  submarket: h.asset.submarket ?? null,
+                }
+              : null,
+          }))
+        );
+      }
 
       // Load portfolio snapshot (values + net invested from transactions)
       if (effectiveWalletId) {
@@ -1023,6 +1084,13 @@ export default function GameCurrentScreen() {
   const localFormattedDate = gameInstanceId
     ? `${String(gameDate.getDate()).padStart(2, '0')}/${String(gameDate.getMonth() + 1).padStart(2, '0')}/${gameDate.getFullYear()}`
     : null;
+  const tutorialOverlayVisible =
+    tour.sessionActive &&
+    (tour.step === Level1TourStep.OpenInvestSheet ||
+      tour.step === Level1TourStep.CloseSheetAndPressStart ||
+      tour.step === Level1TourStep.FirstEventResume ||
+      tour.step === Level1TourStep.PostEventOpenAssets ||
+      tour.step === Level1TourStep.PostEventResume);
   // Don't inject subtitle until level is loaded (avoids header flicker)
   useGameHeaderSubtitle(
     stats.level > 0 ? (formattedGameDate ?? localFormattedDate) : null,
@@ -1042,8 +1110,8 @@ export default function GameCurrentScreen() {
 
   // Dim header when assets bottom sheet is open
   useEffect(() => {
-    setHeaderOptions({ dimmed: isAssetsSheetOpen });
-  }, [isAssetsSheetOpen, setHeaderOptions]);
+    setHeaderOptions({ dimmed: tutorialOverlayVisible });
+  }, [tutorialOverlayVisible, setHeaderOptions]);
 
   // Auto-show level info modal for new games (when no gameId is passed)
   useEffect(() => {
@@ -1053,6 +1121,127 @@ export default function GameCurrentScreen() {
       setShowLevelInfoModal(true);
     }
   }, [gameId, levelData, isLoading]);
+
+  useEffect(() => {
+    // Require levelData (not necessarily level nested object — some payloads can be minimal).
+    if (isLoading || !user || !gameInstanceId || !levelData) return;
+    const initSeq = ++level1TourInitSeqRef.current;
+    let cancelled = false;
+    void (async () => {
+      try {
+        let hasRecord = false;
+        try {
+          hasRecord = await trpcClient.levelCompletion.hasCompletedLevelByNumber.query({
+            levelNumber: 1,
+          });
+        } catch (completionErr) {
+          // Backend unreachable, old client, or missing procedure — still start the tour for level 1.
+          console.warn('[GameCurrent] levelCompletion.hasCompletedLevelByNumber failed, assuming no completion', completionErr);
+        }
+        if (cancelled || initSeq !== level1TourInitSeqRef.current) return;
+        const resolvedLevelNumber =
+          levelData.level?.number != null && Number.isFinite(Number(levelData.level.number))
+            ? Number(levelData.level.number)
+            : stats.level > 0
+              ? stats.level
+              : null;
+        const levelForTour = resolvedLevelNumber ?? (stats.level === 1 ? 1 : null);
+        await tourRef.current.initFromGameScreen({
+          userId: user.id,
+          gameInstanceId,
+          levelNumber: levelForTour,
+          hasLevel1CompletionRecord: Boolean(hasRecord),
+        });
+      } catch (e) {
+        console.warn('[GameCurrent] level1 tour init failed', e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isLoading,
+    user,
+    gameInstanceId,
+    levelData?.level?.number,
+    levelData?.level?.id,
+    stats.level,
+  ]);
+
+  useEffect(() => {
+    const now = gameInstanceId != null && pendingEventCompletion === gameInstanceId;
+    if (!tourRef.current.sessionActive) {
+      prevPendingEventRef.current = now;
+      return;
+    }
+    if (!gameInstanceId) {
+      prevPendingEventRef.current = false;
+      return;
+    }
+    if (now && !prevPendingEventRef.current) {
+      void (async () => {
+        const t = tourRef.current;
+        if (t.step === Level1TourStep.WaitFirstEvent && t.eventPhase === 0) {
+          // If the level only exposes Livret A (no other savings to migrate to), the
+          // event is purely narrative — skip the rebalance flow and head straight to resume.
+          const nextStep = t.hasOtherSavings
+            ? Level1TourStep.PostEventOpenAssets
+            : Level1TourStep.FirstEventResume;
+          await t.goToStep(nextStep);
+        }
+      })();
+    }
+    prevPendingEventRef.current = now;
+  }, [gameInstanceId, pendingEventCompletion, tour.sessionActive, tour.step, tour.eventPhase]);
+
+  useEffect(() => {
+    const t = tourRef.current;
+    if (!t.sessionActive) return;
+    if (t.step !== Level1TourStep.OpenInvestSheet) return;
+    if (!isAssetsSheetOpen) return;
+    void t.goToStep(Level1TourStep.SelectLivretAInSheet);
+  }, [tour.sessionActive, tour.step, isAssetsSheetOpen]);
+
+  useEffect(() => {
+    const t = tourRef.current;
+    if (!t.sessionActive) return;
+    if (t.step !== Level1TourStep.PostEventOpenAssets) return;
+    if (!isAssetsSheetOpen) return;
+    void t.goToStep(Level1TourStep.SelectLivretAForWithdraw);
+  }, [tour.sessionActive, tour.step, isAssetsSheetOpen]);
+
+  useEffect(() => {
+    const t = tourRef.current;
+    if (!t.sessionActive || t.step !== Level1TourStep.SelectLivretAInSheet) return;
+    if (allAssets.length === 0) return;
+    const hasLivret = allAssets.some((a: { title?: string | null; symbol?: string | null }) =>
+      isLivretAAsset({ title: a.title, symbol: a.symbol })
+    );
+    if (!hasLivret) void t.abortTour();
+  }, [tour.sessionActive, tour.step, allAssets]);
+
+  // Tell the tour whether the active level exposes any non-Livret-A savings asset.
+  // Drives the post-event branching (multi-livret rebalance vs. single-livret resume).
+  useEffect(() => {
+    if (!tour.sessionActive) return;
+    if (allAssets.length === 0) return;
+    const hasOther = allAssets.some((a: { title?: string | null; symbol?: string | null; submarket?: { type?: string | null; title?: string | null } | null }) =>
+      isSavingsLivretOtherThanA({ title: a.title, symbol: a.symbol, submarket: a.submarket })
+    );
+    tourRef.current.setHasOtherSavings(hasOther);
+  }, [tour.sessionActive, allAssets]);
+
+  useEffect(() => {
+    if (!tour.sessionActive) return;
+    if (
+      tour.step === Level1TourStep.SelectLivretAInSheet ||
+      tour.step === Level1TourStep.SelectLivretAForWithdraw ||
+      tour.step === Level1TourStep.WithdrawAndMoveToOtherLivret
+    ) {
+      setAssetsSearchQuery('');
+      setSelectedSubmarketId(null);
+    }
+  }, [tour.sessionActive, tour.step]);
 
   useEffect(() => {
     const fetchLevelQuizId = async () => {
@@ -1073,8 +1262,18 @@ export default function GameCurrentScreen() {
     fetchLevelQuizId();
   }, [levelData?.level?.id]);
 
-  const handleOpenRecap = () => {
+  const handleOpenRecap = async () => {
     if (!gameInstanceId) return;
+    if (
+      endGameResult?.success &&
+      levelQuizId &&
+      tour.sessionActive &&
+      tour.step === Level1TourStep.AwaitEndGameChoice
+    ) {
+      await tour.goToStep(Level1TourStep.SummaryQuizPrompt);
+    } else if (tour.sessionActive && tour.step === Level1TourStep.AwaitEndGameChoice) {
+      await tour.abortTour();
+    }
     setShowEndGameModal(false);
     trpcClient.notification.markGameEndAsRead.mutate({ gameInstanceId }).catch(console.error);
     router.replace({
@@ -1083,11 +1282,14 @@ export default function GameCurrentScreen() {
     });
   };
 
-  const handleOpenQuiz = () => {
+  const handleOpenQuiz = async () => {
     if (!endGameResult?.success) return;
     if (!levelQuizId) {
       showAlert('Quiz indisponible', "Aucun quiz n'est associe a ce niveau pour le moment.");
       return;
+    }
+    if (tour.sessionActive) {
+      await tour.abortTour();
     }
     setShowEndGameModal(false);
     if (gameInstanceId) {
@@ -1213,6 +1415,17 @@ export default function GameCurrentScreen() {
     return result;
   }, [allAssets, selectedSubmarketId, assetsSearchQuery]);
 
+  const tourRestrictsAssetPicker = useMemo(
+    () =>
+      tour.sessionActive &&
+      (tour.step === Level1TourStep.SelectLivretAInSheet ||
+        tour.step === Level1TourStep.SelectLivretAForWithdraw ||
+        tour.step === Level1TourStep.WithdrawAndMoveToOtherLivret),
+    [tour.sessionActive, tour.step],
+  );
+
+  const assetsListForSheet = filteredAssets;
+
   // Map assetId → submarket info for badge display
   const assetSubmarketMap = useMemo(() => {
     const map = new Map<number, string>();
@@ -1327,6 +1540,11 @@ export default function GameCurrentScreen() {
     if (isAssetsSheetOpen) {
       return;
     }
+    const ta = tourRef.current;
+    if (ta.sessionActive && ta.step === Level1TourStep.CloseSheetAndPressStart) {
+      showAlert('Tutoriel', tourBubbleForStep(ta.step, ta.eventPhase));
+      return;
+    }
     // Mark sheet as open immediately to freeze date animation
     setIsAssetsSheetOpen(true);
     // Pause the game before opening the sheet
@@ -1371,6 +1589,7 @@ export default function GameCurrentScreen() {
 
       setIsPaused(false);
       console.log('[GameCurrentScreen] ✅ Event completed, game resumed');
+      await tourRef.current.notifyEventResumeCompleted();
     } catch (err) {
       console.error('[GameCurrentScreen] Error resuming after event:', err);
       showAlert('Erreur', 'Impossible de reprendre la partie');
@@ -1425,6 +1644,13 @@ export default function GameCurrentScreen() {
 
   const handleHoldingPress = async (holding: HoldingData) => {
     if (!gameInstanceId || !walletId || !holding.asset) return;
+    const trh = tourRef.current;
+    if (trh.sessionActive && trh.step === Level1TourStep.SelectLivretAForWithdraw) {
+      if (!isLivretAAsset(holding.asset)) {
+        showAlert('Tutoriel', tourBubbleForStep(trh.step, trh.eventPhase));
+        return;
+      }
+    }
     // Pause the game while on asset-detail
     if (gameHasBeenStarted) {
       try {
@@ -1474,6 +1700,7 @@ export default function GameCurrentScreen() {
         isPaused: false,
         pausedAt: null,
       });
+      await tourRef.current.notifyGameClockStarted();
     } catch (err) {
       console.error('Error starting game:', err);
       showAlert('Erreur', 'Impossible de demarrer la partie');
@@ -1493,8 +1720,29 @@ export default function GameCurrentScreen() {
       return;
     }
 
+    const trStart = tourRef.current;
+    if (trStart.sessionActive) {
+      const st = trStart.step;
+      if (
+        st === Level1TourStep.OpenInvestSheet ||
+        st === Level1TourStep.SelectLivretAInSheet ||
+        st === Level1TourStep.DepositOnLivretA
+      ) {
+        showAlert('Tutoriel', tourBubbleForStep(st, trStart.eventPhase));
+        return;
+      }
+      if (st === Level1TourStep.CloseSheetAndPressStart && holdings.length === 0) {
+        showAlert('Tutoriel', "Placez d'abord de l'argent sur le Livret A.");
+        return;
+      }
+    }
+
     // Vérifier si des investissements ont été faits
     if (holdings.length === 0) {
+      if (trStart.sessionActive && trStart.step !== Level1TourStep.CloseSheetAndPressStart) {
+        showAlert('Tutoriel', tourBubbleForStep(trStart.step, trStart.eventPhase));
+        return;
+      }
       setShowNoInvestmentModal(true);
       return;
     }
@@ -1505,6 +1753,10 @@ export default function GameCurrentScreen() {
 
   // Confirmation pour démarrer sans investissement
   const handleConfirmStartWithoutInvestment = async () => {
+    if (tourRef.current.sessionActive) {
+      showAlert('Tutoriel', 'Suivez les étapes : investissez sur le Livret A avant de commencer.');
+      return;
+    }
     setShowNoInvestmentModal(false);
     await startGameNow();
   };
@@ -1527,6 +1779,8 @@ export default function GameCurrentScreen() {
                 userId: user.id,
                 levelId: parseInt(levelId, 10),
               });
+
+              await tourRef.current.abortTour();
 
               // Reinitialiser les etats locaux
               setGameInstanceId(null);
@@ -1672,61 +1926,6 @@ export default function GameCurrentScreen() {
         })}
       </ScrollView>
 
-      {/* Bottom Game Controls */}
-      {!isGameEnded && (
-        <View style={[styles.bottomControls, { paddingBottom: insets.bottom + 8 }]}>
-          {isInPreparation ? (
-            <View style={styles.startButtonsContainer}>
-              <ActionPillButton
-                label="Investir"
-                iconName="add"
-                onPress={handleAddAsset}
-              />
-              <ActionPillButton
-                label="Commencer"
-                iconName="play"
-                onPress={handleStartGame}
-                isLoading={isStarting}
-              />
-            </View>
-          ) : isAwaitingEventResume ? (
-            <View style={styles.startButtonsContainer}>
-              <ActionPillButton
-                label="Investir"
-                iconName="add"
-                onPress={handleAddAsset}
-              />
-              <ActionPillButton
-                label="Reprendre"
-                iconName="play"
-                onPress={handleResumeAfterEvent}
-                isLoading={isStarting}
-              />
-            </View>
-          ) : hasGameStarted && isPaused && !isAssetsSheetOpen ? (
-            <View style={styles.startButtonsContainer}>
-              <ActionPillButton
-                label="Investir"
-                iconName="add"
-                onPress={handleAddAsset}
-              />
-              <ActionPillButton
-                label="Reprendre"
-                iconName="play"
-                onPress={handleManualResume}
-                isLoading={isStarting}
-              />
-            </View>
-          ) : (
-            <ActionPillButton
-              label="Investir"
-              iconName="add"
-              onPress={handleAddAsset}
-            />
-          )}
-        </View>
-      )}
-
       {/* Modal de confirmation si aucun investissement */}
       <Modal
         visible={showNoInvestmentModal}
@@ -1852,13 +2051,17 @@ export default function GameCurrentScreen() {
                   <ActionPillButton
                     label="Récap"
                     customIcon={<RecapActionIcon width={22} height={22} />}
-                    onPress={handleOpenRecap}
+                    onPress={() => {
+                      void handleOpenRecap();
+                    }}
                     style={{ flex: 1 }}
                   />
                   <ActionPillButton
                     label="Quiz"
                     customIcon={<QuizActionIcon width={18} height={18} />}
-                    onPress={handleOpenQuiz}
+                    onPress={() => {
+                      void handleOpenQuiz();
+                    }}
                     style={{ flex: 1 }}
                   />
                 </>
@@ -1914,65 +2117,116 @@ export default function GameCurrentScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 24 }}
         >
-          {/* Search */}
-          <View style={[styles.assetsSheetSearch, { backgroundColor: theme.card, borderColor: theme.borderLight }]}>
-            <TextInput
-              style={[styles.assetsSheetSearchInput, { color: theme.text, fontFamily: CashouTheme.fonts.body }]}
-              placeholder="Rechercher"
-              placeholderTextColor={theme.iconMuted}
-              value={assetsSearchQuery}
-              onChangeText={setAssetsSearchQuery}
-              autoCapitalize="none"
-              autoCorrect={false}
+          {tour.sessionActive &&
+            (tour.step === Level1TourStep.SelectLivretAInSheet ||
+              tour.step === Level1TourStep.SelectLivretAForWithdraw ||
+              tour.step === Level1TourStep.WithdrawAndMoveToOtherLivret) && (
+            <Level1TourCallout
+              title={tourStepHeadline(tour.step)}
+              message={tourBubbleForStep(tour.step, tour.eventPhase)}
             />
-          </View>
+          )}
+          {!tourRestrictsAssetPicker && (
+            <>
+              <View style={[styles.assetsSheetSearch, { backgroundColor: theme.card, borderColor: theme.borderLight }]}>
+                <TextInput
+                  style={[styles.assetsSheetSearchInput, { color: theme.text, fontFamily: CashouTheme.fonts.body }]}
+                  placeholder="Rechercher"
+                  placeholderTextColor={theme.iconMuted}
+                  value={assetsSearchQuery}
+                  onChangeText={setAssetsSearchQuery}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
 
-          {/* Submarket Tabs */}
-          <Text style={[styles.assetsSheetSectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
-            Trendings
-          </Text>
-          <View style={[styles.assetsSheetTabsBar, { backgroundColor: theme.card, borderColor: theme.borderLight }]}>
-            <TouchableOpacity
-              style={[
-                styles.assetsSheetTab,
-                selectedSubmarketId === null && { backgroundColor: theme.accent },
-              ]}
-              onPress={() => setSelectedSubmarketId(null)}
-            >
-              <Text style={[styles.assetsSheetTabText, { color: theme.text, fontFamily: CashouTheme.fonts.body }]}>
-                Tous
+              <Text style={[styles.assetsSheetSectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
+                Trendings
               </Text>
-            </TouchableOpacity>
-            {submarkets.map((sm) => (
-              <TouchableOpacity
-                key={sm.id}
-                style={[
-                  styles.assetsSheetTab,
-                  selectedSubmarketId === sm.id && { backgroundColor: theme.accent },
-                ]}
-                onPress={() => setSelectedSubmarketId(sm.id)}
-              >
-                <Text style={[styles.assetsSheetTabText, { color: theme.text, fontFamily: CashouTheme.fonts.body }]}>
-                  {sm.title}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+              <View style={[styles.assetsSheetTabsBar, { backgroundColor: theme.card, borderColor: theme.borderLight }]}>
+                <TouchableOpacity
+                  style={[
+                    styles.assetsSheetTab,
+                    selectedSubmarketId === null && { backgroundColor: theme.accent },
+                  ]}
+                  onPress={() => setSelectedSubmarketId(null)}
+                >
+                  <Text style={[styles.assetsSheetTabText, { color: theme.text, fontFamily: CashouTheme.fonts.body }]}>
+                    Tous
+                  </Text>
+                </TouchableOpacity>
+                {submarkets.map((sm) => (
+                  <TouchableOpacity
+                    key={sm.id}
+                    style={[
+                      styles.assetsSheetTab,
+                      selectedSubmarketId === sm.id && { backgroundColor: theme.accent },
+                    ]}
+                    onPress={() => setSelectedSubmarketId(sm.id)}
+                  >
+                    <Text style={[styles.assetsSheetTabText, { color: theme.text, fontFamily: CashouTheme.fonts.body }]}>
+                      {sm.title}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          )}
 
           {/* Asset List */}
           {assetsLoading ? (
             <ActivityIndicator size="large" color={theme.accent} style={{ marginTop: 24 }} />
           ) : (
-            filteredAssets.map((asset: any) => (
+            assetsListForSheet.map((asset: any) => {
+              const tourHighlightThisRow =
+                tour.sessionActive &&
+                ((tour.step === Level1TourStep.SelectLivretAInSheet &&
+                  isLivretAAsset({ title: asset.title, symbol: asset.symbol })) ||
+                  (tour.step === Level1TourStep.SelectLivretAForWithdraw &&
+                    isLivretAAsset({ title: asset.title, symbol: asset.symbol })) ||
+                  (tour.step === Level1TourStep.WithdrawAndMoveToOtherLivret &&
+                    isSavingsLivretOtherThanA({
+                      title: asset.title,
+                      symbol: asset.symbol,
+                      submarket: asset.submarket,
+                    })));
+              return (
               <TouchableOpacity
                 key={asset.id}
-                style={[styles.assetsSheetRow, { backgroundColor: theme.card }]}
+                style={[
+                  styles.assetsSheetRow,
+                  {
+                    backgroundColor: theme.card,
+                    opacity: tourRestrictsAssetPicker && !tourHighlightThisRow ? 0.24 : 1,
+                  },
+                  tourHighlightThisRow && { borderWidth: 2, borderColor: theme.accent },
+                ]}
                 activeOpacity={0.7}
+                disabled={
+                  tour.sessionActive &&
+                  ((tour.step === Level1TourStep.SelectLivretAInSheet &&
+                    !isLivretAAsset({ title: asset.title, symbol: asset.symbol })) ||
+                    (tour.step === Level1TourStep.SelectLivretAForWithdraw &&
+                      !isLivretAAsset({ title: asset.title, symbol: asset.symbol })) ||
+                    (tour.step === Level1TourStep.WithdrawAndMoveToOtherLivret &&
+                      !isSavingsLivretOtherThanA({
+                        title: asset.title,
+                        symbol: asset.symbol,
+                        submarket: asset.submarket,
+                      })))
+                }
                 onPress={() => {
-                  skipResumeOnCloseRef.current = true;
-                  navigatedToAssetDetailRef.current = true;
-                  assetsSheetRef.current?.dismiss();
-                  router.push(`/game/asset-detail?id=${asset.id}&gameInstanceId=${gameInstanceId}&walletId=${walletId}`);
+                  void (async () => {
+                    const tu = tourRef.current;
+                    if (tu.sessionActive && tu.step === Level1TourStep.SelectLivretAInSheet) {
+                      if (!isLivretAAsset({ title: asset.title, symbol: asset.symbol })) return;
+                      await tu.goToStep(Level1TourStep.DepositOnLivretA);
+                    }
+                    skipResumeOnCloseRef.current = true;
+                    navigatedToAssetDetailRef.current = true;
+                    assetsSheetRef.current?.dismiss();
+                    router.push(`/game/asset-detail?id=${asset.id}&gameInstanceId=${gameInstanceId}&walletId=${walletId}`);
+                  })();
                 }}
               >
                 <View style={styles.assetsSheetRowLeft}>
@@ -1993,15 +2247,153 @@ export default function GameCurrentScreen() {
                   )}
                 </View>
               </TouchableOpacity>
-            ))
+              );
+            })
           )}
-          {!assetsLoading && filteredAssets.length === 0 && (
+          {!assetsLoading && assetsListForSheet.length === 0 && (
             <Text style={{ color: theme.text, fontFamily: CashouTheme.fonts.body, textAlign: 'center', marginTop: 24, opacity: 0.6 }}>
               Aucun asset trouvé
             </Text>
           )}
         </BottomSheetScrollView>
       </BottomSheetModal>
+
+      <Level1TourOverlay
+        visible={tutorialOverlayVisible}
+        message={tourBubbleForStep(tour.step, tour.eventPhase)}
+        reserveBottomPx={bottomChromeHeight}
+      />
+
+      {/* Bottom Game Controls — rendered after overlay + higher z-index so buttons stay clear and tappable */}
+      {!isGameEnded && (
+        <View
+          style={[
+            styles.bottomControls,
+            {
+              paddingBottom: insets.bottom + 8,
+              zIndex: 400,
+              ...(Platform.OS === 'android' ? { elevation: 400 } : {}),
+            },
+          ]}
+          onLayout={(e) => setBottomChromeHeight(e.nativeEvent.layout.height)}
+        >
+          {isInPreparation ? (
+            <View style={styles.startButtonsContainer}>
+              <ActionPillButton
+                label="Investir"
+                iconName="add"
+                onPress={handleAddAsset}
+                disabled={
+                  tour.sessionActive &&
+                  tour.step === Level1TourStep.CloseSheetAndPressStart
+                }
+                style={
+                  tour.sessionActive &&
+                  (tour.step === Level1TourStep.OpenInvestSheet ||
+                    tour.step === Level1TourStep.PostEventOpenAssets)
+                    ? tourFocusedPillStyle
+                    : undefined
+                }
+              />
+              <ActionPillButton
+                label="Commencer"
+                iconName="play"
+                onPress={handleStartGame}
+                isLoading={isStarting}
+                disabled={
+                  tour.sessionActive &&
+                  (tour.step === Level1TourStep.OpenInvestSheet ||
+                    tour.step === Level1TourStep.SelectLivretAInSheet ||
+                    tour.step === Level1TourStep.DepositOnLivretA)
+                }
+                style={
+                  tour.sessionActive && tour.step === Level1TourStep.CloseSheetAndPressStart
+                    ? tourFocusedPillStyle
+                    : undefined
+                }
+              />
+            </View>
+          ) : isAwaitingEventResume ? (
+            <View style={styles.startButtonsContainer}>
+              <ActionPillButton
+                label="Investir"
+                iconName="add"
+                onPress={handleAddAsset}
+                disabled={
+                  tour.sessionActive &&
+                  tour.step === Level1TourStep.CloseSheetAndPressStart
+                }
+                style={
+                  tour.sessionActive &&
+                  (tour.step === Level1TourStep.OpenInvestSheet ||
+                    tour.step === Level1TourStep.PostEventOpenAssets)
+                    ? tourFocusedPillStyle
+                    : undefined
+                }
+              />
+              <ActionPillButton
+                label="Reprendre"
+                iconName="play"
+                onPress={handleResumeAfterEvent}
+                isLoading={isStarting}
+                disabled={
+                  tour.sessionActive &&
+                  tour.step !== Level1TourStep.FirstEventResume &&
+                  tour.step !== Level1TourStep.PostEventResume
+                }
+                style={
+                  tour.sessionActive &&
+                  (tour.step === Level1TourStep.FirstEventResume ||
+                    tour.step === Level1TourStep.PostEventResume)
+                    ? tourFocusedPillStyle
+                    : undefined
+                }
+              />
+            </View>
+          ) : hasGameStarted && isPaused && !isAssetsSheetOpen ? (
+            <View style={styles.startButtonsContainer}>
+              <ActionPillButton
+                label="Investir"
+                iconName="add"
+                onPress={handleAddAsset}
+                style={
+                  tour.sessionActive &&
+                  (tour.step === Level1TourStep.OpenInvestSheet ||
+                    tour.step === Level1TourStep.PostEventOpenAssets)
+                    ? tourFocusedPillStyle
+                    : undefined
+                }
+              />
+              <ActionPillButton
+                label="Reprendre"
+                iconName="play"
+                onPress={handleManualResume}
+                isLoading={isStarting}
+                style={
+                  tour.sessionActive &&
+                  (tour.step === Level1TourStep.FirstEventResume ||
+                    tour.step === Level1TourStep.PostEventResume)
+                    ? tourFocusedPillStyle
+                    : undefined
+                }
+              />
+            </View>
+          ) : (
+            <ActionPillButton
+              label="Investir"
+              iconName="add"
+              onPress={handleAddAsset}
+              style={
+                tour.sessionActive &&
+                (tour.step === Level1TourStep.OpenInvestSheet ||
+                  tour.step === Level1TourStep.PostEventOpenAssets)
+                  ? tourFocusedPillStyle
+                  : undefined
+              }
+            />
+          )}
+        </View>
+      )}
     </View>
     </GestureHandlerRootView>
   );

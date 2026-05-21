@@ -12,12 +12,22 @@ import { useRouter, usePathname } from 'expo-router';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { useNotifications } from '@/hooks/use-notifications';
 import { ActionPillButton } from '@/components/ui';
+import { useOptionalLevel1Tour } from '@/contexts/level1-tour-context';
+import { tourBubbleForStep, Level1TourStep } from '@/constants/level1-tour';
 
 export function EventNotificationModal() {
   const { colors, isDark } = useCashouTheme();
   const router = useRouter();
   const pathname = usePathname();
   const { eventNotification, clearEventNotification, setPendingEventCompletion, setRequestedAssetsSheetGameId } = useNotifications();
+  const level1Tour = useOptionalLevel1Tour();
+  // Restrict the modal to "Invest only" only when the level actually has another livret
+  // to migrate to. For levels with a single livret (new level 1), allow "Plus tard".
+  const restrictToAssetsOnly =
+    Boolean(level1Tour?.sessionActive) &&
+    Boolean(level1Tour?.hasOtherSavings) &&
+    (level1Tour?.eventPhase ?? 0) === 0 &&
+    level1Tour?.step !== Level1TourStep.Done;
 
   const isVisible = eventNotification !== null;
 
@@ -75,7 +85,7 @@ export function EventNotificationModal() {
         tint={isDark ? 'dark' : 'light'}
         style={styles.blur}
       >
-        <Pressable style={styles.overlay} onPress={handleClose}>
+        <Pressable style={styles.overlay} onPress={restrictToAssetsOnly ? undefined : handleClose}>
           <View
             onStartShouldSetResponder={() => true}
             style={[styles.cardBackdrop, { backgroundColor: colors.secondary }]}
@@ -96,19 +106,27 @@ export function EventNotificationModal() {
                 {eventNotification.body ?? 'Un événement vient de se produire dans le jeu. Consultez vos assets pour voir les changements.'}
               </Text>
 
+              {restrictToAssetsOnly && level1Tour && (
+                <Text allowFontScaling={false} style={[styles.tourHint, { color: colors.text }]}>
+                  {tourBubbleForStep(Level1TourStep.PostEventOpenAssets, level1Tour.eventPhase)}
+                </Text>
+              )}
+
               {/* Buttons */}
-              <View style={styles.actions}>
-                <ActionPillButton
-                  label="Plus tard"
-                  iconName="checkmark"
-                  onPress={handleClose}
-                  style={{ flex: 1 }}
-                />
+              <View style={[styles.actions, restrictToAssetsOnly && styles.actionsSingle]}>
+                {!restrictToAssetsOnly && (
+                  <ActionPillButton
+                    label="Plus tard"
+                    iconName="checkmark"
+                    onPress={handleClose}
+                    style={{ flex: 1 }}
+                  />
+                )}
                 <ActionPillButton
                   label="Investir"
                   iconName="add"
                   onPress={handleGoToAssets}
-                  style={{ flex: 1 }}
+                  style={restrictToAssetsOnly ? styles.investOnlyButton : { flex: 1 }}
                 />
               </View>
             </View>
@@ -171,10 +189,25 @@ const styles = StyleSheet.create({
     opacity: 0.85,
     marginBottom: 16,
   },
+  tourHint: {
+    fontSize: 13,
+    fontFamily: 'Anybody',
+    textAlign: 'center',
+    lineHeight: 19,
+    opacity: 0.9,
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
   actions: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 8,
+    width: '100%',
+  },
+  actionsSingle: {
+    justifyContent: 'center',
+  },
+  investOnlyButton: {
     width: '100%',
   },
 });

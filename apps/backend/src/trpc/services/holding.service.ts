@@ -21,7 +21,7 @@ export class HoldingService {
     return this.prisma.holding.findMany({
       orderBy: { createdAt: "desc" },
       include: {
-        asset: true,
+        asset: { include: { submarket: true } },
         wallet: true,
         gameInstance: true,
       },
@@ -35,7 +35,7 @@ export class HoldingService {
     return this.prisma.holding.findUnique({
       where: { id },
       include: {
-        asset: true,
+        asset: { include: { submarket: true } },
         wallet: true,
         gameInstance: true,
       },
@@ -54,7 +54,7 @@ export class HoldingService {
         },
       },
       include: {
-        asset: true,
+        asset: { include: { submarket: true } },
         wallet: true,
         gameInstance: true,
       },
@@ -69,7 +69,7 @@ export class HoldingService {
       where: { walletId },
       orderBy: { createdAt: "desc" },
       include: {
-        asset: true,
+        asset: { include: { submarket: true } },
       },
     });
   }
@@ -82,7 +82,7 @@ export class HoldingService {
       where: { gameInstanceId },
       orderBy: { createdAt: "desc" },
       include: {
-        asset: true,
+        asset: { include: { submarket: true } },
         wallet: true,
       },
     });
@@ -115,7 +115,7 @@ export class HoldingService {
     return this.prisma.holding.create({
       data: normalizedData,
       include: {
-        asset: true,
+        asset: { include: { submarket: true } },
         wallet: true,
         gameInstance: true,
       },
@@ -136,7 +136,7 @@ export class HoldingService {
       where: { id },
       data: normalizedData,
       include: {
-        asset: true,
+        asset: { include: { submarket: true } },
         wallet: true,
         gameInstance: true,
       },

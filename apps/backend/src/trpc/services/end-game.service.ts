@@ -62,7 +62,7 @@ export class EndGameService {
 
     constructor(prismaClient?: PrismaClient) {
         this.prisma = prismaClient || defaultPrisma;
-        this.gameTimeService = new GameTimeService();
+        this.gameTimeService = new GameTimeService(this.prisma);
         this.levelCompletionService = new LevelCompletionService(prismaClient);
         this.assetHistoryService = new AssetHistoryService(this.prisma);
     }
@@ -125,7 +125,7 @@ export class EndGameService {
 
         // Fallback: rate-based
         if (asset.rate) {
-            const elapsedRealSeconds = this.gameTimeService.calculateElapsedTimeSince(
+            const elapsedRealSeconds = await this.gameTimeService.calculateElapsedTimeSince(
                 gameInstance, new Date(holding.acquiredAt)
             );
             const elapsedGameDays = this.gameTimeService.convertRealSecondsToGameDays(level, elapsedRealSeconds);
