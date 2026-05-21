@@ -186,7 +186,8 @@ async function main() {
         speed: 1314000,
         startBalance: 2000,
         pointsRequired: 0,
-        description: 'Découvre les bases de l\'épargne avec des produits sécurisés. Apprends à gérer ton capital sans risque et à comprendre les notions essentielles de la finance personnelle.'
+        description: 'Découvre les bases de l\'épargne avec des produits sécurisés. Apprends à gérer ton capital sans risque et à comprendre les notions essentielles de la finance personnelle.',
+        tip: 'Pense à placer ton capital dans un produit sécurisé dès le début pour générer des intérêts. Même un petit rendement garanti peut faire la différence sur la durée !'
       }
     });
   } else {
@@ -198,7 +199,8 @@ async function main() {
         speed: 1314000,
         startBalance: 2000,
         pointsRequired: 0,
-        description: 'Découvre les bases de l\'épargne avec des produits sécurisés. Apprends à gérer ton capital sans risque et à comprendre les notions essentielles de la finance personnelle.'
+        description: 'Découvre les bases de l\'épargne avec des produits sécurisés. Apprends à gérer ton capital sans risque et à comprendre les notions essentielles de la finance personnelle.',
+        tip: 'Pense à placer ton capital dans un produit sécurisé dès le début pour générer des intérêts. Même un petit rendement garanti peut faire la différence sur la durée !'
       }
     });
   }

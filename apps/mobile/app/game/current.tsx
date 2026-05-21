@@ -88,6 +88,7 @@ interface EndGameModalContent {
   title: string;
   primaryMessage: string;
   secondaryMessage: string | null;
+  tip: string | null;
 }
 
 interface EndGameGoalResult {
@@ -1787,6 +1788,12 @@ export default function GameCurrentScreen() {
               </Text>
             )}
 
+            {!!modalContent?.tip && !hasPrimaryGoalSuccess && (
+              <Text allowFontScaling={false} style={[styles.endGameTip, { fontFamily: 'Anybody', color: theme.text }]}>
+                {modalContent.tip}
+              </Text>
+            )}
+
             {/* Goals list */}
             {endGameResult?.goals && endGameResult.goals.length > 0 && (
               <View style={{ width: '100%', marginTop: 8, marginBottom: 12, gap: 8 }}>
@@ -2147,6 +2154,14 @@ const styles = StyleSheet.create({
   },
   endGameSecondary: {
     marginTop: 9,
+  },
+  endGameTip: {
+    fontSize: 13,
+    fontStyle: 'italic',
+    fontWeight: 'normal',
+    lineHeight: 18,
+    marginTop: 12,
+    opacity: 1,
   },
   endGameStarsRow: {
     alignSelf: "center",

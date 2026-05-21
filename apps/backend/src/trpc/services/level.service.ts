@@ -126,6 +126,7 @@ export class LevelService {
                 title: levelWithGoals.title,
                 number: levelWithGoals.number,
                 description: levelWithGoals.description,
+                tip: levelWithGoals.tip,
                 startBalance: levelWithGoals.startBalance,
                 pointsRequired: levelWithGoals.pointsRequired,
                 duration: levelWithGoals.duration,
@@ -154,6 +155,7 @@ export class LevelService {
             startBalance: src.startBalance ?? null,
             pointsRequired: src.pointsRequired ?? null,
             description: src.description ?? null,
+            tip: src.tip ?? null,
         };
         const newLevel = await this.prisma.level.create({
             data: {
