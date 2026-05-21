@@ -1,0 +1,15 @@
+meta {
+  name: logout
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{base_url}}/api/trpc/auth.logout
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}

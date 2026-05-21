@@ -2,12 +2,18 @@
 // Documentation: https://www.better-auth.com
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "darwin-arm64", "linux-arm64-openssl-1.1.x"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("CASHOU_DB_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
 }
 
 // Énumérations
@@ -23,6 +29,12 @@ enum NotificationType {
   PROFILE  @map("Profile")
   EVENT    @map("Event")
   GAME_END @map("GameEnd")
+}
+
+enum SubmarketType {
+  SAVINGS   @map("Savings")
+  INSURANCE @map("Insurance")
+  STOCK     @map("Stock")
 }
 
 // Modèle User avec better-auth + relations Cashou
@@ -46,12 +58,13 @@ model User {
   maxStreak     Int            @default(0) @map("max_streak")
   expoPushToken String?        @map("expo_push_token")
   level         Level          @relation(fields: [levelId], references: [id])
-  gameInstances GameInstance[]
-  gameUsers     GameUser[]
-  userQuiz      UserQuiz[]
-  userAnswers   UserAnswer[]
-  notifications Notification[]
-  wallets       Wallet[]
+  gameInstances        GameInstance[]
+  gameUsers            GameUser[]
+  userQuiz             UserQuiz[]
+  userAnswers          UserAnswer[]
+  userLevelCompletions UserLevelCompletion[]
+  notifications        Notification[]
+  wallets              Wallet[]
 
   // Relations better-auth
   accounts Account[]
@@ -116,17 +129,19 @@ model Level {
   duration       Int?
   speed          Int?
   startBalance   Int?     @map("start_balance")
-  pointsRequired Int?     @map("points_required")
-  description    String?
-  createdAt      DateTime @default(now()) @map("created_at")
+  pointsRequired  Int?     @map("points_required")
+  historyStartDay Int?     @map("history_start_day") // Day index in AssetHistory where the game begins
+  description     String?
+  createdAt       DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   // Relations
   users         User[]
-  gameInstances GameInstance[]
-  levelGoals    LevelGoal[]
-  levelEvents   LevelEvent[]
-  quiz          Quiz[]
+  gameInstances        GameInstance[]
+  levelGoals           LevelGoal[]
+  levelEvents          LevelEvent[]
+  quiz                 Quiz[]
+  userLevelCompletions UserLevelCompletion[]
 
   @@map("levels")
 }
@@ -149,13 +164,15 @@ model Event {
 }
 
 model Goal {
-  id          Int      @id @default(autoincrement())
-  title       String?
-  description String?
-  goalType    String?  @map("goal_type")
-  goalValue   Float?   @map("goal_value")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id             Int      @id @default(autoincrement())
+  title          String?
+  description    String?
+  successMessage String?  @map("success_message")
+  failureMessage String?  @map("failure_message")
+  goalType       String?  @map("goal_type")
+  goalValue      Float?   @map("goal_value")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   // Relations
   levelGoals LevelGoal[]
@@ -164,11 +181,12 @@ model Goal {
 }
 
 model LevelGoal {
-  id        Int      @id @default(autoincrement())
-  levelId   Int      @map("level_id")
-  goalId    Int      @map("goal_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id          Int      @id @default(autoincrement())
+  levelId     Int      @map("level_id")
+  goalId      Int      @map("goal_id")
+  isMandatory Boolean  @default(true) @map("is_mandatory")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
   level Level @relation(fields: [levelId], references: [id])
@@ -194,6 +212,26 @@ model LevelEvent {
   @@map("level_events")
 }
 
+model UserLevelCompletion {
+  id                  Int       @id @default(autoincrement())
+  userId              String    @map("user_id")
+  levelId             Int       @map("level_id")
+  stars               Int       // 1-3
+  mandatoryGoalsMet   Boolean   @map("mandatory_goals_met")
+  bonusGoalsMet       Boolean   @map("bonus_goals_met")
+  quizPassed          Boolean   @map("quiz_passed")
+  completedAt         DateTime? @map("completed_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  level Level @relation(fields: [levelId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, levelId])
+  @@map("user_level_completions")
+}
+
 model Market {
   id          Int      @id @default(autoincrement())
   title       String?
@@ -211,13 +249,14 @@ model Market {
 }
 
 model Submarket {
-  id             Int      @id @default(autoincrement())
-  marketId       Int?     @map("market_id")
-  gameInstanceId Int?     @map("game_instance_id")
+  id             Int            @id @default(autoincrement())
+  marketId       Int?           @map("market_id")
+  gameInstanceId Int?           @map("game_instance_id")
   title          String?
   description    String?
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  type           SubmarketType  @default(STOCK) @map("type")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
 
   // Relations
   market       Market?       @relation(fields: [marketId], references: [id])
@@ -332,6 +371,7 @@ model GameInstance {
   actionRequired      Boolean?  @map("action_required")
   totalPausedDuration Int       @default(0) @map("total_paused_duration")
   currentEventIndex   Int       @default(0) @map("current_event_index")
+  endingStartedAt     DateTime? @map("ending_started_at")
   isEnded             Boolean   @default(false) @map("is_ended")
   endedAt             DateTime? @map("ended_at")
   createdAt           DateTime  @default(now()) @map("created_at")
@@ -349,6 +389,7 @@ model GameInstance {
   notifications Notification[]
   holdings      Holding[]
   gameInstanceEvents GameInstanceEvent[]
+  userQuiz      UserQuiz[]
 
   @@map("game_instances")
 }
@@ -358,6 +399,7 @@ model GameInstanceEvent {
   gameInstanceId Int       @map("game_instance_id")
   levelEventId   Int       @map("level_event_id")
   scheduledAt    DateTime  @map("scheduled_at")
+  processingStartedAt DateTime? @map("processing_started_at")
   triggeredAt    DateTime? @map("triggered_at")
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
@@ -464,17 +506,19 @@ model Quiz {
 }
 
 model UserQuiz {
-  id          Int       @id @default(autoincrement())
-  quizId      Int?      @map("quiz_id")
-  userId      String?   @map("user_id")
-  completedAt DateTime? @map("completed_at")
-  isCorrect   Boolean?  @map("is_correct")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id             Int       @id @default(autoincrement())
+  quizId         Int?      @map("quiz_id")
+  userId         String?   @map("user_id")
+  gameInstanceId Int?      @map("game_instance_id")
+  completedAt    DateTime? @map("completed_at")
+  isCorrect      Boolean?  @map("is_correct")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
   // Relations
-  quiz Quiz? @relation(fields: [quizId], references: [id])
-  user User? @relation(fields: [userId], references: [id])
+  quiz         Quiz?         @relation(fields: [quizId], references: [id])
+  user         User?         @relation(fields: [userId], references: [id])
+  gameInstance GameInstance? @relation(fields: [gameInstanceId], references: [id], onDelete: SetNull)
 
   @@map("user_quiz")
 }

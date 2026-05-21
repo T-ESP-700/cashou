@@ -11,6 +11,10 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
+    password: {
+      hash: async (password) => bcrypt.hash(password, 10),
+      verify: async ({ hash, password }) => bcrypt.compare(password, hash),
+    },
   },
   // Temporarily disable social providers
   // socialProviders: {
@@ -31,6 +35,18 @@ export const auth = betterAuth({
   trustedOrigins: ['*'], // Allow all origins in development (mobile app)
   advanced: {
     disableCSRFCheck: process.env.NODE_ENV === 'development', // Disable CSRF in development for mobile
+  },
+  user: {
+    additionalFields: {
+      username: {
+        type: 'string',
+        required: false,
+      },
+      discriminator: {
+        type: 'string',
+        required: false,
+      },
+    },
   },
 });
 

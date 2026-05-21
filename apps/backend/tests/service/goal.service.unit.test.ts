@@ -1,7 +1,7 @@
 // tests/service/goal.service.unit.test.ts
 // Tests unitaires du service d'objectifs sans `any` (ESLint friendly)
 import { describe, it, expect } from "bun:test";
-import type { Prisma, Goal, PrismaClient } from "@prisma/client";
+import type { Prisma, Goal, PrismaClient } from "@cashou/db-app";
 import { GoalService } from "../../src/trpc/services/goal.service";
 
 type Call =
@@ -32,6 +32,10 @@ function makePrismaMock() {
                     id: 123,
                     title: (data as Goal).title ?? "Objectif",
                     description: (data as Goal).description ?? null,
+                    successMessage: (data as Goal).successMessage ?? null,
+                    failureMessage: (data as Goal).failureMessage ?? null,
+                    goalType: (data as Goal).goalType ?? null,
+                    goalValue: (data as Goal).goalValue ?? null,
                     createdAt: now,
                     updatedAt: now,
                 };
@@ -45,6 +49,10 @@ function makePrismaMock() {
                     id,
                     title: (data as Goal).title ?? "Objectif",
                     description: (data as Goal).description ?? null,
+                    successMessage: (data as Goal).successMessage ?? null,
+                    failureMessage: (data as Goal).failureMessage ?? null,
+                    goalType: (data as Goal).goalType ?? null,
+                    goalValue: (data as Goal).goalValue ?? null,
                     createdAt: now,
                     updatedAt: now,
                 };
@@ -57,6 +65,10 @@ function makePrismaMock() {
                     id,
                     title: "Deleted",
                     description: null,
+                    successMessage: null,
+                    failureMessage: null,
+                    goalType: null,
+                    goalValue: null,
                     createdAt: now,
                     updatedAt: now,
                 };

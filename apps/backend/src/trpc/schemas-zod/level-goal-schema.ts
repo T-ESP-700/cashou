@@ -7,6 +7,7 @@ import { z } from "zod";
 export const levelGoalDataSchema = z.object({
     levelId: z.number().int().positive("L'ID du niveau doit être un nombre entier positif"),
     goalId: z.number().int().positive("L'ID de l'objectif doit être un nombre entier positif"),
+    isMandatory: z.boolean().optional().default(true),
 });
 export type LevelGoalDataSchema = z.infer<typeof levelGoalDataSchema>;
 

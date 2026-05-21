@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cashou - Avancement Février 2026</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            height: 100vh;
+            height: 100dvh;
+            min-height: -webkit-fill-available;
+        }
+
+        body {
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #1C1E33;
+            color: #FFFFFF;
+            overflow: hidden;
+            height: 100vh;
+            height: 100dvh;
+            min-height: -webkit-fill-available;
+        }
+
+        .slide {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            min-height: -webkit-fill-available;
+            padding: 60px 80px;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .slide:not(.intro-slide):not(.demo-slide) {
+            padding-top: 0;
+        }
+
+        .slide:not(.intro-slide):not(.demo-slide) h2 {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 160px);
+            max-width: 1200px;
+            margin: 0;
+            padding: 0;
+        }
+
+        .slide:not(.intro-slide):not(.demo-slide) .content {
+            margin-top: 140px;
+        }
+
+        .slide.active {
+            display: flex;
+        }
+
+        h1 {
+            font-family: 'Rowdies', sans-serif;
+            font-size: 4rem;
+            font-weight: 700;
+            color: #FFB472;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .intro-slide h1 {
+            position: absolute;
+            top: 80px;
+            left: 0;
+            right: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0 80px;
+            text-align: center;
+        }
+
+        .intro-slide .intro-content {
+            margin-top: 140px;
+        }
+
+        h2 {
+            font-family: 'Roboto-Bold', sans-serif;
+            font-size: 3rem;
+            font-weight: 700;
+            color: #FFB472;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        h3 {
+            font-family: 'Roboto-Bold', sans-serif;
+            font-size: 1.5rem;
+            color: #FFFFFF;
+            margin-bottom: 10px;
+        }
+
+        .content {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        /* Animations */
+        .animate-item {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+
+        .animate-item.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        body.no-transitions * {
+            transition: none !important;
+        }
+
+        .intro-slide {
+            justify-content: center;
+        }
+
+        .intro-content {
+            text-align: center;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .intro-logo {
+            max-width: 300px;
+            height: auto;
+            margin: 10px auto 30px auto;
+            display: block;
+            border-radius: 20px;
+        }
+
+        .intro-tagline {
+            font-size: 1.8rem;
+            color: #ECEDEE;
+            margin-top: 20px;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .intro-date {
+            font-size: 1.2rem;
+            color: #9BA1A6;
+            margin-bottom: 40px;
+        }
+
+        .intro-features {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            margin-top: 40px;
+            flex-wrap: wrap;
+        }
+
+        .intro-feature {
+            text-align: center;
+            flex: 0 0 auto;
+        }
+
+        .intro-feature-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .intro-feature-title {
+            color: #FFB472;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .intro-feature-desc {
+            color: #9BA1A6;
+            font-size: 0.9rem;
+        }
+
+        .value-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .value-card {
+            background: #2A2D45;
+            border: 1px solid #3A3D55;
+            border-radius: 16px;
+            padding: 30px;
+        }
+
+        .value-card h3 {
+            color: #FFB472;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+
+        .value-card p {
+            color: #ECEDEE;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        .features-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .feature-card {
+            background: #2A2D45;
+            border: 1px solid #3A3D55;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .icon {
+            color: #FFB472;
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        .value-card h3 .icon,
+        .advantage-item h4 .icon {
+            font-size: 1.2em;
+            vertical-align: middle;
+        }
+
+        .feature-icon i {
+            color: #FFB472;
+        }
+
+        .feature-card h3 {
+            color: #FFB472;
+            margin-bottom: 10px;
+        }
+
+        .feature-card p {
+            color: #ECEDEE;
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        .advantage-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+            margin-top: 40px;
+        }
+
+        .advantage-item {
+            background: #2A2D45;
+            border: 1px solid #3A3D55;
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+        }
+
+        .advantage-item h4 {
+            color: #FFB472;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+
+        .advantage-item p {
+            color: #9BA1A6;
+            font-size: 0.9rem;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .metric-card {
+            background: #2A2D45;
+            border: 1px solid #3A3D55;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .metric-number {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #FFB472;
+            margin-bottom: 10px;
+        }
+
+        .metric-label {
+            color: #ECEDEE;
+            font-size: 1.1rem;
+        }
+
+        .demo-slide {
+            text-align: center;
+            background: linear-gradient(135deg, #1C1E33 0%, #172D4E 100%);
+            justify-content: center;
+        }
+
+        .demo-slide h1 {
+            font-size: 5rem;
+            margin-bottom: 40px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .demo-slide p {
+            font-size: 2rem;
+            color: #ECEDEE;
+            margin-top: 30px;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.05);
+                opacity: 0.9;
+            }
+        }
+
+        .slide-indicator {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #3A3D55;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .indicator.active {
+            background: #FFB472;
+            transform: scale(1.3);
+        }
+
+        /* Sommaire */
+        .sommaire-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 20px;
+        }
+
+        .sommaire-item {
+            background: #2A2D45;
+            border: 1px solid #3A3D55;
+            border-radius: 10px;
+            padding: 14px 24px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .sommaire-item:hover {
+            border-color: #FFB472;
+            transform: translateX(10px);
+        }
+
+        .sommaire-number {
+            background: #3A3D55;
+            color: #ECEDEE;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.95rem;
+            flex-shrink: 0;
+        }
+
+        .sommaire-text {
+            color: #ECEDEE;
+            font-size: 1.1rem;
+        }
+
+        /* Screenshots placeholder */
+        .screenshots-row {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            align-items: center;
+            margin-top: 30px;
+        }
+
+        .screenshot-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .screenshot-placeholder img {
+            max-height: 420px;
+            width: auto;
+            object-fit: contain;
+            border-radius: 16px;
+        }
+
+        .ux-split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .ux-points {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .ux-point {
+            background: #2A2D45;
+            border: 1px solid #3A3D55;
+            border-radius: 12px;
+            padding: 20px 24px;
+        }
+
+        .ux-point h4 {
+            color: #FFB472;
+            font-size: 1.15rem;
+            margin-bottom: 8px;
+        }
+
+        .ux-point p {
+            color: #ECEDEE;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        /* Code snippet style */
+        .code-block {
+            background: #171928;
+            border: 1px solid #2A2D45;
+            border-radius: 10px;
+            padding: 20px 24px;
+            font-family: 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 0.85rem;
+            color: #ECEDEE;
+            line-height: 1.7;
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        .code-block .keyword { color: #C792EA; }
+        .code-block .string { color: #C3E88D; }
+        .code-block .comment { color: #546E7A; }
+        .code-block .function { color: #82AAFF; }
+        .code-block .type { color: #FFCB6B; }
+        .code-block .bracket { color: #89DDFF; }
+
+        /* Before / After comparison */
+        .before-after {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-top: 20px;
+        }
+
+        .before-after-col {
+            border-radius: 14px;
+            padding: 24px;
+        }
+
+        .before-col {
+            background: #2A2D45;
+            border: 1px solid #3A3D55;
+        }
+
+        .after-col {
+            background: #2A2D45;
+            border: 1px solid #3A3D55;
+        }
+
+        .before-after-label {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 14px;
+        }
+
+        .before-col .before-after-label {
+            color: #9BA1A6;
+        }
+
+        .after-col .before-after-label {
+            color: #FFB472;
+        }
+
+        .before-after-label i {
+            margin-right: 8px;
+        }
+
+        .before-after-col .code-block {
+            margin-top: 0;
+            font-size: 0.8rem;
+            padding: 16px 18px;
+            line-height: 1.6;
+        }
+
+        .before-after-points {
+            list-style: none;
+            padding: 0;
+            margin-top: 14px;
+        }
+
+        .before-after-points li {
+            font-size: 0.85rem;
+            padding: 4px 0 4px 18px;
+            position: relative;
+            line-height: 1.4;
+        }
+
+        .before-col .before-after-points li {
+            color: #9BA1A6;
+        }
+
+        .before-col .before-after-points li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #9BA1A6;
+        }
+
+        .after-col .before-after-points li {
+            color: #ECEDEE;
+        }
+
+        .after-col .before-after-points li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #FFB472;
+        }
+
+        /* Frais grid */
+        .frais-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-top: 30px;
+        }
+
+        .frais-card {
+            background: #2A2D45;
+            border: 1px solid #3A3D55;
+            border-radius: 16px;
+            padding: 28px;
+            text-align: center;
+        }
+
+        .frais-card .frais-icon {
+            font-size: 2.5rem;
+            color: #FFB472;
+            margin-bottom: 14px;
+        }
+
+        .frais-card h3 {
+            color: #FFB472;
+            margin-bottom: 12px;
+            font-size: 1.3rem;
+        }
+
+        .frais-card p {
+            color: #ECEDEE;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .frais-card ul {
+            list-style: none;
+            padding: 0;
+            margin-top: 10px;
+            text-align: left;
+        }
+
+        .frais-card ul li {
+            color: #9BA1A6;
+            font-size: 0.9rem;
+            padding: 4px 0;
+            padding-left: 16px;
+            position: relative;
+        }
+
+        .frais-card ul li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #FFB472;
+        }
+
+        .frais-detail {
+            background: #2A2D45;
+            border: 1px solid #3A3D55;
+            border-radius: 16px;
+            padding: 28px;
+            margin-top: 24px;
+        }
+
+        .frais-detail h3 {
+            color: #FFB472;
+            margin-bottom: 12px;
+        }
+
+        .frais-detail p {
+            color: #ECEDEE;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        /* CI/CD pipeline */
+        .pipeline-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .pipeline-step {
+            background: #2A2D45;
+            border: 1px solid #3A3D55;
+            border-radius: 12px;
+            padding: 16px 24px;
+            text-align: center;
+            min-width: 140px;
+        }
+
+        .pipeline-step i {
+            font-size: 1.6rem;
+            color: #FFB472;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .pipeline-step h4 {
+            color: #FFFFFF;
+            font-size: 0.95rem;
+            margin-bottom: 4px;
+        }
+
+        .pipeline-step p {
+            color: #9BA1A6;
+            font-size: 0.8rem;
+        }
+
+        .pipeline-arrow {
+            color: #FFB472;
+            font-size: 1.4rem;
+        }
+
+        .ci-detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            margin-top: 28px;
+        }
+
+        .ci-detail-card {
+            background: #2A2D45;
+            border: 1px solid #3A3D55;
+            border-radius: 14px;
+            padding: 24px;
+        }
+
+        .ci-detail-card h4 {
+            color: #FFB472;
+            font-size: 1.15rem;
+            margin-bottom: 10px;
+        }
+
+        .ci-detail-card p {
+            color: #ECEDEE;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        /* Tag badge */
+        .tag {
+            display: inline-block;
+            background: #3A3D55;
+            color: #ECEDEE;
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 3px 10px;
+            border-radius: 20px;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        /* URL display */
+        .url-display {
+            display: inline-block;
+            background: #2A2D45;
+            border: 1px solid #3A3D55;
+            border-radius: 8px;
+            padding: 8px 20px;
+            font-family: 'Fira Code', monospace;
+            font-size: 1.1rem;
+            color: #ECEDEE;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .slide {
+                padding: 40px 30px;
+            }
+
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            h2 {
+                font-size: 2rem;
+            }
+
+            .value-grid,
+            .features-list,
+            .metrics-grid,
+            .advantage-grid,
+            .frais-grid,
+            .ci-detail-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .ux-split,
+            .before-after {
+                grid-template-columns: 1fr;
+            }
+
+            .screenshots-row {
+                gap: 12px;
+            }
+
+            .screenshot-placeholder img {
+                max-height: 260px;
+            }
+
+            .pipeline-flow {
+                flex-direction: column;
+            }
+
+            .pipeline-arrow {
+                transform: rotate(90deg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Slide 1: Titre -->
+    <div class="slide active intro-slide" data-slide="0">
+        <div class="content">
+            <div class="intro-content">
+                <h1 class="animate-item">Cashou</h1>
+                <img src="cashou-logo.png" alt="Logo Cashou" class="intro-logo animate-item">
+                <p class="intro-tagline animate-item">
+                    Avancement du projet
+                </p>
+                <p class="intro-date animate-item">13 Fevrier 2026</p>
+                <div class="intro-features animate-item">
+                    <div class="intro-feature">
+                        <span class="intro-feature-icon"><i class="fas fa-paint-brush" style="color: #FFB472;"></i></span>
+                        <div class="intro-feature-title">Refonte UX</div>
+                        <div class="intro-feature-desc">Nouvelle interface</div>
+                    </div>
+                    <div class="intro-feature">
+                        <span class="intro-feature-icon"><i class="fas fa-rocket" style="color: #FFB472;"></i></span>
+                        <div class="intro-feature-title">Optimisation</div>
+                        <div class="intro-feature-desc">React Query</div>
+                    </div>
+                    <div class="intro-feature">
+                        <span class="intro-feature-icon"><i class="fas fa-percentage" style="color: #FFB472;"></i></span>
+                        <div class="intro-feature-title">Frais</div>
+                        <div class="intro-feature-desc">AV, PEA, CTO</div>
+                    </div>
+                    <div class="intro-feature">
+                        <span class="intro-feature-icon"><i class="fas fa-flag-checkered" style="color: #FFB472;"></i></span>
+                        <div class="intro-feature-title">Fin de partie</div>
+                        <div class="intro-feature-desc">Score & objectifs</div>
+                    </div>
+                    <div class="intro-feature">
+                        <span class="intro-feature-icon"><i class="fas fa-cogs" style="color: #FFB472;"></i></span>
+                        <div class="intro-feature-title">CI/CD</div>
+                        <div class="intro-feature-desc">Tests & pipeline</div>
+                    </div>
+                    <div class="intro-feature">
+                        <span class="intro-feature-icon"><i class="fas fa-globe" style="color: #FFB472;"></i></span>
+                        <div class="intro-feature-title">Site vitrine</div>
+                        <div class="intro-feature-desc">cashou.app</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 2: Sommaire -->
+    <div class="slide" data-slide="1">
+        <div class="content">
+            <h2 class="animate-item">Ordre du jour</h2>
+            <ul class="sommaire-list">
+                <li class="sommaire-item animate-item" onclick="goToSlide(2)">
+                    <span class="sommaire-number">1</span>
+                    <span class="sommaire-text"><i class="fas fa-paint-brush icon"></i> Refonte de l'experience utilisateur</span>
+                </li>
+                <li class="sommaire-item animate-item" onclick="goToSlide(3)">
+                    <span class="sommaire-number">2</span>
+                    <span class="sommaire-text"><i class="fas fa-rocket icon"></i> Optimisation avec React Query</span>
+                </li>
+                <li class="sommaire-item animate-item" onclick="goToSlide(4)">
+                    <span class="sommaire-number">3</span>
+                    <span class="sommaire-text"><i class="fas fa-percentage icon"></i> Gestion des frais : Assurance Vie, PEA, CTO</span>
+                </li>
+                <li class="sommaire-item animate-item" onclick="goToSlide(5)">
+                    <span class="sommaire-number">4</span>
+                    <span class="sommaire-text"><i class="fas fa-flag-checkered icon"></i> Amelioration de la fin de partie</span>
+                </li>
+                <li class="sommaire-item animate-item" onclick="goToSlide(6)">
+                    <span class="sommaire-number">5</span>
+                    <span class="sommaire-text"><i class="fas fa-cogs icon"></i> CI/CD & Factory de tests</span>
+                </li>
+                <li class="sommaire-item animate-item" onclick="goToSlide(7)">
+                    <span class="sommaire-number">6</span>
+                    <span class="sommaire-text"><i class="fas fa-globe icon"></i> Site vitrine cashou.app & conformite RGPD</span>
+                </li>
+                <li class="sommaire-item animate-item" onclick="goToSlide(8)">
+                    <span class="sommaire-number">7</span>
+                    <span class="sommaire-text"><i class="fas fa-film icon"></i> Demo</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Slide 3: Refonte UX -->
+    <div class="slide" data-slide="2">
+        <div class="content">
+            <h2 class="animate-item"><i class="fas fa-paint-brush icon"></i> Refonte UX</h2>
+            <div class="ux-split animate-item">
+                <div class="ux-points">
+                    <div class="ux-point">
+                        <h4><i class="fas fa-palette icon"></i> Systeme de theme unifie</h4>
+                        <p>Composants UI reutilisables (Button, Card, Input, Badge) avec un theme Cashou coherent sur toute l'application</p>
+                    </div>
+                    <div class="ux-point">
+                        <h4><i class="fas fa-layer-group icon"></i> Ecrans de jeu repenses</h4>
+                        <p>Modale d'information de niveau unifiee, vue progression repensee et ecran d'historique des niveaux</p>
+                    </div>
+                    <div class="ux-point">
+                        <h4><i class="fas fa-star icon"></i> Suivi de progression</h4>
+                        <p>Systeme d'etoiles par niveau, suivi de completion detaille et animations de reussite</p>
+                    </div>
+                </div>
+                <div class="screenshots-row">
+                    <div class="screenshot-placeholder">
+                        <img src="cashou-before.png" alt="Cashou avant refonte">
+                    </div>
+                    <div class="screenshot-placeholder">
+                        <img src="cashou-after.png" alt="Cashou apres refonte">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 4: React Query -->
+    <div class="slide" data-slide="3">
+        <div class="content">
+            <h2 class="animate-item"><i class="fas fa-rocket icon"></i> Optimisation React Query</h2>
+            <div class="before-after animate-item">
+                <div class="before-after-col before-col">
+                    <div class="before-after-label"><i class="fas fa-times-circle"></i> Avant</div>
+                    <div class="code-block">
+                        <span class="keyword">const</span> [levels, setLevels] = <span class="function">useState</span>([]);<br>
+                        <span class="keyword">const</span> [loading, setLoading] = <span class="function">useState</span>(<span class="bracket">true</span>);<br>
+                        <span class="keyword">const</span> [error, setError] = <span class="function">useState</span>(<span class="bracket">null</span>);<br><br>
+                        <span class="function">useEffect</span>(() => {<br>
+                        &nbsp;&nbsp;<span class="function">fetchLevels</span>()<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;.<span class="function">then</span>(setLevels)<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;.<span class="function">catch</span>(setError)<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;.<span class="function">finally</span>(() => <span class="function">setLoading</span>(<span class="bracket">false</span>));<br>
+                        }, []);
+                    </div>
+                    <ul class="before-after-points">
+                        <li>Appels dupliques dans chaque ecran</li>
+                        <li>Pas de cache : rechargement a chaque navigation</li>
+                        <li>Gestion manuelle du loading et des erreurs</li>
+                    </ul>
+                </div>
+                <div class="before-after-col after-col">
+                    <div class="before-after-label"><i class="fas fa-check-circle"></i> Apres</div>
+                    <div class="code-block">
+                        <span class="keyword">const</span> { data: levels,<br>
+                        &nbsp;&nbsp;isLoading,<br>
+                        &nbsp;&nbsp;error<br>
+                        } = <span class="function">useQuery</span>({<br>
+                        &nbsp;&nbsp;<span class="type">queryKey</span>: [<span class="string">'levels'</span>],<br>
+                        &nbsp;&nbsp;<span class="type">queryFn</span>: () => trpc.level.<span class="function">getAll</span>.<span class="function">query</span>(),<br>
+                        &nbsp;&nbsp;<span class="type">staleTime</span>: <span class="bracket">5 * 60 * 1000</span>,<br>
+                        });
+                    </div>
+                    <ul class="before-after-points">
+                        <li>Donnees partagees entre tous les ecrans</li>
+                        <li>Cache automatique avec invalidation ciblee</li>
+                        <li>Retry, loading et erreurs geres nativement</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="advantage-grid" style="margin-top: 24px;">
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-database icon"></i> Cache intelligent</h4>
+                    <p>Les donnees sont mises en cache cote client et reutilisees sans rappeler l'API inutilement</p>
+                </div>
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-sync-alt icon"></i> Invalidation ciblee</h4>
+                    <p>Seules les donnees impactees par une action sont rafraichies, pas l'ensemble de l'application</p>
+                </div>
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-tachometer-alt icon"></i> Moins de calls API</h4>
+                    <p>Reduction significative du nombre de requetes vers le serveur pour une experience plus fluide</p>
+                </div>
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-wifi icon"></i> Gestion du reseau</h4>
+                    <p>Retry automatique en cas d'echec et gestion des etats de chargement normalises</p>
+                </div>
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-code icon"></i> Code simplifie</h4>
+                    <p>Remplacement des useEffect et useState manuels par des hooks declaratifs (useQuery, useMutation)</p>
+                </div>
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-bolt icon"></i> UX reactive</h4>
+                    <p>L'interface repond instantanement aux actions grace aux mises a jour optimistes du cache</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 5: Gestion des frais -->
+    <div class="slide" data-slide="4">
+        <div class="content">
+            <h2 class="animate-item"><i class="fas fa-percentage icon"></i> Gestion des frais</h2>
+            <div class="frais-grid">
+                <div class="frais-card animate-item">
+                    <div class="frais-icon"><i class="fas fa-umbrella"></i></div>
+                    <h3>Assurance Vie</h3>
+                    <p>Simulation realiste des frais appliques aux contrats d'assurance vie</p>
+                    <ul>
+                        <li>Frais d'entree sur versement</li>
+                        <li>Frais de gestion annuels</li>
+                        <li>Frais de sortie (rachat)</li>
+                    </ul>
+                </div>
+                <div class="frais-card animate-item">
+                    <div class="frais-icon"><i class="fas fa-chart-line"></i></div>
+                    <h3>PEA</h3>
+                    <p>Integration des frais lies au Plan d'Epargne en Actions</p>
+                    <ul>
+                        <li>Frais d'entree (courtage achat)</li>
+                        <li>Frais de gestion (droits de garde)</li>
+                        <li>Frais de sortie (courtage vente)</li>
+                    </ul>
+                </div>
+                <div class="frais-card animate-item">
+                    <div class="frais-icon"><i class="fas fa-briefcase"></i></div>
+                    <h3>CTO</h3>
+                    <p>Frais du Compte-Titres Ordinaire pour une simulation complete</p>
+                    <ul>
+                        <li>Frais d'entree (commission achat)</li>
+                        <li>Frais de gestion (tenue de compte)</li>
+                        <li>Frais de sortie (commission vente)</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="frais-detail animate-item">
+                <h3><i class="fas fa-graduation-cap icon"></i> Objectif pedagogique & realisme</h3>
+                <p>Permettre aux utilisateurs de comprendre l'impact des frais sur leurs investissements a long terme, tout en rendant la simulation plus realiste. Les frais sont appliques automatiquement pour reproduire les conditions reelles du marche et offrir une experience educative fidele.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 6: Fin de partie -->
+    <div class="slide" data-slide="5">
+        <div class="content">
+            <h2 class="animate-item"><i class="fas fa-flag-checkered icon"></i> Amelioration de la fin de partie</h2>
+            <div class="value-grid">
+                <div class="value-card animate-item">
+                    <h3><i class="fas fa-calculator icon"></i> Calcul endGame</h3>
+                    <p>A la fin de la partie, le score financier est calcule en additionnant : solde du wallet + valeur des assets + interets accumules</p>
+                </div>
+                <div class="value-card animate-item">
+                    <h3><i class="fas fa-bullseye icon"></i> Validation des objectifs</h3>
+                    <p>Chaque objectif est valide via son goalType et goalValue. La partie est reussie si l'objectif principal (mandatory) est atteint</p>
+                </div>
+                <div class="value-card animate-item">
+                    <h3><i class="fas fa-window-maximize icon"></i> Modale de fin</h3>
+                    <p>Affichage d'une modale adaptee selon le resultat :<br>
+                    &bull; Principal + bonus OK<br>
+                    &bull; Principal OK / bonus KO<br>
+                    &bull; Principal KO</p>
+                </div>
+                <div class="value-card animate-item">
+                    <h3><i class="fas fa-star icon"></i> Systeme de score</h3>
+                    <p>Score de 1 a 3 etoiles base sur 3 criteres :<br>
+                    &bull; Objectifs principaux atteints<br>
+                    &bull; Objectifs bonus atteints<br>
+                    &bull; Quiz reussi</p>
+                </div>
+            </div>
+            <div class="frais-detail animate-item">
+                <h3><i class="fas fa-trophy icon"></i> Meilleur score conserve</h3>
+                <p>Le meilleur score obtenu est conserve par joueur et par niveau, permettant aux utilisateurs de suivre leur progression et de retenter les niveaux pour ameliorer leurs etoiles.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 7: CI/CD & Tests -->
+    <div class="slide" data-slide="6">
+        <div class="content">
+            <h2 class="animate-item"><i class="fas fa-cogs icon"></i> CI/CD & Tests</h2>
+            <div class="pipeline-flow animate-item">
+                <div class="pipeline-step">
+                    <i class="fas fa-code-branch"></i>
+                    <h4>Push</h4>
+                    <p>Commit sur la branche</p>
+                </div>
+                <span class="pipeline-arrow"><i class="fas fa-arrow-right"></i></span>
+                <div class="pipeline-step">
+                    <i class="fas fa-search"></i>
+                    <h4>Lint</h4>
+                    <p>ESLint + TypeScript</p>
+                </div>
+                <span class="pipeline-arrow"><i class="fas fa-arrow-right"></i></span>
+                <div class="pipeline-step">
+                    <i class="fas fa-cube"></i>
+                    <h4>Build</h4>
+                    <p>Docker + Prisma</p>
+                </div>
+                <span class="pipeline-arrow"><i class="fas fa-arrow-right"></i></span>
+                <div class="pipeline-step">
+                    <i class="fas fa-vial"></i>
+                    <h4>Tests</h4>
+                    <p>Unit + Integration + E2E</p>
+                </div>
+            </div>
+            <div class="ci-detail-grid">
+                <div class="ci-detail-card animate-item">
+                    <h4><i class="fas fa-industry icon"></i> Factory de tests <span class="tag">NOUVEAU</span></h4>
+                    <p>Utilitaire centralise pour generer les donnees de test (utilisateurs, niveaux, quiz). Chaque test est isole et reproductible grace a la factory qui gere la creation et le nettoyage des donnees.</p>
+                </div>
+                <div class="ci-detail-card animate-item">
+                    <h4><i class="fas fa-route icon"></i> Tests E2E <span class="tag">NOUVEAU</span></h4>
+                    <p>Parcours utilisateur complets (inscription, quiz, progression) testes de bout en bout pour valider les scenarios metier reels.</p>
+                </div>
+                <div class="ci-detail-card animate-item">
+                    <h4><i class="fab fa-docker icon"></i> Pipeline Docker</h4>
+                    <p>Build automatise des images Docker avec generation du client Prisma integree, pret pour le deploiement.</p>
+                </div>
+                <div class="ci-detail-card animate-item">
+                    <h4><i class="fas fa-check-double icon"></i> Qualite continue</h4>
+                    <p>Verification automatique du typage TypeScript, du linting ESLint et des tests a chaque push sur le depot.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 8: Site vitrine -->
+    <div class="slide" data-slide="7">
+        <div class="content">
+            <h2 class="animate-item"><i class="fas fa-globe icon"></i> Site vitrine</h2>
+            <div class="animate-item" style="text-align: center; margin-bottom: 20px;">
+                <span class="url-display">cashou.app</span>
+            </div>
+            <div class="value-grid">
+                <div class="value-card animate-item">
+                    <h3><i class="fas fa-rocket icon"></i> Landing page</h3>
+                    <p>Page d'accueil deployee sur Vercel presentant le concept Cashou, avec formulaire d'inscription pour les pre-inscriptions iOS et Android</p>
+                </div>
+                <div class="value-card animate-item">
+                    <h3><i class="fas fa-envelope icon"></i> Collecte d'emails</h3>
+                    <p>Systeme de pre-inscription par plateforme (iOS / Android) avec verification d'email et possibilite de desinscription</p>
+                </div>
+                <div class="value-card animate-item">
+                    <h3><i class="fas fa-shield-alt icon"></i> Conformite RGPD</h3>
+                    <p>Mentions legales, politique de confidentialite et gestion du consentement conformes a la reglementation europeenne</p>
+                </div>
+                <div class="value-card animate-item">
+                    <h3><i class="fas fa-chart-bar icon"></i> Web Analytics</h3>
+                    <p>Integration d'analytics respectueux de la vie privee, sans cookies tiers (suppression de Google Analytics)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 9: Demo -->
+    <div class="slide demo-slide" data-slide="8">
+        <div class="content">
+            <h1 class="animate-item"><i class="fas fa-film" style="color: #FFB472;"></i></h1>
+            <h2 class="animate-item" style="color: #FFB472; font-size: 3.5rem;">Demo</h2>
+            <p class="animate-item">Passons a la demonstration</p>
+        </div>
+    </div>
+
+    <!-- Slide indicators -->
+    <div class="slide-indicator">
+        <span class="indicator active" onclick="goToSlide(0)"></span>
+        <span class="indicator" onclick="goToSlide(1)"></span>
+        <span class="indicator" onclick="goToSlide(2)"></span>
+        <span class="indicator" onclick="goToSlide(3)"></span>
+        <span class="indicator" onclick="goToSlide(4)"></span>
+        <span class="indicator" onclick="goToSlide(5)"></span>
+        <span class="indicator" onclick="goToSlide(6)"></span>
+        <span class="indicator" onclick="goToSlide(7)"></span>
+        <span class="indicator" onclick="goToSlide(8)"></span>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        let slideAnimations = {};
+        const slides = document.querySelectorAll('.slide');
+        const indicators = document.querySelectorAll('.indicator');
+        const totalSlides = slides.length;
+
+        slides.forEach((slide, index) => {
+            slideAnimations[index] = 0;
+        });
+
+        function getAnimateItems(slideIndex) {
+            const slide = slides[slideIndex];
+            return slide ? slide.querySelectorAll('.animate-item') : [];
+        }
+
+        function revealNextItem(slideIndex) {
+            const items = getAnimateItems(slideIndex);
+            const currentAnim = slideAnimations[slideIndex];
+
+            if (currentAnim < items.length) {
+                items[currentAnim].classList.add('visible');
+                slideAnimations[slideIndex] = currentAnim + 1;
+                return false;
+            }
+            return true;
+        }
+
+        function resetSlideAnimations(slideIndex) {
+            const items = getAnimateItems(slideIndex);
+            items.forEach(item => {
+                item.classList.remove('visible');
+            });
+            slideAnimations[slideIndex] = 0;
+        }
+
+        function showSlide(n, revealAll = false) {
+            if (revealAll) {
+                document.body.classList.add('no-transitions');
+            }
+
+            slides[currentSlide].classList.remove('active');
+            indicators[currentSlide].classList.remove('active');
+
+            currentSlide = (n + totalSlides) % totalSlides;
+
+            slides[currentSlide].classList.add('active');
+            indicators[currentSlide].classList.add('active');
+
+            resetSlideAnimations(currentSlide);
+
+            const isDemoSlide = slides[currentSlide].classList.contains('demo-slide');
+
+            if (revealAll || isDemoSlide) {
+                const items = getAnimateItems(currentSlide);
+                items.forEach((item) => {
+                    item.classList.add('visible');
+                });
+                slideAnimations[currentSlide] = items.length;
+
+                if (revealAll) {
+                    setTimeout(() => {
+                        document.body.classList.remove('no-transitions');
+                    }, 10);
+                }
+            } else {
+                revealNextItem(currentSlide);
+            }
+        }
+
+        function nextSlide() {
+            const items = getAnimateItems(currentSlide);
+            const allRevealed = slideAnimations[currentSlide] >= items.length;
+            const isDemoSlide = slides[currentSlide].classList.contains('demo-slide');
+
+            if (isDemoSlide || !allRevealed) {
+                if (!allRevealed) {
+                    revealNextItem(currentSlide);
+                } else {
+                    showSlide(currentSlide + 1);
+                }
+            } else {
+                showSlide(currentSlide + 1);
+            }
+        }
+
+        function previousSlide() {
+            const items = getAnimateItems(currentSlide);
+            const allRevealed = slideAnimations[currentSlide] >= items.length;
+
+            if (!allRevealed && slideAnimations[currentSlide] > 0) {
+                const currentAnim = slideAnimations[currentSlide] - 1;
+                items[currentAnim].classList.remove('visible');
+                slideAnimations[currentSlide] = currentAnim;
+            } else {
+                showSlide(currentSlide - 1, true);
+            }
+        }
+
+        function goToSlide(n) {
+            showSlide(n, true);
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') {
+                e.preventDefault();
+                nextSlide();
+            }
+            else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
+                e.preventDefault();
+                previousSlide();
+            }
+        });
+
+        // Touch/swipe support
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            if (touchEndX > touchStartX + 50) {
+                nextSlide();
+            }
+            if (touchEndX < touchStartX - 50) {
+                previousSlide();
+            }
+        }
+
+        // Verrouillage global
+        let isChangingSlide = false;
+
+        // Trackpad/mouse swipe support
+        let mouseStartX = 0;
+        let mouseStartY = 0;
+        let mouseEndX = 0;
+        let mouseEndY = 0;
+        let isMouseDown = false;
+        let mouseMoveDistance = 0;
+
+        document.addEventListener('mousedown', (e) => {
+            if (isChangingSlide) return;
+            isMouseDown = true;
+            mouseStartX = e.clientX;
+            mouseStartY = e.clientY;
+            mouseMoveDistance = 0;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isMouseDown) {
+                mouseEndX = e.clientX;
+                mouseEndY = e.clientY;
+                const deltaX = Math.abs(mouseEndX - mouseStartX);
+                mouseMoveDistance = Math.max(mouseMoveDistance, deltaX);
+            }
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (isMouseDown && !isChangingSlide) {
+                const deltaX = mouseEndX - mouseStartX;
+                const deltaY = Math.abs(mouseEndY - mouseStartY);
+                if (mouseMoveDistance > 500 && Math.abs(deltaX) > deltaY && Math.abs(deltaX) > 500) {
+                    isChangingSlide = true;
+                    if (deltaX > 0) {
+                        showSlide(currentSlide + 1, true);
+                    } else {
+                        showSlide(currentSlide - 1, true);
+                    }
+                    setTimeout(() => {
+                        isChangingSlide = false;
+                    }, 300);
+                }
+                isMouseDown = false;
+            }
+        });
+
+        // Support trackpad wheel
+        let wheelDeltaX = 0;
+        let lastWheelTime = 0;
+
+        document.addEventListener('wheel', (e) => {
+            if (isChangingSlide) {
+                e.preventDefault();
+                return;
+            }
+
+            if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+                e.preventDefault();
+                const now = Date.now();
+
+                if (now - lastWheelTime > 50) {
+                    wheelDeltaX = 0;
+                }
+
+                wheelDeltaX += e.deltaX;
+                lastWheelTime = now;
+
+                if (Math.abs(wheelDeltaX) > 500) {
+                    isChangingSlide = true;
+                    if (wheelDeltaX > 0) {
+                        showSlide(currentSlide + 1, true);
+                    } else {
+                        showSlide(currentSlide - 1, true);
+                    }
+                    wheelDeltaX = 0;
+
+                    setTimeout(() => {
+                        isChangingSlide = false;
+                    }, 400);
+                }
+            }
+        }, { passive: false });
+
+        // Initialiser
+        showSlide(0, true);
+    </script>
+</body>
+</html>

@@ -1,8 +1,18 @@
+const path = require('path');
 const { getDefaultConfig } = require('expo/metro-config');
+const { withNativeWind } = require('nativewind/metro');
 
-const config = getDefaultConfig(__dirname);
+const projectRoot = __dirname;
+const monorepoRoot = path.resolve(projectRoot, '../..');
 
-// Configure SVG transformer
+const config = getDefaultConfig(projectRoot);
+
+// Only watch the specific monorepo folders that mobile actually needs
+config.watchFolders = [
+  path.resolve(monorepoRoot, 'packages/@cashou/api'),
+  path.resolve(monorepoRoot, 'node_modules'),
+];
+
 config.transformer = {
   ...config.transformer,
   babelTransformerPath: require.resolve('react-native-svg-transformer/expo'),
@@ -12,13 +22,15 @@ config.resolver = {
   ...config.resolver,
   assetExts: config.resolver.assetExts.filter((ext) => ext !== 'svg'),
   sourceExts: [...config.resolver.sourceExts, 'svg'],
-  // Exclude Prisma node_modules from packages to prevent Metro file map conflicts
+  // Let Metro resolve modules from both the mobile app and the monorepo root
+  nodeModulesPaths: [
+    path.resolve(projectRoot, 'node_modules'),
+    path.resolve(monorepoRoot, 'node_modules'),
+  ],
   blockList: [
-    /.*\/packages\/@cashou\/db-app\/node_modules\/prisma\/.*/,
-    /.*\/packages\/@cashou\/db-app\/node_modules\/@prisma\/.*/,
-    /.*\/packages\/@cashou\/db-backoffice\/node_modules\/prisma\/.*/,
-    /.*\/packages\/@cashou\/db-backoffice\/node_modules\/@prisma\/.*/,
+    /.*\/packages\/@cashou\/db-app\/.*/,
+    /.*\/packages\/@cashou\/db-backoffice\/.*/,
   ],
 };
 
-module.exports = config;
+module.exports = withNativeWind(config, { input: './global.css' });

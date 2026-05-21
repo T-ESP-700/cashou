@@ -1,0 +1,15 @@
+meta {
+  name: getPendingEvent
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{base_url}}/api/trpc/auth.getPendingEvent
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}

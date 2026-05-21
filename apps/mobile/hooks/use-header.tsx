@@ -1,8 +1,13 @@
-import React, { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect, ReactNode } from 'react';
 import { useFocusEffect } from 'expo-router';
 
 interface HeaderOptions {
+  title: string;
   showBackButton: boolean;
+  subtitle?: string;
+  isPaused?: boolean;
+  dimmed?: boolean;
+  onTitlePress?: () => void;
   onMenuPress?: () => void;
   onBackPress?: () => void;
 }
@@ -14,6 +19,7 @@ interface HeaderContextType {
 }
 
 const defaultOptions: HeaderOptions = {
+  title: 'Cashou',
   showBackButton: false,
   onMenuPress: undefined,
   onBackPress: undefined,
@@ -49,7 +55,7 @@ export function useHeader() {
 
 // Hook pour configurer le header à chaque focus d'un écran
 export function useHeaderOptions(options: Partial<HeaderOptions>) {
-  const { setOptions } = useHeader();
+  const { setOptions, resetOptions } = useHeader();
 
   // Utiliser une ref pour éviter les boucles infinies avec les fonctions callback
   const optionsRef = useRef(options);
@@ -57,7 +63,29 @@ export function useHeaderOptions(options: Partial<HeaderOptions>) {
 
   useFocusEffect(
     useCallback(() => {
+      // Reset to defaults first, then apply screen-specific options
+      resetOptions();
       setOptions(optionsRef.current);
-    }, [setOptions])
+    }, [setOptions, resetOptions])
   );
+}
+
+/**
+ * Hook for game/* screens to inject the live game date subtitle and isPaused state.
+ * The play/pause icon is rendered by CashouHeader based on the isPaused prop.
+ */
+export function useGameHeaderSubtitle(
+  formattedGameDate: string | null,
+  isPaused: boolean,
+  isEnded: boolean,
+) {
+  const { setOptions } = useHeader();
+
+  useEffect(() => {
+    if (isEnded || !formattedGameDate) {
+      setOptions({ subtitle: undefined, isPaused: undefined });
+      return;
+    }
+    setOptions({ subtitle: formattedGameDate, isPaused });
+  }, [formattedGameDate, isPaused, isEnded, setOptions]);
 }

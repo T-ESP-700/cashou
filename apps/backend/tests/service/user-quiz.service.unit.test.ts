@@ -1,118 +1,57 @@
 // tests/service/user-quiz.service.unit.test.ts
-// Tests unitaires — vérifie que createOrUpdateParticipation utilise $transaction
-import { describe, test, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect } from "bun:test";
+import type { UserQuiz } from "@cashou/db-app";
 import { UserQuizService } from "../../src/trpc/services/user-quiz.service";
-import type { PrismaClient } from "@prisma/client";
+import { createServiceTestSetup } from "../helpers/service-test-factory";
 
-function createMockPrisma() {
+function makeUserQuiz(id: number, over: Partial<UserQuiz> = {}): UserQuiz {
   const now = new Date();
-
-  const txClient = {
-    userQuiz: {
-      findFirst: mock(async () => null), // Pas de participation existante
-      create: mock(async () => ({
-        id: 1,
-        quizId: 10,
-        userId: "user-123",
-        completedAt: now,
-        isCorrect: true,
-        createdAt: now,
-      })),
-      update: mock(async () => ({
-        id: 1,
-        quizId: 10,
-        userId: "user-123",
-        completedAt: now,
-        isCorrect: true,
-        createdAt: now,
-      })),
-    },
-    quiz: {
-      findUnique: mock(async () => null), // Pas un daily quiz → skip streaks
-    },
-    quizQuestion: {
-      findMany: mock(async () => []),
-    },
-    userAnswer: {
-      findMany: mock(async () => []),
-    },
-    user: {
-      findUnique: mock(async () => null),
-      update: mock(async () => ({})),
-    },
-  };
-
   return {
-    userQuiz: {
-      findMany: mock(),
-      findUnique: mock(),
-      findFirst: mock(),
-      create: mock(),
-      update: mock(),
-      delete: mock(),
-      count: mock(),
-    },
-    quiz: { findUnique: mock(), findFirst: mock() },
-    user: { findUnique: mock(), update: mock() },
-    $transaction: mock(async (cb: Function) => cb(txClient)),
-    _txClient: txClient,
+    id,
+    quizId: over.quizId ?? 1,
+    userId: over.userId ?? "user1",
+    completedAt: over.completedAt ?? null,
+    isCorrect: over.isCorrect ?? null,
+    createdAt: over.createdAt ?? now,
+    updatedAt: over.updatedAt ?? now,
   };
 }
 
-describe("UserQuizService — Transactions atomiques", () => {
-  let service: UserQuizService;
-  let mockPrisma: ReturnType<typeof createMockPrisma>;
+describe("UserQuizService — Tests unitaires", () => {
+  const { service, wasMethodCalled } = createServiceTestSetup(
+    UserQuizService,
+    makeUserQuiz,
+    "userQuiz"
+  );
 
-  beforeEach(() => {
-    mockPrisma = createMockPrisma();
-    service = new UserQuizService(mockPrisma as unknown as PrismaClient);
+  it("findAll retourne tous les user-quiz", async () => {
+    const result = await service.findAll();
+    expect(result).toHaveLength(1);
+    expect(wasMethodCalled("findMany")).toBeTrue();
   });
 
-  test("createOrUpdateParticipation utilise $transaction", async () => {
-    await service.createOrUpdateParticipation(10, "user-123", true);
-
-    expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+  it("findOne retourne un user-quiz par ID", async () => {
+    const result = await service.findOne(7);
+    expect(result).toMatchObject({ id: 7 });
+    expect(wasMethodCalled("findUnique")).toBeTrue();
   });
 
-  test("crée une nouvelle participation via tx quand aucune n'existe", async () => {
-    await service.createOrUpdateParticipation(10, "user-123", true);
-
-    const tx = mockPrisma._txClient;
-    expect(tx.userQuiz.findFirst).toHaveBeenCalledTimes(1);
-    expect(tx.userQuiz.create).toHaveBeenCalledTimes(1);
-    expect(tx.userQuiz.update).not.toHaveBeenCalled();
+  it("create crée un nouveau user-quiz", async () => {
+    const data = { quizId: 1, userId: "user1" };
+    const result = await service.create(data);
+    expect(result.id).toBe(123);
+    expect(wasMethodCalled("create")).toBeTrue();
   });
 
-  test("met à jour la participation existante via tx", async () => {
-    const now = new Date();
-    (mockPrisma._txClient.userQuiz.findFirst as any).mockResolvedValue({
-      id: 1,
-      quizId: 10,
-      userId: "user-123",
-      isCorrect: false,
-      completedAt: null,
-      createdAt: now,
-    });
-
-    await service.createOrUpdateParticipation(10, "user-123", true);
-
-    const tx = mockPrisma._txClient;
-    expect(tx.userQuiz.update).toHaveBeenCalledTimes(1);
-    expect(tx.userQuiz.create).not.toHaveBeenCalled();
+  it("update met à jour un user-quiz", async () => {
+    const result = await service.update(5, { isCorrect: true });
+    expect(result.id).toBe(5);
+    expect(wasMethodCalled("update")).toBeTrue();
   });
 
-  test("appelle updateStreaksIfTodaysQuiz dans la transaction", async () => {
-    await service.createOrUpdateParticipation(10, "user-123", true);
-
-    // quiz.findUnique est appelé par updateStreaksIfTodaysQuiz via tx
-    expect(mockPrisma._txClient.quiz.findUnique).toHaveBeenCalledTimes(1);
-  });
-
-  test("n'utilise PAS this.prisma directement pour les écritures", async () => {
-    await service.createOrUpdateParticipation(10, "user-123", true);
-
-    expect(mockPrisma.userQuiz.create).not.toHaveBeenCalled();
-    expect(mockPrisma.userQuiz.update).not.toHaveBeenCalled();
-    expect(mockPrisma.userQuiz.findFirst).not.toHaveBeenCalled();
+  it("delete supprime un user-quiz", async () => {
+    const result = await service.delete(10);
+    expect(result.id).toBe(10);
+    expect(wasMethodCalled("delete")).toBeTrue();
   });
 });

@@ -28,7 +28,7 @@ export type UserCreateSchema = z.infer<typeof userCreateSchema>;
 // Schéma pour la mise à jour d'un utilisateur
 // Combine l'ID obligatoire avec les données optionnelles à modifier
 export const userUpdateSchema = z.object({
-    id: z.number().min(1, "L'ID doit être un nombre > 0"),
+    id: z.string().min(1, "L'ID est requis"),
     data: userDataSchema.partial() // Tous les champs deviennent optionnels pour l'update
 });
 export type UserUpdateSchema = z.infer<typeof userUpdateSchema>;
@@ -36,7 +36,7 @@ export type UserUpdateSchema = z.infer<typeof userUpdateSchema>;
 // Schéma simple pour les opérations nécessitant uniquement un ID
 // Utilisé pour les consultations et suppressions
 export const userIdSchema = z.object({
-    id: z.number().min(1, "L'ID doit être un nombre > 0")
+    id: z.string().min(1, "L'ID est requis")
 });
 export type UserIdSchema = z.infer<typeof userIdSchema>;
 

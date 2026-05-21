@@ -136,6 +136,7 @@ export interface LevelGoal {
   id: number
   levelId: number
   goalId: number
+  isMandatory?: boolean
   createdAt?: string | Date | null
   updatedAt?: string | Date | null
   goal?: Goal | null
@@ -176,7 +177,7 @@ export interface Question {
 
 export interface Answer {
   id: number
-  questionId: number
+  questionId: number | null
   text?: string | null
   isCorrect?: boolean | null
   createdAt?: string | Date | null
@@ -188,6 +189,7 @@ export interface QuizQuestion {
   quizId: number
   questionId: number
   order?: number | null
+  position?: number | null
   createdAt?: string | Date | null
   updatedAt?: string | Date | null
 }
@@ -338,6 +340,7 @@ export interface EntityField {
 export interface ModuleConfig {
   key: BackofficeModule
   title: string
+  description?: string
   badge?: string
   accent?: string
   icon: LucideIcon

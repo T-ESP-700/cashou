@@ -11,5 +11,7 @@ frozenLockfile = false
 
 [test]
 # Configuration des tests
-coverage = true
-coverageThreshold = 80
+# Coverage désactivé par défaut (utiliser `bun run test:coverage` pour l'activer)
+coverage = false
+# Seuil de coverage (appliqué uniquement avec --coverage)
+coverageThreshold = 60

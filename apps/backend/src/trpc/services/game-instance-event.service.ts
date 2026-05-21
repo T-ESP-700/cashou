@@ -1,6 +1,8 @@
-import type { PrismaClient } from "@cashou/db-app";
+import type { Prisma, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import { scheduleGameEvent, cancelGameEvent } from "../../lib/job-queue.ts";
+
+type PrismaDbClient = PrismaClient | Prisma.TransactionClient;
 
 /**
  * Service for managing GameInstanceEvent records.
@@ -18,9 +20,9 @@ import { scheduleGameEvent, cancelGameEvent } from "../../lib/job-queue.ts";
  * scheduledAt shifted forward by the pause duration to maintain the correct game timeline.
  */
 export class GameInstanceEventService {
-  private prisma: PrismaClient;
+  private prisma: PrismaDbClient;
 
-  constructor(prismaClient?: PrismaClient) {
+  constructor(prismaClient?: PrismaDbClient) {
     this.prisma = prismaClient || defaultPrisma;
   }
 
@@ -34,6 +36,8 @@ export class GameInstanceEventService {
    * @param gameInstanceId - The ID of the newly created GameInstance
    */
   async scheduleEventsForGameInstance(gameInstanceId: number): Promise<void> {
+    console.log(`[GameInstanceEventService] ▶️ scheduleEventsForGameInstance called for gameInstanceId=${gameInstanceId}`);
+
     // Fetch the game instance with level and level events
     const gameInstance = await this.prisma.gameInstance.findUnique({
       where: { id: gameInstanceId },
@@ -51,20 +55,38 @@ export class GameInstanceEventService {
       },
     });
 
+    console.log(`[GameInstanceEventService] gameInstance found:`, gameInstance ? `id=${gameInstance.id}, levelId=${gameInstance.levelId}, createdAt=${gameInstance.createdAt}` : 'null');
+
     if (!gameInstance) {
       throw new Error(`GameInstance ${gameInstanceId} not found`);
     }
 
     if (!gameInstance.level) {
-      console.log(`[GameInstanceEventService] GameInstance ${gameInstanceId} has no level, skipping event scheduling`);
+      console.log(`[GameInstanceEventService] ❌ GameInstance ${gameInstanceId} has no level, skipping event scheduling`);
       return;
     }
 
     const level = gameInstance.level;
     const levelEvents = level.levelEvents;
 
+    console.log(`[GameInstanceEventService] Level ${level.id}: found ${levelEvents.length} levelEvents`);
+
+    // Defensive cleanup: if events already exist for this game instance, remove them
+    const existingCount = await this.prisma.gameInstanceEvent.count({ where: { gameInstanceId } });
+    if (existingCount > 0) {
+      console.log(`[GameInstanceEventService] Cleaning up ${existingCount} existing events for GameInstance ${gameInstanceId}`);
+      const oldEvents = await this.prisma.gameInstanceEvent.findMany({
+        where: { gameInstanceId },
+        select: { id: true },
+      });
+      for (const e of oldEvents) {
+        await cancelGameEvent(e.id);
+      }
+      await this.prisma.gameInstanceEvent.deleteMany({ where: { gameInstanceId } });
+    }
+
     if (levelEvents.length === 0) {
-      console.log(`[GameInstanceEventService] Level ${level.id} has no events to schedule`);
+      console.log(`[GameInstanceEventService] ❌ Level ${level.id} has no events to schedule`);
       return;
     }
 
@@ -110,20 +132,20 @@ export class GameInstanceEventService {
       data: eventsToCreate,
     });
 
-    // Fetch the created events to get their IDs
+    // Fetch the created events to get their IDs (sorted by scheduledAt)
     const createdEvents = await this.prisma.gameInstanceEvent.findMany({
       where: { gameInstanceId },
       orderBy: { scheduledAt: "asc" },
     });
 
-    // Schedule pg-boss jobs for each event
-    for (const event of createdEvents) {
-      await scheduleGameEvent(event.id, event.scheduledAt);
+    // Schedule ONLY the first event in pg-boss (chain mode)
+    // Subsequent events will be scheduled when each event is completed by the user
+    if (createdEvents.length > 0) {
+      await scheduleGameEvent(createdEvents[0].id, createdEvents[0].scheduledAt);
+      console.log(
+        `[GameInstanceEventService] Scheduled first event ${createdEvents[0].id} via pg-boss (chain mode). ${createdEvents.length} total events in DB for GameInstance ${gameInstanceId}`
+      );
     }
-
-    console.log(
-      `[GameInstanceEventService] Scheduled ${eventsToCreate.length} events for GameInstance ${gameInstanceId} (DB + pg-boss)`
-    );
   }
 
   /**
@@ -148,6 +170,7 @@ export class GameInstanceEventService {
         gameInstanceId,
         triggeredAt: null,
       },
+      orderBy: { scheduledAt: "asc" },
     });
 
     if (pendingEvents.length === 0) {
@@ -160,28 +183,29 @@ export class GameInstanceEventService {
     // Calculate new scheduled times
     const updatedEvents: { id: number; newScheduledAt: Date }[] = [];
 
-    // Update each event's scheduledAt time in database
-    await this.prisma.$transaction(
-      pendingEvents.map((event) => {
-        const newScheduledAt = new Date(
-          event.scheduledAt.getTime() + pauseDurationSeconds * 1000
-        );
-        updatedEvents.push({ id: event.id, newScheduledAt });
-        return this.prisma.gameInstanceEvent.update({
-          where: { id: event.id },
-          data: { scheduledAt: newScheduledAt },
-        });
-      })
-    );
+    // Update each event's scheduledAt time in database.
+    // This method may run inside an outer interactive transaction, so avoid nesting.
+    for (const event of pendingEvents) {
+      const newScheduledAt = new Date(
+        event.scheduledAt.getTime() + pauseDurationSeconds * 1000
+      );
+      updatedEvents.push({ id: event.id, newScheduledAt });
+      await this.prisma.gameInstanceEvent.update({
+        where: { id: event.id },
+        data: { scheduledAt: newScheduledAt },
+      });
+    }
 
-    // Cancel old pg-boss jobs and schedule new ones with updated times
-    for (const { id, newScheduledAt } of updatedEvents) {
-      await cancelGameEvent(id);
-      await scheduleGameEvent(id, newScheduledAt);
+    // In chain mode, only one pg-boss job exists at a time (the next pending event).
+    // Reschedule only the first pending event (already sorted by scheduledAt asc).
+    if (updatedEvents.length > 0) {
+      const next = updatedEvents[0];
+      await cancelGameEvent(next.id);
+      await scheduleGameEvent(next.id, next.newScheduledAt);
     }
 
     console.log(
-      `[GameInstanceEventService] Shifted ${pendingEvents.length} events forward by ${pauseDurationSeconds}s for GameInstance ${gameInstanceId} (DB + pg-boss rescheduled)`
+      `[GameInstanceEventService] Shifted ${pendingEvents.length} events forward by ${pauseDurationSeconds}s for GameInstance ${gameInstanceId} (DB updated, next pg-boss job rescheduled)`
     );
   }
 
@@ -217,14 +241,16 @@ export class GameInstanceEventService {
     const events = await this.prisma.gameInstanceEvent.findMany({
       where: {
         scheduledAt: { lte: now },
+        processingStartedAt: null,
         triggeredAt: null,
         gameInstance: {
           isEnded: false,
           userId: { not: null }, // Only process events for games with a user
           // Exclude games that are paused with actionRequired=true (already waiting for user action)
+          // Manual pause (actionRequired=false) should NOT block events
           OR: [
             { isPaused: false },
-            { isPaused: true, actionRequired: false }, // Manual pause, events can still be processed
+            { isPaused: true, actionRequired: false },
           ],
         },
       },

@@ -1,9 +1,55 @@
 import { PrismaClient } from '@cashou/db-app';
+import { auth } from '@cashou/auth/server';
 
 const prisma = new PrismaClient();
 
+// Credentials from login-form.tsx
+const TEST_USER_EMAIL = 'test@gmail.com';
+const TEST_USER_PASSWORD = 'azerty123456';
+const TEST_USER_NAME = 'Test User';
+
 async function main() {
   console.log('🌱 Début du seeding du niveau 1: Premier pas dans l\'épargne...');
+
+  // 0. Créer l'utilisateur de test
+  console.log('👤 Création de l\'utilisateur de test...');
+  let testUser = await prisma.user.findFirst({
+    where: { email: TEST_USER_EMAIL }
+  });
+
+  if (!testUser) {
+    try {
+      const signUpResult = await auth.api.signUpEmail({
+        body: {
+          email: TEST_USER_EMAIL,
+          password: TEST_USER_PASSWORD,
+          name: TEST_USER_NAME
+        }
+      });
+
+      if (signUpResult.user) {
+        testUser = await prisma.user.findUnique({
+          where: { id: signUpResult.user.id }
+        });
+        console.log(`✅ Utilisateur créé: ${testUser?.email} (ID: ${testUser?.id})`);
+      } else {
+        console.log('⚠️  Échec de la création de l\'utilisateur via Better-Auth');
+      }
+    } catch (error: unknown) {
+      // Si l'utilisateur existe déjà (erreur 422), on le récupère
+      const err = error as { status?: number; message?: string };
+      if (err?.status === 422 || err?.message?.includes('already exists')) {
+        testUser = await prisma.user.findFirst({
+          where: { email: TEST_USER_EMAIL }
+        });
+        console.log(`ℹ️  Utilisateur existe déjà: ${testUser?.email} (ID: ${testUser?.id})`);
+      } else {
+        console.error('❌ Erreur lors de la création de l\'utilisateur:', error);
+      }
+    }
+  } else {
+    console.log(`ℹ️  Utilisateur existe déjà: ${testUser.email} (ID: ${testUser.id})`);
+  }
 
   // 1. Créer le Market "Épargne & Sécurité"
   console.log("📊 Création du marché Livret, plans et compte épargne...");
@@ -102,7 +148,7 @@ async function main() {
   const livretLED = await prisma.asset.upsert({
     where: { symbol: 'LIVRET_DDS' },
     update: {
-      title: 'Livret de Développement Durable et Solidaire',
+      title: 'Livret DDS',
       fieldId: null,
       rate: 1.7,
       description: 'Livret d\'épargne sécurisé dédié au financement de projets responsables et durables. Rendement stable et légèrement supérieur au Livret A dans l\'univers Cashou. Idéal pour initier le joueur à la notion d\'impact positif tout en conservant une gestion prudente et sans risque.',
@@ -112,7 +158,7 @@ async function main() {
       minAmount: 10     // Montant minimum de dépôt
     },
     create: {
-      title: 'Livret de Développement Durable et Solidaire',
+      title: 'Livret DDS',
       symbol: 'LIVRET_DDS',
       fieldId: null,
       rate: 1.7,
@@ -149,7 +195,7 @@ async function main() {
         title: 'Premier pas dans l\'épargne',
         number: 1,
         duration: 1825,
-        speed: 5258000,
+        speed: 1314000,
         startBalance: 2000,
         pointsRequired: 0,
         description: 'Découvre les bases de l\'épargne avec des produits sécurisés. Apprends à gérer ton capital sans risque et à comprendre les notions essentielles de la finance personnelle.'
@@ -221,6 +267,8 @@ async function main() {
       where: { id: goal.id },
       data: {
         description: 'Ne pas perdre d\'argent par rapport à ton capital initial.',
+        successMessage: 'Tu as réussi à rester en positif.',
+        failureMessage: 'Tu n’as pas réussi à rester en positif, mais ce n’est pas grave, tu feras mieux la prochaine fois !',
         goalType: 'wallet_gte_start',
         goalValue: 0
       }
@@ -230,6 +278,8 @@ async function main() {
       data: {
         title: "Reste en positif",
         description: "Ne pas perdre d'argent par rapport à ton capital initial.",
+        successMessage: "Tu as réussi à rester en positif.",
+        failureMessage: "Tu n’as pas réussi à rester en positif, mais ce n’est pas grave, tu feras mieux la prochaine fois !",
         goalType: 'wallet_gte_start',
         goalValue: 0
       },
@@ -250,11 +300,59 @@ async function main() {
     levelGoal = await prisma.levelGoal.create({
       data: {
         levelId: level.id,
-        goalId: goal.id
-      }
+        goalId: goal.id,
+        isMandatory: true
+      } as { levelId: number; goalId: number; isMandatory?: boolean }
     });
   }
-  console.log(`✅ Level-Goal créé: Level ${level.number} ↔ Goal "${goal.title}"`);
+  console.log(`✅ Level-Goal créé: Level ${level.number} ↔ Goal "${goal.title}" (obligatoire)`);
+
+  // 9b. Optional: create a bonus goal for level 1 (demonstrates mandatory vs bonus)
+  const bonusGoalTitle = "Gagner au moins 100";
+  let bonusGoal = await prisma.goal.findFirst({
+    where: { title: bonusGoalTitle }
+  });
+  if (bonusGoal) {
+    bonusGoal = await prisma.goal.update({
+      where: { id: bonusGoal.id },
+      data: {
+        description: "Avoir au moins 100 cashou de plus que ton capital de départ à la fin du niveau.",
+        successMessage: "Tu as même réussi à faire plus de 100 cashou de plus-value !",
+        failureMessage: "Par contre, tu n’as pas atteint l’objectif secondaire cette fois.",
+        goalType: "wallet_min",
+        goalValue: (level.startBalance ?? 2000) + 100
+      }
+    });
+    console.log(`✅ Objectif bonus mis à jour: ${bonusGoal.title}`);
+  } else {
+    bonusGoal = await prisma.goal.create({
+      data: {
+        title: bonusGoalTitle,
+        description: "Avoir au moins 100 de plus que ton capital de départ à la fin du niveau.",
+        successMessage: "Tu as même réussi à faire plus de 100 cashou de plus-value !",
+        failureMessage: "Par contre, tu n’as pas atteint l’objectif secondaire cette fois.",
+        goalType: "wallet_min",
+        goalValue: (level.startBalance ?? 2000) + 100
+      }
+    });
+    console.log(`✅ Objectif bonus créé: ${bonusGoal.title}`);
+  }
+  let bonusLevelGoal = await prisma.levelGoal.findFirst({
+    where: {
+      levelId: level.id,
+      goalId: bonusGoal.id
+    }
+  });
+  if (!bonusLevelGoal) {
+    bonusLevelGoal = await prisma.levelGoal.create({
+      data: {
+        levelId: level.id,
+        goalId: bonusGoal.id,
+        isMandatory: false
+      } as { levelId: number; goalId: number; isMandatory?: boolean }
+    });
+    console.log(`✅ Level-Goal bonus créé: Level ${level.number} ↔ Goal "${bonusGoal.title}"`);
+  }
 
   // 10. Créer le LevelEvent (timing: ~608 jours = 1/3 de 1825)
   console.log('🔗 Liaison niveau-événement...');
@@ -697,6 +795,34 @@ async function main() {
 
   console.log(`✅ 2 Daily Quiz vérifiés/créés (hier et aujourd'hui) avec 3 questions chacun`);
 
+  // Optional: create a UserLevelCompletion for demo stars — only for the dedicated test user
+  // IMPORTANT: never overwrite real user data with demo values (use findUnique, not findFirst)
+  const demoUser = await prisma.user.findFirst({
+    where: { email: 'test-stars@cashou.fr' }
+  });
+  if (demoUser) {
+    // Only CREATE if no completion exists — never overwrite existing real data
+    const existing = await (prisma as any).userLevelCompletion.findUnique({
+      where: { userId_levelId: { userId: demoUser.id, levelId: level.id } }
+    });
+    if (!existing) {
+      await (prisma as any).userLevelCompletion.create({
+        data: {
+          userId: demoUser.id,
+          levelId: level.id,
+          stars: 2,
+          mandatoryGoalsMet: true,
+          bonusGoalsMet: false,
+          quizPassed: true,
+          completedAt: new Date()
+        }
+      });
+      console.log(`✅ UserLevelCompletion créée pour démo (user: ${demoUser.email}, level 1, 2 étoiles)`);
+    } else {
+      console.log(`ℹ️  UserLevelCompletion existante pour ${demoUser.email} — non écrasée`);
+    }
+  }
+
   console.log('\n✨ ========================================');
   console.log('✅ Seeding du niveau 1 terminé avec succès !');
   console.log('========================================');
@@ -707,9 +833,12 @@ async function main() {
   console.log(`   - 1 Level: ${level.title} (Niveau ${level.number})`);
   console.log(`   - 1 Event: ${event.title}`);
   console.log(`   - 1 Impact: ${impact.coef}% sur ${livretA.symbol}`);
-  console.log(`   - 1 Goal: ${goal.title}`);
+  console.log(`   - 2 Goals: ${goal.title}, ${bonusGoal.title}`);
   console.log(`   - 1 Quiz MCQ avec ${createdQuestions.length} questions`);
   console.log(`   - 2 Daily Quiz (hier et aujourd'hui)`);
+  if (testUser) {
+    console.log(`   - 1 User de test: ${testUser.email}`);
+  }
   console.log('========================================\n');
 }
 

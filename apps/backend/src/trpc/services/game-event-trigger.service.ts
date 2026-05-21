@@ -2,7 +2,7 @@ import type { PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import { GameTimeService } from "./game-time.service.ts";
 import { GameInstanceEventService } from "./game-instance-event.service.ts";
-import { scheduleGameEnd } from "../../lib/job-queue.ts";
+import { scheduleGameEnd, scheduleGameEvent, cancelGameEvent } from "../../lib/job-queue.ts";
 
 export class GameEventTriggerService {
   private prisma: PrismaClient;
@@ -89,8 +89,8 @@ export class GameEventTriggerService {
       `[GameEventTrigger] Event completed for game ${gameInstanceId}, moving to index ${nextIndex}${pauseDuration > 0 ? ` (shifted future events by ${pauseDuration}s)` : ''}`
     );
 
-    // If there are no more events to trigger, schedule the game end job
     if (nextIndex >= levelEvents.length) {
+      // All events completed → schedule game-end
       const updatedGameInstance = await this.prisma.gameInstance.findUnique({
         where: { id: gameInstanceId },
         include: { level: true },
@@ -101,6 +101,20 @@ export class GameEventTriggerService {
           updatedGameInstance
         );
         await scheduleGameEnd(gameInstanceId, remainingTime);
+        console.log(`[GameEventTrigger] All events done for game ${gameInstanceId}, scheduled game-end in ${remainingTime}s`);
+      }
+    } else {
+      // Schedule the next event via pg-boss (chain mode)
+      const nextGameInstanceEvent = await this.prisma.gameInstanceEvent.findFirst({
+        where: {
+          gameInstanceId,
+          triggeredAt: null,
+        },
+        orderBy: { scheduledAt: "asc" },
+      });
+      if (nextGameInstanceEvent) {
+        await scheduleGameEvent(nextGameInstanceEvent.id, nextGameInstanceEvent.scheduledAt);
+        console.log(`[GameEventTrigger] Chained next event ${nextGameInstanceEvent.id} for game ${gameInstanceId}`);
       }
     }
   }
@@ -142,9 +156,17 @@ export class GameEventTriggerService {
       return;
     }
 
-    console.log(
-      `[GameEventTrigger] Events scheduled via pg-boss for game ${gameInstanceId}`
-    );
+    // In chain mode, the first event's pg-boss job is already scheduled by
+    // scheduleEventsForGameInstance(). Log for visibility.
+    const firstEvent = await this.prisma.gameInstanceEvent.findFirst({
+      where: { gameInstanceId, triggeredAt: null },
+      orderBy: { scheduledAt: "asc" },
+    });
+    if (firstEvent) {
+      console.log(
+        `[GameEventTrigger] First event ${firstEvent.id} already scheduled via pg-boss for game ${gameInstanceId} (chain mode)`
+      );
+    }
   }
 
   /**
@@ -173,9 +195,21 @@ export class GameEventTriggerService {
     const currentIndex = gameInstance.currentEventIndex ?? 0;
 
     if (currentIndex >= levelEvents.length) {
+      // All events are done → reschedule game-end
       const remainingTime =
         this.gameTimeService.getRemainingTimeUntilEnd(gameInstance);
       await scheduleGameEnd(gameInstanceId, remainingTime);
+    } else {
+      // Reschedule the next pending event (already shifted in DB by shiftScheduledEvents)
+      const nextEvent = await this.prisma.gameInstanceEvent.findFirst({
+        where: { gameInstanceId, triggeredAt: null },
+        orderBy: { scheduledAt: "asc" },
+      });
+      if (nextEvent) {
+        await cancelGameEvent(nextEvent.id);
+        await scheduleGameEvent(nextEvent.id, nextEvent.scheduledAt);
+        console.log(`[GameEventTrigger] Rescheduled next event ${nextEvent.id} after resume for game ${gameInstanceId}`);
+      }
     }
   }
 }

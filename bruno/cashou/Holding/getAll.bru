@@ -1,0 +1,15 @@
+meta {
+  name: getAll
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/trpc/holding.getAll
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}

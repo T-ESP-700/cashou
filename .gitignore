@@ -20,6 +20,7 @@ coverage-final.json
 # Logs
 logs
 *.log
+log.txt
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 npm-debug.log*
 yarn-debug.log*
@@ -33,6 +34,13 @@ bun-debug.log*
 .env.test.local
 .env.production.local
 .env.local
+
+# Secrets and credentials (SSL, signing keys)
+*.pem
+*.key
+*.p12
+*.keystore
+*.jks
 
 # Database
 *.db
@@ -84,6 +92,17 @@ vite.config.*.timestamp-*
 ehthumbs.db
 Thumbs.db
 
+# PNG and presentation assets at project root (screenshots, slides)
+/*.png
+
+# Playwright (MCP, tests, reports)
+.playwright/
+.playwright-mcp/
+test-results/
+playwright-report/
+blob-report/
+.trace
+
 # Cursor (keep mcp.json for project configuration)
 .cursor/
 !.cursor/mcp.json
@@ -93,7 +112,7 @@ Thumbs.db
 !.claude/settings.json
 
 # Docker
-.dockerignore
+apps/backend/.dockerignore
 docker-compose.override.yml
 
 # Temporary files

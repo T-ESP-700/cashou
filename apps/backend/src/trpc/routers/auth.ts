@@ -6,6 +6,10 @@ import { prisma } from '@cashou/db-app';
 import { getUserActivityService } from '../../services/user-activity.service';
 import { GameTimeService } from '../services/game-time.service';
 import { GameEndTriggerService } from '../services/game-end-trigger.service';
+import { GameEventProcessorService } from '../services/game-event-processor.service';
+import { LevelCompletionService } from '../services/level-completion.service';
+
+const gameEventProcessorService = new GameEventProcessorService(prisma);
 
 export const authRouter = router({
   // Register a new user
@@ -137,6 +141,7 @@ export const authRouter = router({
     };
   }),
 
+  // TODO: Enable password reset when Better-Auth is configured with email plugin
   // Request password reset
   forgotPassword: publicProcedure
     .input(
@@ -146,7 +151,7 @@ export const authRouter = router({
     )
     .mutation(async ({ input }) => {
       try {
-        await auth.api.forgetPassword({
+        await (auth.api as any).forgetPassword({
           body: {
             email: input.email,
             redirectTo: (process.env.FRONTEND_URL || 'http://localhost:3000') + '/reset-password',
@@ -174,26 +179,12 @@ export const authRouter = router({
         newPassword: z.string().min(8),
       })
     )
-    .mutation(async ({ input }) => {
-      try {
-        await auth.api.resetPassword({
-          body: {
-            token: input.token,
-            newPassword: input.newPassword,
-          },
-        });
-
-        return {
-          success: true,
-          message: 'Password reset successful',
-        };
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Failed to reset password';
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message,
-        });
-      }
+    .mutation(async ({ input: _input }) => {
+      // Better-Auth requires email plugin for password reset
+      throw new TRPCError({
+        code: 'NOT_IMPLEMENTED',
+        message: 'Password reset is not yet configured',
+      });
     }),
 
   // Get home screen data (user + game info)
@@ -277,6 +268,12 @@ export const authRouter = router({
       },
     });
 
+    const levelCompletionService = new LevelCompletionService();
+    const lastCompletedStars =
+      lastCompletedGame?.levelId != null
+        ? await levelCompletionService.getCompletion(ctx.session.user.id, lastCompletedGame.levelId)
+        : null;
+
     if (!user) {
       throw new TRPCError({
         code: 'NOT_FOUND',
@@ -291,19 +288,28 @@ export const authRouter = router({
     let currentReturn = 0;
 
     // Vérifier si la partie aurait dû se terminer (safety net)
-    // On ignore les pauses pour cette vérification : si le temps RÉEL depuis
-    // la création dépasse la durée totale, la partie est terminée.
+    // On soustrait les pauses pour ne pas terminer prématurément une partie en pause
     if (activeGame && activeGame.level) {
       const gameTimeService = new GameTimeService();
       const totalDurationSeconds = gameTimeService.calculateTotalDuration(activeGame.level as Parameters<typeof gameTimeService.calculateTotalDuration>[0]);
       const realElapsedSeconds = Math.floor((Date.now() - new Date(activeGame.createdAt).getTime()) / 1000);
-      const shouldHaveEnded = realElapsedSeconds >= totalDurationSeconds;
+      let effectiveElapsedSeconds = realElapsedSeconds - (activeGame.totalPausedDuration ?? 0);
+      // Soustraire aussi la pause en cours si le jeu est actuellement en pause
+      if (activeGame.isPaused && activeGame.pausedAt) {
+        const currentPauseDuration = Math.floor((Date.now() - new Date(activeGame.pausedAt).getTime()) / 1000);
+        effectiveElapsedSeconds -= currentPauseDuration;
+      }
+      effectiveElapsedSeconds = Math.max(0, effectiveElapsedSeconds);
+      const shouldHaveEnded = effectiveElapsedSeconds >= totalDurationSeconds;
 
       console.log(`[getHomeData] Game ${activeGame.id} time check:`, {
         levelDuration: activeGame.level.duration,
         levelSpeed: activeGame.level.speed,
         totalDurationSeconds,
         realElapsedSeconds,
+        effectiveElapsedSeconds,
+        totalPausedDuration: activeGame.totalPausedDuration ?? 0,
+        isPaused: activeGame.isPaused,
         shouldHaveEnded,
         isEnded: activeGame.isEnded,
       });
@@ -311,7 +317,7 @@ export const authRouter = router({
       if (shouldHaveEnded && !activeGame.isEnded) {
         // La partie aurait dû se terminer mais le job n'a pas été exécuté
         const gameId = activeGame.id;
-        console.log(`[getHomeData] Game ${gameId} should have ended, triggering now`);
+        console.log(`[GAME-ENDED] getHomeData safety net: gameInstanceId=${gameId}, levelId=${activeGame.levelId}, userId=${ctx.session.user.id}, effectiveElapsedSeconds=${effectiveElapsedSeconds}, totalDurationSeconds=${totalDurationSeconds}, totalPausedDuration=${activeGame.totalPausedDuration ?? 0}, reason=SAFETY_NET_AUTO_END (time expired but job missed)`);
         try {
           const gameEndTriggerService = new GameEndTriggerService();
           await gameEndTriggerService.triggerGameEnd(gameId);
@@ -364,66 +370,59 @@ export const authRouter = router({
         levelNumber: lastCompletedGame.level?.number,
         levelTitle: lastCompletedGame.level?.title,
         endedAt: lastCompletedGame.endedAt,
+        stars: lastCompletedStars?.stars ?? 0,
+        mandatoryGoalsMet: lastCompletedStars?.mandatoryGoalsMet,
+        bonusGoalsMet: lastCompletedStars?.bonusGoalsMet,
+        quizPassed: lastCompletedStars?.quizPassed,
       } : null,
     };
   }),
 
   // Get pending event that requires user action (fallback for when push notification didn't work)
+  // Also self-heals: if pg-boss missed an overdue event, processes it inline
   getPendingEvent: protectedProcedure.query(async ({ ctx }) => {
-    // Find the active game instance with actionRequired = true
-    const gameInstance = await prisma.gameInstance.findFirst({
+    console.log(`[getPendingEvent] Called for user ${ctx.session.user.id}`);
+    const pendingEvent = await gameEventProcessorService.findPendingEventForUser(
+      ctx.session.user.id
+    );
+
+    console.log(
+      `[getPendingEvent] Path 1 — pending event:`,
+      pendingEvent ? `game=${pendingEvent.gameInstanceId}, event=${pendingEvent.eventId}` : 'null'
+    );
+
+    if (pendingEvent) {
+      return pendingEvent;
+    }
+
+    const recoveredEvent =
+      await gameEventProcessorService.recoverAndProcessNextDueEventForUser(
+        ctx.session.user.id
+      );
+
+    console.log(
+      `[getPendingEvent] Path 2 — recovered event:`,
+      recoveredEvent
+        ? `game=${recoveredEvent.gameInstanceId}, event=${recoveredEvent.eventId}`
+        : 'null'
+    );
+
+    return recoveredEvent;
+  }),
+
+  // Get pending GAME_END notification that hasn't been seen yet (fallback for push)
+  getPendingGameEnd: protectedProcedure.query(async ({ ctx }) => {
+    const unseenNotification = await prisma.notification.findFirst({
       where: {
         userId: ctx.session.user.id,
-        isEnded: false,
-        actionRequired: true,
-        isPaused: true,
+        type: 'GAME_END',
+        isOpened: false,
       },
-      select: {
-        id: true,
-        currentEventIndex: true,
-      },
+      orderBy: { sentAt: 'desc' },
+      select: { gameInstanceId: true },
     });
 
-    if (!gameInstance) {
-      return null;
-    }
-
-    // Find the most recently triggered event for this game instance
-    // This is the event that requires user action
-    const triggeredEvent = await prisma.gameInstanceEvent.findFirst({
-      where: {
-        gameInstanceId: gameInstance.id,
-        triggeredAt: { not: null },
-      },
-      orderBy: {
-        triggeredAt: 'desc',
-      },
-      include: {
-        levelEvent: {
-          include: {
-            event: {
-              select: {
-                id: true,
-                title: true,
-                description: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!triggeredEvent?.levelEvent?.event) {
-      return null;
-    }
-
-    const event = triggeredEvent.levelEvent.event;
-
-    return {
-      gameInstanceId: gameInstance.id,
-      eventId: event.id,
-      title: event.title ?? 'Nouvel événement',
-      body: event.description ?? 'Un événement requiert votre attention dans le jeu.',
-    };
+    if (!unseenNotification?.gameInstanceId) return null;
+    return { gameInstanceId: unseenNotification.gameInstanceId };
   }),
 });

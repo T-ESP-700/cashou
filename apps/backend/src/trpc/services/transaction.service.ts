@@ -1,4 +1,6 @@
-import type { Transaction, PrismaClient } from "@prisma/client";
+// Import depuis @cashou/db-app (et non @prisma/client) car Bun crée des copies séparées
+// de @prisma/client par contexte de résolution, ce qui cause des types incompatibles
+import type { Transaction, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {
   TransactionCreateSchema,
@@ -122,13 +124,27 @@ export class TransactionService {
    * @param walletId - Identifiant du portefeuille
    * @returns Promise<number> - Valeur totale (somme des totalValue)
    */
+  async findByGameInstance(gameInstanceId: number) {
+    return this.prisma.transaction.findMany({
+      where: { gameInstanceId },
+      orderBy: { transactionDate: "asc" },
+      include: {
+        asset: {
+          include: {
+            submarket: true,
+          },
+        },
+      },
+    });
+  }
+
   async getTotalValueByWallet(walletId: number): Promise<number> {
     const transactions = await this.prisma.transaction.findMany({
       where: { walletId },
       select: { totalValue: true },
     });
 
-    return transactions.reduce((sum, t) => {
+    return transactions.reduce((sum: number, t: { totalValue: unknown }) => {
       const value = t.totalValue ? Number(t.totalValue) : 0;
       return sum + value;
     }, 0);

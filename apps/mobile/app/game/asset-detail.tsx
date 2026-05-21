@@ -1,39 +1,46 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
-  useColorScheme as useRNColorScheme,
   ActivityIndicator,
-  TouchableOpacity,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
+import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { trpcClient } from '@/lib/trpc';
 import { useNotifications } from '@/hooks/use-notifications';
-import { useAuth } from '@/hooks/use-auth';
-import { useHeaderOptions } from '@/hooks/use-header';
+import { useHeader, useGameHeaderSubtitle } from '@/hooks/use-header';
+import { useGameRealtime } from '@/hooks/use-game-realtime';
+import { PriceChart } from '@/components/price-chart';
+import { ActionPillButton } from '@/components/ui/ActionPillButton';
 
 export default function AssetDetailScreen() {
-  const colorScheme = useRNColorScheme();
-  const isDark = colorScheme === 'dark';
-  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const { colors: theme, isDark, status } = useCashouTheme();
   const router = useRouter();
   const params = useLocalSearchParams();
   const insets = useSafeAreaInsets();
-  const { activeGameInstanceId, pendingEventCompletion, setPendingEventCompletion, setAssetsScreenDepth, assetsScreenDepthRef, setIsOnAssetsScreen, setPausedByAssets } = useNotifications();
-  const { user } = useAuth();
+  const { setAssetsScreenDepth, assetsScreenDepthRef } = useNotifications();
 
-  // Configure header for this screen
-  useHeaderOptions({ showBackButton: true });
+  // Keep the game header (Niveau X + date) — only ensure back button is shown
+  const { setOptions: setHeaderOptions } = useHeader();
+  const { formattedGameDate, state: realtimeState } = useGameRealtime();
+  useGameHeaderSubtitle(formattedGameDate, realtimeState.isPaused, realtimeState.isEnded);
+
+  useFocusEffect(
+    useCallback(() => {
+      setHeaderOptions({ showBackButton: true });
+    }, [setHeaderOptions])
+  );
 
   const [asset, setAsset] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentHolding, setCurrentHolding] = useState(0);
+  const [priceHistory, setPriceHistory] = useState<any[]>([]);
 
   // Get params from URL
   const assetIdParam = params?.id;
@@ -41,104 +48,19 @@ export default function AssetDetailScreen() {
   const gameInstanceId = params?.gameInstanceId as string;
   const walletId = params?.walletId as string;
 
-  // Use refs to track values needed during cleanup to avoid stale closure issues
-  const activeGameInstanceIdRef = useRef(activeGameInstanceId);
-  const userRef = useRef(user);
-  const pendingEventCompletionRef = useRef(pendingEventCompletion);
-
-  // Keep refs in sync with current values
-  useEffect(() => {
-    activeGameInstanceIdRef.current = activeGameInstanceId;
-  }, [activeGameInstanceId]);
-
-  useEffect(() => {
-    userRef.current = user;
-  }, [user]);
-
-  useEffect(() => {
-    pendingEventCompletionRef.current = pendingEventCompletion;
-  }, [pendingEventCompletion]);
-
-  // Track depth for nested navigation
+  // Track depth for nested navigation — asset-detail only manages the depth counter.
+  // Resume logic is handled exclusively by assets.tsx (the screen that paused the game).
   useFocusEffect(
     useCallback(() => {
       console.log('[AssetDetailScreen] ENTER - currentDepth:', assetsScreenDepthRef.current);
-
-      // Increment depth when entering asset-detail (the ref is updated by setAssetsScreenDepth in the context)
       setAssetsScreenDepth((prev: number) => prev + 1);
 
       return () => {
-        // Get current values from refs to avoid stale closures
-        const gameId = activeGameInstanceIdRef.current;
-        const currentUser = userRef.current;
-        const pendingCompletion = pendingEventCompletionRef.current;
-
-        console.log('[AssetDetailScreen] EXIT - gameId:', gameId, 'user:', currentUser?.id, 'currentDepth:', assetsScreenDepthRef.current);
-
-        // Decrement depth when leaving asset-detail (the ref is updated by setAssetsScreenDepth in the context)
         const newDepth = Math.max(0, assetsScreenDepthRef.current - 1);
         setAssetsScreenDepth(newDepth);
-
         console.log('[AssetDetailScreen] EXIT - newDepth:', newDepth);
-
-        // If we're leaving all assets screens (depth = 0), wait a bit then check if we should resume
-        // The delay allows assets.tsx to increment depth if we're navigating back there
-        if (newDepth === 0 && gameId && currentUser) {
-          console.log('[AssetDetailScreen] EXIT - Depth is 0, scheduling resume check in 150ms');
-
-          setTimeout(async () => {
-            console.log('[AssetDetailScreen] EXIT - Resume check executing, current depth:', assetsScreenDepthRef.current);
-
-            // Check if depth is still 0 after the delay (no other assets screen took focus)
-            if (assetsScreenDepthRef.current > 0) {
-              console.log('[AssetDetailScreen] ⏸️  Another assets screen took focus (depth=' + assetsScreenDepthRef.current + '), not resuming');
-              return;
-            }
-
-            console.log('[AssetDetailScreen] EXIT - No other assets screen, proceeding with resume');
-
-            try {
-              // Check current game state before resuming
-              console.log('[AssetDetailScreen] EXIT - Fetching game state...');
-              const gameInstance = await trpcClient.gameInstance.getById.query({ id: gameId });
-              const isCurrentlyPaused = gameInstance?.isPaused ?? false;
-
-              console.log('[AssetDetailScreen] EXIT - Game state: isPaused=', isCurrentlyPaused);
-
-              // Resume if game is currently paused
-              if (isCurrentlyPaused) {
-                console.log('[AssetDetailScreen] 🎮 Resuming game', gameId);
-                await trpcClient.gameInstance.resume.mutate({ id: gameId });
-                console.log('[AssetDetailScreen] ✅ Game resumed successfully');
-              } else {
-                console.log('[AssetDetailScreen] ⚠️  Game is not paused, nothing to resume');
-              }
-
-              // Complete pending event if any
-              if (pendingCompletion && pendingCompletion === gameId) {
-                console.log('[AssetDetailScreen] 📋 Completing pending event for game', gameId);
-                await trpcClient.gameInstance.completeEvent.mutate({ id: gameId });
-                setPendingEventCompletion(null);
-                console.log('[AssetDetailScreen] ✅ Event completed');
-              }
-
-              setPausedByAssets(false);
-              setIsOnAssetsScreen(false);
-            } catch (error) {
-              console.error('[AssetDetailScreen] ❌ Failed to resume game or complete event:', error);
-              if (pendingCompletion === gameId) {
-                setPendingEventCompletion(null);
-              }
-              setPausedByAssets(false);
-              setIsOnAssetsScreen(false);
-            }
-          }, 150); // Wait 150ms to see if another assets screen takes focus
-        } else {
-          console.log('[AssetDetailScreen] EXIT - Not leaving all assets (newDepth=' + newDepth + ' or no game/user)');
-          setIsOnAssetsScreen(newDepth > 0);
-        }
       };
-    }, [setAssetsScreenDepth, setPendingEventCompletion, setIsOnAssetsScreen, setPausedByAssets, assetsScreenDepthRef])
+    }, [setAssetsScreenDepth, assetsScreenDepthRef])
   );
 
   useEffect(() => {
@@ -155,16 +77,43 @@ export default function AssetDetailScreen() {
         const data = await trpcClient.asset.getById.query({ id: parseInt(assetId) });
         setAsset(data);
 
-        // Fetch current holding if walletId is provided
-        if (walletId) {
+        // Fetch price history with event coefs applied
+        try {
+          if (gameInstanceId) {
+            const history = await trpcClient.assetHistory.getForGame.query({
+              assetId: parseInt(assetId),
+              gameInstanceId: parseInt(gameInstanceId),
+            });
+            setPriceHistory(history);
+          } else if (data?.assetHistories) {
+            // No game context — show raw history
+            setPriceHistory(data.assetHistories);
+          }
+        } catch (e) {
+          console.error('[AssetDetail] Failed to load price history:', e);
+          // Fallback to raw included data
+          if (data?.assetHistories) setPriceHistory(data.assetHistories);
+        }
+
+        // Fetch current holding value (price-based) via portfolio endpoint
+        if (walletId && gameInstanceId) {
           try {
-            const holdings = await trpcClient.holding.getByWallet.query({ walletId: parseInt(walletId) });
-            const holding = holdings.find((h: any) => h.assetId === parseInt(assetId));
-            if (holding) {
-              setCurrentHolding(Number(holding.quantity) || 0);
+            const portfolio = await trpcClient.investment.getPortfolio.query({
+              walletId: parseInt(walletId),
+              gameInstanceId: parseInt(gameInstanceId),
+            });
+            const item = portfolio.items.find((i: any) => i.holding.assetId === parseInt(assetId));
+            if (item) {
+              setCurrentHolding(Math.round(item.totalValue));
             }
           } catch (e) {
-            console.error('[AssetDetail] Failed to load holding:', e);
+            console.error('[AssetDetail] Failed to load portfolio:', e);
+            // Fallback to raw holding quantity
+            try {
+              const holdings = await trpcClient.holding.getByWallet.query({ walletId: parseInt(walletId) });
+              const holding = holdings.find((h: any) => h.assetId === parseInt(assetId));
+              if (holding) setCurrentHolding(Number(holding.quantity) || 0);
+            } catch {}
           }
         }
       } catch (e: any) {
@@ -176,7 +125,7 @@ export default function AssetDetailScreen() {
     };
 
     fetchAsset();
-  }, [assetId, walletId]);
+  }, [assetId, walletId, gameInstanceId]);
 
   const handleBuy = () => {
     router.push({
@@ -203,6 +152,22 @@ export default function AssetDetailScreen() {
   };
 
   const canTrade = gameInstanceId && walletId;
+  const submarketType = asset?.submarket?.type; // 'SAVINGS' | 'INSURANCE' | 'STOCK'
+  const isSavings = submarketType === 'SAVINGS';
+  const isStock = submarketType === 'STOCK';
+
+  // Badge colors per submarket type (same as current.tsx)
+  const getSubmarketBadgeStyle = (submarketTitle: string) => {
+    const lower = submarketTitle.toLowerCase();
+    if (lower.includes('epargne') || lower.includes('épargne')) return { bg: '#C8E6C9', text: '#388E3C' };
+    if (lower.includes('bourse') || lower.includes('action')) return { bg: '#E1D5F0', text: '#6A1B9A' };
+    if (lower.includes('crypto')) return { bg: '#FFE0B2', text: '#E65100' };
+    if (lower.includes('immobilier')) return { bg: '#B3E5FC', text: '#0277BD' };
+    return { bg: '#E0E0E0', text: '#424242' };
+  };
+  const badgeStyle = asset?.submarket?.title
+    ? getSubmarketBadgeStyle(asset.submarket.title)
+    : { bg: theme.accent, text: '#1C1E33' };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -216,21 +181,21 @@ export default function AssetDetailScreen() {
           </View>
         ) : error ? (
           <View style={styles.centerContainer}>
-            <Text style={[styles.errorText, { color: '#DC2626', fontFamily: CashouTheme.fonts.body }]}>
+            <Text style={[styles.errorText, { color: status.error, fontFamily: CashouTheme.fonts.body }]}>
               {error}
             </Text>
           </View>
         ) : asset ? (
           <>
             {/* Header Section with Title and Symbol */}
-            <View style={[styles.headerSection, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={[styles.headerSection, { backgroundColor: theme.card }]}>
               <Text style={[styles.assetTitle, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>
                 {asset.title || 'Sans titre'}
               </Text>
-              {asset.symbol && (
-                <View style={[styles.symbolBadge, { backgroundColor: theme.accent }]}>
-                  <Text style={[styles.symbolText, { fontFamily: CashouTheme.fonts.subheading }]}>
-                    {asset.symbol}
+              {asset.submarket?.title && (
+                <View style={[styles.assetBadge, { backgroundColor: badgeStyle.bg }]}>
+                  <Text style={[styles.assetBadgeText, { color: badgeStyle.text }]}>
+                    {asset.submarket.title}
                   </Text>
                 </View>
               )}
@@ -238,7 +203,7 @@ export default function AssetDetailScreen() {
 
             {/* Current Holding Section */}
             {currentHolding > 0 && (
-              <View style={[styles.section, styles.holdingSection, { backgroundColor: '#4CAF5020', borderColor: '#4CAF50' }]}>
+              <View style={[styles.section, styles.holdingSection, { backgroundColor: '#4CAF5020' }]}>
                 <View style={styles.holdingHeader}>
                   <Ionicons name="wallet" size={24} color="#4CAF50" />
                   <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading, marginBottom: 0, marginLeft: 8 }]}>
@@ -251,28 +216,97 @@ export default function AssetDetailScreen() {
               </View>
             )}
 
-            {/* Rate Section */}
-            {typeof asset.rate === 'number' && (
-              <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            {/* Savings: Rate & Cap info instead of chart */}
+            {isSavings && (
+              <View style={[styles.section, { backgroundColor: theme.card }]}>
                 <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
-                  Taux
+                  Conditions
                 </Text>
-                <View style={styles.rateContainer}>
-                  <Ionicons
-                    name={asset.rate >= 0 ? 'caret-up' : 'caret-down'}
-                    size={24}
-                    color="#FFB472"
-                  />
-                  <Text style={[styles.rateValue, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>
-                    {Math.abs(asset.rate)}%
-                  </Text>
-                </View>
+                {asset.rate != null && (
+                  <View style={styles.infoRow}>
+                    <Text style={[styles.infoLabel, { color: theme.text, opacity: 0.7, fontFamily: CashouTheme.fonts.body }]}>
+                      Taux annuel garanti
+                    </Text>
+                    <Text style={[styles.infoValue, { color: '#4CAF50', fontFamily: CashouTheme.fonts.heading }]}>
+                      {asset.rate}%
+                    </Text>
+                  </View>
+                )}
+                {asset.maxAmount != null && (
+                  <View style={[styles.infoRow, { marginTop: 8 }]}>
+                    <Text style={[styles.infoLabel, { color: theme.text, opacity: 0.7, fontFamily: CashouTheme.fonts.body }]}>
+                      Plafond
+                    </Text>
+                    <Text style={[styles.infoValue, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>
+                      {Number(asset.maxAmount).toLocaleString('fr-FR')} EUR
+                    </Text>
+                  </View>
+                )}
+                {asset.minAmount != null && (
+                  <View style={[styles.infoRow, { marginTop: 8 }]}>
+                    <Text style={[styles.infoLabel, { color: theme.text, opacity: 0.7, fontFamily: CashouTheme.fonts.body }]}>
+                      Dépôt minimum
+                    </Text>
+                    <Text style={[styles.infoValue, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>
+                      {Number(asset.minAmount).toLocaleString('fr-FR')} EUR
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
 
+            {/* Price Chart Section — only for non-savings assets */}
+            {!isSavings && priceHistory.length >= 2 && (
+              <View style={[styles.section, { backgroundColor: theme.card }]}>
+                <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
+                  Cours
+                </Text>
+                <PriceChart data={priceHistory} isDark={isDark} theme={theme} />
+              </View>
+            )}
+
+            {/* Current Price Section — only for non-savings assets */}
+            {!isSavings && priceHistory.length >= 2 && (() => {
+              const sorted = [...priceHistory].sort((a: any, b: any) =>
+                new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+              );
+              const currentPrice = Number(sorted[sorted.length - 1].value) / 100;
+              const previousPrice = Number(sorted[sorted.length - 2].value) / 100;
+              const dailyChange = currentPrice - previousPrice;
+              const dailyChangePercent = (dailyChange / previousPrice) * 100;
+              const isUp = dailyChange >= 0;
+              return (
+                <View style={[styles.section, { backgroundColor: theme.card }]}>
+                  <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
+                    Prix actuel
+                  </Text>
+                  <View style={styles.rateContainer}>
+                    <Text style={[styles.rateValue, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>
+                      {currentPrice.toFixed(2)} EUR
+                    </Text>
+                  </View>
+                  <View style={[styles.rateContainer, { marginTop: 4 }]}>
+                    <Ionicons
+                      name={isUp ? 'caret-up' : 'caret-down'}
+                      size={16}
+                      color={isUp ? '#4CAF50' : '#F44336'}
+                    />
+                    <Text style={[{
+                      fontSize: 14,
+                      marginLeft: 4,
+                      color: isUp ? '#4CAF50' : '#F44336',
+                      fontFamily: CashouTheme.fonts.body,
+                    }]}>
+                      {isUp ? '+' : ''}{dailyChange.toFixed(2)} EUR ({isUp ? '+' : ''}{dailyChangePercent.toFixed(1)}%)
+                    </Text>
+                  </View>
+                </View>
+              );
+            })()}
+
             {/* Description Section */}
             {asset.description && (
-              <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={[styles.section, { backgroundColor: theme.card }]}>
                 <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
                   Description
                 </Text>
@@ -284,7 +318,7 @@ export default function AssetDetailScreen() {
 
             {/* Market Information */}
             {asset.market && (
-              <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={[styles.section, { backgroundColor: theme.card }]}>
                 <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
                   Marché
                 </Text>
@@ -301,7 +335,7 @@ export default function AssetDetailScreen() {
 
             {/* Submarket Information */}
             {asset.submarket && (
-              <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={[styles.section, { backgroundColor: theme.card }]}>
                 <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
                   Sous-marché
                 </Text>
@@ -318,7 +352,7 @@ export default function AssetDetailScreen() {
 
             {/* Field Information */}
             {asset.field && (
-              <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={[styles.section, { backgroundColor: theme.card }]}>
                 <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
                   Domaine
                 </Text>
@@ -329,7 +363,7 @@ export default function AssetDetailScreen() {
             )}
 
             {/* Additional Information Section */}
-            <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={[styles.section, { backgroundColor: theme.card }]}>
               <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
                 Informations complémentaires
               </Text>
@@ -359,7 +393,7 @@ export default function AssetDetailScreen() {
 
             {/* Asset History */}
             {asset.assetHistories && asset.assetHistories.length > 0 && (
-              <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={[styles.section, { backgroundColor: theme.card }]}>
                 <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
                   Historique
                 </Text>
@@ -371,7 +405,7 @@ export default function AssetDetailScreen() {
 
             {/* Transactions */}
             {asset.transactions && asset.transactions.length > 0 && (
-              <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={[styles.section, { backgroundColor: theme.card }]}>
                 <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
                   Transactions
                 </Text>
@@ -383,7 +417,7 @@ export default function AssetDetailScreen() {
 
             {/* Events */}
             {asset.eventAssets && asset.eventAssets.length > 0 && (
-              <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={[styles.section, { backgroundColor: theme.card }]}>
                 <Text style={[styles.sectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
                   Événements
                 </Text>
@@ -396,31 +430,20 @@ export default function AssetDetailScreen() {
         ) : null}
       </ScrollView>
 
-      {/* Bottom Buy/Sell Buttons */}
+      {/* Bottom Buy/Sell Floating Buttons */}
       {canTrade && asset && !loading && !error && (
-        <View style={[styles.bottomButtons, { paddingBottom: insets.bottom + 16, backgroundColor: theme.background }]}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.buyButton]}
+        <View style={[styles.bottomButtons, { paddingBottom: insets.bottom + 8 }]}>
+          <ActionPillButton
+            label={isSavings ? 'Déposer' : 'Acheter'}
+            iconName={isSavings ? 'download-outline' : 'arrow-down-circle'}
             onPress={handleBuy}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="arrow-down-circle" size={24} color="#FFFFFF" />
-            <Text style={styles.actionButtonText}>Acheter</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              styles.sellButton,
-              currentHolding === 0 && styles.actionButtonDisabled,
-            ]}
+          />
+          <ActionPillButton
+            label={isSavings ? 'Retirer' : 'Vendre'}
+            iconName={isSavings ? 'upload-outline' : 'arrow-up-circle'}
             onPress={handleSell}
-            activeOpacity={0.8}
             disabled={currentHolding === 0}
-          >
-            <Ionicons name="arrow-up-circle" size={24} color="#FFFFFF" />
-            <Text style={styles.actionButtonText}>Vendre</Text>
-          </TouchableOpacity>
+          />
         </View>
       )}
     </View>
@@ -430,6 +453,7 @@ export default function AssetDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingBottom: 100,
   },
   scrollContent: {
     paddingHorizontal: 16,
@@ -452,9 +476,8 @@ const styles = StyleSheet.create({
   },
   headerSection: {
     padding: 20,
-    borderRadius: CashouTheme.borderRadius.lg,
-    borderWidth: 1,
-    marginBottom: 16,
+    borderRadius: 22,
+    marginBottom: 8,
     alignItems: 'center',
   },
   assetTitle: {
@@ -462,20 +485,21 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     textAlign: 'center',
   },
-  symbolBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+  assetBadge: {
+    alignSelf: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
     borderRadius: 999,
   },
-  symbolText: {
-    fontSize: 16,
-    color: '#1C1E33',
+  assetBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'Anybody',
   },
   section: {
     padding: 16,
-    borderRadius: CashouTheme.borderRadius.lg,
-    borderWidth: 1,
-    marginBottom: 16,
+    borderRadius: 22,
+    marginBottom: 8,
   },
   sectionTitle: {
     fontSize: 18,
@@ -532,30 +556,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     flexDirection: 'row',
-    padding: 16,
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  buyButton: {
-    backgroundColor: '#4CAF50',
-  },
-  sellButton: {
-    backgroundColor: '#FF9800',
-  },
-  actionButtonDisabled: {
-    opacity: 0.5,
-  },
-  actionButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    gap: 12,
   },
 });

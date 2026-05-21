@@ -1,219 +1,178 @@
-import { Tabs, usePathname } from 'expo-router';
-import React from 'react';
-import { useColorScheme as useRNColorScheme, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 
+import { Tabs, usePathname } from 'expo-router';
+import { BottomTabBarProps , BottomTabBar } from '@react-navigation/bottom-tabs';
+import React from 'react';
+import { Platform, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HapticTab } from '@/components/haptic-tab';
 import { CashouTheme } from '@/constants/cashou-theme';
+import { useThemePreference } from '@/hooks/use-theme-provider';
+
+import TabHome from '@/assets/images/tab-home.svg';
+import TabDico from '@/assets/images/tab-dico.svg';
+import TabProfil from '@/assets/images/tab-profil.svg';
+import TabHistory from '@/assets/images/tab-history.svg';
+
+const TAB_BAR_HEIGHT = 74;
+const TAB_BAR_MARGIN_HORIZONTAL = 40;
+const TAB_BAR_MARGIN_BOTTOM = 28;
+
+const ICON_SIZE = 28;
+const ICON_STROKE_WIDTH = 3;
 
 export default function TabLayout() {
-  const colorScheme = useRNColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { isDark } = useThemePreference();
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
-  const pathname = usePathname();
+  const insets = useSafeAreaInsets();
 
-  // Pages liees aux niveaux (l'icone doit etre en focus)
-  const isLevelsRelated = pathname === '/game-history' || pathname === '/summary';
+  const focusedIconColor = isDark ? '#FFFFFF' : '#172D4E';
+  const unfocusedIconColor = isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)';
+
+  const bottomMargin = Platform.OS === 'ios'
+    ? Math.max(TAB_BAR_MARGIN_BOTTOM, insets.bottom - 8)
+    : Math.max(TAB_BAR_MARGIN_BOTTOM, insets.bottom + 8);
+
+  const renderTabIcon = (SvgIcon: React.FC<any>, focused: boolean) => (
+    <View
+      style={{
+        flex: 1,
+        alignSelf: 'stretch',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 9999,
+        backgroundColor: focused ? (isDark ? theme.accent : '#FFFFFF') : 'transparent',
+      }}
+    >
+      <SvgIcon
+        width={ICON_SIZE}
+        height={ICON_SIZE}
+        color={focused ? focusedIconColor : unfocusedIconColor}
+        strokeWidth={ICON_STROKE_WIDTH}
+      />
+    </View>
+  );
+
+  const pathname = usePathname();
+  const hiddenTabBarRoutes = ['/daily-quiz', '/summary'];
+  const isTabBarHidden = hiddenTabBarRoutes.some((route) => pathname.includes(route));
 
   return (
+
     <Tabs
+      tabBar={(props: BottomTabBarProps) => {
+        if (isTabBarHidden) return null;
+        return (
+          <View>
+            {/* Overlay: from mid-tabbar down to screen bottom */}
+            <View
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: bottomMargin + TAB_BAR_HEIGHT / 2,
+                backgroundColor: theme.background,
+                opacity: 0.85,
+              }}
+            />
+            <BottomTabBar {...props} />
+          </View>
+        );
+      }}
       screenOptions={{
-        tabBarActiveTintColor: theme.accent,
-        tabBarInactiveTintColor: isDark ? '#9BA1A6' : '#687076',
+        tabBarActiveTintColor: isDark ? '#FFFFFF' : '#1C1E33',
+        tabBarInactiveTintColor: isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)',
         tabBarStyle: {
+          position: "absolute",
+          bottom: bottomMargin,
+          left: TAB_BAR_MARGIN_HORIZONTAL,
+          right: TAB_BAR_MARGIN_HORIZONTAL,
+          width: undefined,
+          height: TAB_BAR_HEIGHT,
           backgroundColor: theme.primary,
+          borderRadius: TAB_BAR_HEIGHT / 2,
           borderTopWidth: 0,
-          paddingTop: 12,
-          paddingBottom: 12,
-          height: 80,
+          borderWidth: 0,
+          padding: 2,
+          marginHorizontal: 16,
+          overflow: 'hidden',
+          zIndex: 20,
+        },
+        tabBarItemStyle: {
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'stretch',
+          height: TAB_BAR_HEIGHT,
+          paddingTop: 0,
+          paddingBottom: 0,
+          borderRadius: 9999,
+          overflow: 'hidden',
+        },
+        tabBarIconStyle: {
+          flex: 1,
+          width: '100%',
+          alignSelf: 'stretch',
+          marginTop: 0,
+          marginBottom: 0,
         },
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarShowLabel: false,
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ size, focused }) => (
-            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-              {focused && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    backgroundColor: '#E87F00',
-                    borderRadius: 14,
-                    width: size + 20,
-                    height: size + 20,
-                  }}
-                />
-              )}
-              <Ionicons
-                name={(focused ? "home" : "home-outline") as any}
-                size={size}
-                color="#FFFFFF"
-                style={{ opacity: focused ? 1 : 0.6 }}
-              />
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="wallet"
-        options={{
-          title: 'Wallet',
-          tabBarIcon: ({ size, focused }) => (
-            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-              {focused && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    backgroundColor: '#E87F00',
-                    borderRadius: 14,
-                    width: size + 20,
-                    height: size + 20,
-                  }}
-                />
-              )}
-              <Ionicons
-                name="logo-usd"
-                size={size}
-                color="#FFFFFF"
-                style={{ opacity: focused ? 1 : 0.6 }}
-              />
-            </View>
-          ),
-          href: null, // Hide for now as route doesn't exist yet
-        }}
-      />
-      <Tabs.Screen
-        name="learn"
-        options={{
-          title: 'Learn',
-          tabBarIcon: ({ size, focused }) => (
-            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-              {focused && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    backgroundColor: '#E87F00',
-                    borderRadius: 14,
-                    width: size + 20,
-                    height: size + 20,
-                  }}
-                />
-              )}
-              <Ionicons
-                name={(focused ? "book" : "book-outline") as any}
-                size={size}
-                color="#FFFFFF"
-                style={{ opacity: focused ? 1 : 0.6 }}
-              />
-            </View>
-          ),
-          href: null, // Hide for now as route doesn't exist yet
+          title: "Home",
+          tabBarIcon: ({ focused }) => renderTabIcon(TabHome, focused),
         }}
       />
       <Tabs.Screen
         name="dico"
         options={{
-          title: 'Dico',
-          tabBarIcon: ({ size, focused }) => (
-            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-              {focused && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    backgroundColor: '#E87F00',
-                    borderRadius: 14,
-                    width: size + 20,
-                    height: size + 20,
-                  }}
-                />
-              )}
-              <Ionicons
-                name={(focused ? "book" : "book-outline") as any}
-                size={size}
-                color="#FFFFFF"
-                style={{ opacity: focused ? 1 : 0.6 }}
-              />
-            </View>
-          ),
+          title: "Dico",
+          tabBarIcon: ({ focused }) => renderTabIcon(TabDico, focused),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Account',
-          tabBarIcon: ({ size, focused }) => (
-            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-              {focused && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    backgroundColor: '#E87F00',
-                    borderRadius: 14,
-                    width: size + 20,
-                    height: size + 20,
-                  }}
-                />
-              )}
-              <Ionicons
-                name={(focused ? "person" : "person-outline") as any}
-                size={size}
-                color="#FFFFFF"
-                style={{ opacity: focused ? 1 : 0.6 }}
-              />
-            </View>
-          ),
+          title: "Account",
+          tabBarIcon: ({ focused }) => renderTabIcon(TabProfil, focused),
         }}
       />
       <Tabs.Screen
         name="game-history"
         options={{
-          title: 'Niveaux',
-          tabBarIcon: ({ size }) => {
-            const isFocused = isLevelsRelated;
-            return (
-              <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-                {isFocused && (
-                  <View
-                    style={{
-                      position: 'absolute',
-                      backgroundColor: '#E87F00',
-                      borderRadius: 14,
-                      width: size + 20,
-                      height: size + 20,
-                    }}
-                  />
-                )}
-                <Ionicons
-                  name={(isFocused ? "game-controller" : "game-controller-outline") as any}
-                  size={size}
-                  color="#FFFFFF"
-                  style={{ opacity: isFocused ? 1 : 0.6 }}
-                />
-              </View>
-            );
-          },
+          title: 'History',
+          tabBarIcon: ({ focused }) => renderTabIcon(TabHistory, focused),
         }}
       />
       <Tabs.Screen
         name="daily-quiz"
         options={{
-          href: null, // Masquer de la tab bar
+          href: null,
+          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
-          href: null, // Masquer de la tab bar
+          href: null,
         }}
       />
       <Tabs.Screen
         name="summary"
         options={{
-          href: null, // Masquer de la tab bar
+          href: null,
+          tabBarStyle: { display: 'none' },
+        }}
+      />
+      <Tabs.Screen
+        name="levels"
+        options={{
+          href: null, // Hidden tab, navigated from Profile / Home
         }}
       />
     </Tabs>

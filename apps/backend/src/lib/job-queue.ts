@@ -142,8 +142,8 @@ export async function scheduleGameEvent(
   const jobId = await queue.send(JOB_NAMES.GAME_EVENT, data, {
     startAfter: delaySeconds,
     singletonKey: `game-event-${gameInstanceEventId}`,
-    retryLimit: 3,
-    retryDelay: 60,
+    retryLimit: 5,
+    retryDelay: 5,
   });
 
   console.log(

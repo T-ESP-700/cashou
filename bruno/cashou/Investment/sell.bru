@@ -1,0 +1,24 @@
+meta {
+  name: sell
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/api/trpc/investment.sell
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "walletId": 1,
+    "assetId": 1,
+    "amount": 50,
+    "gameInstanceId": 1
+  }
+}
+
+settings {
+  encodeUrl: true
+}

@@ -88,12 +88,12 @@ export default function CreateQuizPage() {
       const fetchAllQuestions = async () => {
         const questionIds = new Set<number>();
         const promises = allDailyQuizzes
-          .filter((quiz) => quiz.id)
-          .map((quiz) => utils.client.quizQuestion.getByQuiz.query({ quizId: quiz.id! }));
+          .filter((quiz: any) => quiz.id)
+          .map((quiz: any) => utils.client.quizQuestion.getByQuiz.query({ quizId: quiz.id! }));
         
         const results = await Promise.all(promises);
         results.forEach((quizQuestions) => {
-          quizQuestions?.forEach((qq) => {
+          quizQuestions?.forEach((qq: any) => {
             if (qq.questionId) {
               questionIds.add(qq.questionId);
             }
@@ -110,7 +110,7 @@ export default function CreateQuizPage() {
   // Filter questions to exclude those already used in Daily Quiz
   const availableQuestions = useMemo(() => {
     if (selectedType === 'DAILY' && usedQuestionIds.size > 0) {
-      return questions?.filter((q) => !usedQuestionIds.has(q.id)) || [];
+      return questions?.filter((q: any) => !usedQuestionIds.has(q.id)) || [];
     }
     return questions || [];
   }, [selectedType, questions, usedQuestionIds]);
@@ -187,16 +187,16 @@ export default function CreateQuizPage() {
     // Récupérer les IDs des niveaux qui ont déjà un MCQ
     const levelsWithMcq = new Set(
       allQuizzes
-        .filter(quiz => quiz.type === 'MCQ' && quiz.levelId)
-        .map(quiz => quiz.levelId)
+        .filter((quiz: any) => quiz.type === 'MCQ' && quiz.levelId)
+        .map((quiz: any) => quiz.levelId)
     );
     
     // Retourner seulement les niveaux qui n'ont pas de MCQ
-    return levels.filter(level => !levelsWithMcq.has(level.id));
+    return levels.filter((level: any) => !levelsWithMcq.has(level.id));
   }, [levels, allQuizzes]);
 
-  const levelOptions = formatSelectOptions(availableLevels, (l) => l.title || `Level ${l.number}`);
-  const questionOptions = formatSelectOptions(availableQuestions, (q) => {
+  const levelOptions = formatSelectOptions(availableLevels, (l: any) => l.title || `Level ${l.number}`);
+  const questionOptions = formatSelectOptions(availableQuestions, (q: any) => {
     const text = q.text || 'Unnamed Question';
     return text.length > 60 ? text.substring(0, 60) + '...' : text;
   });

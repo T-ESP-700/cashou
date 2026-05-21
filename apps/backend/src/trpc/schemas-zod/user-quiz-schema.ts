@@ -6,7 +6,7 @@ import { z } from "zod";
 // Utilisation de .nullish() au lieu de .optional() pour accepter null et undefined
 export const userQuizDataSchema = z.object({
     quizId: z.number().int().positive("L'ID du quiz doit être un nombre positif").nullish(),
-    userId: z.number().int().positive("L'ID de l'utilisateur doit être un nombre positif").nullish(),
+    userId: z.string().min(1, "L'ID de l'utilisateur doit être une chaîne non vide").nullish(),
     completedAt: z.string().refine(
         (dateStr) => {
             // Accepte les formats: YYYY-MM-DD ou ISO 8601 complet
@@ -41,7 +41,7 @@ export type UserQuizIdSchema = z.infer<typeof userQuizIdSchema>;
 
 // Schéma pour rechercher les participations d'un utilisateur
 export const userQuizByUserSchema = z.object({
-    userId: z.number().min(1, "L'ID de l'utilisateur doit être un nombre > 0")
+    userId: z.string().min(1, "L'ID de l'utilisateur doit être une chaîne non vide")
 });
 export type UserQuizByUserSchema = z.infer<typeof userQuizByUserSchema>;
 
@@ -54,7 +54,7 @@ export type UserQuizByQuizSchema = z.infer<typeof userQuizByQuizSchema>;
 // Schéma pour démarrer un quiz (créer une participation)
 export const startQuizSchema = z.object({
     quizId: z.number().min(1, "L'ID du quiz doit être un nombre > 0"),
-    userId: z.number().min(1, "L'ID de l'utilisateur doit être un nombre > 0")
+    userId: z.string().min(1, "L'ID de l'utilisateur doit être une chaîne non vide")
 });
 export type StartQuizSchema = z.infer<typeof startQuizSchema>;
 
@@ -75,14 +75,14 @@ export type UserQuizByResultSchema = z.infer<typeof userQuizByResultSchema>;
 
 // Schéma pour obtenir le statut d'un utilisateur sur un quiz
 export const userQuizStatusSchema = z.object({
-    userId: z.number().min(1, "L'ID de l'utilisateur doit être un nombre > 0"),
+    userId: z.string().min(1, "L'ID de l'utilisateur doit être une chaîne non vide"),
     quizId: z.number().min(1, "L'ID du quiz doit être un nombre > 0")
 });
 export type UserQuizStatusSchema = z.infer<typeof userQuizStatusSchema>;
 
 // Schéma pour l'historique avec pagination
 export const userQuizHistorySchema = z.object({
-    userId: z.number().min(1, "L'ID de l'utilisateur doit être un nombre > 0"),
+    userId: z.string().min(1, "L'ID de l'utilisateur doit être une chaîne non vide"),
     limit: z.number().min(1).max(100).optional().default(20),
     offset: z.number().min(0).optional().default(0)
 });
@@ -90,7 +90,7 @@ export type UserQuizHistorySchema = z.infer<typeof userQuizHistorySchema>;
 
 // Schéma pour les statistiques détaillées
 export const userQuizDetailedStatsSchema = z.object({
-    userId: z.number().min(1, "L'ID de l'utilisateur doit être un nombre > 0"),
+    userId: z.string().min(1, "L'ID de l'utilisateur doit être une chaîne non vide"),
     period: z.enum(['week', 'month', 'year']).optional()
 });
 export type UserQuizDetailedStatsSchema = z.infer<typeof userQuizDetailedStatsSchema>;
@@ -104,7 +104,7 @@ export type UserQuizLeaderboardSchema = z.infer<typeof userQuizLeaderboardSchema
 
 // Schéma pour l'historique des daily quiz
 export const userQuizDailyHistorySchema = z.object({
-    userId: z.number().min(1, "L'ID de l'utilisateur doit être un nombre > 0"),
+    userId: z.string().min(1, "L'ID de l'utilisateur doit être une chaîne non vide"),
     days: z.number().min(1).max(365).optional().default(30)
 });
 export type UserQuizDailyHistorySchema = z.infer<typeof userQuizDailyHistorySchema>;

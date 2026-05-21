@@ -146,7 +146,6 @@ bun run studio           # Interface graphique Prisma (http://localhost:5555)
 
 #### Données
 ```bash
-bun run db:seed          # Créer des données de test
 bun run db:empty         # Vider complètement la base de données
 bun run db:check         # Vérifier la synchronisation
 bun run db:status        # Vérifier l'état et connexion DB
@@ -299,8 +298,6 @@ Si vous voulez des données de test pour développer :
 ```bash
 # Créer des données de test complètes
 cd backend
-bun run db:seed
-
 # Vider la base et recommencer
 bun run db:empty
 ```
@@ -323,7 +320,6 @@ cashou/                         # 🗂️ Monorepo avec workspaces Bun
 │   │       └── schema.prisma   # 🗄️ Schéma backoffice
 │   ├── src/
 │   │   ├── database.ts         # ⚙️ Configuration Prisma
-│   │   ├── seed-data.ts        # 🌱 Données de test (optionnel)
 │   │
 │   │
 │   ├── scripts/
@@ -465,6 +461,7 @@ Pour le déploiement en production :
 
 - **[README.md](README.md)** : Guide de démarrage et utilisation
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** : Documentation technique approfondie
+- **[docs/SCORING_SYSTEM.md](docs/SCORING_SYSTEM.md)** : Système de scoring (étoiles par niveau, critères, APIs)
 - **[.cursorrules](.cursorrules)** : Règles pour l'assistance IA
 - **[context7.json](context7.json)** : Configuration Context7 MCP
 

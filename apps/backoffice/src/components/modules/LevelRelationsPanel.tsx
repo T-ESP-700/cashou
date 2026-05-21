@@ -54,11 +54,15 @@ export function LevelRelationsPanel() {
     )
   }
 
-  const attachGoal = async () => {
+  const attachGoal = async (isMandatory = true) => {
     if (!goalToAttach || !activeLevelId) return
     setLoading('goal')
     try {
-      await backofficeApi.levelGoal.create({ levelId: activeLevelId, goalId: goalToAttach })
+      await backofficeApi.levelGoal.create({
+        levelId: activeLevelId,
+        goalId: goalToAttach,
+        isMandatory,
+      })
       await refresh()
       setGoalToAttach('')
     } catch (error) {
@@ -125,6 +129,7 @@ export function LevelRelationsPanel() {
           <ul className="mt-3 space-y-2">
             {attachedGoals.map((link) => {
               const goal = goals.find((item) => item.id === link.goalId)
+              const isMandatory = link.isMandatory !== false
               return (
                 <li
                   key={link.id}
@@ -132,17 +137,48 @@ export function LevelRelationsPanel() {
                 >
                   <div>
                     <p className="font-medium text-slate-900">{goal?.title ?? `Objectif #${link.goalId}`}</p>
-                    <p className="text-xs text-slate-500">{goal?.description}</p>
+                    <p className="text-xs text-slate-500">
+                      {goal?.description}
+                      {goal?.description ? ' · ' : ''}
+                      <span className={isMandatory ? 'text-amber-600' : 'text-slate-500'}>
+                        {isMandatory ? 'Obligatoire' : 'Bonus'}
+                      </span>
+                    </p>
                   </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => detachGoal(link.id)}
-                    disabled={loading === 'goal'}
-                    aria-label="Détacher l'objectif"
-                  >
-                    <Unlink className="size-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={async () => {
+                        setLoading('goal')
+                        try {
+                          await backofficeApi.levelGoal.update(link.id, {
+                            levelId: link.levelId,
+                            goalId: link.goalId,
+                            isMandatory: !isMandatory,
+                          })
+                          await refresh()
+                        } catch (e) {
+                          alert((e as Error).message)
+                        } finally {
+                          setLoading(null)
+                        }
+                      }}
+                      disabled={loading === 'goal'}
+                      aria-label={isMandatory ? 'Passer en bonus' : "Passer en obligatoire"}
+                    >
+                      {isMandatory ? 'Bonus' : 'Oblig.'}
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => detachGoal(link.id)}
+                      disabled={loading === 'goal'}
+                      aria-label="Détacher l'objectif"
+                    >
+                      <Unlink className="size-4" />
+                    </Button>
+                  </div>
                 </li>
               )
             })}
@@ -153,9 +189,9 @@ export function LevelRelationsPanel() {
             )}
           </ul>
           {availableGoals.length > 0 && (
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 flex flex-wrap gap-2 items-center">
               <select
-                className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                className="flex-1 min-w-[160px] rounded-xl border border-slate-200 px-3 py-2 text-sm"
                 value={goalToAttach}
                 onChange={(event) => setGoalToAttach(event.target.value === '' ? '' : Number(event.target.value))}
               >
@@ -166,9 +202,13 @@ export function LevelRelationsPanel() {
                   </option>
                 ))}
               </select>
-              <Button onClick={attachGoal} disabled={!goalToAttach || loading === 'goal'}>
+              <Button onClick={() => attachGoal(true)} disabled={!goalToAttach || loading === 'goal'}>
                 <Plus className="size-4" />
-                Lier
+                Lier (obligatoire)
+              </Button>
+              <Button variant="outline" onClick={() => attachGoal(false)} disabled={!goalToAttach || loading === 'goal'}>
+                <Plus className="size-4" />
+                Lier (bonus)
               </Button>
             </div>
           )}

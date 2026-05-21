@@ -12,7 +12,6 @@ import {
     userAnswerByAccuracySchema,
     userAnswerByUserAndQuestionSchema
 } from "../schemas-zod/user-answer-schema.ts";
-import { z } from "zod";
 
 // Initialisation de tRPC pour ce router spécifique
 const t = initTRPC.create();

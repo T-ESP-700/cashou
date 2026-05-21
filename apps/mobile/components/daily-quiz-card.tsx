@@ -1,161 +1,167 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useState, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import Svg, { Rect, Path } from 'react-native-svg';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
-import { Card, Badge } from '@/components/ui';
-import Svg, { Circle } from 'react-native-svg';
+import { Card } from '@/components/ui';
 
 interface DailyQuizCardProps {
-  winStreak: number;
-  timeRemaining: string; // Format: "6h34m"
   status?: 'todo' | 'done';
+  streak?: number;
 }
 
+const getTimeUntilMidnightParis = () => {
+  const now = new Date();
+  const parisTime = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: 'Europe/Paris',
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric',
+    hour12: false,
+  }).formatToParts(now);
+  const h = parseInt(parisTime.find(p => p.type === 'hour')?.value ?? '0');
+  const m = parseInt(parisTime.find(p => p.type === 'minute')?.value ?? '0');
+  const s = parseInt(parisTime.find(p => p.type === 'second')?.value ?? '0');
+
+  const elapsedSeconds = h * 3600 + m * 60 + s;
+  const totalSeconds = 86400 - elapsedSeconds;
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const progress = elapsedSeconds / 86400;
+  return { hours, minutes, progress };
+};
+
 export function DailyQuizCard({
-  winStreak,
-  timeRemaining,
   status = 'todo',
+  streak = 0,
 }: DailyQuizCardProps) {
   const router = useRouter();
-  const { colors, fonts, spacing } = useCashouTheme();
+  const { colors, fonts, special } = useCashouTheme();
+  const [timeInfo, setTimeInfo] = useState(getTimeUntilMidnightParis());
+
+  useEffect(() => {
+    setTimeInfo(getTimeUntilMidnightParis());
+    const interval = setInterval(() => {
+      setTimeInfo(getTimeUntilMidnightParis());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handlePress = () => {
     if (status === 'done') {
+      router.push('/(tabs)/history');
+    } else {
       router.push({
         pathname: '/(tabs)/daily-quiz',
-        params: { showCompleted: 'true' },
+        params: { source: 'home' },
       });
-    } else {
-      router.push('/(tabs)/daily-quiz');
     }
   };
 
-  // Calculate progress for circular chart
-  const calculateProgress = () => {
-    const parts = timeRemaining.match(/(\d+)h(\d+)m/);
-    if (!parts) return 0;
-    const hours = parseInt(parts[1]);
-    const minutes = parseInt(parts[2]);
-    const totalMinutesRemaining = hours * 60 + minutes;
-    const totalMinutesInDay = 24 * 60;
-    const progress = ((totalMinutesInDay - totalMinutesRemaining) / totalMinutesInDay) * 100;
-    return Math.max(0, Math.min(100, progress));
-  };
-
-  const progress = calculateProgress();
-  const radius = 30;
-  const strokeWidth = 6;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (progress / 100) * circumference;
+  const isTodo = status === 'todo';
+  const ringColor = isTodo ? '#9CD6FF' : '#88D498';
+  const iconName = isTodo ? 'lock-open-outline' : 'checkmark';
+  const textColor = isTodo ? '#006DBB' : '#3D7248';
+  const iconColor = isTodo ? '#006DBB' : '#3D7248';
+  const elapsedPercent = Math.max(0, Math.min(100, timeInfo.progress * 100));
+  const timerWidth = 48;
+  const timerHeight = 32;
+  const timerStroke = 2;
+  const timerRadius = 16;
+  const timerPathWidth = timerWidth - timerStroke;
+  const timerPathHeight = timerHeight - timerStroke;
+  const effectiveTimerRadius = Math.min(timerRadius, timerPathWidth / 2, timerPathHeight / 2);
+  const timerPerimeter = 2 * (timerPathWidth + timerPathHeight - (4 * effectiveTimerRadius)) + (2 * Math.PI * effectiveTimerRadius);
+  const timerProgressLength = (elapsedPercent / 100) * timerPerimeter;
+  const timerBgColor = isTodo ? '#9CD6FF' : '#88D498';
+  const timerProgressColor = isTodo ? '#006DBB' : '#3D7248';
+  const timerX = timerStroke / 2;
+  const timerY = timerStroke / 2;
+  const topSegmentLength = timerPathWidth - (2 * effectiveTimerRadius);
+  const topMiddleX = timerX + effectiveTimerRadius + (topSegmentLength / 2);
+  const rightX = timerX + timerPathWidth;
+  const bottomY = timerY + timerPathHeight;
+  const timerPathD = [
+    `M ${topMiddleX} ${timerY}`,
+    `H ${rightX - effectiveTimerRadius}`,
+    `A ${effectiveTimerRadius} ${effectiveTimerRadius} 0 0 1 ${rightX} ${timerY + effectiveTimerRadius}`,
+    `V ${bottomY - effectiveTimerRadius}`,
+    `A ${effectiveTimerRadius} ${effectiveTimerRadius} 0 0 1 ${rightX - effectiveTimerRadius} ${bottomY}`,
+    `H ${timerX + effectiveTimerRadius}`,
+    `A ${effectiveTimerRadius} ${effectiveTimerRadius} 0 0 1 ${timerX} ${bottomY - effectiveTimerRadius}`,
+    `V ${timerY + effectiveTimerRadius}`,
+    `A ${effectiveTimerRadius} ${effectiveTimerRadius} 0 0 1 ${timerX + effectiveTimerRadius} ${timerY}`,
+    `H ${topMiddleX}`,
+  ].join(' ');
 
   return (
     <TouchableOpacity onPress={handlePress} activeOpacity={0.7}>
       <Card
-        variant="outlined"
+        variant="default"
         padding="md"
-        style={{ marginHorizontal: spacing.md, marginBottom: spacing.md }}
+        style={{}}
       >
-        {/* Header with Title and Status Badge */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md }}>
-          <Text style={{ fontSize: 24, fontFamily: fonts.subheading, color: colors.text }}>
-            Daily Quiz
-          </Text>
-          <Badge
-            label={status === 'todo' ? 'À faire' : 'Terminé'}
-            variant="accent"
-            icon={<Text style={{ fontSize: 14 }}>ℹ️</Text>}
-          />
-        </View>
-
-        {/* Win Streak and Time Remaining */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          {/* Win Streak */}
-          <View>
-            <Text
-              style={{
-                fontSize: 14,
-                fontFamily: fonts.body,
-                color: colors.text,
-                marginBottom: spacing.sm,
-              }}
-            >
-              win streak
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={{ fontSize: 48, fontFamily: fonts.subheading, color: colors.text }}>
-                {winStreak}
-              </Text>
-              <Text style={{ fontSize: 36, marginLeft: 4 }}>🔥</Text>
-            </View>
-          </View>
-
-          {/* Time Remaining with Circular Progress */}
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text
-              style={{
-                fontSize: 14,
-                fontFamily: fonts.body,
-                color: colors.text,
-                marginBottom: spacing.sm,
-              }}
-            >
-              {status === 'done' ? 'Prochain quiz dans :' : 'Temps restant'}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ fontSize: 24, fontFamily: fonts.body, color: colors.text }}>
+              Daily Quiz
             </Text>
             <View
               style={{
-                position: 'relative',
-                alignItems: 'center',
+                minWidth: timerWidth,
+                height: timerHeight,
                 justifyContent: 'center',
-                width: 70,
-                height: 70,
+                backgroundColor: colors.primary,
+                borderRadius: timerRadius,
+                paddingHorizontal: 8,
               }}
             >
-              {/* Circular Progress Chart */}
-              <Svg width={70} height={70} style={{ position: 'absolute' }}>
-                {/* Background Circle */}
-                <Circle
-                  cx="35"
-                  cy="35"
-                  r={radius}
-                  stroke={colors.progressBarBackground}
-                  strokeWidth={strokeWidth}
-                  fill="none"
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 18, fontFamily: fonts.body, fontWeight: '700', color: '#4C2E14' }}>
+                  {streak}
+                </Text>
+                <Ionicons name="flame" size={18} color="#E53935" style={{ marginLeft: 2, marginRight: -2 }} />
+              </View>
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View
+              style={{
+                width: timerWidth,
+                height: timerHeight,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              <Svg width={timerWidth} height={timerHeight} style={{ position: 'absolute' }}>
+                <Rect
+                  x={timerX}
+                  y={timerY}
+                  width={timerPathWidth}
+                  height={timerPathHeight}
+                  rx={timerRadius}
+                  ry={timerRadius}
+                  fill={timerBgColor}
+                  stroke={timerBgColor}
+                  strokeWidth={timerStroke}
                 />
-                {/* Progress Circle */}
-                <Circle
-                  cx="35"
-                  cy="35"
-                  r={radius}
-                  stroke={colors.accent}
-                  strokeWidth={strokeWidth}
+                <Path
+                  d={timerPathD}
                   fill="none"
-                  strokeDasharray={circumference}
-                  strokeDashoffset={strokeDashoffset}
+                  stroke={timerProgressColor}
+                  strokeWidth={timerStroke}
                   strokeLinecap="round"
-                  rotation="-90"
-                  origin="35, 35"
+                  strokeDasharray={`${timerProgressLength} ${Math.max(timerPerimeter - timerProgressLength, 0)}`}
                 />
               </Svg>
-              {/* Time Text - Centered in circle */}
-              <View
-                style={{
-                  position: 'absolute',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 70,
-                  height: 70,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontFamily: fonts.subheading,
-                    color: colors.text,
-                    textAlign: 'center',
-                  }}
-                >
-                  {timeRemaining}
-                </Text>
-              </View>
+              <Text style={{ fontSize: 13, textAlign: 'center', fontFamily: fonts.body, color: textColor }}>
+                {timeInfo.hours}h
+              </Text>
+            </View>
+
+            <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: ringColor, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name={iconName} size={18} color={iconColor} />
             </View>
           </View>
         </View>

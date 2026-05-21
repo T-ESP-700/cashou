@@ -9,13 +9,16 @@
     "packages/@cashou/*"
   ],
   "scripts": {
+    "check": "bun run db:generate && bun run typecheck && bun run build",
+    "check:full": "bun run db:generate && bun run typecheck && bun run build && bun run test",
     "dev:setup": "bun install && docker compose up db_cashou db_backoffice -d && bun run db:generate && bun run migrate",
     "dev": "docker stop cashou-backend-1 cashou-backoffice-1 2>/dev/null || true && docker compose up db_cashou db_backoffice -d && concurrently \"bun run dev:backend\" \"bun run dev:backoffice\"",
     "dev:all": "docker stop cashou-backend-1 cashou-backoffice-1 2>/dev/null || true && docker compose up db_cashou db_backoffice -d && concurrently \"bun run dev:backend\" \"bun run dev:backoffice\" \"bun run dev:mobile\"",
     "dev:backend": "cd apps/backend && bun run dev",
     "dev:backoffice": "cd apps/backoffice && bun run dev",
-    "dev:mobile": "cd apps/mobile && npx expo start",
+    "dev:mobile": "cd apps/mobile && bun run start",
     "dev:mobile:go": "cd apps/mobile && npx expo start --go",
+    "dev:mobile:go:clear": "cd apps/mobile && npx expo start --go --clear",
     "dev:mobile:web": "cd apps/mobile && npx expo start --web",
     "dev:stop": "docker stop cashou-db_cashou-1 cashou-db_backoffice-1",
     "prod:setup": "bun install && bun run docker:build && bun run docker:up && bun run db:generate && bun run migrate:deploy",
@@ -33,15 +36,22 @@
     "start": "concurrently \"bun run start:backend\" \"bun run start:backoffice\"",
     "start:backend": "cd apps/backend && bun run start",
     "start:backoffice": "cd apps/backoffice && bun run start",
-    "test": "bun run --filter '*' test",
+    "test": "bun test",
+    "test:fast": "bun test apps/backend/tests/router apps/backend/tests/service/*unit* apps/backend/tests/service/*regression* apps/backend/tests/validators.test.ts",
+    "test:unit": "bun test --grep='unit'",
+    "test:integration": "bun test --grep='integration'",
+    "test:router": "bun test apps/backend/tests/router",
+    "test:service": "bun test apps/backend/tests/service",
+    "test:coverage": "bun test --coverage",
     "typecheck": "bun run --filter '*' typecheck",
     "clean": "rm -rf node_modules apps/*/node_modules packages/@cashou/*/node_modules",
+    "clean:deep": "bun run clean && rm -rf bun.lockb && bun install",
     "generate": "bun run db:generate",
     "db:generate": "bun run db:generate:app && bun run db:generate:backoffice",
     "db:generate:app": "cd packages/@cashou/db-app && bunx dotenv -e ../../../.env -- prisma generate",
     "db:generate:backoffice": "cd packages/@cashou/db-backoffice && bunx dotenv -e ../../../.env -- prisma generate",
     "migrate": "cd packages/@cashou/db-app && bunx dotenv -e ../../../.env -- prisma migrate dev",
-    "migrate:deploy": "cd packages/@cashou/db-app && bunx dotenv -e ../../../.env -- prisma migrate deploy",
+    "migrate:deploy": "bun run db:migrate:app && bun run db:migrate:backoffice",
     "migrate:reset": "cd packages/@cashou/db-app && bunx dotenv -e ../../../.env -- prisma migrate reset --force",
     "db:migrate:app": "cd packages/@cashou/db-app && bunx dotenv -e ../../../.env -- prisma migrate deploy",
     "db:migrate:backoffice": "cd packages/@cashou/db-backoffice && bunx dotenv -e ../../../.env -- prisma migrate deploy",
@@ -59,17 +69,22 @@
     "docker:build": "docker compose build",
     "docker:logs": "docker compose logs -f",
     "docker:clean": "docker compose down -v && docker system prune -f",
-    "setup": "bun install && docker compose down -v 2>/dev/null || true && docker compose up -d --build && bun run generate && bun run migrate && (cd packages/@cashou/db-backoffice && bunx prisma generate && bunx dotenv -e ../../../.env -- prisma migrate deploy && bunx dotenv -e ../../../.env -- bun ./seed-admin.ts) && bun run db:seed:level1 && bun run db:seed:dico",
+    "setup": "bun install && docker compose down -v 2>/dev/null || true && docker compose up -d --build && bun run generate && bun run migrate:deploy && (cd packages/@cashou/db-backoffice && bunx dotenv -e ../../../.env -- bunx tsx seed-admin.ts) && bun run db:seed:level1 && bun run db:seed:dico",
     "setup:clean": "bun --bun pm cache rm",
     "setup:cac40": "bun run setup && bun run db:seed:cac40",
     "reset": "bun run docker:down && bun run docker:clean && bun run docker:up && bun run migrate:reset",
     "logs:backend": "cd apps/backend && bun run dev",
     "logs:backoffice": "cd apps/backoffice && bun run dev",
     "install:all": "bun install && cd backend && bun install && cd ../backoffice && bun install",
-    "setup:seeds": "bun run install:all && bun run docker:up && bun run generate && bun run migrate && bun run db:seed"
+    "setup:seeds": "bun run install:all && bun run docker:up && bun run generate && bun run migrate && bun run db:seed",
+    "ci:setup": "bun install --frozen-lockfile && bun run db:generate",
+    "ci:test": "TEST_PORT=3001 bun run typecheck && TEST_PORT=3001 bun test",
+    "ci:build": "bun run build",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.1",
+    "@types/bcryptjs": "^3.0.0",
     "@types/bun": "1.2.21",
     "@types/node": "24.0.14",
     "@types/pg": "8.15.4",
@@ -79,13 +94,16 @@
     "concurrently": "8.2.2",
     "dotenv-cli": "8.0.0",
     "eslint": "9.31.0",
-    "prisma": "6.14.0",
-    "typescript": "5.9.3"
+    "husky": "^9.1.7",
+    "prisma": "6.18.0",
+    "typescript": "5.9.3",
+    "wait-on": "^9.0.3"
   },
   "peerDependencies": {
     "typescript": "5.9.3"
   },
   "engines": {
+    "node": ">=20.0.0",
     "bun": ">=1.0.0"
   },
   "keywords": [
@@ -104,10 +122,16 @@
   "author": "Cashou Team",
   "license": "MIT",
   "dependencies": {
-    "@trpc/server": "11.4.3",
+    "@expo-google-fonts/anybody": "^0.4.2",
     "@trpc/react-query": "11.7.1",
-    "pg-boss": "12.5.2",
-    "expo-server-sdk": "4.0.0"
+    "@trpc/server": "11.7.1",
+    "bcryptjs": "^3.0.3",
+    "expo-font": "~14.0.11",
+    "expo-image-manipulator": "~14.0.8",
+    "expo-image-picker": "~17.0.10",
+    "expo-server-sdk": "4.0.0",
+    "lru-cache": "^11.2.7",
+    "pg-boss": "12.5.2"
   },
   "resolutions": {
     "react": "19.1.0",

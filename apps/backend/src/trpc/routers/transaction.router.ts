@@ -9,6 +9,7 @@ import {
   assetIdSchema,
   transactionTypeSchema
 } from "../schemas-zod/transaction-schema.ts";
+import { gameCache, invalidateByPrefix } from "../../lib/cache.ts";
 
 const t = initTRPC.create();
 
@@ -41,7 +42,15 @@ export const transactionRouter = t.router({
   create: t.procedure
     .input(transactionCreateSchema)
     .mutation(async ({ input }) => {
-      return await transactionService.create(input);
+      const result = await transactionService.create(input);
+      const gameInstanceId = input.gameInstanceId;
+      if (gameInstanceId) {
+        invalidateByPrefix(gameCache, `portfolio:${gameInstanceId}`);
+        invalidateByPrefix(gameCache, `snapshot:${gameInstanceId}`);
+        invalidateByPrefix(gameCache, `wallet:game:${gameInstanceId}`);
+        invalidateByPrefix(gameCache, `holdings:game:${gameInstanceId}`);
+      }
+      return result;
     }),
 
   /**
@@ -97,6 +106,16 @@ export const transactionRouter = t.router({
     .input(transactionTypeSchema)
     .query(async ({ input }) => {
       return await transactionService.findByType(input.type);
+    }),
+
+  /**
+   * Récupère toutes les transactions d’une instance de jeu
+   * Endpoint: GET http://localhost:3000/trpc/transaction.getByGameInstance?input={"gameInstanceId":1}
+   */
+  getByGameInstance: t.procedure
+    .input(z.object({ gameInstanceId: z.number().int().min(1) }))
+    .query(async ({ input }) => {
+      return await transactionService.findByGameInstance(input.gameInstanceId);
     }),
 
   /**

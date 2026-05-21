@@ -1,6 +1,8 @@
 // Service métier pour la gestion des utilisateurs du jeu
 // Couche d'abstraction entre les routers et la base de données
-import type { User, PrismaClient } from "@prisma/client";
+// Import depuis @cashou/db-app (et non @prisma/client) car Bun crée des copies séparées
+// de @prisma/client par contexte de résolution, ce qui cause des types incompatibles
+import type { User, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {UserCreateSchema, UserDataSchema} from "../schemas-zod/user-schema.ts";
 
@@ -28,9 +30,9 @@ export class UserService {
      * @param id - Identifiant unique de l'utilisateur
      * @returns Promise<User | null> - L'utilisateur trouvé ou null si inexistant (sans relations)
      */
-    async findOne(id: number): Promise<User | null> {
+    async findOne(id: number | string): Promise<User | null> {
         return this.prisma.user.findUnique({
-            where: { id }
+            where: { id: String(id) }
             // Pas d'include - retourne seulement les données de la table user
         });
     }
@@ -41,7 +43,11 @@ export class UserService {
      * @returns Promise<User> - L'utilisateur créé avec son ID généré
      */
     async create(data: UserCreateSchema): Promise<User> {
-        return this.prisma.user.create({ data });
+        // Filter out null values that Prisma doesn't accept (use undefined instead)
+        const cleanData = Object.fromEntries(
+            Object.entries(data).map(([k, v]) => [k, v === null ? undefined : v])
+        );
+        return this.prisma.user.create({ data: cleanData as any });
     }
 
     /**
@@ -50,10 +56,14 @@ export class UserService {
      * @param data - Nouvelles données validées par le schéma Zod
      * @returns Promise<User> - L'utilisateur mis à jour
      */
-    async update(id: number, data: Partial<UserDataSchema>): Promise<User> {
+    async update(id: number | string, data: Partial<UserDataSchema>): Promise<User> {
+        // Filter out null values that Prisma doesn't accept (use undefined instead)
+        const cleanData = Object.fromEntries(
+            Object.entries(data).map(([k, v]) => [k, v === null ? undefined : v])
+        );
         return this.prisma.user.update({
-            where: { id },
-            data
+            where: { id: String(id) },
+            data: cleanData as any
         });
     }
 
@@ -62,8 +72,8 @@ export class UserService {
      * @param id - Identifiant de l'utilisateur à supprimer
      * @returns Promise<User> - L'utilisateur supprimé (pour confirmation)
      */
-    async delete(id: number): Promise<User> {
-        return this.prisma.user.delete({ where: { id } });
+    async delete(id: number | string): Promise<User> {
+        return this.prisma.user.delete({ where: { id: String(id) } });
     }
 
     /**
@@ -114,9 +124,9 @@ export class UserService {
      * @param id - Identifiant de l'utilisateur
      * @returns Promise<User> - L'utilisateur avec la dernière activité mise à jour
      */
-    async updateLastActivity(id: number): Promise<User> {
+    async updateLastActivity(id: number | string): Promise<User> {
         return this.prisma.user.update({
-            where: { id },
+            where: { id: String(id) },
             data: { lastActivity: new Date() }
         });
     }
@@ -127,10 +137,16 @@ export class UserService {
      * @param pointsToAdd - Nombre de points à ajouter
      * @returns Promise<User> - L'utilisateur avec les points mis à jour
      */
-    async addPoints(id: number, pointsToAdd: number): Promise<User> {
+    async addPoints(id: number | string, pointsToAdd: number): Promise<User> {
+        const user = await this.findOne(id);
+        if (!user) {
+            throw new Error("Utilisateur introuvable");
+        }
+
+        const currentPoints = user.points || 0;
         return this.prisma.user.update({
-            where: { id },
-            data: { points: { increment: pointsToAdd } },
+            where: { id: String(id) },
+            data: { points: currentPoints + pointsToAdd }
         });
     }
 }

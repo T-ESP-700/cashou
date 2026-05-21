@@ -7,8 +7,6 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
-  useColorScheme as useRNColorScheme,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -16,10 +14,14 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CashouTheme } from '@/constants/cashou-theme';
+import { useCashouTheme } from '@/hooks/use-cashou-theme';
+import { useAlert } from '@/hooks/use-alert';
 import { trpcClient } from '@/lib/trpc';
-import { useHeaderOptions } from '@/hooks/use-header';
+import { useHeader, useGameHeaderSubtitle } from '@/hooks/use-header';
+import { useGameRealtime } from '@/hooks/use-game-realtime';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useAuth } from '@/hooks/use-auth';
+import { ActionPillButton } from '@/components/ui/ActionPillButton';
 
 type TransactionType = 'buy' | 'sell';
 
@@ -30,20 +32,28 @@ interface AssetData {
   rate: number | null;
   maxAmount: number | null;
   minAmount: number | null;
+  submarket?: { type: string } | null;
 }
 
 export default function TransactionScreen() {
-  const colorScheme = useRNColorScheme();
-  const isDark = colorScheme === 'dark';
-  const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
+  const { colors: theme, isDark } = useCashouTheme();
+  const { showAlert } = useAlert();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
-  const { activeGameInstanceId, pendingEventCompletion, setPendingEventCompletion, setAssetsScreenDepth, assetsScreenDepthRef, setIsOnAssetsScreen, setPausedByAssets } = useNotifications();
+  const { activeGameInstanceId, pendingEventCompletion, setAssetsScreenDepth, assetsScreenDepthRef, setIsOnAssetsScreen, setPausedByAssets, setShouldOpenAssetsSheet } = useNotifications();
   const { user } = useAuth();
 
-  // Configure header for this screen
-  useHeaderOptions({ showBackButton: true });
+  // Keep the game header (Niveau X + date) — only ensure back button is shown
+  const { setOptions: setHeaderOptions } = useHeader();
+  const { formattedGameDate, state: realtimeState } = useGameRealtime();
+  useGameHeaderSubtitle(formattedGameDate, realtimeState.isPaused, realtimeState.isEnded);
+
+  useFocusEffect(
+    useCallback(() => {
+      setHeaderOptions({ showBackButton: true });
+    }, [setHeaderOptions])
+  );
 
   // Use refs to track values needed during cleanup to avoid stale closure issues
   const activeGameInstanceIdRef = useRef(activeGameInstanceId);
@@ -109,30 +119,21 @@ export default function TransactionScreen() {
 
               console.log('[TransactionScreen] EXIT - Game state: isPaused=', isCurrentlyPaused);
 
-              // Resume if game is currently paused
-              if (isCurrentlyPaused) {
+              const isWaitingForEventResume = pendingCompletion === gameId;
+
+              // Resume only when we're not intentionally paused after an event.
+              if (isCurrentlyPaused && !isWaitingForEventResume) {
                 console.log('[TransactionScreen] 🎮 Resuming game', gameId);
                 await trpcClient.gameInstance.resume.mutate({ id: gameId });
                 console.log('[TransactionScreen] ✅ Game resumed successfully');
               } else {
-                console.log('[TransactionScreen] ⚠️  Game is not paused, nothing to resume');
-              }
-
-              // Complete pending event if any
-              if (pendingCompletion && pendingCompletion === gameId) {
-                console.log('[TransactionScreen] 📋 Completing pending event for game', gameId);
-                await trpcClient.gameInstance.completeEvent.mutate({ id: gameId });
-                setPendingEventCompletion(null);
-                console.log('[TransactionScreen] ✅ Event completed');
+                console.log('[TransactionScreen] ⏸️  Game stays paused after transaction exit');
               }
 
               setPausedByAssets(false);
               setIsOnAssetsScreen(false);
             } catch (error) {
-              console.error('[TransactionScreen] ❌ Failed to resume game or complete event:', error);
-              if (pendingCompletion === gameId) {
-                setPendingEventCompletion(null);
-              }
+              console.error('[TransactionScreen] ❌ Failed to resume game:', error);
               setPausedByAssets(false);
               setIsOnAssetsScreen(false);
             }
@@ -142,7 +143,7 @@ export default function TransactionScreen() {
           setIsOnAssetsScreen(newDepth > 0);
         }
       };
-    }, [setAssetsScreenDepth, setPendingEventCompletion, setIsOnAssetsScreen, setPausedByAssets, assetsScreenDepthRef])
+    }, [setAssetsScreenDepth, setIsOnAssetsScreen, setPausedByAssets, assetsScreenDepthRef])
   );
 
   // Params
@@ -155,7 +156,8 @@ export default function TransactionScreen() {
   const [asset, setAsset] = useState<AssetData | null>(null);
   const [amount, setAmount] = useState('');
   const [walletBalance, setWalletBalance] = useState(0);
-  const [currentHolding, setCurrentHolding] = useState(0);
+  const [currentHolding, setCurrentHolding] = useState(0); // raw quantity (invested amount)
+  const [currentHoldingValue, setCurrentHoldingValue] = useState(0); // total value (invested + interests)
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -185,15 +187,29 @@ export default function TransactionScreen() {
         }
 
         // Fetch current holding for this asset (for sell)
-        if (type === 'sell') {
+        if (type === 'sell' && gameInstanceId) {
           try {
-            const holdings = await trpcClient.holding.getByWallet.query({ walletId });
-            const holding = holdings.find((h: any) => h.assetId === assetId);
-            if (holding) {
-              setCurrentHolding(Number(holding.quantity) || 0);
+            const portfolio = await trpcClient.investment.getPortfolio.query({
+              walletId,
+              gameInstanceId: parseInt(gameInstanceId as string, 10),
+            });
+            const item = portfolio.items.find((i: any) => i.holding.assetId === assetId);
+            if (item) {
+              setCurrentHolding(Math.round(item.currentValue)); // raw quantity (for backend)
+              setCurrentHoldingValue(Math.round(item.totalValue)); // with interests (for display)
             }
           } catch (e) {
-            console.error('Error fetching holdings:', e);
+            console.error('Error fetching portfolio for sell:', e);
+            // Fallback to raw holding quantity
+            try {
+              const holdings = await trpcClient.holding.getByWallet.query({ walletId });
+              const holding = holdings.find((h: any) => h.assetId === assetId);
+              if (holding) {
+                const qty = Number(holding.quantity) || 0;
+                setCurrentHolding(qty);
+                setCurrentHoldingValue(qty);
+              }
+            } catch {}
           }
         }
       } catch (e: any) {
@@ -211,9 +227,16 @@ export default function TransactionScreen() {
     setAmount(value.toString());
   };
 
+  // Convert a user-entered value amount to raw quantity for the backend
+  const valueToRawQuantity = (valueAmount: number): number => {
+    if (currentHoldingValue <= 0 || currentHolding <= 0) return valueAmount;
+    // Proportional: if user wants to sell X out of totalValue, send (X / totalValue) * rawQuantity
+    const ratio = valueAmount / currentHoldingValue;
+    return Math.min(Math.floor(ratio * currentHolding), currentHolding);
+  };
+
   const handleMaxAmount = () => {
     if (type === 'buy') {
-      // For buy: use wallet balance, respecting asset max if set
       let maxBuy = walletBalance;
       if (asset?.maxAmount) {
         const remaining = Number(asset.maxAmount) - currentHolding;
@@ -221,8 +244,8 @@ export default function TransactionScreen() {
       }
       setAmount(Math.floor(maxBuy).toString());
     } else {
-      // For sell: use current holding
-      setAmount(Math.floor(currentHolding).toString());
+      // For sell: show total value (invested + interests)
+      setAmount(Math.floor(currentHoldingValue).toString());
     }
   };
 
@@ -247,23 +270,32 @@ export default function TransactionScreen() {
         }
       }
     } else {
-      if (numAmount > currentHolding) {
-        return `Quantite insuffisante. Disponible: ${Math.round(currentHolding)} EUR`;
+      if (numAmount > currentHoldingValue) {
+        return `Montant insuffisant. Disponible: ${Math.round(currentHoldingValue)} EUR`;
       }
     }
 
     return null;
   };
 
+  const goBackToCurrentWithSheet = () => {
+    // Signal current.tsx to re-open the assets bottom sheet so the user
+    // can perform more transactions without the game resuming.
+    setShouldOpenAssetsSheet(true);
+    // Pop back to /game/current: go back twice (transaction → asset-detail → current)
+    router.back();
+    setTimeout(() => router.back(), 50);
+  };
+
   const handleSubmit = async () => {
     const validationError = validateAmount();
     if (validationError) {
-      Alert.alert('Erreur', validationError);
+      showAlert('Erreur', validationError);
       return;
     }
 
     if (!assetId || !walletId || !gameInstanceId) {
-      Alert.alert('Erreur', 'Parametres manquants');
+      showAlert('Erreur', 'Parametres manquants');
       return;
     }
 
@@ -272,6 +304,9 @@ export default function TransactionScreen() {
     try {
       setIsSubmitting(true);
 
+      let alertTitle: string;
+      let alertMessage: string;
+
       if (type === 'buy') {
         await trpcClient.investment.buy.mutate({
           walletId,
@@ -279,34 +314,38 @@ export default function TransactionScreen() {
           amount: numAmount,
           gameInstanceId,
         });
-        Alert.alert(
-          'Achat effectue',
-          `Vous avez investi ${Math.round(numAmount)} EUR dans ${asset?.title}`,
-          [{ text: 'OK', onPress: () => router.back() }]
-        );
+        alertTitle = 'Achat effectué';
+        alertMessage = `Vous avez investi ${Math.round(numAmount)} EUR dans ${asset?.title}`;
       } else {
+        // Convert user-entered value to raw quantity for backend
+        const rawAmount = valueToRawQuantity(numAmount);
         const result = await trpcClient.investment.sell.mutate({
           walletId,
           assetId,
-          amount: numAmount,
+          amount: rawAmount,
           gameInstanceId,
         });
-        Alert.alert(
-          'Vente effectuee',
-          `Vous avez recupere ${Math.round(result.amountReceived)} EUR (dont ${Math.round(result.interests)} EUR d'interets)`,
-          [{ text: 'OK', onPress: () => router.back() }]
-        );
+        alertTitle = 'Vente effectuée';
+        alertMessage = `Vous avez récupéré ${Math.round(result.amountReceived)} EUR (dont ${Math.round(result.interests)} EUR d'intérêts)`;
       }
+
+      // Navigate first, then show alert on the destination screen
+      goBackToCurrentWithSheet();
+      setTimeout(() => {
+        showAlert(alertTitle, alertMessage);
+      }, 300);
     } catch (e: any) {
       console.error('Transaction error:', e);
-      Alert.alert('Erreur', e.message || 'Erreur lors de la transaction');
+      showAlert('Erreur', e.message || 'Erreur lors de la transaction');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const maxAvailable = type === 'buy' ? walletBalance : currentHolding;
+  const maxAvailable = type === 'buy' ? walletBalance : currentHoldingValue;
+  const displayValue = maxAvailable;
   const isBuy = type === 'buy';
+  const isSavings = asset?.submarket?.type === 'SAVINGS';
 
   if (isLoading) {
     return (
@@ -341,31 +380,31 @@ export default function TransactionScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {/* Header */}
-        <View style={[styles.header, { backgroundColor: isBuy ? '#4CAF50' : '#FF9800' }]}>
+        <View style={[styles.header, { backgroundColor: theme.card, shadowColor: theme.border }]}>
           <Ionicons
-            name={isBuy ? 'arrow-down-circle' : 'arrow-up-circle'}
+            name={isSavings ? (isBuy ? 'download-outline' : 'upload-outline') : (isBuy ? 'arrow-down-circle' : 'arrow-up-circle')}
             size={48}
-            color="#FFFFFF"
+            color={theme.accent}
           />
-          <Text style={styles.headerTitle}>
-            {isBuy ? 'Acheter' : 'Vendre'}
+          <Text style={[styles.headerTitle, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>
+            {isSavings ? (isBuy ? 'Déposer' : 'Retirer') : (isBuy ? 'Acheter' : 'Vendre')}
           </Text>
-          <Text style={styles.headerSubtitle}>{asset.title}</Text>
+          <Text style={[styles.headerSubtitle, { color: theme.text, fontFamily: CashouTheme.fonts.body }]}>{asset.title}</Text>
           {asset.symbol && (
-            <View style={styles.symbolBadge}>
-              <Text style={styles.symbolText}>{asset.symbol}</Text>
+            <View style={[styles.symbolBadge, { backgroundColor: `${theme.accent}20` }]}>
+              <Text style={[styles.symbolText, { color: theme.accent }]}>{asset.symbol}</Text>
             </View>
           )}
         </View>
 
         {/* Balance Info */}
-        <View style={[styles.balanceCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={[styles.balanceCard, { backgroundColor: theme.card }]}>
           <View style={styles.balanceRow}>
             <Text style={[styles.balanceLabel, { color: theme.text, opacity: 0.7 }]}>
-              {isBuy ? 'Solde disponible' : 'Quantite detenue'}
+              {isBuy ? 'Solde disponible' : (isSavings ? 'Valeur actuelle' : 'Valeur actuelle')}
             </Text>
             <Text style={[styles.balanceValue, { color: theme.text }]}>
-              {Math.round(maxAvailable)} EUR
+              {Math.round(displayValue)} EUR
             </Text>
           </View>
           {isBuy && asset.maxAmount && (
@@ -391,7 +430,7 @@ export default function TransactionScreen() {
         </View>
 
         {/* Amount Input */}
-        <View style={[styles.inputCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={[styles.inputCard, { backgroundColor: theme.card }]}>
           <Text style={[styles.inputLabel, { color: theme.text }]}>Montant</Text>
           <View style={styles.inputContainer}>
             <TextInput
@@ -417,7 +456,7 @@ export default function TransactionScreen() {
                 key={value}
                 style={[
                   styles.quickAmountButton,
-                  { backgroundColor: theme.card, borderColor: theme.border },
+                  { backgroundColor: theme.card },
                   value > maxAvailable && styles.quickAmountDisabled,
                 ]}
                 onPress={() => handleQuickAmount(value)}
@@ -448,31 +487,14 @@ export default function TransactionScreen() {
       </ScrollView>
 
       {/* Bottom Button */}
-      <View style={[styles.bottomContainer, { paddingBottom: insets.bottom + 16, backgroundColor: theme.background }]}>
-        <TouchableOpacity
-          style={[
-            styles.submitButton,
-            { backgroundColor: isBuy ? '#4CAF50' : '#FF9800' },
-            isSubmitting && styles.submitButtonDisabled,
-          ]}
+      <View style={[styles.bottomContainer, { paddingBottom: insets.bottom + 16 }]}>
+        <ActionPillButton
+          label={isSavings ? (isBuy ? 'Confirmer le dépôt' : 'Confirmer le retrait') : (isBuy ? "Confirmer l'achat" : 'Confirmer la vente')}
+          iconName={isBuy ? 'checkmark-circle' : 'cash'}
           onPress={handleSubmit}
           disabled={isSubmitting || !amount}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <>
-              <Ionicons
-                name={isBuy ? 'checkmark-circle' : 'cash'}
-                size={24}
-                color="#FFFFFF"
-              />
-              <Text style={styles.submitButtonText}>
-                {isBuy ? 'Confirmer l\'achat' : 'Confirmer la vente'}
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
+          isLoading={isSubmitting}
+        />
       </View>
     </KeyboardAvoidingView>
   );
@@ -502,40 +524,35 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   header: {
-    borderRadius: 16,
+    borderRadius: 22,
     padding: 24,
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#FFFFFF',
     marginTop: 12,
   },
   headerSubtitle: {
     fontSize: 18,
-    color: '#FFFFFF',
     opacity: 0.9,
     marginTop: 4,
   },
   symbolBadge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 999,
     marginTop: 8,
   },
   symbolText: {
-    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
   },
   balanceCard: {
-    borderRadius: 16,
+    borderRadius: 22,
     padding: 16,
-    borderWidth: 2,
-    marginBottom: 16,
+    marginBottom: 8,
   },
   balanceRow: {
     flexDirection: 'row',
@@ -551,10 +568,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   inputCard: {
-    borderRadius: 16,
+    borderRadius: 22,
     padding: 16,
-    borderWidth: 2,
-    marginBottom: 16,
+    marginBottom: 8,
   },
   inputLabel: {
     fontSize: 16,
@@ -592,8 +608,7 @@ const styles = StyleSheet.create({
   quickAmountButton: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 2,
+    borderRadius: 22,
   },
   quickAmountDisabled: {
     opacity: 0.5,
@@ -613,21 +628,7 @@ const styles = StyleSheet.create({
   bottomContainer: {
     padding: 16,
     paddingTop: 8,
-  },
-  submitButton: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
   },
 });

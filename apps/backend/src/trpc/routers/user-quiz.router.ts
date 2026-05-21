@@ -1,12 +1,13 @@
 // src/server/routers/user-quiz.router.ts
-import { initTRPC, TRPCError } from "@trpc/server";
-import { router, protectedProcedure, createContext } from "../index.ts";
+import { initTRPC } from "@trpc/server";
+import { z } from "zod";
+import { router, protectedProcedure } from "../index.ts";
 import { UserQuizService } from "../../trpc/services/user-quiz.service.ts";
 import {
-    userQuizCreateSchema, 
-    userQuizUpdateSchema, 
-    userQuizIdSchema, 
-    userQuizByUserSchema, 
+    userQuizCreateSchema,
+    userQuizUpdateSchema,
+    userQuizIdSchema,
+    userQuizByUserSchema,
     userQuizByQuizSchema,
     startQuizSchema,
     completeQuizSchema,
@@ -17,7 +18,6 @@ import {
     userQuizLeaderboardSchema,
     userQuizDailyHistorySchema
 } from "../schemas-zod/user-quiz-schema.ts";
-import { z } from "zod";
 
 // Initialisation de tRPC pour ce router spécifique
 const t = initTRPC.create();
@@ -144,7 +144,7 @@ const publicRouter = t.router({
     hasParticipated: t.procedure
         .input(z.object({
             quizId: z.number().min(1, "L'ID du quiz doit être un nombre > 0"),
-            userId: z.number().min(1, "L'ID de l'utilisateur doit être un nombre > 0")
+            userId: z.string().min(1, "L'ID de l'utilisateur doit être une chaîne non vide")
         }))
         .query(async ({ input }) => {
             return await userQuizService.hasUserParticipated(input.quizId, input.userId);
@@ -339,8 +339,9 @@ export const userQuizRouter = router({
     getInProgressByUser: publicRouter.getInProgressByUser,
     abandonQuiz: publicRouter.abandonQuiz,
     resumeQuiz: publicRouter.resumeQuiz,
-    getHistory: publicRouter.getHistory,
-    getDetailedStats: publicRouter.getDetailedStats,
+    getHistoryByUser: publicRouter.getHistoryByUser,
+    getElapsedTime: publicRouter.getElapsedTime,
+    getUserDetailedStats: publicRouter.getUserDetailedStats,
     getLeaderboard: publicRouter.getLeaderboard,
     getStatsByType: publicRouter.getStatsByType,
     getStreaks: publicRouter.getStreaks,
@@ -374,6 +375,61 @@ export const userQuizRouter = router({
                 input.quizId,
                 ctx.userId,
                 input.isCorrect
+            );
+        }),
+
+    /**
+     * Retourne le statut du quiz de niveau pour une gameInstance donnée.
+     * Endpoint: GET http://localhost:3000/trpc/userQuiz.getQuizStatusForGame
+     * @input {gameInstanceId: number}
+     */
+    getQuizStatusForGame: protectedProcedure
+        .input(z.object({
+            gameInstanceId: z.number().min(1, "L'ID de la partie doit être > 0"),
+        }))
+        .query(async ({ ctx, input }) => {
+            return await userQuizService.getQuizStatusForGame(
+                input.gameInstanceId,
+                ctx.userId
+            );
+        }),
+
+    /**
+     * Démarre un quiz de niveau : crée un UserQuiz lié à la gameInstance
+     * et tire 1 question aléatoire parmi celles du quiz.
+     * Endpoint: POST http://localhost:3000/trpc/userQuiz.startLevelQuiz
+     * @input {quizId: number, gameInstanceId: number}
+     */
+    startLevelQuiz: protectedProcedure
+        .input(z.object({
+            quizId: z.number().min(1, "L'ID du quiz doit être > 0"),
+            gameInstanceId: z.number().min(1, "L'ID de la partie doit être > 0"),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            return await userQuizService.startLevelQuiz(
+                input.quizId,
+                ctx.userId,
+                input.gameInstanceId
+            );
+        }),
+
+    /**
+     * Soumet la réponse pour un quiz de niveau et finalise la participation.
+     * Endpoint: POST http://localhost:3000/trpc/userQuiz.submitLevelQuizAnswer
+     * @input {userQuizId: number, questionId: number, answerId: number}
+     */
+    submitLevelQuizAnswer: protectedProcedure
+        .input(z.object({
+            userQuizId: z.number().min(1, "L'ID du userQuiz doit être > 0"),
+            questionId: z.number().min(1, "L'ID de la question doit être > 0"),
+            answerId: z.number().min(1, "L'ID de la réponse doit être > 0"),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            return await userQuizService.submitLevelQuizAnswer(
+                input.userQuizId,
+                input.questionId,
+                input.answerId,
+                ctx.userId
             );
         }),
 });

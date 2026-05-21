@@ -1,4 +1,4 @@
-import type { GameInstance, PrismaClient } from "@cashou/db-app";
+import type { GameInstance, Prisma, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {
   GameInstanceCreateSchema,
@@ -8,6 +8,7 @@ import { GameTimeService, type GameTimeInfo } from "./game-time.service.ts";
 import { GameEventTriggerService } from "./game-event-trigger.service.ts";
 import { GameInstanceEventService } from "./game-instance-event.service.ts";
 import { cancelGameJobs } from "../../lib/job-queue.ts";
+import { broadcastToGame, broadcastGameState } from "../../ws/game-socket.ts";
 
 export class GameInstanceService {
   private prisma: PrismaClient;
@@ -56,6 +57,8 @@ export class GameInstanceService {
    * Crée une nouvelle instance de jeu et schedule le premier événement
    */
   async create(data: GameInstanceCreateSchema): Promise<GameInstance> {
+    let levelStartBalance: number | null = null;
+
     // Validate foreign keys if provided
     if (data.userId) {
       const user = await this.prisma.user.findUnique({
@@ -74,21 +77,9 @@ export class GameInstanceService {
         throw new Error(`Le niveau avec l'ID "${data.levelId}" n'existe pas`);
       }
 
-      // Vérifier si l'utilisateur a déjà une partie terminée avec succès sur ce niveau
+      // Allow replay: do not block when a completed game exists for this level.
+      // Only block when there is already an active (non-ended) game on this level.
       if (data.userId) {
-        const completedGame = await this.prisma.gameInstance.findFirst({
-          where: {
-            userId: data.userId,
-            levelId: data.levelId,
-            isEnded: true,
-          },
-        });
-
-        if (completedGame) {
-          throw new Error(`Vous avez déjà terminé le niveau ${level.number}. Passez au niveau suivant !`);
-        }
-
-        // Vérifier aussi s'il y a déjà une partie en cours sur ce niveau
         const activeGame = await this.prisma.gameInstance.findFirst({
           where: {
             userId: data.userId,
@@ -101,6 +92,7 @@ export class GameInstanceService {
           throw new Error(`Vous avez déjà une partie en cours sur ce niveau. Reprenez votre partie !`);
         }
       }
+      levelStartBalance = level.startBalance;
     }
 
     // Respecter le paramètre isPaused si fourni (mode préparation)
@@ -110,12 +102,15 @@ export class GameInstanceService {
       ...data,
       userId: data.userId ?? null,
       levelId: data.levelId ?? null,
-      startBalance: data.startBalance ?? null,
+      startBalance: data.startBalance ?? levelStartBalance ?? null,
       // Initialize new fields
       totalPausedDuration: 0,
       currentEventIndex: 0,
       isEnded: false,
+      actionRequired: false,
       isPaused: isPausedValue,
+      // Set pausedAt so time calculations work correctly when game starts paused
+      pausedAt: isPausedValue ? new Date() : null,
     };
 
     const gameInstance = await this.prisma.gameInstance.create({ data: sanitizedData });
@@ -172,7 +167,32 @@ export class GameInstanceService {
    * Supprime une instance de jeu
    */
   async delete(id: number): Promise<GameInstance> {
+    console.log(`[GAME-ENDED] delete: gameInstanceId=${id}, reason=GAME_INSTANCE_DELETED`);
     return this.prisma.gameInstance.delete({ where: { id } });
+  }
+
+  /**
+   * Retourne la partie en cours de l'utilisateur (isEnded = false), ou null.
+   */
+  async findActiveByUser(userId: string): Promise<GameInstance | null> {
+    return this.prisma.gameInstance.findFirst({
+      where: { userId, isEnded: false },
+      orderBy: { createdAt: "desc" },
+      include: { level: true },
+    });
+  }
+
+  /**
+   * Abandonne une partie en cours : la clôture sans enregistrer de récompenses.
+   * Ne pas appeler endGame (qui calcule et enregistre les étoiles).
+   */
+  async abandon(id: number): Promise<GameInstance> {
+    console.log(`[GAME-ENDED] abandon: gameInstanceId=${id}, reason=USER_ABANDON`);
+    await cancelGameJobs(id);
+    return this.prisma.gameInstance.update({
+      where: { id },
+      data: { isEnded: true, endedAt: new Date() },
+    });
   }
 
   /**
@@ -200,6 +220,27 @@ export class GameInstanceService {
   }
 
   /**
+   * Retourne la meilleure gameInstance terminee d un utilisateur pour un niveau donne.
+   * Meilleure = max etoiles (mandatory + bonus), puis la plus ancienne en cas d egalite.
+   * Retourne null si aucune partie terminee n existe pour ce niveau.
+   */
+  async findBestForLevel(levelId: number, userId: string): Promise<GameInstance | null> {
+    // Use LevelCompletion.stars (already computed at game-end) instead of recalculating.
+    // The most recent completed instance is returned; stars are tracked in LevelCompletion.
+    const bestInstance = await this.prisma.gameInstance.findFirst({
+      where: { levelId, userId, isEnded: true },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        level: true,
+        wallets: true,
+      },
+    });
+
+    return bestInstance;
+  }
+
+
+  /**
    * Met en pause une instance de jeu et annule les jobs schedulés
    * Idempotent: no-op if already paused
    */
@@ -221,10 +262,19 @@ export class GameInstanceService {
     // Cancel all scheduled jobs for this game
     await cancelGameJobs(id);
 
-    return this.prisma.gameInstance.update({
+    const updated = await this.prisma.gameInstance.update({
       where: { id },
       data: { isPaused: true, pausedAt: new Date() },
     });
+
+    // Broadcast pause to WebSocket clients
+    broadcastToGame(String(id), {
+      type: "game:pause",
+      payload: { reason: "user_paused" },
+    });
+    await broadcastGameState(String(id), this.prisma);
+
+    return updated;
   }
 
   /**
@@ -241,8 +291,37 @@ export class GameInstanceService {
       throw new Error(`GameInstance ${id} not found`);
     }
 
-    if (!gameInstance.isPaused || !gameInstance.pausedAt) {
+    if (!gameInstance.isPaused) {
       return gameInstance; // Not paused, nothing to do
+    }
+
+    // Safety net: if isPaused=true but pausedAt is null (inconsistent state from a race condition
+    // or previous completeEvent/endGame), force-unpause without calculating pause duration.
+    if (!gameInstance.pausedAt) {
+      console.warn(`[GameInstanceService] resume(): game ${id} has isPaused=true but pausedAt=null — force-unpausing`);
+      const forceResumed = await this.prisma.gameInstance.update({
+        where: { id },
+        data: { isPaused: false, pausedAt: null, actionRequired: false },
+      });
+      broadcastToGame(String(id), {
+        type: "game:resume",
+        payload: {},
+      });
+      await broadcastGameState(String(id), this.prisma);
+      return forceResumed;
+    }
+
+    // If the game was never start()'d (preparation mode), don't unpause.
+    // The user must click "Démarrer" which calls start() to begin the game.
+    if (gameInstance.levelId) {
+      const eventCount = await this.prisma.gameInstanceEvent.count({
+        where: { gameInstanceId: id },
+      });
+
+      if (eventCount === 0) {
+        console.log(`[GameInstanceService] resume() skipped for game ${id}: still in preparation mode (0 events).`);
+        return gameInstance;
+      }
     }
 
     // Calculate how long it was paused (in seconds for consistency)
@@ -254,7 +333,9 @@ export class GameInstanceService {
       (gameInstance.totalPausedDuration ?? 0) + pauseDurationSeconds;
 
     // Use a transaction to update GameInstance and shift GameInstanceEvents atomically
-    const [updated] = await this.prisma.$transaction(async (tx) => {
+    const [updated] = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const gameInstanceEventService = new GameInstanceEventService(tx);
+
       // Update the game instance
       const updatedInstance = await tx.gameInstance.update({
         where: { id },
@@ -266,7 +347,7 @@ export class GameInstanceService {
       });
 
       // Shift all non-triggered GameInstanceEvent.scheduledAt forward
-      await this.gameInstanceEventService.shiftScheduledEvents(id, pauseDurationSeconds);
+      await gameInstanceEventService.shiftScheduledEvents(id, pauseDurationSeconds);
 
       return [updatedInstance];
     });
@@ -275,6 +356,13 @@ export class GameInstanceService {
     if (!gameInstance.isEnded) {
       await this.gameEventTriggerService.rescheduleAfterResume(id);
     }
+
+    // Broadcast resume to WebSocket clients
+    broadcastToGame(String(id), {
+      type: "game:resume",
+      payload: {},
+    });
+    await broadcastGameState(String(id), this.prisma);
 
     return updated;
   }
@@ -301,22 +389,50 @@ export class GameInstanceService {
       throw new Error(`Cannot start an ended game`);
     }
 
+    // Guard: prevent restarting a game that already had events triggered
+    const triggeredCount = await this.prisma.gameInstanceEvent.count({
+      where: { gameInstanceId: id, triggeredAt: { not: null } },
+    });
+    if (triggeredCount > 0) {
+      throw new Error("Cannot restart a game that has already had events. Use resume().");
+    }
+
     // Réinitialiser le createdAt à maintenant et démarrer le jeu
+    console.log(`[GAME-ENDED] start: gameInstanceId=${id}, levelId=${gameInstance.levelId}, reason=CHRONO_RESET_ON_START (createdAt and totalPausedDuration reset to 0)`);
     const updated = await this.prisma.gameInstance.update({
       where: { id },
       data: {
         createdAt: new Date(),
         isPaused: false,
         pausedAt: null,
+        actionRequired: false,
         totalPausedDuration: 0,
       },
     });
 
     // Schedule the first event
     if (gameInstance.levelId) {
-      await this.gameInstanceEventService.scheduleEventsForGameInstance(id);
-      await this.gameEventTriggerService.scheduleFirstEvent(id);
+      console.log(`[GameInstanceService] ▶️ start() scheduling events for game ${id}, levelId=${gameInstance.levelId}`);
+      try {
+        await this.gameInstanceEventService.scheduleEventsForGameInstance(id);
+        console.log(`[GameInstanceService] ✅ scheduleEventsForGameInstance done for game ${id}`);
+      } catch (err) {
+        console.error(`[GameInstanceService] ❌ scheduleEventsForGameInstance FAILED for game ${id}:`, err);
+        throw err;
+      }
+      try {
+        await this.gameEventTriggerService.scheduleFirstEvent(id);
+        console.log(`[GameInstanceService] ✅ scheduleFirstEvent done for game ${id}`);
+      } catch (err) {
+        console.error(`[GameInstanceService] ❌ scheduleFirstEvent FAILED for game ${id}:`, err);
+        // Don't throw — events are in DB, pg-boss is a bonus
+      }
+    } else {
+      console.log(`[GameInstanceService] ⚠️ start() no levelId for game ${id}, skipping event scheduling`);
     }
+
+    // Broadcast initial game:state after start
+    await broadcastGameState(String(id), this.prisma);
 
     return updated;
   }
@@ -366,6 +482,13 @@ export class GameInstanceService {
       throw new Error(`GameInstance ${id} not found after completing event`);
     }
 
+    // Broadcast resume + state after event completion
+    broadcastToGame(String(id), {
+      type: "game:resume",
+      payload: {},
+    });
+    await broadcastGameState(String(id), this.prisma);
+
     return updated;
   }
 
@@ -385,6 +508,8 @@ export class GameInstanceService {
     if (gameInstances.length === 0) {
       return { deletedCount: 0 };
     }
+
+    console.log(`[GAME-ENDED] resetLevelForUser: userId=${userId}, levelId=${levelId}, deletingCount=${gameInstances.length}, gameInstanceIds=${gameInstances.map(gi => gi.id).join(',')}, reason=MANUAL_RESET_LEVEL`);
 
     const gameInstanceIds = gameInstances.map(gi => gi.id);
 
@@ -412,6 +537,11 @@ export class GameInstanceService {
 
       // 3. Wallets
       await tx.wallet.deleteMany({
+        where: { gameInstanceId: { in: gameInstanceIds } },
+      });
+
+      // 3.5. GameInstanceEvents
+      await tx.gameInstanceEvent.deleteMany({
         where: { gameInstanceId: { in: gameInstanceIds } },
       });
 

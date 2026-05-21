@@ -1,5 +1,7 @@
 // Service métier pour la gestion des objectifs du jeu
-import type { Goal, PrismaClient } from "@prisma/client";
+// Import depuis @cashou/db-app (et non @prisma/client) car Bun crée des copies séparées
+// de @prisma/client par contexte de résolution, ce qui cause des types incompatibles
+import type { Goal, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type { GoalCreateSchema, GoalDataSchema } from "../schemas-zod/goal-schema.ts";
 
