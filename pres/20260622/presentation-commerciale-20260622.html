@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cashou - Présentation Commerciale</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            height: 100vh;
+            height: 100dvh; /* Dynamic viewport height pour Safari */
+            min-height: -webkit-fill-available;
+        }
+
+        body {
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #1C1E33;
+            color: #FFFFFF;
+            overflow: hidden;
+            height: 100vh;
+            height: 100dvh; /* Dynamic viewport height pour Safari */
+            min-height: -webkit-fill-available; /* Fallback pour Safari */
+        }
+
+        .slide {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh; /* Dynamic viewport height pour Safari */
+            min-height: -webkit-fill-available; /* Fallback pour Safari */
+            padding: 60px 80px;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .slide:not(.intro-slide):not(.demo-slide) {
+            padding-top: 0;
+        }
+
+        .slide:not(.intro-slide):not(.demo-slide) h2 {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 160px);
+            max-width: 1200px;
+            margin: 0;
+            padding: 0;
+        }
+
+        .slide:not(.intro-slide):not(.demo-slide) .content {
+            margin-top: 140px;
+        }
+
+        .slide.active {
+            display: flex;
+        }
+
+        h1 {
+            font-family: 'Rowdies', sans-serif;
+            font-size: 4rem;
+            font-weight: 700;
+            color: #FFB472;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .intro-slide h1 {
+            position: absolute;
+            top: 80px;
+            left: 0;
+            right: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0 80px;
+            text-align: center;
+        }
+
+        .intro-slide .intro-content {
+            margin-top: 140px;
+        }
+
+        h2 {
+            font-family: 'Roboto-Bold', sans-serif;
+            font-size: 3rem;
+            font-weight: 700;
+            color: #FFB472;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        h3 {
+            font-family: 'Roboto-Bold', sans-serif;
+            font-size: 1.5rem;
+            color: #FFFFFF;
+            margin-bottom: 10px;
+        }
+
+        .content {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        /* Animations */
+        .animate-item {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+
+        .animate-item.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Désactiver les transitions pour changement rapide */
+        body.no-transitions * {
+            transition: none !important;
+        }
+
+        .intro-slide {
+            justify-content: center;
+        }
+
+        .intro-content {
+            text-align: center;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .intro-logo {
+            max-width: 300px;
+            height: auto;
+            margin: 10px auto 30px auto;
+            display: block;
+            border-radius: 20px;
+        }
+
+        .intro-tagline {
+            font-size: 1.8rem;
+            color: #ECEDEE;
+            margin-top: 20px;
+            margin-bottom: 60px;
+            line-height: 1.6;
+        }
+
+        .intro-features {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            margin-top: 60px;
+            flex-wrap: wrap;
+        }
+
+        .intro-feature {
+            text-align: center;
+            flex: 0 0 auto;
+        }
+
+        .intro-feature-icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .intro-feature-title {
+            color: #FFB472;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .intro-feature-desc {
+            color: #9BA1A6;
+            font-size: 0.9rem;
+        }
+
+        .value-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .value-card {
+            background: #2A2D45;
+            border: 1px solid #3A3D55;
+            border-radius: 16px;
+            padding: 30px;
+        }
+
+        .value-card h3 {
+            color: #FFB472;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+
+        .value-card p {
+            color: #ECEDEE;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        .features-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .feature-card {
+            background: #2A2D45;
+            border: 1px solid #3A3D55;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .icon {
+            color: #FFB472;
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        .value-card h3 .icon,
+        .advantage-item h4 .icon {
+            font-size: 1.2em;
+            vertical-align: middle;
+        }
+
+        .feature-icon i {
+            color: #FFB472;
+        }
+
+        .roadmap-icon {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 2rem;
+            color: #FFB472;
+        }
+
+        .feature-card h3 {
+            color: #FFB472;
+            margin-bottom: 10px;
+        }
+
+        .feature-card p {
+            color: #ECEDEE;
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        .advantage-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+            margin-top: 40px;
+        }
+
+        .advantage-item {
+            background: #2A2D45;
+            border: 1px solid #3A3D55;
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+        }
+
+        .advantage-item h4 {
+            color: #FFB472;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+
+        .advantage-item p {
+            color: #9BA1A6;
+            font-size: 0.9rem;
+        }
+
+        .roadmap-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .roadmap-item {
+            background: #2A2D45;
+            border: 2px solid #172D4E;
+            border-radius: 16px;
+            padding: 30px;
+            position: relative;
+        }
+
+
+        .roadmap-item h3 {
+            color: #FFB472;
+            margin-bottom: 10px;
+        }
+
+        .roadmap-item p {
+            color: #ECEDEE;
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .metric-card {
+            background: #2A2D45;
+            border: 1px solid #3A3D55;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .metric-number {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #FFB472;
+            margin-bottom: 10px;
+        }
+
+        .metric-label {
+            color: #ECEDEE;
+            font-size: 1.1rem;
+        }
+
+        .demo-slide {
+            text-align: center;
+            background: linear-gradient(135deg, #1C1E33 0%, #172D4E 100%);
+            justify-content: center;
+        }
+
+        .demo-slide h1 {
+            font-size: 5rem;
+            margin-bottom: 40px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .demo-slide p {
+            font-size: 2rem;
+            color: #ECEDEE;
+            margin-top: 30px;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.05);
+                opacity: 0.9;
+            }
+        }
+
+        .slide-indicator {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #3A3D55;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .indicator.active {
+            background: #FFB472;
+            transform: scale(1.3);
+        }
+
+        .sommaire-slide {
+            text-align: left;
+        }
+
+        .sommaire-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 20px;
+        }
+
+        .sommaire-item {
+            background: #2A2D45;
+            border: 1px solid #3A3D55;
+            border-radius: 10px;
+            padding: 12px 20px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .sommaire-item:hover {
+            border-color: #FFB472;
+            transform: translateX(10px);
+        }
+
+        .sommaire-number {
+            background: #172D4E;
+            color: #FFB472;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .sommaire-text {
+            color: #ECEDEE;
+            font-size: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .slide {
+                padding: 40px 30px;
+            }
+
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            h2 {
+                font-size: 2rem;
+            }
+
+            .value-grid,
+            .features-list,
+            .roadmap-list,
+            .metrics-grid,
+            .advantage-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .intro-features {
+                gap: 30px;
+            }
+
+            .intro-feature-icon {
+                font-size: 3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Slide 1: Titre -->
+    <div class="slide active intro-slide" data-slide="0">
+        <div class="content">
+            <div class="intro-content">
+                <h1 class="animate-item">Cashou</h1>
+                <img src="cashou-logo.png" alt="Logo Cashou" class="intro-logo animate-item">
+                <p class="intro-tagline animate-item">
+                    Les évolutions majeures
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 2: Vision d'ensemble -->
+    <div class="slide" data-slide="1">
+        <div class="content">
+            <h2 class="animate-item">Ce qui a changé</h2>
+            <div class="value-grid">
+                <div class="value-card animate-item">
+                    <h3><i class="fas fa-layer-group icon"></i> 20 nouveaux niveaux progressifs</h3>
+                    <p>Un nouveau parcours d'apprentissage complet avec une montée en complexité, des objectifs et un contenu adapté à chaque niveau.</p>
+                </div>
+                <div class="value-card animate-item">
+                    <h3><i class="fas fa-route icon"></i> Tutoriel guidé au niveau 1</h3>
+                    <p>Le premier niveau est un parcours accompagné pour apprendre les mécanismes du jeu sans friction initiale.</p>
+                </div>
+                <div class="value-card animate-item">
+                    <h3><i class="fas fa-shield-alt icon"></i> UX plus robuste</h3>
+                    <p>Plusieurs correctifs sur la navigation, les drawers, la reprise d'événements et la logique de temps renforcent la fiabilité mobile.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 3: Parcours 20 niveaux -->
+    <div class="slide" data-slide="2">
+        <div class="content">
+            <h2 class="animate-item">Un parcours en 20 niveaux</h2>
+            <div class="features-list">
+                <div class="feature-card animate-item">
+                    <div class="feature-icon"><i class="fas fa-seedling"></i></div>
+                    <h3>Progression pédagogique</h3>
+                    <p>Les premiers niveaux introduisent les livrets, puis les classes d'actifs se diversifient progressivement.</p>
+                </div>
+                <div class="feature-card animate-item">
+                    <div class="feature-icon"><i class="fas fa-bullseye"></i></div>
+                    <h3>Objectifs par niveau</h3>
+                    <p>Chaque partie porte des objectifs et des situations adaptées au stade d'apprentissage du joueur.</p>
+                </div>
+                <div class="feature-card animate-item">
+                    <div class="feature-icon"><i class="fas fa-unlock-alt"></i></div>
+                    <h3>Deblocage progressif</h3>
+                    <p>Le joueur ne voit et ne manipule que les concepts nécessaires à l'étape courante de son parcours.</p>
+                </div>
+                <div class="feature-card animate-item">
+                    <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
+                    <h3>Montée en complexité</h3>
+                    <p>La simulation évolue des placements simples vers des arbitrages multi-actifs et des événements de marché plus avancés.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 4: Tutoriel niveau 1 -->
+    <div class="slide" data-slide="3">
+        <div class="content">
+            <h2 class="animate-item">Niveau 1: un tutoriel guide</h2>
+            <div class="advantage-grid">
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-hand-pointer icon"></i> Prise en main accompagnée</h4>
+                    <p>Le joueur est guidé pour ouvrir les placements, choisir le Livret A et réaliser son premier investissement.</p>
+                </div>
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-play-circle icon"></i> Demarrage sans hesitation</h4>
+                    <p>Le tutoriel conduit ensuite vers le lancement de la partie et l'observation du premier événement clé.</p>
+                </div>
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-comments icon"></i> Messages contextuels</h4>
+                    <p>Des overlays et callouts accompagnent les écrans de jeu, d'asset, de transaction, d'événement et le résumé final.</p>
+                </div>
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-save icon"></i> Progression persistante</h4>
+                    <p>Le parcours tuto est sauvegardé pour reprendre proprement la session si l'utilisateur quitte puis revient.</p>
+                </div>
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-graduation-cap icon"></i> Impact produit</h4>
+                    <p>Ce niveau 1 ne se contente plus d'etre jouable: il enseigne explicitement les bons gestes dès la première session.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 7: Robustesse -->
+    <div class="slide" data-slide="5">
+        <div class="content">
+            <h2 class="animate-item">Une UX mobile plus robuste</h2>
+            <div class="advantage-grid">
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-window-restore icon"></i> Drawers fiabilisés</h4>
+                    <p>Le comportement d'ouverture des actifs a été rendu plus fiable, notamment sur les flux d'événement et de reprise de partie.</p>
+                </div>
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-directions icon"></i> Navigation plus propre</h4>
+                    <p>Les retours et redirections vers la partie courante ont été stabilisés pour limiter les écrans empilés et les incohérences.</p>
+                </div>
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-pause-circle icon"></i> Gestion du temps corrigée</h4>
+                    <p>La logique de pause et de reprise est plus fiable, en particulier pour éviter des intérêts avant le vrai démarrage d'une partie.</p>
+                </div>
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-bell icon"></i> Notifications mieux orchestrées</h4>
+                    <p>Les actions issues des événements et des écrans intermédiaires sont mieux ciblées sur la bonne partie active.</p>
+                </div>
+                <div class="advantage-item animate-item">
+                    <h4><i class="fas fa-mobile-alt icon"></i> Expérience plus fluide</h4>
+                    <p>Le résultat est une application qui se comporte de façon plus prévisible pendant une vraie session mobile.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 8: Chiffres clés / Métriques
+    <div class="slide" data-slide="7">
+        <div class="content">
+            <h2 class="animate-item">Chiffres clés</h2>
+            <div class="metrics-grid">
+                <div class="metric-card animate-item">
+                    <div class="metric-number">27</div>
+                    <div class="metric-label">Tables de données</div>
+                </div>
+                <div class="metric-card animate-item">
+                    <div class="metric-number">4</div>
+                    <div class="metric-label">Conteneurs Docker</div>
+                </div>
+                <div class="metric-card animate-item">
+                    <div class="metric-number">100%</div>
+                    <div class="metric-label">Type-safe (TypeScript)</div>
+                </div>
+                <div class="metric-card animate-item">
+                    <div class="metric-number">∞</div>
+                    <div class="metric-label">Un nombre infini d'idées pour alimenter le contenu</div>
+                </div>
+            </div>
+        </div>
+    </div> -->
+
+    <!-- Slide 8: Demo -->
+    <div class="slide demo-slide" data-slide="6">
+        <div class="content">
+            <h1 class="animate-item"><i class="fas fa-film" style="color: #FFB472;"></i></h1>
+            <h2 class="animate-item" style="color: #FFB472; font-size: 3.5rem;">Démo</h2>
+            <p class="animate-item">Passons à la démonstration</p>
+        </div>
+    </div>
+
+    <!-- Slide indicators -->
+    <div class="slide-indicator">
+        <span class="indicator active" onclick="goToSlide(0)"></span>
+        <span class="indicator" onclick="goToSlide(1)"></span>
+        <span class="indicator" onclick="goToSlide(2)"></span>
+        <span class="indicator" onclick="goToSlide(3)"></span>
+        <span class="indicator" onclick="goToSlide(4)"></span>
+        <span class="indicator" onclick="goToSlide(5)"></span>
+        <span class="indicator" onclick="goToSlide(6)"></span>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        let slideAnimations = {}; // {slideIndex: currentAnimationIndex}
+        const slides = document.querySelectorAll('.slide');
+        const indicators = document.querySelectorAll('.indicator');
+        const totalSlides = slides.length;
+
+        // Initialiser les animations pour chaque slide
+        slides.forEach((slide, index) => {
+            slideAnimations[index] = 0;
+        });
+
+        function getAnimateItems(slideIndex) {
+            const slide = slides[slideIndex];
+            return slide ? slide.querySelectorAll('.animate-item') : [];
+        }
+
+        function revealNextItem(slideIndex) {
+            const items = getAnimateItems(slideIndex);
+            const currentAnim = slideAnimations[slideIndex];
+
+            if (currentAnim < items.length) {
+                items[currentAnim].classList.add('visible');
+                slideAnimations[slideIndex] = currentAnim + 1;
+                return false; // Il reste des éléments à révéler
+            }
+            return true; // Tous les éléments sont révélés
+        }
+
+        function resetSlideAnimations(slideIndex) {
+            const items = getAnimateItems(slideIndex);
+            items.forEach(item => {
+                item.classList.remove('visible');
+            });
+            slideAnimations[slideIndex] = 0;
+        }
+
+        function showSlide(n, revealAll = false) {
+            // Désactiver les transitions pour changement rapide (avant tout changement)
+            if (revealAll) {
+                document.body.classList.add('no-transitions');
+            }
+
+            // Cacher la slide actuelle
+            slides[currentSlide].classList.remove('active');
+            indicators[currentSlide].classList.remove('active');
+
+            currentSlide = (n + totalSlides) % totalSlides;
+
+            // Afficher la nouvelle slide
+            slides[currentSlide].classList.add('active');
+            indicators[currentSlide].classList.add('active');
+
+            // Réinitialiser et révéler les animations
+            resetSlideAnimations(currentSlide);
+
+            // Pour la slide demo, révéler tous les éléments en même temps
+            const isDemoSlide = slides[currentSlide].classList.contains('demo-slide');
+
+            if (revealAll || isDemoSlide) {
+                // Révéler tous les éléments immédiatement (sans délai pour demo)
+                const items = getAnimateItems(currentSlide);
+                items.forEach((item) => {
+                    item.classList.add('visible');
+                });
+                slideAnimations[currentSlide] = items.length;
+
+                // Réactiver les transitions après un très court délai
+                if (revealAll) {
+                    setTimeout(() => {
+                        document.body.classList.remove('no-transitions');
+                    }, 10);
+                }
+            } else {
+                // Révéler le premier élément
+                revealNextItem(currentSlide);
+            }
+        }
+
+        function nextSlide() {
+            const items = getAnimateItems(currentSlide);
+            const allRevealed = slideAnimations[currentSlide] >= items.length;
+            const isDemoSlide = slides[currentSlide].classList.contains('demo-slide');
+
+            // Pour la slide demo, passer directement à la suivante
+            if (isDemoSlide || !allRevealed) {
+                if (!allRevealed) {
+                    // Révéler le prochain élément
+                    revealNextItem(currentSlide);
+                } else {
+                    // Passer à la slide suivante
+                    showSlide(currentSlide + 1);
+                }
+            } else {
+                // Passer à la slide suivante
+                showSlide(currentSlide + 1);
+            }
+        }
+
+        function previousSlide() {
+            const items = getAnimateItems(currentSlide);
+            const allRevealed = slideAnimations[currentSlide] >= items.length;
+
+            if (!allRevealed && slideAnimations[currentSlide] > 0) {
+                // Masquer le dernier élément révélé
+                const currentAnim = slideAnimations[currentSlide] - 1;
+                items[currentAnim].classList.remove('visible');
+                slideAnimations[currentSlide] = currentAnim;
+            } else {
+                // Passer à la slide précédente
+                showSlide(currentSlide - 1, true);
+            }
+        }
+
+        function goToSlide(n) {
+            showSlide(n, true);
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') {
+                e.preventDefault();
+                nextSlide();
+            }
+            else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
+                e.preventDefault();
+                previousSlide();
+            }
+        });
+
+        // Touch/swipe support
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            if (touchEndX > touchStartX + 50) {
+                // Swipe vers la droite = slide suivante
+                nextSlide();
+            }
+            if (touchEndX < touchStartX - 50) {
+                // Swipe vers la gauche = slide précédente
+                previousSlide();
+            }
+        }
+
+        // Verrouillage global pour éviter les changements multiples
+        let isChangingSlide = false;
+
+        // Trackpad/mouse swipe support
+        let mouseStartX = 0;
+        let mouseStartY = 0;
+        let mouseEndX = 0;
+        let mouseEndY = 0;
+        let isMouseDown = false;
+        let mouseMoveDistance = 0;
+
+        document.addEventListener('mousedown', (e) => {
+            if (isChangingSlide) return;
+            isMouseDown = true;
+            mouseStartX = e.clientX;
+            mouseStartY = e.clientY;
+            mouseMoveDistance = 0;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isMouseDown) {
+                mouseEndX = e.clientX;
+                mouseEndY = e.clientY;
+                const deltaX = Math.abs(mouseEndX - mouseStartX);
+                const deltaY = Math.abs(mouseEndY - mouseStartY);
+                mouseMoveDistance = Math.max(mouseMoveDistance, deltaX);
+            }
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (isMouseDown && !isChangingSlide) {
+                const deltaX = mouseEndX - mouseStartX;
+                const deltaY = Math.abs(mouseEndY - mouseStartY);
+                // Détecter un swipe horizontal (deltaX plus grand que deltaY et mouvement suffisant)
+                if (mouseMoveDistance > 500 && Math.abs(deltaX) > deltaY && Math.abs(deltaX) > 500) {
+                    isChangingSlide = true;
+                    if (deltaX > 0) {
+                        // Swipe vers la droite = slide suivante
+                        showSlide(currentSlide + 1, true);
+                    } else {
+                        // Swipe vers la gauche = slide précédente
+                        showSlide(currentSlide - 1, true);
+                    }
+                    setTimeout(() => {
+                        isChangingSlide = false;
+                    }, 300);
+                }
+                isMouseDown = false;
+            }
+        });
+
+        // Support pour les gestes trackpad avec wheel (scroll horizontal)
+        let wheelDeltaX = 0;
+        let lastWheelTime = 0;
+
+        document.addEventListener('wheel', (e) => {
+            // Ignorer si un changement de slide est en cours
+            if (isChangingSlide) {
+                e.preventDefault();
+                return;
+            }
+
+            // Détecter le scroll horizontal (deltaX) sur trackpad
+            if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+                e.preventDefault();
+                const now = Date.now();
+
+                // Réinitialiser si trop de temps entre les événements (nouveau geste)
+                if (now - lastWheelTime > 50) {
+                    wheelDeltaX = 0;
+                }
+
+                wheelDeltaX += e.deltaX;
+                lastWheelTime = now;
+
+                // Déclencher immédiatement si le seuil est atteint
+                if (Math.abs(wheelDeltaX) > 500) {
+                    isChangingSlide = true;
+                    if (wheelDeltaX > 0) {
+                        // Swipe vers la droite = slide suivante
+                        showSlide(currentSlide + 1, true);
+                    } else {
+                        // Swipe vers la gauche = slide précédente
+                        showSlide(currentSlide - 1, true);
+                    }
+                    wheelDeltaX = 0;
+
+                    // Déverrouiller après un délai pour éviter les déclenchements multiples
+                    setTimeout(() => {
+                        isChangingSlide = false;
+                    }, 400);
+                }
+            }
+        }, { passive: false });
+
+        // Initialiser la première slide
+        showSlide(0, true);
+    </script>
+</body>
+</html>
