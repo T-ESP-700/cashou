@@ -471,40 +471,48 @@ export class InvestmentService {
       return;
     }
 
-    const holdings = await this.holdingService.findByGameInstance(gameInstanceId);
+    // Transaction atomique pour garantir que tous les intérêts sont appliqués ou aucun
+    // Les holdings sont lus dans la transaction pour éviter les données stale
+    await this.prisma.$transaction(async (tx) => {
+      const holdings = await tx.holding.findMany({
+        where: { gameInstanceId },
+        orderBy: { createdAt: "desc" },
+        include: { asset: true, wallet: true },
+      });
 
-    for (const holding of holdings) {
-      const holdingWithAsset = holding as HoldingWithAsset;
-      const interests = await this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
+      for (const holding of holdings) {
+        const holdingWithAsset = holding as HoldingWithAsset;
+        const interests = await this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
 
-      if (interests > 0) {
-        const currentQuantity = holdingWithAsset.quantity ? Number(holdingWithAsset.quantity) : 0;
-        const newQuantity = currentQuantity + interests;
+        if (interests > 0) {
+          const currentQuantity = holdingWithAsset.quantity ? Number(holdingWithAsset.quantity) : 0;
+          const newQuantity = currentQuantity + interests;
 
-        await this.prisma.holding.update({
-          where: { id: holding.id },
-          data: {
-            quantity: new Prisma.Decimal(newQuantity),
-            lastInterestAt: new Date(),
-          },
-        });
+          await tx.holding.update({
+            where: { id: holding.id },
+            data: {
+              quantity: new Prisma.Decimal(newQuantity),
+              lastInterestAt: new Date(),
+            },
+          });
 
-        // Créer une transaction pour tracer les intérêts
-        await this.prisma.transaction.create({
-          data: {
-            walletId: holding.walletId,
-            assetId: holding.assetId,
-            gameInstanceId,
-            type: "INTEREST",
-            quantity: Math.floor(interests),
-            unitPrice: new Prisma.Decimal(1),
-            totalValue: new Prisma.Decimal(interests),
-            transactionDate: new Date(),
-            source: "interest_application",
-          },
-        });
+          // Créer une transaction pour tracer les intérêts
+          await tx.transaction.create({
+            data: {
+              walletId: holding.walletId,
+              assetId: holding.assetId,
+              gameInstanceId,
+              type: "INTEREST",
+              quantity: Math.floor(interests),
+              unitPrice: new Prisma.Decimal(1),
+              totalValue: new Prisma.Decimal(interests),
+              transactionDate: new Date(),
+              source: "interest_application",
+            },
+          });
+        }
       }
-    }
+    });
   }
 
   /**
@@ -545,7 +553,7 @@ export class InvestmentService {
           const assetId = item.holding.assetId;
           return {
             assetId,
-            assetName: item.holding.asset.name,
+            assetName: item.holding.asset.title,
             currentValue: item.currentValue,
             totalValue: item.totalValue,
             change: item.interests,

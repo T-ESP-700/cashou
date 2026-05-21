@@ -253,14 +253,23 @@ export class EndGameService {
 
         // 5. Marquer la partie comme terminee
         console.log(`[GAME-ENDED] endGame: gameInstanceId=${gameInstanceId}, levelId=${gameInstance.levelId}, userId=${gameInstance.userId}, totalValue=${Math.round(totalValue)}, startBalance=${startBalance}, reason=NORMAL_END_GAME`);
-        await this.prisma.gameInstance.update({
-            where: { id: gameInstanceId },
-            data: {
-                isEnded: true,
-                endedAt: new Date(),
-                isPaused: true,
-                pausedAt: null,
-            },
+        await this.prisma.$transaction(async (tx) => {
+            const current = await tx.gameInstance.findUnique({
+                where: { id: gameInstanceId },
+                select: { isEnded: true },
+            });
+            if (current?.isEnded) {
+                throw new Error(`La partie ${gameInstanceId} est déjà terminée`);
+            }
+            await tx.gameInstance.update({
+                where: { id: gameInstanceId },
+                data: {
+                    isEnded: true,
+                    endedAt: new Date(),
+                    isPaused: true,
+                    pausedAt: null,
+                },
+            });
         });
 
         // Broadcast game end to WebSocket clients

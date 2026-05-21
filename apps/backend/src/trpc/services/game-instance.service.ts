@@ -523,29 +523,32 @@ export class GameInstanceService {
     }
 
     // Supprimer dans l'ordre pour respecter les contraintes de cle etrangere
-    // 1. Holdings
-    await this.prisma.holding.deleteMany({
-      where: { gameInstanceId: { in: gameInstanceIds } },
-    });
+    // Transaction atomique pour éviter les données orphelines en cas d'échec partiel
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Holdings
+      await tx.holding.deleteMany({
+        where: { gameInstanceId: { in: gameInstanceIds } },
+      });
 
-    // 2. Transactions
-    await this.prisma.transaction.deleteMany({
-      where: { gameInstanceId: { in: gameInstanceIds } },
-    });
+      // 2. Transactions
+      await tx.transaction.deleteMany({
+        where: { gameInstanceId: { in: gameInstanceIds } },
+      });
 
-    // 3. Wallets
-    await this.prisma.wallet.deleteMany({
-      where: { gameInstanceId: { in: gameInstanceIds } },
-    });
+      // 3. Wallets
+      await tx.wallet.deleteMany({
+        where: { gameInstanceId: { in: gameInstanceIds } },
+      });
 
-    // 3.5. GameInstanceEvents
-    await this.prisma.gameInstanceEvent.deleteMany({
-      where: { gameInstanceId: { in: gameInstanceIds } },
-    });
+      // 3.5. GameInstanceEvents
+      await tx.gameInstanceEvent.deleteMany({
+        where: { gameInstanceId: { in: gameInstanceIds } },
+      });
 
-    // 4. GameInstances
-    await this.prisma.gameInstance.deleteMany({
-      where: { id: { in: gameInstanceIds } },
+      // 4. GameInstances
+      await tx.gameInstance.deleteMany({
+        where: { id: { in: gameInstanceIds } },
+      });
     });
 
     return { deletedCount: gameInstances.length };
