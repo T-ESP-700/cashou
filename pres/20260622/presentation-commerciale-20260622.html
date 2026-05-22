@@ -446,142 +446,6 @@
             font-size: 1rem;
         }
 
-        /* Slide parcours : jauges de progression */
-        .journey-gauges {
-            display: flex;
-            flex-direction: column;
-            gap: 22px;
-            margin-top: 30px;
-        }
-
-        .gauge {
-            display: grid;
-            grid-template-columns: 130px 1fr;
-            align-items: center;
-            column-gap: 24px;
-            row-gap: 6px;
-        }
-
-        .gauge-label {
-            color: #FFFFFF;
-            font-weight: 700;
-            font-size: 1.05rem;
-            text-align: right;
-        }
-
-        .gauge-track {
-            position: relative;
-            height: 16px;
-            background: #3A3D55;
-            border-radius: 999px;
-            overflow: hidden;
-        }
-
-        .gauge-fill {
-            position: absolute;
-            inset: 0 auto 0 0;
-            width: 0;
-            border-radius: 999px;
-            background: linear-gradient(90deg, rgba(255, 180, 114, 0.25), #FFB472);
-            transition: width 1s cubic-bezier(0.22, 1, 0.36, 1);
-        }
-
-        .gauge.visible .gauge-fill {
-            width: var(--fill, 100%);
-        }
-
-        .gauge-values {
-            grid-column: 2;
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.85rem;
-            color: #9BA1A6;
-        }
-
-        .gauge-values strong {
-            color: #FFB472;
-            font-weight: 700;
-        }
-
-        /* Slide parcours : frise des enveloppes */
-        .journey-timeline {
-            position: relative;
-            display: flex;
-            justify-content: space-between;
-            margin-top: 55px;
-            padding: 0 10px;
-        }
-
-        .journey-timeline::before {
-            content: "";
-            position: absolute;
-            top: 19px;
-            left: 24px;
-            right: 24px;
-            height: 3px;
-            background: linear-gradient(90deg, #3A3D55, #FFB472);
-            border-radius: 999px;
-        }
-
-        .journey-node {
-            position: relative;
-            z-index: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            width: 13%;
-        }
-
-        .journey-node .node-dot {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: #2A2D45;
-            border: 2px solid #FFB472;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #FFB472;
-            font-size: 1.1rem;
-            margin-bottom: 12px;
-        }
-
-        .journey-node .node-name {
-            color: #FFFFFF;
-            font-size: 0.95rem;
-            font-weight: 700;
-            line-height: 1.2;
-        }
-
-        .journey-node .node-level {
-            margin-top: 6px;
-            color: #9BA1A6;
-            font-size: 0.78rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .journey-stats {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 10px 26px;
-            margin-top: 50px;
-            color: #ECEDEE;
-            font-size: 1rem;
-        }
-
-        .journey-stats span strong {
-            color: #FFB472;
-        }
-
-        .journey-stats span + span::before {
-            content: "·";
-            color: #3A3D55;
-            margin-right: 26px;
-        }
-
         @media (max-width: 768px) {
             .slide {
                 padding: 40px 30px;
@@ -652,68 +516,27 @@
     <div class="slide" data-slide="2">
         <div class="content">
             <h2 class="animate-item">Un parcours en 20 niveaux</h2>
-
-            <div class="journey-gauges">
-                <div class="gauge animate-item" style="--fill: 100%">
-                    <span class="gauge-label">Capital</span>
-                    <div class="gauge-track"><div class="gauge-fill"></div></div>
-                    <div class="gauge-values"><span>1 500 €</span><span><strong>100 000 €</strong></span></div>
+            <div class="features-list">
+                <div class="feature-card animate-item">
+                    <div class="feature-icon"><i class="fas fa-seedling"></i></div>
+                    <h3>Progression pédagogique</h3>
+                    <p>Les premiers niveaux introduisent les livrets, puis les classes d'actifs se diversifient progressivement.</p>
                 </div>
-                <div class="gauge animate-item" style="--fill: 100%">
-                    <span class="gauge-label">Horizon simulé</span>
-                    <div class="gauge-track"><div class="gauge-fill"></div></div>
-                    <div class="gauge-values"><span>90 jours</span><span><strong>8 ans</strong></span></div>
+                <div class="feature-card animate-item">
+                    <div class="feature-icon"><i class="fas fa-bullseye"></i></div>
+                    <h3>Objectifs par niveau</h3>
+                    <p>Chaque partie porte des objectifs et des situations adaptées au stade d'apprentissage du joueur.</p>
                 </div>
-                <div class="gauge animate-item" style="--fill: 100%">
-                    <span class="gauge-label">Complexité</span>
-                    <div class="gauge-track"><div class="gauge-fill"></div></div>
-                    <div class="gauge-values"><span>1 événement / partie</span><span><strong>5 événements / partie</strong></span></div>
+                <div class="feature-card animate-item">
+                    <div class="feature-icon"><i class="fas fa-unlock-alt"></i></div>
+                    <h3>Deblocage progressif</h3>
+                    <p>Le joueur ne voit et ne manipule que les concepts nécessaires à l'étape courante de son parcours.</p>
                 </div>
-            </div>
-
-            <div class="journey-timeline animate-item">
-                <div class="journey-node">
-                    <div class="node-dot"><i class="fas fa-piggy-bank"></i></div>
-                    <div class="node-name">Livrets</div>
-                    <div class="node-level">Niv 1</div>
+                <div class="feature-card animate-item">
+                    <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
+                    <h3>Montée en complexité</h3>
+                    <p>La simulation évolue des placements simples vers des arbitrages multi-actifs et des événements de marché plus avancés.</p>
                 </div>
-                <div class="journey-node">
-                    <div class="node-dot"><i class="fas fa-shield-halved"></i></div>
-                    <div class="node-name">Assurance vie</div>
-                    <div class="node-level">Niv 4</div>
-                </div>
-                <div class="journey-node">
-                    <div class="node-dot"><i class="fas fa-building-columns"></i></div>
-                    <div class="node-name">PEA</div>
-                    <div class="node-level">Niv 7</div>
-                </div>
-                <div class="journey-node">
-                    <div class="node-dot"><i class="fas fa-file-contract"></i></div>
-                    <div class="node-name">Obligations</div>
-                    <div class="node-level">Niv 9</div>
-                </div>
-                <div class="journey-node">
-                    <div class="node-dot"><i class="fas fa-layer-group"></i></div>
-                    <div class="node-name">ETF</div>
-                    <div class="node-level">Niv 10</div>
-                </div>
-                <div class="journey-node">
-                    <div class="node-dot"><i class="fas fa-globe"></i></div>
-                    <div class="node-name">CTO</div>
-                    <div class="node-level">Niv 11</div>
-                </div>
-                <div class="journey-node">
-                    <div class="node-dot"><i class="fas fa-cubes-stacked"></i></div>
-                    <div class="node-name">Alternatifs</div>
-                    <div class="node-level">Niv 16</div>
-                </div>
-            </div>
-
-            <div class="journey-stats animate-item">
-                <span><strong>7</strong> enveloppes</span>
-                <span><strong>39</strong> actifs</span>
-                <span><strong>8</strong> secteurs</span>
-                <span><strong>57</strong> événements de marché</span>
             </div>
         </div>
     </div>
