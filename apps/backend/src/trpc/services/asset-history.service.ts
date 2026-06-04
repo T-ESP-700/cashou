@@ -6,6 +6,7 @@ import type { AssetHistory, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {AssetHistoryCreateSchema, AssetHistoryDataSchema} from "../schemas-zod/asset-history-schema.ts";
 import { gameCache, cached } from "../../lib/cache.ts";
+import { impactCoefForAsset } from "../../lib/interest.ts";
 
 export class AssetHistoryService {
     private prisma: PrismaClient;
@@ -127,6 +128,13 @@ export class AssetHistoryService {
             return [];
         }
 
+        // Asset's field/submarket — needed to resolve sector-wide impacts
+        // (impacts targeting a fieldId + submarketId rather than a single assetId).
+        const asset = await this.prisma.asset.findUnique({
+            where: { id: assetId },
+            select: { id: true, fieldId: true, submarketId: true },
+        });
+
         const level = gameInstance.level;
         const speed = level.speed ?? 1;
         const duration = level.duration ?? 365;
@@ -171,15 +179,13 @@ export class AssetHistoryService {
             const eventGameDay = Math.floor(duration * (le.triggerPercent / 100));
             const eventHistoryDay = historyStartDay + eventGameDay;
 
-            // Find the coef for this specific asset
-            const impact = le.event.impacts.find(
-                (imp: any) => imp.assetId === assetId
-            );
-            if (impact?.coef != null) {
-                eventImpacts.push({
-                    historyDay: eventHistoryDay,
-                    coef: impact.coef,
-                });
+            // An event may carry several impacts touching this asset, either
+            // asset-specific (assetId) or sector-wide (fieldId + submarketId).
+            // impactCoefForAsset multiplies the coefs of every matching impact.
+            if (!asset) continue;
+            const eventCoef = impactCoefForAsset(le.event.impacts, asset);
+            if (eventCoef != null) {
+                eventImpacts.push({ historyDay: eventHistoryDay, coef: eventCoef });
             }
         }
 

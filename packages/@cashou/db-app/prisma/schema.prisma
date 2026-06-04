@@ -308,6 +308,7 @@ model Asset {
   submarketId Int?     @map("submarket_id")
   maxAmount   Decimal? @map("max_amount") // Plafond (ex: 22950 pour Livret A)
   minAmount   Decimal? @map("min_amount") // Montant minimum (ex: 10€)
+  managementFee Float? @map("management_fee") // Frais de gestion annuels en % (ex: 0.6 pour un fonds euros)
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
