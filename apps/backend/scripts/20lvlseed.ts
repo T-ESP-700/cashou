@@ -9,15 +9,20 @@
  * Re-exécutable sans créer de doublon (findFirst / upsert partout).
  *
  * Notes d'implémentation :
- *  - Les frais (gestion, entrée/sortie) du doc ne sont PAS persistés : le
- *    schéma Prisma n'a aucun champ de frais. Ils vivent dans les descriptions.
+ *  - Les frais de gestion annuels sont persistés via `Asset.managementFee`
+ *    (table MANAGEMENT_FEES) et déduits du rendement net par le moteur
+ *    d'intérêts. Les frais d'entrée/sortie, eux, restent narratifs.
  *  - Le doc utilise goalType `wallet_gte_target` ; le backend ne gère que
  *    `wallet_min` (wallet >= montant absolu). Les goals bonus sont donc seedés
  *    en `wallet_min` avec goalValue = montant cible.
- *  - Les events du doc dont l'impact porte sur le *taux* d'un livret / fonds
- *    euros (N°2, N°4) sont seedés en `hasImpact: false` (narratif) : le moteur
- *    d'Impact multiplie une *valeur*, pas un taux. Tous les events « +X% / -X% »
- *    sur un actif ou un secteur sont, eux, de vrais Impact.
+ *  - Capital garanti : les livrets ET les fonds euros n'ont AUCUN historique de
+ *    prix → le moteur les valorise en `rate`-based déterministe (jamais de perte).
+ *  - Events sur le *taux* d'un actif garanti (N°2 Livret A, N°4 fonds euros) :
+ *    seedés en vrais Impact (coef). Pour un actif `rate`-based, le moteur
+ *    interprète le coef comme un multiplicateur du *taux* à partir du
+ *    déclenchement ; pour un actif à historique, comme un multiplicateur de
+ *    *valeur*. Un même Impact field+submarket touche donc tous les actifs du
+ *    couple, qu'ils soient à taux ou à prix.
  *
  * Usage : bun run db:seed:20lvl
  */
@@ -205,6 +210,27 @@ const ASSETS: AssetDef[] = [
     description: "Organisme de Placement Collectif Immobilier : mêle immobilier et actifs liquides." },
 ];
 
+// Frais de gestion annuels (% par an) par symbole. Symbole absent = 0 (sans frais).
+// Persistés en base (Asset.managementFee) et déduits du rendement net par le
+// moteur d'intérêts — c'est le « piège des frais » du N°4, désormais réellement
+// ressenti. Les actifs détenus en direct (livrets, actions, obligations) n'ont
+// pas de frais de gestion ; les enveloppes gérées (fonds euros, UC, ETF) si.
+const MANAGEMENT_FEES: Record<string, number> = {
+  C20_FE_CLASSIQUE: 0.6,
+  C20_FE_DYNAMIQUE: 0.8,
+  C20_UC_ACTIONS_EUROPE: 0.8,
+  C20_UC_OBLIGATIONS: 0.8,
+  C20_UC_SCPI: 0.8,
+  C20_UC_ETF_MONDE: 0.8,
+  C20_ETF_CAC40: 0.25,
+  C20_ETF_MSCI_EUROPE: 0.25,
+  C20_AMUNDI_PEA_MONDE: 0.2,
+  C20_ETF_SP500: 0.15,
+  C20_ETF_MSCI_WORLD: 0.2,
+  C20_ETF_EMERGENTS: 0.3,
+  C20_ETF_NASDAQ: 0.3,
+};
+
 const LIVRET_SYMBOLS = ASSETS
   .filter((asset) => asset.submarket === 'LIVRETS')
   .map((asset) => asset.symbol);
@@ -386,13 +412,14 @@ const LEVELS: LevelDef[] = [
     },
     bonusGoal: {
       title: 'Profite pleinement du taux livrets',
-      description: 'Termine avec au moins 2 518 € : sur 180 jours à 1,5 %, le rendement attendu est ~18,50 €.',
-      successMessage: 'Tu as capté tout le rendement de tes livrets, intérêts composés inclus.',
+      description: 'Termine avec au moins 2 515 € : sur 180 jours, le taux baissant de 1,5 % à 1,3 % à mi-parcours, le rendement attendu est ~17 €.',
+      successMessage: 'Tu as capté tout le rendement de tes livrets, malgré la révision du taux.',
       failureMessage: "Tu laisses du rendement de côté. Place ton capital tôt et profite des deux plafonds.",
-      target: 2518,
+      target: 2515,
     },
     events: [
-      { title: 'Révision semestrielle du taux Livret A', triggerPercent: 50, position: 1, impacts: [],
+      { title: 'Révision semestrielle du taux Livret A', triggerPercent: 50, position: 1,
+        impacts: [{ field: 'livret_reglemente', submarket: 'LIVRETS', coef: 0.8667 }],
         description: "Le taux réglementé est révisé chaque 1er février et 1er août par la Banque de France selon une formule (inflation + taux interbancaire). Il passe de 1,5 % à 1,3 % pour la deuxième moitié du niveau." },
     ],
     quizTitle: 'Quiz Niveau 2 — Livrets et intérêts composés',
@@ -521,7 +548,8 @@ const LEVELS: LevelDef[] = [
       target: 5100,
     },
     events: [
-      { title: 'Hausse des taux directeurs BCE', triggerPercent: 40, position: 1, impacts: [],
+      { title: 'Hausse des taux directeurs BCE', triggerPercent: 40, position: 1,
+        impacts: [{ asset: 'C20_FE_CLASSIQUE', coef: 1.2075 }],
         description: "La BCE relève ses taux pour combattre l'inflation. Les fonds euros adossés à des obligations longues en profitent : le Fonds Euros Classique grimpe de 2,65 % à 3,2 %." },
       { title: 'Le piège des frais de gestion', triggerPercent: 75, position: 2, impacts: [],
         description: "0,8 %/an de frais sur 30 ans, c'est environ 25 % du capital final amputé. Les frais paraissent petits, leur effet composé est gigantesque." },
@@ -1237,7 +1265,7 @@ const LEVELS: LevelDef[] = [
     number: 14,
     title: 'DCA, Value, Lazy : trouve ton style',
     duration: 1095,
-    speed: 131400,
+    speed: 157680,
     startBalance: 42000,
     pointsRequired: 495,
     description: "DCA (investir régulièrement), value (chasser les bonnes affaires), lazy (ETF larges et patience) : trois approches éprouvées. Teste-les et trouve celle qui colle à ton tempérament.",
@@ -1317,7 +1345,7 @@ const LEVELS: LevelDef[] = [
     number: 15,
     title: 'Drawdown -30 % : tu vas le vivre',
     duration: 1460,
-    speed: 131400,
+    speed: 197100,
     startBalance: 50000,
     pointsRequired: 570,
     description: "Un drawdown de -30 % est banal sur les marchés actions. Ce qui compte, ce n'est pas d'éviter les baisses (impossible), c'est d'avoir l'horizon pour les traverser.",
@@ -1391,7 +1419,7 @@ const LEVELS: LevelDef[] = [
     number: 16,
     title: 'Le secret des pros : la décorrélation',
     duration: 1460,
-    speed: 131400,
+    speed: 197100,
     startBalance: 60000,
     pointsRequired: 650,
     description: "Diversifier, ce n'est pas « acheter beaucoup d'actions ». C'est combiner des actifs qui ne bougent pas ensemble. Découvre l'immobilier papier (SCPI), le crowdlending, les OPCI pour sophistiquer ton allocation.",
@@ -1471,7 +1499,7 @@ const LEVELS: LevelDef[] = [
     number: 17,
     title: 'Quel investisseur es-tu ?',
     duration: 1825,
-    speed: 131400,
+    speed: 219000,
     startBalance: 70000,
     pointsRequired: 735,
     description: "Il n'y a pas d'allocation universelle. À 25 ans, tu peux encaisser du risque. À 60 ans, tu sécurises. Apprends à ajuster ton portefeuille à ton âge, ton horizon et ta tolérance.",
@@ -1552,7 +1580,7 @@ const LEVELS: LevelDef[] = [
     number: 18,
     title: "Discipline > intuition : l'art du rééquilibrage",
     duration: 1825,
-    speed: 131400,
+    speed: 219000,
     startBalance: 80000,
     pointsRequired: 825,
     description: "Ton allocation cible dérive avec le temps : la part gagnante gonfle, la perdante rétrécit. Le rééquilibrage périodique ramène le portefeuille à sa cible. Discipline > intuition.",
@@ -1628,7 +1656,7 @@ const LEVELS: LevelDef[] = [
     number: 19,
     title: 'Krach, panique, sang-froid',
     duration: 1825,
-    speed: 105120,
+    speed: 219000,
     startBalance: 90000,
     pointsRequired: 920,
     description: "Krach 2008, Covid 2020, guerre commerciale : les crises sont inévitables. Ce qui fait la différence, c'est ta réaction. Sang-froid, discipline, achat à la baisse : applique ce que tu sais.",
@@ -1721,7 +1749,7 @@ const LEVELS: LevelDef[] = [
     number: 20,
     title: '8 ans pour bâtir ton patrimoine',
     duration: 2920,
-    speed: 105120,
+    speed: 350400,
     startBalance: 100000,
     pointsRequired: 1020,
     description: "Tu maîtrises les enveloppes, les classes d'actifs, les stratégies, la psychologie. Reste à appliquer sur 8 ans simulés : traverser les cycles économiques complets et voir la puissance de l'intérêt composé.",
@@ -1894,6 +1922,7 @@ async function main() {
         fieldId: fieldsByName[def.field].id,
         maxAmount: def.maxAmount,
         minAmount: def.minAmount,
+        managementFee: MANAGEMENT_FEES[def.symbol] ?? null,
       },
       create: {
         symbol: def.symbol,
@@ -1905,6 +1934,7 @@ async function main() {
         fieldId: fieldsByName[def.field].id,
         maxAmount: def.maxAmount,
         minAmount: def.minAmount,
+        managementFee: MANAGEMENT_FEES[def.symbol] ?? null,
       },
     });
     assetsBySymbol[def.symbol] = asset;
@@ -1917,7 +1947,11 @@ async function main() {
   for (const def of ASSETS) {
     const asset = assetsBySymbol[def.symbol];
     await prisma.assetHistory.deleteMany({ where: { assetId: asset.id } });
-    if (def.submarket === 'LIVRETS') {
+    // Actifs à capital garanti (livrets + fonds euros) : AUCUN historique de prix.
+    // Sans historique, le moteur les valorise en mode `rate`-based déterministe
+    // (intérêts toujours positifs) — leur capital ne peut jamais baisser, et les
+    // events qui les visent agissent sur leur *taux* (cf. asset-history.service).
+    if (def.submarket === 'LIVRETS' || def.field === 'fonds_euros') {
       continue;
     }
     const history = generatePriceHistory(asset.id, 10000, def.rate, def.volatility);
