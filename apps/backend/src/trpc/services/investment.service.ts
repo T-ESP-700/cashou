@@ -356,29 +356,32 @@ export class InvestmentService {
 
     // Fallback: rate-based calculation (capital-guaranteed assets without history)
     if (asset.rate) {
-      const { from, to, duration } = await this.gameTimeService.holdingGameDayWindow(gameInstance, new Date(holding.acquiredAt));
+      const annualRate = asset.rate;
+      const elapsedRealSeconds = await this.gameTimeService.calculateElapsedTimeSince(
+        gameInstance,
+        new Date(holding.acquiredAt)
+      );
+      const elapsedGameDays = this.gameTimeService.convertRealSecondsToGameDays(level, elapsedRealSeconds);
 
-      // Events that change this asset's rate (sector-wide or asset-specific impacts).
-      const levelEvents = await this.prisma.levelEvent.findMany({
-        where: { levelId: level.id },
-        include: { event: { include: { impacts: true } } },
-      });
-      const rateChanges: RateChange[] = [];
-      for (const le of levelEvents) {
-        const coef = impactCoefForAsset(le.event?.impacts ?? [], asset);
-        if (coef != null && coef !== 1) {
-          rateChanges.push({ triggerGameDay: Math.floor(duration * (le.triggerPercent / 100)), coef });
-        }
+      // If an event changes this asset's rate mid-game, integrate the rate piecewise
+      // so interest accrued before the change keeps the old rate.
+      const rateChanges = await this.assetHistoryService.getRateImpacts(asset.id, gameInstance.id);
+      if (rateChanges.length > 0) {
+        const currentGameDay = this.gameTimeService.getCurrentGameDay(gameInstance);
+        const acquisitionGameDay = Math.max(0, currentGameDay - elapsedGameDays);
+        return Math.round(
+          AssetHistoryService.computeRateInterest({
+            quantity,
+            baseRate: annualRate,
+            rateChanges,
+            acquisitionGameDay,
+            currentGameDay,
+          })
+        );
       }
 
-      return rateBasedInterest({
-        quantity,
-        annualRatePct: asset.rate,
-        managementFeePct: feePct,
-        fromGameDay: from,
-        toGameDay: to,
-        rateChanges,
-      });
+      const dailyRate = annualRate / 100 / 365;
+      return Math.max(0, quantity * dailyRate * elapsedGameDays);
     }
 
     return 0;
