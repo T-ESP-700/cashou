@@ -280,4 +280,27 @@ export class GameTimeService {
     // Real seconds to game days: realSeconds * speed / 86400
     return (realSeconds * speed) / 86400;
   }
+
+  /**
+   * Map a holding's lifetime onto the level's absolute game-day timeline
+   * (the same timeline on which events trigger at duration × triggerPercent).
+   * Returns the day the holding was acquired (`from`), the current day (`to`,
+   * capped at the level duration) and the number of game days held (`held`).
+   * Used by interest calculations that must integrate rate-changing events.
+   */
+  async holdingGameDayWindow(
+    gameInstance: GameInstanceWithLevel,
+    acquiredAt: Date
+  ): Promise<{ from: number; to: number; held: number; duration: number }> {
+    const level = gameInstance.level;
+    const duration = level?.duration ?? 365;
+    if (!level) {
+      return { from: 0, to: 0, held: 0, duration };
+    }
+    const heldSeconds = await this.calculateElapsedTimeSince(gameInstance, acquiredAt);
+    const held = this.convertRealSecondsToGameDays(level, heldSeconds);
+    const totalSeconds = this.calculateElapsedTime(gameInstance);
+    const current = Math.min(duration, this.convertRealSecondsToGameDays(level, totalSeconds));
+    return { from: Math.max(0, current - held), to: current, held, duration };
+  }
 }
