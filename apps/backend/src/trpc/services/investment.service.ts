@@ -349,6 +349,24 @@ export class InvestmentService {
         new Date(holding.acquiredAt)
       );
       const elapsedGameDays = this.gameTimeService.convertRealSecondsToGameDays(level, elapsedRealSeconds);
+
+      // If an event changes this asset's rate mid-game, integrate the rate piecewise
+      // so interest accrued before the change keeps the old rate.
+      const rateChanges = await this.assetHistoryService.getRateImpacts(asset.id, gameInstance.id);
+      if (rateChanges.length > 0) {
+        const currentGameDay = this.gameTimeService.getCurrentGameDay(gameInstance);
+        const acquisitionGameDay = Math.max(0, currentGameDay - elapsedGameDays);
+        return Math.round(
+          AssetHistoryService.computeRateInterest({
+            quantity,
+            baseRate: annualRate,
+            rateChanges,
+            acquisitionGameDay,
+            currentGameDay,
+          })
+        );
+      }
+
       const dailyRate = annualRate / 100 / 365;
       return Math.max(0, quantity * dailyRate * elapsedGameDays);
     }

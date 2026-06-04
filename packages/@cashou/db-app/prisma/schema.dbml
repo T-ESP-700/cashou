@@ -1,0 +1,543 @@
+// Use DBML to define your database structure
+// Docs: https://dbml.dbdiagram.io/docs
+//
+// ⚠️ Synchronisé avec packages/@cashou/db-app/prisma/schema.prisma
+//    Source de vérité = le schéma Prisma. Mettre à jour ce fichier à chaque migration.
+
+//=============================================================
+// ENUMS
+//=============================================================
+
+Enum user_role {
+  USER
+  ADMIN
+}
+
+Enum quiz_type {
+  Daily
+  MCQ
+}
+
+Enum notification_type {
+  Quiz
+  News
+  Reminder
+  Profile
+  Event
+  GameEnd
+}
+
+Enum submarket_type {
+  Savings
+  Insurance
+  Stock
+}
+
+Enum impact_type {
+  Price // multiplie le cours (AssetHistory.value) — actions
+  Rate  // multiplie le taux annuel (Asset.rate) — livrets
+}
+
+//=============================================================
+// AUTHENTICATION (better-auth) + USER
+//=============================================================
+
+Table user {
+  id varchar [primary key] // cuid
+  name varchar
+  email varchar [unique]
+  email_verified bool
+  image varchar
+  username varchar
+  discriminator varchar
+  last_activity timestamp
+  level_id integer [not null, default: 1]
+  badges varchar
+  points integer [default: 0]
+  current_streak integer [default: 0]
+  max_streak integer [default: 0]
+  expo_push_token varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table account {
+  id varchar [primary key]
+  user_id varchar
+  account_id varchar
+  provider_id varchar
+  access_token text
+  refresh_token text
+  id_token text
+  access_token_expires_at timestamp
+  refresh_token_expires_at timestamp
+  scope varchar
+  password varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table session {
+  id varchar [primary key]
+  user_id varchar
+  token varchar [unique]
+  expires_at timestamp
+  ip_address varchar
+  user_agent varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table verification {
+  id varchar [primary key]
+  identifier varchar
+  value varchar
+  expires_at timestamp
+  created_at timestamp
+  updated_at timestamp
+}
+
+//=============================================================
+// LEVELS / GOALS / EVENTS
+//=============================================================
+
+Table levels {
+  id integer [primary key]
+  title varchar
+  number integer
+  duration integer
+  speed integer
+  start_balance integer
+  points_required integer
+  history_start_day integer // index du jour dans asset_histories où la partie commence
+  description text
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table events {
+  id integer [primary key]
+  title varchar
+  description varchar
+  has_impact bool
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table goals {
+  id integer [primary key]
+  title varchar
+  description varchar
+  success_message varchar
+  failure_message varchar
+  goal_type varchar
+  goal_value float
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table level_goals {
+  id integer [primary key]
+  level_id integer
+  goal_id integer
+  is_mandatory bool [default: true]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table level_events {
+  id integer [primary key]
+  level_id integer
+  event_id integer
+  trigger_percent integer [default: 50]
+  position integer [default: 1]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table user_level_completions {
+  id integer [primary key]
+  user_id varchar
+  level_id integer
+  stars integer // 1-3
+  mandatory_goals_met bool
+  bonus_goals_met bool
+  quiz_passed bool
+  completed_at timestamp
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (user_id, level_id) [unique]
+  }
+}
+
+//=============================================================
+// MARKETS / ASSETS
+//=============================================================
+
+Table markets {
+  id integer [primary key]
+  title varchar
+  description text
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table submarkets {
+  id integer [primary key]
+  market_id integer
+  game_instance_id integer
+  title varchar
+  description text
+  type submarket_type [default: 'Stock']
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table fields {
+  id integer [primary key]
+  market_id integer
+  name varchar [unique]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table assets {
+  id integer [primary key]
+  title varchar
+  symbol varchar [unique]
+  field_id integer
+  rate float
+  description text
+  market_id integer
+  submarket_id integer
+  max_amount decimal // Plafond (ex: 22950 pour Livret A)
+  min_amount decimal // Montant minimum (ex: 10€)
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table asset_histories {
+  id integer [primary key]
+  asset_id integer
+  timestamp timestamp
+  value decimal // Prix/valeur de l'asset à ce moment
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table event_assets {
+  id integer [primary key]
+  asset_id integer
+  event_id integer
+  date timestamp
+  value integer
+  volume integer
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table impacts {
+  id integer [primary key]
+  event_id integer
+  field_id integer
+  submarket_id integer
+  asset_id integer
+  coef float
+  impact_type impact_type [default: 'Price']
+  created_at timestamp
+  updated_at timestamp
+  // Note: validation métier - doit avoir soit asset_id, soit (submarket_id + field_id)
+}
+
+//=============================================================
+// GAME INSTANCES
+//=============================================================
+
+Table game_instances {
+  id integer [primary key]
+  type varchar
+  user_id varchar
+  level_id integer
+  market_id integer
+  start_balance integer
+  is_paused bool
+  paused_at timestamp
+  action_required bool
+  total_paused_duration integer [default: 0]
+  current_event_index integer [default: 0]
+  ending_started_at timestamp
+  is_ended bool [default: false]
+  ended_at timestamp
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table game_instance_pause_intervals {
+  id integer [primary key]
+  game_instance_id integer
+  started_at timestamp
+  ended_at timestamp
+  reason varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table game_instance_events {
+  id integer [primary key]
+  game_instance_id integer
+  level_event_id integer
+  scheduled_at timestamp
+  processing_started_at timestamp
+  triggered_at timestamp
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table game_users {
+  id integer [primary key]
+  user_id varchar
+  game_instance_id integer
+  is_creator bool
+  join_at timestamp
+  status varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+//=============================================================
+// WALLETS / TRANSACTIONS / HOLDINGS
+//=============================================================
+
+Table wallets {
+  id integer [primary key]
+  user_id varchar
+  amount decimal
+  game_instance_id integer
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table transactions {
+  id integer [primary key]
+  wallet_id integer
+  asset_id integer
+  game_instance_id integer
+  type varchar
+  quantity integer
+  unit_price decimal
+  total_value decimal
+  transaction_date timestamp
+  source varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table holdings {
+  id integer [primary key]
+  wallet_id integer
+  asset_id integer
+  game_instance_id integer
+  quantity decimal // Montant investi (€) ou nombre de parts
+  acquired_at timestamp // Date d'acquisition pour calcul intérêts
+  last_interest_at timestamp // Dernier calcul d'intérêts (livrets)
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (wallet_id, asset_id) [unique]
+  }
+}
+
+//=============================================================
+// QUIZ / QUESTIONS
+//=============================================================
+
+Table quiz {
+  id integer [primary key]
+  level_id integer
+  title text
+  description text
+  type quiz_type // Daily ou MCQ
+  date timestamp
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table user_quiz {
+  id integer [primary key]
+  quiz_id integer
+  user_id varchar
+  game_instance_id integer
+  completed_at timestamp
+  is_correct bool
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table questions {
+  id integer [primary key]
+  text varchar
+  explanation varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table answers {
+  id integer [primary key]
+  question_id integer
+  text varchar
+  is_correct bool
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table user_answers {
+  id integer [primary key]
+  user_id varchar
+  question_id integer
+  answer_id integer
+  accurate bool
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table quiz_questions {
+  id integer [primary key]
+  quiz_id integer
+  question_id integer
+  position integer
+  created_at timestamp
+  updated_at timestamp
+}
+
+//=============================================================
+// NOTIFICATIONS / DICTIONNAIRE
+//=============================================================
+
+Table notifications {
+  id integer [primary key]
+  user_id varchar
+  title varchar
+  message text
+  type notification_type // Quiz, News, Reminder, Profile, Event, GameEnd
+  game_instance_id integer
+  quiz_id integer
+  event_id integer
+  is_opened bool
+  sent_at timestamp
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table dico_entries {
+  id integer [primary key]
+  term varchar [unique]
+  definition text
+  created_at timestamp
+  updated_at timestamp
+}
+
+//=============================================================
+// NOTIONS (contenus pédagogiques)
+//=============================================================
+
+Table notions {
+  id integer [primary key]
+  name varchar
+  description varchar
+  tags "varchar[]" [default: `{}`] // tableau Postgres text[]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table notion_levels {
+  id integer [primary key]
+  notion_id integer
+  level_id integer
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (notion_id, level_id) [unique]
+  }
+}
+
+//=============================================================
+// RELATIONS
+//=============================================================
+
+// Auth
+Ref: "user"."id" < "account"."user_id"
+Ref: "user"."id" < "session"."user_id"
+
+// User / Level
+Ref: "levels"."id" < "user"."level_id"
+Ref: "levels"."id" < "user_level_completions"."level_id"
+Ref: "user"."id" < "user_level_completions"."user_id"
+
+// Levels / Goals / Events
+Ref: "levels"."id" < "level_goals"."level_id"
+Ref: "goals"."id" < "level_goals"."goal_id"
+Ref: "levels"."id" < "level_events"."level_id"
+Ref: "events"."id" < "level_events"."event_id"
+
+// Markets / Assets
+Ref: "markets"."id" < "submarkets"."market_id"
+Ref: "game_instances"."id" < "submarkets"."game_instance_id"
+Ref: "markets"."id" < "fields"."market_id"
+Ref: "markets"."id" < "assets"."market_id"
+Ref: "submarkets"."id" < "assets"."submarket_id"
+Ref: "fields"."id" < "assets"."field_id"
+Ref: "assets"."id" < "asset_histories"."asset_id"
+Ref: "assets"."id" < "event_assets"."asset_id"
+Ref: "events"."id" < "event_assets"."event_id"
+
+// Impacts (polymorphe : asset OU submarket+field)
+Ref: "events"."id" < "impacts"."event_id"
+Ref: "fields"."id" < "impacts"."field_id"
+Ref: "submarkets"."id" < "impacts"."submarket_id"
+Ref: "assets"."id" < "impacts"."asset_id"
+
+// Game instances
+Ref: "user"."id" < "game_instances"."user_id"
+Ref: "levels"."id" < "game_instances"."level_id"
+Ref: "markets"."id" < "game_instances"."market_id"
+Ref: "game_instances"."id" < "game_instance_pause_intervals"."game_instance_id"
+Ref: "game_instances"."id" < "game_instance_events"."game_instance_id"
+Ref: "level_events"."id" < "game_instance_events"."level_event_id"
+Ref: "user"."id" < "game_users"."user_id"
+Ref: "game_instances"."id" < "game_users"."game_instance_id"
+
+// Wallets / Transactions / Holdings
+Ref: "user"."id" < "wallets"."user_id"
+Ref: "game_instances"."id" < "wallets"."game_instance_id"
+Ref: "wallets"."id" < "transactions"."wallet_id"
+Ref: "assets"."id" < "transactions"."asset_id"
+Ref: "game_instances"."id" < "transactions"."game_instance_id"
+Ref: "wallets"."id" < "holdings"."wallet_id"
+Ref: "assets"."id" < "holdings"."asset_id"
+Ref: "game_instances"."id" < "holdings"."game_instance_id"
+
+// Quiz / Questions
+Ref: "levels"."id" < "quiz"."level_id"
+Ref: "quiz"."id" < "user_quiz"."quiz_id"
+Ref: "user"."id" < "user_quiz"."user_id"
+Ref: "game_instances"."id" < "user_quiz"."game_instance_id"
+Ref: "questions"."id" < "answers"."question_id"
+Ref: "user"."id" < "user_answers"."user_id"
+Ref: "questions"."id" < "user_answers"."question_id"
+Ref: "answers"."id" < "user_answers"."answer_id"
+Ref: "quiz"."id" < "quiz_questions"."quiz_id"
+Ref: "questions"."id" < "quiz_questions"."question_id"
+
+// Notions (many-to-many avec levels)
+Ref: "notions"."id" < "notion_levels"."notion_id"
+Ref: "levels"."id" < "notion_levels"."level_id"
+
+// Notifications
+Ref: "user"."id" < "notifications"."user_id"
+Ref: "game_instances"."id" < "notifications"."game_instance_id"
+Ref: "quiz"."id" < "notifications"."quiz_id"
+Ref: "events"."id" < "notifications"."event_id"

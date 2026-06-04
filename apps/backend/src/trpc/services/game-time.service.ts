@@ -277,4 +277,36 @@ export class GameTimeService {
     // Real seconds to game days: realSeconds * speed / 86400
     return (realSeconds * speed) / 86400;
   }
+
+  /**
+   * Current absolute game day for a game instance (0-based, capped at level.duration).
+   * Mirrors the calculation used by AssetHistoryService so price- and rate-impacts
+   * are anchored on the exact same game-day timeline.
+   */
+  getCurrentGameDay(gameInstance: GameInstanceWithLevel): number {
+    const level = gameInstance.level;
+    if (!level) return 0;
+
+    const speed = level.speed ?? 1;
+    const duration = level.duration ?? 365;
+
+    // Created in preparation mode and never started → day 0
+    if (gameInstance.isPaused && !gameInstance.pausedAt && !gameInstance.isEnded) {
+      return 0;
+    }
+
+    const now =
+      gameInstance.isEnded && gameInstance.endedAt
+        ? gameInstance.endedAt.getTime()
+        : gameInstance.isPaused && gameInstance.pausedAt
+          ? gameInstance.pausedAt.getTime()
+          : Date.now();
+
+    const elapsedRealSeconds = Math.max(
+      0,
+      (now - gameInstance.createdAt.getTime()) / 1000 - (gameInstance.totalPausedDuration ?? 0)
+    );
+
+    return Math.min(duration, Math.floor((elapsedRealSeconds * speed) / 86400));
+  }
 }
