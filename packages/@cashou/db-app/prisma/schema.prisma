@@ -152,6 +152,7 @@ model Level {
   quiz                 Quiz[]
   userLevelCompletions UserLevelCompletion[]
   notionLevels         NotionLevel[]
+  assetUnlocks         AssetUnlock[]
 
   @@map("levels")
 }
@@ -218,6 +219,7 @@ model LevelEvent {
   level              Level               @relation(fields: [levelId], references: [id])
   event              Event               @relation(fields: [eventId], references: [id])
   gameInstanceEvents GameInstanceEvent[]
+  assetUnlocks       AssetUnlock[]
 
   @@map("level_events")
 }
@@ -315,6 +317,7 @@ model Asset {
   transactions   Transaction[]
   impacts        Impact[]
   holdings       Holding[]
+  assetUnlocks   AssetUnlock[]
 
   @@map("assets")
 }
@@ -661,6 +664,28 @@ model NotionLevel {
 
   @@unique([notionId, levelId])
   @@map("notion_levels")
+}
+
+// Verrouillage d'un asset dans un niveau : il n'est disponible qu'à partir
+// d'un moment du jeu. Évalué à la lecture, par game-instance (cf. AssetService).
+// Condition de déblocage : soit après un LevelEvent (levelEventId), soit à
+// unlockPercent % de la durée. Un asset sans ligne ici est disponible d'emblée.
+model AssetUnlock {
+  id            Int      @id @default(autoincrement())
+  levelId       Int      @map("level_id")
+  assetId       Int      @map("asset_id")
+  levelEventId  Int?     @map("level_event_id") // déblocage après cet event du niveau
+  unlockPercent Int?     @map("unlock_percent")  // OU à X% de la durée (fallback si pas d'event)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  level      Level       @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  asset      Asset       @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  levelEvent LevelEvent? @relation(fields: [levelEventId], references: [id], onDelete: SetNull)
+
+  @@unique([levelId, assetId])
+  @@map("asset_unlocks")
 }
 
 model DicoEntry {

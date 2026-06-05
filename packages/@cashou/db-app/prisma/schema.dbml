@@ -453,6 +453,20 @@ Table notions {
   updated_at timestamp
 }
 
+Table asset_unlocks {
+  id integer [primary key]
+  level_id integer
+  asset_id integer
+  level_event_id integer // déblocage après cet event du niveau
+  unlock_percent integer // OU à X% de la durée (fallback)
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (level_id, asset_id) [unique]
+  }
+}
+
 Table notion_levels {
   id integer [primary key]
   notion_id integer
@@ -536,6 +550,11 @@ Ref: "questions"."id" < "quiz_questions"."question_id"
 // Notions (many-to-many avec levels)
 Ref: "notions"."id" < "notion_levels"."notion_id"
 Ref: "levels"."id" < "notion_levels"."level_id"
+
+// Verrouillage d'assets par niveau
+Ref: "levels"."id" < "asset_unlocks"."level_id"
+Ref: "assets"."id" < "asset_unlocks"."asset_id"
+Ref: "level_events"."id" < "asset_unlocks"."level_event_id"
 
 // Notifications
 Ref: "user"."id" < "notifications"."user_id"

@@ -3,13 +3,22 @@
 import type { Asset, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {AssetCreateSchema, AssetDataSchema} from "../schemas-zod/asset-schema.ts";
+import { GameTimeService } from "./game-time.service.ts";
+
+export interface AssetUnlockInfo {
+    available: boolean;
+    unlockGameDay: number;
+    afterEventTitle: string | null;
+}
 
 export class AssetService {
     private prisma: PrismaClient;
+    private gameTimeService: GameTimeService;
 
     // Permet d'injecter Prisma pour les tests
     constructor(prismaClient?: PrismaClient) {
         this.prisma = prismaClient || defaultPrisma;
+        this.gameTimeService = new GameTimeService(this.prisma);
     }
 
     /**
@@ -93,6 +102,76 @@ export class AssetService {
                 transactions: true
             },
             orderBy: { title: 'asc' }
+        });
+    }
+
+    /**
+     * Disponibilité des assets verrouillés pour une partie, évaluée À LA LECTURE.
+     * Aucune mutation : on compare le jour de jeu courant au jour de déblocage
+     * (dérivé du triggerPercent de l'event, ou de unlockPercent). Cohérent avec
+     * la logique d'impacts (asset-history.service) et identique pour tous les joueurs.
+     * @returns Map assetId -> info de verrou. Seuls les assets gatés y figurent.
+     */
+    async getUnlockState(gameInstanceId: number): Promise<Map<number, AssetUnlockInfo>> {
+        const gameInstance = await this.prisma.gameInstance.findUnique({
+            where: { id: gameInstanceId },
+            include: {
+                level: {
+                    include: {
+                        assetUnlocks: { include: { levelEvent: { include: { event: true } } } },
+                    },
+                },
+            },
+        });
+
+        const map = new Map<number, AssetUnlockInfo>();
+        if (!gameInstance?.level) return map;
+
+        const duration = gameInstance.level.duration ?? 365;
+        const currentGameDay = this.gameTimeService.getCurrentGameDay(gameInstance as any);
+
+        for (const unlock of gameInstance.level.assetUnlocks) {
+            const percent = unlock.levelEvent
+                ? unlock.levelEvent.triggerPercent
+                : (unlock.unlockPercent ?? 0);
+            const unlockGameDay = Math.floor((duration * percent) / 100);
+            map.set(unlock.assetId, {
+                available: currentGameDay >= unlockGameDay,
+                unlockGameDay,
+                afterEventTitle: unlock.levelEvent?.event?.title ?? null,
+            });
+        }
+        return map;
+    }
+
+    /**
+     * True si l'asset est disponible dans cette partie.
+     * Un asset sans règle de verrou est disponible par défaut.
+     */
+    async isAssetAvailableForGame(assetId: number, gameInstanceId: number): Promise<boolean> {
+        const state = await this.getUnlockState(gameInstanceId);
+        return state.get(assetId)?.available ?? true;
+    }
+
+    /**
+     * Liste des actifs annotés de leur disponibilité pour une partie donnée.
+     * `available` = false pour un asset encore verrouillé ; `unlock` porte de quoi
+     * afficher l'indice côté UI ("Disponible après …").
+     */
+    async findForGame(gameInstanceId: number) {
+        const [assets, state] = await Promise.all([
+            this.findAll(),
+            this.getUnlockState(gameInstanceId),
+        ]);
+        return assets.map((asset) => {
+            const info = state.get(asset.id);
+            return {
+                ...asset,
+                available: info?.available ?? true,
+                unlock: info
+                    ? { unlockGameDay: info.unlockGameDay, afterEventTitle: info.afterEventTitle }
+                    : null,
+            };
         });
     }
 

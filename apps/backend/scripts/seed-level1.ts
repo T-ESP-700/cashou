@@ -402,6 +402,24 @@ async function main() {
   }
   console.log(`✅ Level-Event créé: Level ${level.number} ↔ Event "${event.title}" (déclenche à ${eventDateLabel})`);
 
+  // 10b. Verrouiller le Livret DDS jusqu'à l'event (démo du gating d'asset par niveau).
+  // Il n'apparaît (grisé) puis devient achetable qu'après "Baisse du taux du Livret A".
+  console.log('🔒 Verrouillage du Livret DDS jusqu\'à l\'événement...');
+  const existingUnlock = await prisma.assetUnlock.findFirst({
+    where: { levelId: level.id, assetId: livretLED.id },
+  });
+  if (existingUnlock) {
+    await prisma.assetUnlock.update({
+      where: { id: existingUnlock.id },
+      data: { levelEventId: levelEvent.id, unlockPercent: null },
+    });
+  } else {
+    await prisma.assetUnlock.create({
+      data: { levelId: level.id, assetId: livretLED.id, levelEventId: levelEvent.id },
+    });
+  }
+  console.log(`✅ Verrou créé: ${livretLED.symbol} débloqué après "${event.title}"`);
+
   // 11. Créer les Questions et Réponses pour le Quiz MCQ
   console.log('❓ Création des questions et réponses pour le quiz MCQ...');
 
@@ -915,6 +933,7 @@ async function main() {
   console.log(`   - 1 Quiz MCQ avec ${createdQuestions.length} questions`);
   console.log(`   - 2 Daily Quiz (hier et aujourd'hui)`);
   console.log(`   - 3 Notions liées au niveau 1`);
+  console.log(`   - 1 Verrou: ${livretLED.symbol} débloqué après l'événement`);
   if (testUser) {
     console.log(`   - 1 User de test: ${testUser.email}`);
   }

@@ -7,6 +7,7 @@ import { HoldingService } from "./holding.service.ts";
 import { WalletService } from "./wallet.service.ts";
 import { GameTimeService } from "./game-time.service.ts";
 import { AssetHistoryService } from "./asset-history.service.ts";
+import { AssetService } from "./asset.service.ts";
 import type { BuySchema, SellSchema } from "../schemas-zod/investment-schema.ts";
 import { gameCache, cached } from "../../lib/cache.ts";
 
@@ -40,6 +41,7 @@ export class InvestmentService {
   private walletService: WalletService;
   private gameTimeService: GameTimeService;
   private assetHistoryService: AssetHistoryService;
+  private assetService: AssetService;
 
   constructor(prismaClient?: PrismaClient) {
     this.prisma = prismaClient || defaultPrisma;
@@ -47,6 +49,7 @@ export class InvestmentService {
     this.walletService = new WalletService(this.prisma);
     this.gameTimeService = new GameTimeService(this.prisma);
     this.assetHistoryService = new AssetHistoryService(this.prisma);
+    this.assetService = new AssetService(this.prisma);
   }
 
   /**
@@ -81,6 +84,17 @@ export class InvestmentService {
       throw new TRPCError({
         code: "NOT_FOUND",
         message: "Asset introuvable",
+      });
+    }
+
+    // 2b. Vérifier que l'asset est débloqué dans cette partie (verrou par niveau).
+    // Garde-fou serveur : empêche d'acheter un asset encore verrouillé, même si le
+    // front l'affiche grisé ou si l'appel passe directement par l'API.
+    const isAvailable = await this.assetService.isAssetAvailableForGame(assetId, gameInstanceId);
+    if (!isAvailable) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Cet actif n'est pas encore disponible dans cette partie.",
       });
     }
 
