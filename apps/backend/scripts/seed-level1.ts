@@ -9,7 +9,7 @@ const TEST_USER_PASSWORD = 'azerty123456';
 const TEST_USER_NAME = 'Test User';
 
 async function main() {
-  console.log('🌱 Début du seeding du niveau 1: Premier pas dans l\'épargne...');
+  console.log('🌱 Début du seeding du niveau 1: Tutoriel...');
 
   // 0. Créer l'utilisateur de test
   console.log('👤 Création de l\'utilisateur de test...');
@@ -173,8 +173,20 @@ async function main() {
   });
   console.log(`✅ Actif créé: ${livretLED.title} (${livretLED.symbol}) - Rate: ${livretLED.rate}% - Plafond: ${livretLED.maxAmount}€`);
 
-  // 5. Créer le Level
+  // 5. Créer le Level (Tutoriel)
   console.log('📚 Création du niveau...');
+  const LEVEL_FIELDS = {
+    title: 'Tutoriel',
+    duration: 435,
+    speed: 1314000, // speed conservé (rythme actuel)
+    startBalance: 2000,
+    pointsRequired: 0,
+    startDate: new Date(Date.UTC(2025, 11, 1)), // jour 0 = 15/06/2025 (ancre calendaire in-game)
+    description:
+      'Bienvenue dans Cashou !\n\n' +
+      'Ce premier niveau a pour objectif de vous présenter le fonctionnement d’une partie.\n\n' +
+      'Triomphez de vos premiers objectifs tout en découvrant comment jouer 😃',
+  };
   let level = await prisma.level.findFirst({
     where: { number: 1 }
   });
@@ -182,31 +194,14 @@ async function main() {
   if (level) {
     level = await prisma.level.update({
       where: { id: level.id },
-      data: {
-        title: 'Premier pas dans l\'épargne',
-        duration: 1825,
-        speed: 1314000,
-        startBalance: 2000,
-        pointsRequired: 0,
-        description: 'Découvre les bases de l\'épargne avec des produits sécurisés. Apprends à gérer ton capital sans risque et à comprendre les notions essentielles de la finance personnelle.',
-        tip: 'Pense à placer ton capital dans un produit sécurisé dès le début pour générer des intérêts. Même un petit rendement garanti peut faire la différence sur la durée !'
-      }
+      data: LEVEL_FIELDS,
     });
   } else {
     level = await prisma.level.create({
-      data: {
-        title: 'Premier pas dans l\'épargne',
-        number: 1,
-        duration: 1825,
-        speed: 1314000,
-        startBalance: 2000,
-        pointsRequired: 0,
-        description: 'Découvre les bases de l\'épargne avec des produits sécurisés. Apprends à gérer ton capital sans risque et à comprendre les notions essentielles de la finance personnelle.',
-        tip: 'Pense à placer ton capital dans un produit sécurisé dès le début pour générer des intérêts. Même un petit rendement garanti peut faire la différence sur la durée !'
-      }
+      data: { number: 1, ...LEVEL_FIELDS },
     });
   }
-  console.log(`✅ Niveau créé: ${level.title} (Niveau ${level.number})`);
+  console.log(`✅ Niveau créé: ${level.title} (Niveau ${level.number}) — durée ${level.duration}j, speed ${level.speed}`);
 
   await prisma.levelAsset.deleteMany({ where: { levelId: level.id } });
   await prisma.levelAsset.createMany({
@@ -408,7 +403,14 @@ async function main() {
       }
     });
   }
-  console.log(`✅ Level-Event créé: Level ${level.number} ↔ Event "${event.title}" (déclenche à ${levelEvent.triggerPercent}%)`);
+  // Date calendaire déduite : startDate + jour de jeu de l'event
+  const eventGameDay = Math.floor((level.duration ?? 0) * (levelEvent.triggerPercent / 100));
+  let eventDateLabel = `${levelEvent.triggerPercent}% (jour ${eventGameDay})`;
+  if (level.startDate) {
+    const eventDate = new Date(level.startDate.getTime() + eventGameDay * 86400 * 1000);
+    eventDateLabel += ` → ${eventDate.toISOString().slice(0, 10)}`;
+  }
+  console.log(`✅ Level-Event créé: Level ${level.number} ↔ Event "${event.title}" (déclenche à ${eventDateLabel})`);
 
   // 11. Créer les Questions et Réponses pour le Quiz MCQ
   console.log('❓ Création des questions et réponses pour le quiz MCQ...');
