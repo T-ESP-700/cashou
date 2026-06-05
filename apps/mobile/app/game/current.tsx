@@ -75,6 +75,12 @@ interface LevelGoalData {
   goal: { id: number; title: string | null; description: string | null };
 }
 
+interface NotionData {
+  id: number;
+  name: string | null;
+  description: string | null;
+}
+
 interface LevelData {
   level: {
     id: number;
@@ -87,6 +93,7 @@ interface LevelData {
   } | null;
   goals?: GoalData[];
   levelGoals?: LevelGoalData[];
+  notions?: NotionData[];
 }
 
 interface GameTimeState {
@@ -2064,6 +2071,7 @@ export default function GameCurrentScreen() {
             isMandatory: lg.isMandatory,
           })) ?? levelData?.goals) ?? []
         }
+        notions={levelData?.notions ?? []}
       />
 
       {/* Assets Bottom Sheet */}
