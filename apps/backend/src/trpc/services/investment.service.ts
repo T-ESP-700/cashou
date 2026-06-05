@@ -9,7 +9,6 @@ import { GameTimeService } from "./game-time.service.ts";
 import { AssetHistoryService } from "./asset-history.service.ts";
 import type { BuySchema, SellSchema } from "../schemas-zod/investment-schema.ts";
 import { gameCache, cached } from "../../lib/cache.ts";
-import { impactCoefForAsset, rateBasedInterest, type RateChange } from "../../lib/interest.ts";
 
 type HoldingWithAsset = Holding & {
   asset: Asset;

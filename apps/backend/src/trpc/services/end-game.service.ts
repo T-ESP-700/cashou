@@ -8,7 +8,6 @@ import { GameTimeService } from "./game-time.service.ts";
 import { LevelCompletionService } from "./level-completion.service.ts";
 import { AssetHistoryService } from "./asset-history.service.ts";
 import { broadcastToGame, broadcastGameState } from "../../ws/game-socket.ts";
-import { impactCoefForAsset, rateBasedInterest, type RateChange } from "../../lib/interest.ts";
 
 type HoldingWithAsset = Holding & {
     asset: Asset;

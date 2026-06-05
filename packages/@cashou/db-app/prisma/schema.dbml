@@ -110,6 +110,7 @@ Table levels {
   start_balance integer
   points_required integer
   history_start_day integer // index du jour dans asset_histories où la partie commence
+  start_date timestamp // date calendaire simulée du jour 0 (ancre de la timeline in-game)
   description text
   created_at timestamp
   updated_at timestamp
