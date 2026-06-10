@@ -70,7 +70,7 @@ export class WalletService {
      return {
        ...wallet,
        amount: wallet.amount ? Number(wallet.amount) : wallet.amount,
-     };
+     } as unknown as Wallet;
    }
 
   /**
