@@ -358,7 +358,7 @@ describe("user.router — Procédures protégées", () => {
   it("user.updateProfile → rejette si username existe déjà", async () => {
     mockPrisma.user.findFirst.mockResolvedValueOnce(makeUser("other", { username: "existinguser" }) as any);
     const caller = userRouter.createCaller(createUserContext("user-123") as Ctx);
-    
+
     expect(
       caller.updateProfile({
         username: "existinguser",
@@ -366,15 +366,18 @@ describe("user.router — Procédures protégées", () => {
     ).rejects.toThrow("Username already exists");
   });
 
+  // Tests désactivés : la feature de changement de password a été retirée de updateProfile
+  // (signature actuelle : { name?, username?, image? } uniquement). À réactiver si la feature est réintroduite.
+  /*
   it("user.updateProfile → change password si current password valide", async () => {
     mockHash.verify.mockResolvedValueOnce(true);
     const caller = userRouter.createCaller(createUserContext("user-123") as Ctx);
-    
+
     const res = await caller.updateProfile({
       currentPassword: "oldpass",
       newPassword: "newpass123",
     });
-    
+
     expect(res).toHaveProperty("success", true);
     expect(mockHash.verify).toHaveBeenCalledWith("oldpass", "hashed_oldpass");
     expect(mockHash.password).toHaveBeenCalledWith("newpass123");
@@ -384,7 +387,7 @@ describe("user.router — Procédures protégées", () => {
   it("user.updateProfile → rejette si current password invalide", async () => {
     mockHash.verify.mockResolvedValueOnce(false);
     const caller = userRouter.createCaller(createUserContext("user-123") as Ctx);
-    
+
     expect(
       caller.updateProfile({
         currentPassword: "wrongpass",
@@ -395,7 +398,7 @@ describe("user.router — Procédures protégées", () => {
 
   it("user.updateProfile → rejette si newPassword sans currentPassword", async () => {
     const caller = userRouter.createCaller(createUserContext("user-123") as Ctx);
-    
+
     expect(
       caller.updateProfile({
         newPassword: "newpass123",
@@ -406,7 +409,7 @@ describe("user.router — Procédures protégées", () => {
   it("user.updateProfile → rejette si account introuvable", async () => {
     mockPrisma.account.findFirst.mockResolvedValueOnce(null as any);
     const caller = userRouter.createCaller(createUserContext("user-123") as Ctx);
-    
+
     expect(
       caller.updateProfile({
         currentPassword: "oldpass",
@@ -414,6 +417,7 @@ describe("user.router — Procédures protégées", () => {
       })
     ).rejects.toThrow("No credential account found");
   });
+  */
 
   it("user.updateExpoPushToken → met à jour token", async () => {
     const caller = userRouter.createCaller(createUserContext("user-123") as Ctx);
@@ -569,6 +573,8 @@ describe("user.router — Validations Zod", () => {
     ).rejects.toBeDefined();
   });
 
+  // Test désactivé : password change retiré d'updateProfile (voir bloc commenté plus haut).
+  /*
   it("updateProfile → rejette si newPassword trop court", async () => {
     const caller = userRouter.createCaller(createUserContext("user-123") as Ctx);
     expect(
@@ -578,6 +584,7 @@ describe("user.router — Validations Zod", () => {
       })
     ).rejects.toBeDefined();
   });
+  */
 
   it("updateExpoPushToken → rejette si token vide", async () => {
     const caller = userRouter.createCaller(createUserContext("user-123") as Ctx);
