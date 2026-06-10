@@ -21,6 +21,7 @@ function makeLevelGoal(id: number, over: Partial<LevelGoal> = {}): LevelGoal {
         id,
         levelId: over.levelId ?? 1,
         goalId: over.goalId ?? 1,
+        isMandatory: over.isMandatory ?? true,
         createdAt: over.createdAt ?? now,
         updatedAt: over.updatedAt ?? now,
     };
