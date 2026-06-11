@@ -8,9 +8,12 @@ FROM oven/bun:1.2 AS build
 
 WORKDIR /app
 
-# URL du backend injectée au build (ex. https://api.<domaine>)
+# URLs du backend injectées au build (Vite inline les VITE_* au build).
+# Le backoffice lit VITE_BACKEND_URL (lib/trpc.ts) ET VITE_TRPC_URL (services/backoffice-api.ts).
 ARG VITE_BACKEND_URL
+ARG VITE_TRPC_URL
 ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
+ENV VITE_TRPC_URL=$VITE_TRPC_URL
 
 # Fichiers racine + package.json des workspaces du backoffice
 COPY package.json bun.lockb* ./
