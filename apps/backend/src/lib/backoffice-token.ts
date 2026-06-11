@@ -1,6 +1,19 @@
 import { createHmac, timingSafeEqual } from 'crypto'
 
-const TOKEN_SECRET = process.env.BACKOFFICE_TOKEN_SECRET ?? 'cashou-backoffice-secret'
+// Le secret signe les tokens admin du backoffice. En production il est OBLIGATOIRE :
+// le fallback ci-dessous ne sert qu'en dev/test, sinon n'importe qui pourrait forger
+// un token admin valide (le fallback est public dans le repo).
+const FALLBACK_DEV_SECRET = 'cashou-backoffice-secret-dev-only'
+const TOKEN_SECRET = (() => {
+  const fromEnv = process.env.BACKOFFICE_TOKEN_SECRET
+  if (fromEnv && fromEnv.length > 0) return fromEnv
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'BACKOFFICE_TOKEN_SECRET est requis en production : aucun secret de repli autorisé.'
+    )
+  }
+  return FALLBACK_DEV_SECRET
+})()
 const TOKEN_TTL_MS = Number(process.env.BACKOFFICE_TOKEN_TTL_MS ?? 1000 * 60 * 60 * 12) // 12h default
 
 const signPayload = (payload: string) => {

@@ -3,6 +3,23 @@ import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { prisma } from '@cashou/db-app';
 import bcrypt from 'bcryptjs';
 
+// Coût bcrypt (≥12 recommandé 2025+). N'invalide pas les hash existants :
+// bcrypt.compare lit le coût encodé dans chaque hash.
+const BCRYPT_ROUNDS = 12;
+
+// Origines de confiance pilotées par env (CSV). En prod, une requête navigateur
+// portant une Origin doit y figurer. Le mobile natif n'envoie pas d'Origin →
+// better-auth le traite en mode permissif (non bloqué), donc pas besoin du plugin Expo.
+function resolveTrustedOrigins(): string[] {
+  const fromEnv = (process.env.TRUSTED_ORIGINS ?? '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+  if (fromEnv.length > 0) return fromEnv;
+  if (process.env.NODE_ENV !== 'production') return ['*'];
+  return [process.env.BETTER_AUTH_URL ?? 'http://localhost:3000'];
+}
+
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:3000',
   basePath: '/api/auth',
@@ -12,7 +29,7 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     password: {
-      hash: async (password) => bcrypt.hash(password, 10),
+      hash: async (password) => bcrypt.hash(password, BCRYPT_ROUNDS),
       verify: async ({ hash, password }) => bcrypt.compare(password, hash),
     },
   },
@@ -32,7 +49,7 @@ export const auth = betterAuth({
       enabled: false, // Disable account linking for now
     },
   },
-  trustedOrigins: ['*'], // Allow all origins in development (mobile app)
+  trustedOrigins: resolveTrustedOrigins(),
   advanced: {
     disableCSRFCheck: process.env.NODE_ENV === 'development', // Disable CSRF in development for mobile
   },
@@ -53,7 +70,7 @@ export const auth = betterAuth({
 // Password hashing utilities
 export const hash = {
   password: async (password: string) => {
-    return bcrypt.hash(password, 10);
+    return bcrypt.hash(password, BCRYPT_ROUNDS);
   },
   verify: async (password: string, hash: string) => {
     return bcrypt.compare(password, hash);

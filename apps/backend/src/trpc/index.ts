@@ -1,7 +1,7 @@
 import { initTRPC, TRPCError } from '@trpc/server';
 import { auth } from '@cashou/auth/server';
 import { prisma } from '@cashou/db-app';
-import { PrismaClient as BackofficePrismaClient } from '@cashou/db-backoffice';
+import { backofficePrisma } from '../database-backoffice';
 import { verifyBackofficeToken } from '../lib/backoffice-token';
 
 // Type for better-auth session
@@ -20,8 +20,6 @@ export interface Context {
   session: AuthSession | null;
   backofficeAdmin: BackofficeAdminContext | null;
 }
-
-const backofficePrisma = new BackofficePrismaClient();
 
 // Create context function
 export async function createContext({ req }: { req: Request }): Promise<Context> {

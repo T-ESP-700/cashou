@@ -34,10 +34,13 @@ bun-debug.log*
 .env.test.local
 .env.production.local
 .env.local
+# Secrets Docker (utiliser .env.docker.example comme modèle, jamais committer les vrais secrets)
+.env.docker
 
 # Secrets and credentials (SSL, signing keys)
 *.pem
 *.key
+*.p8
 *.p12
 *.keystore
 *.jks

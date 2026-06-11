@@ -55,10 +55,7 @@
     },
     "extra": {
       "router": {},
-      "eas": {
-        "projectId": "b1c1daac-96e7-4097-8723-6fa1e7621615"
-      }
-    },
-    "owner": "soso7"
+      "eas": {}
+    }
   }
 }

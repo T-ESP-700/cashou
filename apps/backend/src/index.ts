@@ -3,7 +3,8 @@ import { createContext } from './trpc';
 import { trpcRouter } from './trpc/router';
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 import { cors } from './middleware/cors';
-import { getJobQueue, stopJobQueue } from './lib/job-queue';
+import { getJobQueue, stopJobQueue, getJobQueueInstance } from './lib/job-queue';
+import { issueWsTicket, consumeWsTicket, startWsTicketSweeper, stopWsTicketSweeper } from './lib/ws-ticket';
 import { startGameEventWorkers } from './workers/game-event.worker';
 import { prisma } from './database';
 import { canUserJoinGame, leaveGame, switchGameRoom, sendToSocket, startTicker, stopTicker } from './ws/game-socket';
@@ -26,6 +27,7 @@ async function startServer() {
     await getJobQueue();
     await startGameEventWorkers();
     startTicker(prisma);
+    startWsTicketSweeper();
     console.log('Job queue, workers, and WebSocket ticker initialized successfully');
   } catch (error) {
     console.error('Failed to initialize job queue:', error);
@@ -41,32 +43,28 @@ async function startServer() {
     async fetch(req, server) {
       const url = new URL(req.url);
 
-      // CORS headers for all requests
-      const corsHeaders = cors();
+      // CORS headers for all requests (reflection de l'origine, restreinte en prod)
+      const corsHeaders = cors(req.headers.get('origin'));
 
       // Handle CORS preflight requests
       if (req.method === 'OPTIONS') {
         return new Response(null, { headers: corsHeaders });
       }
 
-      // WebSocket upgrade for /ws/game
+      // WebSocket upgrade for /ws/game — ouverture via ticket éphémère (cf. lib/ws-ticket)
       if (url.pathname === '/ws/game') {
-        const token = url.searchParams.get('token');
-        if (!token) {
-          return new Response(JSON.stringify({ error: 'Missing token' }), {
+        const ticket = url.searchParams.get('ticket');
+        if (!ticket) {
+          return new Response(JSON.stringify({ error: 'Missing ticket' }), {
             status: 401,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
 
-        // Validate token against session table (same logic as tRPC context)
-        const sessionData = await prisma.session.findUnique({
-          where: { token },
-          include: { user: true },
-        });
-
-        if (!sessionData || sessionData.expiresAt <= new Date()) {
-          return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+        // Le ticket est à usage unique et de courte durée ; sa validité prouve l'identité.
+        const userId = consumeWsTicket(ticket);
+        if (!userId) {
+          return new Response(JSON.stringify({ error: 'Invalid or expired ticket' }), {
             status: 401,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
@@ -74,7 +72,7 @@ async function startServer() {
 
         const upgraded = server.upgrade(req, {
           data: {
-            userId: sessionData.user.id,
+            userId,
             gameInstanceId: '',
           },
         });
@@ -90,9 +88,67 @@ async function startServer() {
         });
       }
 
-      // Health check endpoint
+      // Émission d'un ticket WebSocket : échange le token de session (header Authorization)
+      // contre un ticket éphémère, pour ne jamais exposer le token dans l'URL du WebSocket.
+      if (url.pathname === '/api/ws-ticket') {
+        if (req.method !== 'POST') {
+          return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+            status: 405,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const authHeader = req.headers.get('authorization');
+        const bearer = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        if (!bearer) {
+          return new Response(JSON.stringify({ error: 'Missing token' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const sessionData = await prisma.session.findUnique({
+          where: { token: bearer },
+          include: { user: true },
+        });
+
+        if (!sessionData || sessionData.expiresAt <= new Date()) {
+          return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const ticket = issueWsTicket(sessionData.user.id);
+        return new Response(JSON.stringify({ ticket }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Health check endpoint — profond : la base est vitale (503 si KO pour que
+      // l'orchestrateur réagisse), la job-queue est signalée mais non bloquante
+      // (un échec de queue ne doit pas déclencher un crash-loop, cf. spec R3 différé).
       if (url.pathname === '/health') {
-        return new Response('OK', { headers: corsHeaders });
+        try {
+          await Promise.race([
+            prisma.$queryRaw`SELECT 1`,
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('db healthcheck timeout')), 2000)
+            ),
+          ]);
+        } catch {
+          return new Response(JSON.stringify({ status: 'error', db: 'down' }), {
+            status: 503,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const queueUp = getJobQueueInstance() !== null;
+        return new Response(
+          JSON.stringify({ status: 'ok', db: 'ok', queue: queueUp ? 'ok' : 'down' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
       // Route d'accueil - Retourne un message simple pour vérifier que le serveur fonctionne
@@ -106,21 +162,9 @@ async function startServer() {
       }
 
       // Better-auth endpoints
+      // NB : ne JAMAIS logger le body (il contient mots de passe et emails en clair).
       if (url.pathname.startsWith('/api/auth')) {
         try {
-          console.log('Auth request:', req.method, url.pathname);
-
-          // Clone the request to read the body for debugging
-          const clonedReq = req.clone();
-          if (req.method === 'POST' && req.headers.get('content-type')?.includes('application/json')) {
-            try {
-              const body = await clonedReq.json();
-              console.log('Request body:', body);
-            } catch (e) {
-              console.error('Failed to parse request body:', e);
-            }
-          }
-
           const response = await auth.handler(req);
 
           // Add CORS headers to auth response
@@ -130,7 +174,7 @@ async function startServer() {
 
           return response;
         } catch (error) {
-          console.error('Auth handler error:', error);
+          console.error('Auth handler error:', (error as Error).message);
           return new Response(JSON.stringify({ error: 'Authentication error' }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -145,8 +189,9 @@ async function startServer() {
           req,
           router: trpcRouter,
           createContext,
-          onError: ({ error }) => {
-            console.error('tRPC Error:', error);
+          onError: ({ error, path }) => {
+            // Ne pas logger l'objet Error complet (stack/inputs potentiellement sensibles).
+            console.error('tRPC Error:', error.code, path ?? '', error.message);
           },
         });
 
@@ -252,6 +297,7 @@ async function gracefulShutdown(signal: string) {
   console.log(`Received ${signal}, shutting down gracefully...`);
 
   stopTicker();
+  stopWsTicketSweeper();
 
   try {
     await stopJobQueue();

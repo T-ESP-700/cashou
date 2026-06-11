@@ -1,0 +1,50 @@
+# Image de PRODUCTION du backend Cashou (Bun + Prisma).
+# Différences avec le Dockerfile de dev :
+#  - aucun secret cuit dans l'image (PAS de COPY .env.docker) : Dokploy injecte les
+#    variables au runtime ;
+#  - NODE_ENV=production, pas de hot-reload ;
+#  - les migrations des 2 bases sont appliquées au démarrage (entrypoint) ;
+#  - la CLI Prisma est conservée (install complet) car requise par `migrate deploy`.
+FROM oven/bun:1.2
+
+# OpenSSL pour Prisma
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
+ENV NODE_ENV=production
+
+WORKDIR /app
+
+# Fichiers racine du monorepo (NB : pas de .env — secrets fournis par Dokploy)
+COPY package.json bun.lockb* ./
+COPY bunfig.toml ./
+COPY tsconfig.json ./
+
+# package.json des workspaces nécessaires au backend
+COPY apps/backend/package.json ./apps/backend/
+COPY packages/@cashou/db-app/package.json ./packages/@cashou/db-app/
+COPY packages/@cashou/db-backoffice/package.json ./packages/@cashou/db-backoffice/
+COPY packages/@cashou/auth/package.json ./packages/@cashou/auth/
+COPY packages/@cashou/utils/package.json ./packages/@cashou/utils/
+
+# Install (on garde les devDeps : la CLI Prisma est requise pour migrate deploy)
+RUN bun install
+
+# Code source
+COPY apps/backend ./apps/backend
+COPY packages ./packages
+
+# Génération des 2 clients Prisma
+WORKDIR /app/packages/@cashou/db-app
+RUN bunx prisma generate
+WORKDIR /app/packages/@cashou/db-backoffice
+RUN bunx prisma generate
+
+WORKDIR /app
+
+# Entrypoint : migrations des 2 bases puis démarrage du serveur
+COPY apps/backend/docker-entrypoint.prod.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+EXPOSE 3000
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

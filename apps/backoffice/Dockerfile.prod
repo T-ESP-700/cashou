@@ -1,0 +1,45 @@
+# Image de PRODUCTION du backoffice Cashou.
+# SPA Vite buildée statiquement puis servie par nginx.
+# IMPORTANT : Vite inline les variables VITE_* AU BUILD → VITE_BACKEND_URL doit
+# être fourni comme build-arg (et non au runtime).
+
+# ---- Étape 1 : build de la SPA ----
+FROM oven/bun:1.2 AS build
+
+WORKDIR /app
+
+# URL du backend injectée au build (ex. https://api.<domaine>)
+ARG VITE_BACKEND_URL
+ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
+
+# Fichiers racine + package.json des workspaces du backoffice
+COPY package.json bun.lockb* ./
+COPY bunfig.toml ./
+COPY tsconfig.json ./
+COPY apps/backoffice/package.json ./apps/backoffice/
+COPY packages/@cashou/api/package.json ./packages/@cashou/api/
+COPY packages/@cashou/db-backoffice/package.json ./packages/@cashou/db-backoffice/
+COPY packages/@cashou/ui/package.json ./packages/@cashou/ui/
+
+RUN bun install
+
+# Code source
+COPY apps/backoffice ./apps/backoffice
+COPY packages ./packages
+
+# Le backoffice référence les types de @cashou/db-backoffice → générer le client
+WORKDIR /app/packages/@cashou/db-backoffice
+RUN bunx prisma generate
+
+# Build statique (génère apps/backoffice/dist)
+WORKDIR /app/apps/backoffice
+RUN bun run build
+
+# ---- Étape 2 : runtime nginx ----
+FROM nginx:1.27-alpine AS runtime
+
+COPY apps/backoffice/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/apps/backoffice/dist /usr/share/nginx/html
+
+EXPOSE 80
+# L'image nginx officielle lance nginx en avant-plan par défaut.

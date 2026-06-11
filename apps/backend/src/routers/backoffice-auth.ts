@@ -7,10 +7,8 @@ import { router, publicProcedure } from '../trpc/index'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import { TRPCError } from '@trpc/server'
-import { PrismaClient } from '@cashou/db-backoffice'
+import { backofficePrisma as backofficeDb } from '../database-backoffice'
 import { generateBackofficeToken, verifyBackofficeToken } from '../lib/backoffice-token'
-
-const backofficeDb = new PrismaClient()
 
 export const backofficeAuthRouter = router({
   signIn: publicProcedure

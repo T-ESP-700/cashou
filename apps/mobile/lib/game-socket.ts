@@ -1,6 +1,4 @@
-import { getBackendHost } from "./api-config";
-
-const PORT = 3000;
+import { getApiBaseUrl, getWsBaseUrl } from "./api-config";
 
 export interface GameStateSnapshot {
   gameInstanceId: string;
@@ -38,10 +36,42 @@ export function connectGameSocket(
   let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   let isIntentionallyClosed = false;
 
-  function connect() {
-    const host = getBackendHost();
-    const wsUrl = `ws://${host}:${PORT}/ws/game?token=${encodeURIComponent(token)}`;
+  // Échange le token de session (header Authorization) contre un ticket éphémère.
+  // Le token ne transite jamais dans l'URL du WebSocket. Renvoie null en cas d'échec.
+  async function fetchWsTicket(): Promise<string | null> {
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/ws-ticket`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return null;
+      const data = (await res.json()) as { ticket?: string };
+      return data.ticket ?? null;
+    } catch {
+      return null;
+    }
+  }
 
+  function scheduleReconnect() {
+    if (isIntentionallyClosed) return;
+    if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    // Reconnect after 2 seconds (un nouveau ticket sera redemandé à ce moment-là).
+    reconnectTimeout = setTimeout(() => {
+      void connect();
+    }, 2000);
+  }
+
+  async function connect() {
+    if (isIntentionallyClosed) return;
+
+    // Un ticket frais est requis à CHAQUE (re)connexion (usage unique, ~30 s).
+    const ticket = await fetchWsTicket();
+    if (!ticket || isIntentionallyClosed) {
+      scheduleReconnect();
+      return;
+    }
+
+    const wsUrl = `${getWsBaseUrl()}/ws/game?ticket=${encodeURIComponent(ticket)}`;
     ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
@@ -60,10 +90,7 @@ export function connectGameSocket(
 
     ws.onclose = () => {
       onConnectionChange?.(false);
-      if (!isIntentionallyClosed) {
-        // Reconnect after 2 seconds
-        reconnectTimeout = setTimeout(connect, 2000);
-      }
+      scheduleReconnect();
     };
 
     ws.onerror = (error) => {
@@ -72,7 +99,7 @@ export function connectGameSocket(
     };
   }
 
-  connect();
+  void connect();
 
   // Return cleanup function
   return () => {
