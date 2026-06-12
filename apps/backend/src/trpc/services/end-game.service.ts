@@ -397,12 +397,12 @@ export class EndGameService {
         if (!wallet) throw new Error(`Aucun wallet trouvé pour la partie ${gameInstanceId}`);
 
         let totalAssetsValue = 0;
-        let totalInterests = 0;
+        // let totalInterests = 0; // Désactivé : valeur cumulée plus exposée dans le résultat de fin de partie, à réactiver si besoin de reporting détaillé
         for (const holding of gameInstance.holdings) {
             const holdingWithAsset = holding as HoldingWithAsset;
             const quantity = holdingWithAsset.quantity ? Number(holdingWithAsset.quantity) : 0;
             const interests = await this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
-            totalInterests += interests;
+            // totalInterests += interests;
             totalAssetsValue += quantity + interests;
         }
 
