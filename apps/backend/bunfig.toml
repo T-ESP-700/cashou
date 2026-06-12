@@ -1,0 +1,6 @@
+[test]
+# Seuil minimum global (lignes + fonctions). Le job CI échoue si on tombe sous ce seuil.
+# Activer la mesure : `bun test --coverage`.
+coverageThreshold = 0.90
+# Exclut les fichiers de tests eux-mêmes du calcul de coverage.
+coverageSkipTestFiles = true
