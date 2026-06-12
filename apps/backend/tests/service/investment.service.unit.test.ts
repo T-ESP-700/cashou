@@ -5,15 +5,6 @@ import { InvestmentService } from "../../src/trpc/services/investment.service";
 import type { PrismaClient } from "@cashou/db-app";
 
 function createMockPrisma() {
-  const txClient = {
-    holding: {
-      update: mock(async () => ({})),
-    },
-    transaction: {
-      create: mock(async () => ({})),
-    },
-  };
-
   const mockHoldings = [
     {
       id: 1,
@@ -21,8 +12,8 @@ function createMockPrisma() {
       assetId: 20,
       gameInstanceId: 100,
       quantity: { toString: () => "1000" },
-      acquiredAt: new Date(Date.now() - 86400000), // 1 jour avant
-      asset: { id: 20, rate: 5.0 }, // 5% annuel
+      acquiredAt: new Date(Date.now() - 86400000),
+      asset: { id: 20, rate: 5.0 },
     },
     {
       id: 2,
@@ -34,6 +25,16 @@ function createMockPrisma() {
       asset: { id: 21, rate: 3.0 },
     },
   ];
+
+  const txClient = {
+    holding: {
+      findMany: mock(async () => mockHoldings),
+      update: mock(async () => ({})),
+    },
+    transaction: {
+      create: mock(async () => ({})),
+    },
+  };
 
   return {
     gameInstance: {
@@ -80,6 +81,9 @@ describe("InvestmentService — Transactions atomiques", () => {
   beforeEach(() => {
     mockPrisma = createMockPrisma();
     service = new InvestmentService(mockPrisma as unknown as PrismaClient);
+    // Stub calculateInterests pour isoler le test du calcul (qui dépend d'assetHistory/transactions).
+    // Ici on vérifie uniquement l'utilisation de $transaction pour les écritures.
+    (service as unknown as { calculateInterests: () => Promise<number> }).calculateInterests = async () => 10;
   });
 
   test("applyInterestsToAllHoldings utilise $transaction", async () => {

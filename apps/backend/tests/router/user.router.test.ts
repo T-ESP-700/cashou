@@ -363,7 +363,7 @@ describe("user.router — Procédures protégées", () => {
       caller.updateProfile({
         username: "existinguser",
       })
-    ).rejects.toThrow("Username already exists");
+    ).rejects.toThrow("Ce nom d'utilisateur est déjà pris");
   });
 
   // Tests désactivés : la feature de changement de password a été retirée de updateProfile
