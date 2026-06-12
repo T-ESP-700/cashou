@@ -35,6 +35,7 @@ export interface EndGameModalContent {
     title: string;
     primaryMessage: string;
     secondaryMessage: string | null;
+    tip: string | null;
 }
 
 export interface EndGameResult {
@@ -146,6 +147,18 @@ export class EndGameService {
      * @returns EndGameResult - Résultat de la fin de partie
      */
     async endGame(gameInstanceId: number): Promise<EndGameResult> {
+        // Guard: if the game is already ended (e.g. by the trigger service),
+        // return the read-only result instead of recalculating with stale state.
+        // Without this, the second call sees isPaused=true/pausedAt=null and
+        // all time-based calculations return 0, giving a 0% performance.
+        const existing = await this.prisma.gameInstance.findUnique({
+            where: { id: gameInstanceId },
+            select: { isEnded: true },
+        });
+        if (existing?.isEnded) {
+            return this.getEndGameResult(gameInstanceId);
+        }
+
         // 1. Recuperer l'instance de jeu avec toutes ses donnees
         const gameInstance = await this.prisma.gameInstance.findUnique({
             where: { id: gameInstanceId },
@@ -240,14 +253,23 @@ export class EndGameService {
 
         // 5. Marquer la partie comme terminee
         console.log(`[GAME-ENDED] endGame: gameInstanceId=${gameInstanceId}, levelId=${gameInstance.levelId}, userId=${gameInstance.userId}, totalValue=${Math.round(totalValue)}, startBalance=${startBalance}, reason=NORMAL_END_GAME`);
-        await this.prisma.gameInstance.update({
-            where: { id: gameInstanceId },
-            data: {
-                isEnded: true,
-                endedAt: new Date(),
-                isPaused: true,
-                pausedAt: null,
-            },
+        await this.prisma.$transaction(async (tx) => {
+            const current = await tx.gameInstance.findUnique({
+                where: { id: gameInstanceId },
+                select: { isEnded: true },
+            });
+            if (current?.isEnded) {
+                throw new Error(`La partie ${gameInstanceId} est déjà terminée`);
+            }
+            await tx.gameInstance.update({
+                where: { id: gameInstanceId },
+                data: {
+                    isEnded: true,
+                    endedAt: new Date(),
+                    isPaused: true,
+                    pausedAt: null,
+                },
+            });
         });
 
         // Broadcast game end to WebSocket clients
@@ -313,12 +335,14 @@ export class EndGameService {
                 secondaryMessage: secondaryMessageFromGoal ?? (
                     firstBonusGoal ? "L'objectif secondaire n'a pas été atteint cette fois." : null
                 ),
+                tip: null,
             }
             : {
                 type: "PRIMARY_FAILURE",
                 title: "Dommage !",
                 primaryMessage: primaryMessageFromGoal ?? "Tu n'as pas atteint l'objectif principal.",
                 secondaryMessage: null,
+                tip: gameInstance.level?.tip ?? null,
             };
 
         // 6. Retourner le resultat (success = objectifs obligatoires atteints) + stars si enregistrement
@@ -373,12 +397,12 @@ export class EndGameService {
         if (!wallet) throw new Error(`Aucun wallet trouvé pour la partie ${gameInstanceId}`);
 
         let totalAssetsValue = 0;
-        let totalInterests = 0;
+        // let totalInterests = 0; // Désactivé : valeur cumulée plus exposée dans le résultat de fin de partie, à réactiver si besoin de reporting détaillé
         for (const holding of gameInstance.holdings) {
             const holdingWithAsset = holding as HoldingWithAsset;
             const quantity = holdingWithAsset.quantity ? Number(holdingWithAsset.quantity) : 0;
             const interests = await this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
-            totalInterests += interests;
+            // totalInterests += interests;
             totalAssetsValue += quantity + interests;
         }
 
@@ -426,6 +450,7 @@ export class EndGameService {
                 title: allMandatoryGoalsValidated ? "Bravo !" : "Dommage !",
                 primaryMessage: "",
                 secondaryMessage: null,
+                tip: gameInstance.level?.tip ?? null,
             },
             ...(completion && {
                 stars: completion.stars,

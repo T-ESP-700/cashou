@@ -17,6 +17,7 @@ function makeGameInstance(id: number, over: Partial<GameInstance> = {}): GameIns
     actionRequired: over.actionRequired ?? false,
     totalPausedDuration: over.totalPausedDuration ?? 0,
     currentEventIndex: over.currentEventIndex ?? 0,
+    endingStartedAt: over.endingStartedAt ?? null,
     isEnded: over.isEnded ?? false,
     endedAt: over.endedAt ?? null,
     marketId: over.marketId ?? null,

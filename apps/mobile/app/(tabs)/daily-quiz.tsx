@@ -34,6 +34,7 @@ interface Question {
 }
 
 type QuizState = 'question' | 'completed' | 'correction';
+type InitialView = 'question' | 'completed' | 'correction';
 
 export default function DailyQuizScreen() {
   const router = useRouter();
@@ -56,6 +57,14 @@ export default function DailyQuizScreen() {
   const showCompleted = Array.isArray(showCompletedParam)
     ? showCompletedParam[0] === 'true'
     : showCompletedParam === 'true';
+
+  const initialViewParam = params?.initialView;
+  const initialView = Array.isArray(initialViewParam)
+    ? initialViewParam[0]
+    : initialViewParam;
+  const resolvedInitialView: InitialView = initialView === 'correction' || initialView === 'completed'
+    ? initialView
+    : 'question';
 
   // source permet de distinguer le contexte d'ouverture du screen
   const sourceParam = params?.source;
@@ -91,6 +100,7 @@ export default function DailyQuizScreen() {
   const [levelUserQuizId, setLevelUserQuizId] = useState<number | null>(null);
   const [userAnswers, setUserAnswers] = useState<Map<number, { answerId: number; isCorrect: boolean }>>(new Map());
   const [correctionQuestionIndex, setCorrectionQuestionIndex] = useState(0);
+  const [isResultModalVisible, setIsResultModalVisible] = useState(false);
   const bottomSheetRef = useRef<BottomSheet>(null);
   const snapPoints = useMemo(() => ['40%'], []);
 
@@ -142,6 +152,7 @@ export default function DailyQuizScreen() {
         setCorrectionQuestionIndex(0);
         setSelectedAnswerId(null);
         setQuizState(null);
+        setIsResultModalVisible(false);
 
         let quizData = null;
 
@@ -267,7 +278,13 @@ export default function DailyQuizScreen() {
             setUserAnswers(answersMap);
 
             if (isQuizCompleted) {
-              setQuizState('completed');
+              if (resolvedInitialView === 'correction') {
+                setQuizState('correction');
+                setIsResultModalVisible(false);
+              } else {
+                setQuizState('completed');
+                setIsResultModalVisible(true);
+              }
             } else {
               // Trouver la première question non répondue et aller directement dessus
               const answeredQuestions = await Promise.all(
@@ -316,7 +333,7 @@ export default function DailyQuizScreen() {
 
     fetchQuiz();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, showCompleted, resolvedQuizId, source, gameInstanceId, isLevelQuiz]); // Ne pas inclure quizState dans les dépendances pour éviter les rechargements
+  }, [user, showCompleted, resolvedQuizId, source, gameInstanceId, isLevelQuiz, resolvedInitialView]); // Ne pas inclure quizState dans les dépendances pour éviter les rechargements
 
   // Rafraîchir les données utilisateur quand on quitte la page (si le quiz est complété)
   // Cela permet de mettre à jour le currentStreak et le statut du quiz sur la page d'accueil
@@ -366,6 +383,7 @@ export default function DailyQuizScreen() {
         });
         setUserAnswers(answersMap);
         setQuizState('completed');
+        setIsResultModalVisible(true);
       } else {
         // === MODE QUIZ DAILY (comportement existant) ===
         let alreadyAnswered = false;
@@ -441,6 +459,7 @@ export default function DailyQuizScreen() {
           }
 
           setQuizState('completed');
+          setIsResultModalVisible(true);
         }
       }
     } catch (err) {
@@ -480,6 +499,21 @@ export default function DailyQuizScreen() {
   const [completedMessage, setCompletedMessage] = useState('');
   const completedTitle = hasPassed ? 'Félicitations !' : 'Dommage';
   const completedEmoji = hasPassed ? '🎉' : '💪';
+
+  const handleCompletedQuizExit = useCallback(() => {
+    setIsResultModalVisible(false);
+    if (isLevelQuiz && gameInstanceId) {
+      router.push({ pathname: '/(tabs)/summary', params: { gameId: gameInstanceId.toString() } });
+    } else {
+      router.push({ pathname: '/(tabs)/history' });
+    }
+  }, [gameInstanceId, isLevelQuiz, router]);
+
+  const handleOpenCorrection = useCallback(() => {
+    setIsResultModalVisible(false);
+    setCorrectionQuestionIndex(0);
+    setQuizState('correction');
+  }, []);
 
   useEffect(() => {
     if (quizState === 'completed') {
@@ -664,29 +698,17 @@ export default function DailyQuizScreen() {
 
       {/* Modale de résultat (style endGame) */}
       <Modal
-        visible={quizState === 'completed'}
+        visible={quizState === 'completed' && isResultModalVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => {
-          if (isLevelQuiz && gameInstanceId) {
-            router.push({ pathname: '/(tabs)/summary', params: { gameId: gameInstanceId.toString() } });
-          } else {
-            router.replace('/(tabs)/');
-          }
-        }}
+        onRequestClose={handleCompletedQuizExit}
       >
         <BlurView
           intensity={60}
           tint={isDark ? 'dark' : 'light'}
           style={styles.modalBlur}
         >
-          <Pressable style={styles.modalOverlay} onPress={() => {
-            if (isLevelQuiz && gameInstanceId) {
-              router.push({ pathname: '/(tabs)/summary', params: { gameId: gameInstanceId.toString() } });
-            } else {
-              router.replace('/(tabs)/');
-            }
-          }}>
+          <Pressable style={styles.modalOverlay} onPress={handleCompletedQuizExit}>
             <Pressable onPress={(e) => e.stopPropagation()} style={[styles.modalCardBackdrop, { backgroundColor: colors.secondary }]}>
               <View style={[styles.modalCard, { backgroundColor: colors.card, shadowColor: colors.border }]}>
                 <Text style={{ fontSize: 64, textAlign: 'center', marginBottom: 8 }}>{completedEmoji}</Text>
@@ -720,25 +742,19 @@ export default function DailyQuizScreen() {
                   <ActionPillButton
                     label="Correction"
                     iconName="eye-outline"
-                    onPress={() => {
-                      setCorrectionQuestionIndex(0);
-                      setQuizState('correction');
-                    }}
+                    onPress={handleOpenCorrection}
                   />
                   {isLevelQuiz ? (
                     <ActionPillButton
                       label="Recap"
                       iconName="document-text-outline"
-                      onPress={() => {
-                        router.push({ pathname: '/(tabs)/summary', params: { gameId: gameInstanceId!.toString() } });
-                        setQuizState(null);
-                      }}
+                      onPress={handleCompletedQuizExit}
                     />
                   ) : (
                     <ActionPillButton
                       label="Historique"
                       iconName="time-outline"
-                      onPress={() => router.push('/(tabs)/history')}
+                      onPress={handleCompletedQuizExit}
                     />
                   )}
                 </View>
@@ -787,7 +803,7 @@ export default function DailyQuizScreen() {
                     if (isLevelQuiz && gameInstanceId) {
                       router.push({ pathname: '/(tabs)/summary', params: { gameId: gameInstanceId.toString() } });
                     } else {
-                      router.push('/(tabs)/');
+                      router.push('/(tabs)');
                     }
                   }
                 }}

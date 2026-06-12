@@ -69,8 +69,8 @@ export class WalletService {
      // 🔢 Convert Decimal to number for API output
      return {
        ...wallet,
-       amount: wallet.amount ? new Prisma.Decimal(Number(wallet.amount)) : wallet.amount,
-     };
+       amount: wallet.amount ? Number(wallet.amount) : wallet.amount,
+     } as unknown as Wallet;
    }
 
   /**
@@ -133,12 +133,9 @@ export class WalletService {
    * @param amountToAdd - Montant à ajouter
    */
   async addAmount(id: number, amountToAdd: number): Promise<Wallet> {
-    const wallet = await this.findOne(id);
-    if (!wallet) throw new Error("Portefeuille introuvable");
-    const current = wallet.amount ? Number(wallet.amount) : 0;
     return this.prisma.wallet.update({
       where: { id },
-      data: { amount: (current + amountToAdd).toString() },
+      data: { amount: { increment: amountToAdd } },
     });
   }
 }
