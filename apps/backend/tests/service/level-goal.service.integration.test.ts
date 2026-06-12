@@ -66,6 +66,7 @@ const shouldRun = !!process.env.CASHOU_DB_URL;
         const data: Omit<LevelGoal, "id" | "createdAt" | "updatedAt"> = {
             levelId: testLevelId,
             goalId: testGoalId,
+            isMandatory: true,
         };
 
         const created = await service.create(data);

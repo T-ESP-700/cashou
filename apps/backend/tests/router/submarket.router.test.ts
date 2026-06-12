@@ -12,6 +12,7 @@ function makeSubmarket(id: number, over: Partial<Submarket> = {}): Submarket {
     gameInstanceId: over.gameInstanceId ?? null,
     title: over.title ?? `Submarket ${id}`,
     description: over.description ?? `Description ${id}`,
+    type: over.type ?? "STOCK",
     createdAt: over.createdAt ?? now,
     updatedAt: over.updatedAt ?? now,
   };

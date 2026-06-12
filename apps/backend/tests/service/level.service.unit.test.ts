@@ -36,7 +36,9 @@ function makePrismaMock() {
           speed: (data as Level).speed ?? null,
           startBalance: (data as Level).startBalance ?? null,
           pointsRequired: (data as Level).pointsRequired ?? null,
+          historyStartDay: (data as Level).historyStartDay ?? null,
           description: (data as Level).description ?? null,
+          tip: (data as Level).tip ?? null,
           createdAt: now,
           updatedAt: now,
         };
@@ -54,7 +56,9 @@ function makePrismaMock() {
           speed: (data as Level).speed ?? null,
           startBalance: (data as Level).startBalance ?? null,
           pointsRequired: (data as Level).pointsRequired ?? null,
+          historyStartDay: (data as Level).historyStartDay ?? null,
           description: (data as Level).description ?? null,
+          tip: (data as Level).tip ?? null,
           createdAt: now,
           updatedAt: now,
         };
@@ -71,7 +75,9 @@ function makePrismaMock() {
           speed: null,
           startBalance: null,
           pointsRequired: null,
+          historyStartDay: null,
           description: null,
+          tip: null,
           createdAt: now,
           updatedAt: now,
         };

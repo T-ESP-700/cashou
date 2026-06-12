@@ -149,7 +149,14 @@ export const authRouter = router({
         email: z.string().email(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async () => {
+      throw new TRPCError({
+        code: 'NOT_IMPLEMENTED',
+        message: 'Password reset is not configured yet (Better-Auth email plugin pending).',
+      });
+      // Implémentation désactivée : le plugin email Better-Auth n'est pas configuré.
+      // À réactiver en supprimant le throw ci-dessus et en décommentant le bloc ci-dessous.
+      /*
       try {
         await (auth.api as any).forgetPassword({
           body: {
@@ -169,6 +176,7 @@ export const authRouter = router({
           message,
         });
       }
+      */
     }),
 
   // Reset password

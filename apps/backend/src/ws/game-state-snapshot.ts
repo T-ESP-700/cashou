@@ -57,9 +57,9 @@ export function buildGameStateSnapshot(
     gameInstanceId: String(gameInstance.id),
     serverNow: new Date().toISOString(),
     gameDate: gameDate.toISOString(),
-    isPaused: gameInstance.isPaused,
+    isPaused: gameInstance.isPaused ?? false,
     isEnded: gameInstance.isEnded,
-    actionRequired: gameInstance.actionRequired,
+    actionRequired: gameInstance.actionRequired ?? false,
     currentEventIndex: gameInstance.currentEventIndex ?? 0,
     totalPausedDuration: gameInstance.totalPausedDuration ?? 0,
     pausedAt: gameInstance.pausedAt

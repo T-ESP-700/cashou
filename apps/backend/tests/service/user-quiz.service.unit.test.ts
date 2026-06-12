@@ -10,6 +10,7 @@ function makeUserQuiz(id: number, over: Partial<UserQuiz> = {}): UserQuiz {
     id,
     quizId: over.quizId ?? 1,
     userId: over.userId ?? "user1",
+    gameInstanceId: over.gameInstanceId ?? null,
     completedAt: over.completedAt ?? null,
     isCorrect: over.isCorrect ?? null,
     createdAt: over.createdAt ?? now,
