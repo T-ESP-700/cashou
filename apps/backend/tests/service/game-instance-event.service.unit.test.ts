@@ -3,12 +3,22 @@
 import { describe, test, expect, mock, beforeEach } from "bun:test";
 import type { PrismaClient } from "@cashou/db-app";
 
+// Stub TOUTES les exports du module job-queue pour éviter qu'un autre test plante
+// en important une fonction qui aurait disparu du mock.
+const scheduleGameEnd = mock(async (_id: number, _delay: number) => {});
 const scheduleGameEvent = mock(async (_id: number, _at: Date) => {});
 const cancelGameEvent = mock(async (_id: number) => {});
+const cancelGameJobs = mock(async (_id: number) => {});
 
 mock.module("../../src/lib/job-queue.ts", () => ({
+  JOB_NAMES: { GAME_END: "game-end", GAME_EVENT: "game-event" },
+  getJobQueue: async () => null,
+  stopJobQueue: async () => {},
+  scheduleGameEnd,
   scheduleGameEvent,
   cancelGameEvent,
+  cancelGameJobs,
+  getJobQueueInstance: () => null,
 }));
 
 const { GameInstanceEventService } = await import(
@@ -18,14 +28,14 @@ const { GameInstanceEventService } = await import(
 function createMockPrisma(overrides: Record<string, unknown> = {}) {
   return {
     gameInstance: {
-      findUnique: mock(async () => null),
+      findUnique: mock(async (_args?: unknown): Promise<unknown> => null),
     },
     gameInstanceEvent: {
-      count: mock(async () => 0),
-      findMany: mock(async () => []),
-      createMany: mock(async () => ({ count: 0 })),
-      deleteMany: mock(async () => ({ count: 0 })),
-      update: mock(async () => ({})),
+      count: mock(async (_args?: unknown): Promise<number> => 0),
+      findMany: mock(async (_args?: unknown): Promise<unknown[]> => []),
+      createMany: mock(async (_args?: unknown): Promise<{ count: number }> => ({ count: 0 })),
+      deleteMany: mock(async (_args?: unknown): Promise<{ count: number }> => ({ count: 0 })),
+      update: mock(async (_args?: unknown): Promise<unknown> => ({})),
     },
     ...overrides,
   };
@@ -196,10 +206,10 @@ describe("GameInstanceEventService", () => {
     test("retourne les events triés par scheduledAt asc", async () => {
       const prisma = createMockPrisma();
       const expected = [{ id: 1 }, { id: 2 }];
-      prisma.gameInstanceEvent.findMany = mock(async () => expected);
+      prisma.gameInstanceEvent.findMany = mock(async (_args?: unknown): Promise<unknown[]> => expected);
       const service = new GameInstanceEventService(prisma as unknown as PrismaClient);
       const result = await service.findByGameInstance(10);
-      expect(result).toBe(expected);
+      expect(result as unknown).toBe(expected);
       const arg = (prisma.gameInstanceEvent.findMany.mock.calls[0]?.[0] ?? {}) as { where: unknown; orderBy: unknown };
       expect(arg.where).toEqual({ gameInstanceId: 10 });
       expect(arg.orderBy).toEqual({ scheduledAt: "asc" });

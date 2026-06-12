@@ -4,15 +4,22 @@
 import { describe, test, expect, mock, beforeEach } from "bun:test";
 import type { PrismaClient } from "@cashou/db-app";
 
-// Mock du module job-queue avant l'import du service.
+// Mock du module job-queue avant l'import du service. On stubbe TOUTES les exports
+// pour éviter que d'autres fichiers de test importent des fonctions devenues undefined.
 const scheduleGameEnd = mock(async (_id: number, _delay: number) => {});
 const scheduleGameEvent = mock(async (_id: number, _at: Date) => {});
 const cancelGameEvent = mock(async (_id: number) => {});
+const cancelGameJobs = mock(async (_id: number) => {});
 
 mock.module("../../src/lib/job-queue.ts", () => ({
+  JOB_NAMES: { GAME_END: "game-end", GAME_EVENT: "game-event" },
+  getJobQueue: async () => null,
+  stopJobQueue: async () => {},
   scheduleGameEnd,
   scheduleGameEvent,
   cancelGameEvent,
+  cancelGameJobs,
+  getJobQueueInstance: () => null,
 }));
 
 // Import après le mock pour que le service utilise nos stubs.
@@ -56,9 +63,9 @@ function createMockPrisma(gi: ReturnType<typeof makeGameInstance> | null) {
       })),
     },
     gameInstanceEvent: {
-      findFirst: mock(async () => null),
-      findMany: mock(async () => []),
-      update: mock(async () => ({})),
+      findFirst: mock(async (): Promise<unknown> => null),
+      findMany: mock(async (): Promise<unknown[]> => []),
+      update: mock(async (): Promise<unknown> => ({})),
     },
   };
 }
