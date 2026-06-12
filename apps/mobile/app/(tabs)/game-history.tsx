@@ -200,7 +200,7 @@ export default function LevelsScreen() {
     switch (item.status) {
       case 'completed':
         return (
-          <Ionicons name="checkmark-circle" size={34} color="#88D498" />
+          <Ionicons name="checkmark" size={17} color="#3D7248" backgroundColor="#88D498" borderRadius={99} borderWidth={6} borderColor="#88D498" />
         );
       case 'current':
         return (
