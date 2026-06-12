@@ -211,7 +211,7 @@ export default function LevelsScreen() {
       case 'locked':
         return (
           <View style={styles.statusIconLocked}>
-            <Ionicons name="lock-closed" size={16} color="#FFFFFF" />
+            <Ionicons name="lock-closed" size={16} color="#303030" />
           </View>
         );
     }

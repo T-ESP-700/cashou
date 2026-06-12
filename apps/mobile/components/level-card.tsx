@@ -123,7 +123,7 @@ export function LevelCard({
           )}
           {status === 'in_progress' && !isPaused && (
             <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#FFB472', alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="arrow-forward" size={18} color="#000000" />
+              <Ionicons name="arrow-forward" size={18} color="#2B2C48" />
             </View>
           )}
           {status === 'quiz_pending' && (
