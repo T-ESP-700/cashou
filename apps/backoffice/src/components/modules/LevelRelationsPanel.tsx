@@ -152,10 +152,13 @@ export function LevelRelationsPanel() {
                       onClick={async () => {
                         setLoading('goal')
                         try {
-                          await backofficeApi.levelGoal.update(link.id, {
-                            levelId: link.levelId,
-                            goalId: link.goalId,
-                            isMandatory: !isMandatory,
+                          await backofficeApi.levelGoal.update({
+                            id: link.id,
+                            data: {
+                              levelId: link.levelId,
+                              goalId: link.goalId,
+                              isMandatory: !isMandatory,
+                            },
                           })
                           await refresh()
                         } catch (e) {
