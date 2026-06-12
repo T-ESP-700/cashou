@@ -205,7 +205,7 @@ export default function LevelsScreen() {
       case 'current':
         return (
           <View style={styles.statusIconUnlocked}>
-            <Ionicons name="lock-open-outline" size={16} color="#FFFFFF" />
+            <Ionicons name="lock-open-outline" size={16} color="#006DBB" />
           </View>
         );
       case 'locked':
