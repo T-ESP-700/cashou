@@ -25,8 +25,10 @@ import {
   isSavingsLivretOtherThanA,
   tourBubbleForStep,
   tourStepHeadline,
+  tourSpotlightText,
 } from '@/constants/level1-tour';
 import { Level1TourCallout } from '@/components/level1-tour-callout';
+import { Level1TourOverlay } from '@/components/level1-tour-overlay';
 
 export default function AssetDetailScreen() {
   const { colors: theme, isDark, status } = useCashouTheme();
@@ -193,6 +195,9 @@ export default function AssetDetailScreen() {
   const tourWithdrawA = level1Tour?.sessionActive && level1Tour.step === Level1TourStep.SelectLivretAForWithdraw;
   const tourMove = level1Tour?.sessionActive && level1Tour.step === Level1TourStep.WithdrawAndMoveToOtherLivret;
 
+  // Hauteur de la barre d'action (Déposer/Retirer) pour réserver sa zone hors du voile du tuto
+  const [tourBottomBarHeight, setTourBottomBarHeight] = useState(0);
+
   const tourFocusedPillStyle = useMemo(
     () =>
       Platform.OS === 'android'
@@ -207,6 +212,13 @@ export default function AssetDetailScreen() {
           },
     [],
   );
+
+  // Étape 2 du tuto : assombrir aussi le header (le voile de l'écran ne le couvre pas)
+  useEffect(() => {
+    const dim = Boolean(tourDeposit && livretAAsset);
+    setHeaderOptions({ dimmed: dim });
+    return () => setHeaderOptions({ dimmed: false });
+  }, [tourDeposit, livretAAsset, setHeaderOptions]);
 
   // Badge colors per submarket type (same as current.tsx)
   const getSubmarketBadgeStyle = (submarketTitle: string) => {
@@ -239,12 +251,6 @@ export default function AssetDetailScreen() {
           </View>
         ) : asset ? (
           <>
-            {tourDeposit && (
-              <Level1TourCallout
-                title={tourStepHeadline(Level1TourStep.DepositOnLivretA)}
-                message={tourBubbleForStep(Level1TourStep.DepositOnLivretA, level1Tour?.eventPhase ?? 0)}
-              />
-            )}
             {tourWithdrawA && livretAAsset && (
               <Level1TourCallout
                 title={tourStepHeadline(Level1TourStep.SelectLivretAForWithdraw)}
@@ -500,9 +506,25 @@ export default function AssetDetailScreen() {
         ) : null}
       </ScrollView>
 
+      {/* Étape 2 du tuto : voile sur toute la page, barre d'action (Déposer) laissée en lumière + bulle */}
+      <Level1TourOverlay
+        visible={Boolean(tourDeposit && livretAAsset)}
+        message={tourSpotlightText(Level1TourStep.DepositOnLivretA)}
+        reserveBottomPx={tourBottomBarHeight}
+      />
+
       {/* Bottom Buy/Sell Floating Buttons */}
       {canTrade && asset && !loading && !error && (
-        <View style={[styles.bottomButtons, { paddingBottom: insets.bottom + 8 }]}>
+        <View
+          style={[
+            styles.bottomButtons,
+            { paddingBottom: insets.bottom + 8 },
+            // Pendant le tuto : barre au-dessus du voile (overlay = elevation 200) → "Déposer"
+            // reste en lumière et cliquable, jamais assombri.
+            tourDeposit && livretAAsset && { zIndex: 300, elevation: 300 },
+          ]}
+          onLayout={(e) => setTourBottomBarHeight(e.nativeEvent.layout.height)}
+        >
           <ActionPillButton
             label={isSavings ? 'Déposer' : 'Acheter'}
             iconName={isSavings ? 'download-outline' : 'arrow-down-circle'}

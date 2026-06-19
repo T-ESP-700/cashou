@@ -27,6 +27,8 @@ type AssetItem = {
   tags: string[];
   changePct: number;
   submarketType?: string; // 'Savings' | 'Insurance' | 'Stock'
+  available?: boolean; // false = verrouillé (pas encore débloqué dans la partie)
+  unlockAfter?: string | null; // titre de l'event qui débloque l'asset
 };
 
 
@@ -87,7 +89,11 @@ export default function AssetsScreen() {
     try {
       setLoading(true);
       setError(null);
-      const data: any[] = await trpcClient.asset.getAll.query();
+      // En partie : getForGame annote chaque asset de sa disponibilité (verrou par niveau).
+      // Hors partie : fallback sur getAll.
+      const data: any[] = gameInstanceId
+        ? await trpcClient.asset.getForGame.query({ gameInstanceId: parseInt(gameInstanceId) })
+        : await trpcClient.asset.getAll.query();
 
       // Fetch current prices + daily change in one call per asset
       const priceData: Record<number, { price: number; changePct: number } | null> = {};
@@ -128,6 +134,8 @@ export default function AssetsScreen() {
           ].filter(Boolean) as string[],
           changePct,
           submarketType: subType,
+          available: a.available !== false,
+          unlockAfter: a?.unlock?.afterEventTitle ?? null,
         };
       });
       setAssets(mapped);
@@ -363,7 +371,10 @@ function AssetCard({ asset, isDark, router, gameInstanceId, walletId }: AssetCar
   const positive = asset.changePct >= 0;
   const level1Tour = useOptionalLevel1Tour();
 
+  const locked = asset.available === false;
+
   const handlePress = () => {
+    if (locked) return; // asset verrouillé : non cliquable
     const t = level1Tour;
     if (t?.sessionActive && t.step === Level1TourStep.SelectLivretAForWithdraw) {
       if (!isLivretAAsset({ title: asset.name })) return;
@@ -400,31 +411,42 @@ function AssetCard({ asset, isDark, router, gameInstanceId, walletId }: AssetCar
   return (
     <TouchableOpacity
       activeOpacity={0.8}
-      style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border, opacity: cardDisabled ? 0.35 : 1 }]}
-      disabled={cardDisabled}
+      style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border, opacity: (cardDisabled || locked) ? 0.4 : 1 }]}
+      disabled={cardDisabled || locked}
       onPress={handlePress}
     >
       <Text style={[styles.cardTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>{asset.name}</Text>
-      <View style={styles.tagsRow}>
-        {asset.tags.map((t) => (
-          <View key={t} style={[styles.tag, { backgroundColor: theme.secondary, borderColor: theme.borderLight }]}>
-            <Text style={{ color: theme.text, fontSize: 12, fontFamily: CashouTheme.fonts.body }}>{t}</Text>
+      {locked ? (
+        <View style={styles.changeRow}>
+          <Ionicons name="lock-closed" size={15} color={theme.text} />
+          <Text style={{ marginLeft: 6, color: theme.text, fontSize: 12, fontFamily: CashouTheme.fonts.body, flexShrink: 1 }}>
+            {asset.unlockAfter ? `Disponible après « ${asset.unlockAfter} »` : 'Bientôt disponible'}
+          </Text>
+        </View>
+      ) : (
+        <>
+          <View style={styles.tagsRow}>
+            {asset.tags.map((t) => (
+              <View key={t} style={[styles.tag, { backgroundColor: theme.secondary, borderColor: theme.borderLight }]}>
+                <Text style={{ color: theme.text, fontSize: 12, fontFamily: CashouTheme.fonts.body }}>{t}</Text>
+              </View>
+            ))}
           </View>
-        ))}
-      </View>
-      <View style={styles.changeRow}>
-        {asset.submarketType === 'SAVINGS' ? (
-          <>
-            <Ionicons name="lock-closed" size={16} color="#4CAF50" />
-            <Text style={{ marginLeft: 4, color: '#4CAF50', fontFamily: CashouTheme.fonts.subheading }}>{asset.changePct}%/an garanti</Text>
-          </>
-        ) : (
-          <>
-            <Ionicons name={positive ? 'caret-up' : 'caret-down'} size={18} color="#FFB472" />
-            <Text style={{ marginLeft: 4, color: theme.text, fontFamily: CashouTheme.fonts.subheading }}>{Math.abs(asset.changePct).toFixed(2)}%</Text>
-          </>
-        )}
-      </View>
+          <View style={styles.changeRow}>
+            {asset.submarketType === 'SAVINGS' ? (
+              <>
+                <Ionicons name="lock-closed" size={16} color="#4CAF50" />
+                <Text style={{ marginLeft: 4, color: '#4CAF50', fontFamily: CashouTheme.fonts.subheading }}>{asset.changePct}%/an garanti</Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name={positive ? 'caret-up' : 'caret-down'} size={18} color="#FFB472" />
+                <Text style={{ marginLeft: 4, color: theme.text, fontFamily: CashouTheme.fonts.subheading }}>{Math.abs(asset.changePct).toFixed(2)}%</Text>
+              </>
+            )}
+          </View>
+        </>
+      )}
     </TouchableOpacity>
   );
 }
