@@ -2,6 +2,8 @@ import { auth } from '@cashou/auth/server';
 import { createContext } from './trpc';
 import { trpcRouter } from './trpc/router';
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
+import { generateOpenApiDocument } from './docs/openapi';
+import { scalarHtml } from './docs/scalar';
 import { cors } from './middleware/cors';
 import { getJobQueue, stopJobQueue } from './lib/job-queue';
 import { startGameEventWorkers } from './workers/game-event.worker';
@@ -13,6 +15,15 @@ import type { ServerWebSocket } from 'bun';
 
 // Server instance variable to track if server is already running
 let serverInstance: ReturnType<typeof Bun.serve> | null = null;
+
+// OpenAPI spec generated once from the tRPC router (pure introspection, no DB).
+let openApiJsonCache: string | null = null;
+function getOpenApiJson(): string {
+  if (!openApiJsonCache) {
+    openApiJsonCache = JSON.stringify(generateOpenApiDocument(trpcRouter));
+  }
+  return openApiJsonCache;
+}
 
 // Start server only if not already started and not in test mode during imports
 async function startServer() {
@@ -138,6 +149,20 @@ async function startServer() {
         }
       }
 
+      // API documentation: OpenAPI spec (auto-generated from the tRPC router)
+      if (url.pathname === '/api/openapi.json') {
+        return new Response(getOpenApiJson(), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // API documentation: interactive Scalar reference UI
+      if (url.pathname === '/api/docs') {
+        return new Response(scalarHtml(), {
+          headers: { ...corsHeaders, 'Content-Type': 'text/html; charset=utf-8' },
+        });
+      }
+
       // tRPC endpoints
       if (url.pathname.startsWith('/api/trpc')) {
         const response = await fetchRequestHandler({
@@ -226,6 +251,7 @@ async function startServer() {
   console.log(`Backend listening on http://localhost:${serverInstance.port}`);
   console.log(`Auth endpoints available at http://localhost:${serverInstance.port}/api/auth/*`);
   console.log(`tRPC endpoints available at http://localhost:${serverInstance.port}/api/trpc/*`);
+  console.log(`API documentation available at http://localhost:${serverInstance.port}/api/docs`);
 
   // Return an object with both the server instance and a proper stop method
   return {

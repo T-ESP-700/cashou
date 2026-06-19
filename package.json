@@ -66,6 +66,7 @@
     "db:check": "cd packages/@cashou/db-app && bunx dotenv -e ../../../.env -- prisma db pull --force",
     "db:status": "cd apps/backend && bun run scripts/db-check.ts",
     "studio": "cd packages/@cashou/db-app && bunx dotenv -e ../../../.env -- prisma studio",
+    "docs:api": "cd apps/backend && bunx dotenv -e ../../.env -- bun run scripts/gen-openapi.ts",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:build": "docker compose build",
