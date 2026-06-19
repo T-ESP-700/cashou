@@ -28,9 +28,8 @@ import {
   isLivretAAsset,
   isSavingsLivretOtherThanA,
   tourBubbleForStep,
-  tourStepHeadline,
 } from '@/constants/level1-tour';
-import { Level1TourCallout } from '@/components/level1-tour-callout';
+import { Level1TourCoachBubble } from '@/components/level1-tour-coach-bubble';
 
 type TransactionType = 'buy' | 'sell';
 
@@ -267,20 +266,41 @@ export default function TransactionScreen() {
     }
   }, [tourDepositHere, amount, asset, walletBalance, currentHolding]);
 
-  const tourFocusedPillStyle = useMemo(
-    () =>
-      Platform.OS === 'android'
-        ? { borderWidth: 3, borderColor: '#FFFFFF', elevation: 20 }
-        : {
-            borderWidth: 3,
-            borderColor: '#FFFFFF',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 3 },
-            shadowOpacity: 0.4,
-            shadowRadius: 8,
-          },
-    [],
-  );
+  // Tuto étape 2 : auto-scroll pour cadrer la carte Montant, voile + spotlight sur le champ
+  const scrollRef = useRef<ScrollView>(null);
+  const [montantCardY, setMontantCardY] = useState(0);
+  const tourScrolledRef = useRef(false);
+
+  // Sous-parcours du versement : 'amount' (champ Montant) → 'quick' (montants rapides) → 'confirm' (bouton)
+  const [tourDepositSubStep, setTourDepositSubStep] = useState<'amount' | 'quick' | 'confirm'>('amount');
+  useEffect(() => {
+    if (tourDepositHere) setTourDepositSubStep('amount');
+  }, [tourDepositHere]);
+  const tourVeilActive = tourDepositHere; // voile présent durant tout le sous-parcours
+  const spotAmount = tourDepositHere && tourDepositSubStep === 'amount';
+  const spotQuick = tourDepositHere && tourDepositSubStep === 'quick';
+  const spotConfirm = tourDepositHere && tourDepositSubStep === 'confirm';
+  const handleTourNext = () => setTourDepositSubStep((s) => (s === 'amount' ? 'quick' : 'confirm'));
+
+  // Cadrer la carte Montant (+ montants rapides) une fois mesurée, à l'entrée de l'étape
+  useEffect(() => {
+    if (!tourDepositHere) {
+      tourScrolledRef.current = false;
+      return;
+    }
+    if (tourScrolledRef.current || montantCardY <= 0) return;
+    tourScrolledRef.current = true;
+    const t = setTimeout(() => {
+      scrollRef.current?.scrollTo({ y: Math.max(0, montantCardY - 24), animated: true });
+    }, 350);
+    return () => clearTimeout(t);
+  }, [tourDepositHere, montantCardY]);
+
+  // Assombrir aussi le header pendant l'étape (le voile de l'écran ne le couvre pas)
+  useEffect(() => {
+    setHeaderOptions({ dimmed: tourVeilActive });
+    return () => setHeaderOptions({ dimmed: false });
+  }, [tourVeilActive, setHeaderOptions]);
 
   const handleQuickAmount = (value: number) => {
     setAmount(value.toString());
@@ -473,16 +493,11 @@ export default function TransactionScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
+        ref={scrollRef}
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         keyboardShouldPersistTaps="handled"
       >
-        {tourDepositHere && (
-          <Level1TourCallout
-            title={tourStepHeadline(Level1TourStep.DepositOnLivretA)}
-            message={tourBubbleForStep(Level1TourStep.DepositOnLivretA, level1Tour?.eventPhase ?? 0)}
-          />
-        )}
         {/* Header */}
         <View style={[styles.header, { backgroundColor: theme.card, shadowColor: theme.border }]}>
           <Ionicons
@@ -533,8 +548,15 @@ export default function TransactionScreen() {
           )}
         </View>
 
-        {/* Amount Input */}
-        <View style={[styles.inputCard, { backgroundColor: theme.card }]}>
+        {/* Amount Input — mis en lumière (au-dessus du voile) pendant l'étape versement */}
+        <View
+          onLayout={(e) => setMontantCardY(e.nativeEvent.layout.y)}
+          style={[
+            styles.inputCard,
+            { backgroundColor: theme.card },
+            spotAmount && { zIndex: 20, elevation: 20 },
+          ]}
+        >
           <Text style={[styles.inputLabel, { color: theme.text }]}>Montant</Text>
           <View style={styles.inputContainer}>
             <TextInput
@@ -549,8 +571,15 @@ export default function TransactionScreen() {
           </View>
         </View>
 
-        {/* Quick Amount Buttons */}
-        <View style={styles.quickAmountsContainer}>
+        {/* Bulle du tuto, sous le champ Montant (phase 1) */}
+        {spotAmount && (
+          <View style={{ zIndex: 20, elevation: 20 }}>
+            <Level1TourCoachBubble tail="up" message="Déposez un montant à placer dans votre Livret A" />
+          </View>
+        )}
+
+        {/* Quick Amount Buttons — mis en lumière en phase 2 du tuto */}
+        <View style={[styles.quickAmountsContainer, spotQuick && { zIndex: 20, elevation: 20 }]}>
           <Text style={[styles.quickAmountsLabel, { color: theme.text, opacity: 0.7 }]}>
             Montants rapides
           </Text>
@@ -588,6 +617,21 @@ export default function TransactionScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Bulle du tuto, sous les montants rapides (phase 2) */}
+        {spotQuick && (
+          <View style={{ zIndex: 20, elevation: 20 }}>
+            <Level1TourCoachBubble tail="up" message="Ou choisissez en un clic le montant à placer" />
+          </View>
+        )}
+
+        {/* Voile du tuto : assombrit tout le contenu sauf l'élément mis en lumière (zIndex 20) */}
+        {tourVeilActive && (
+          <View
+            pointerEvents="none"
+            style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(28,30,51,0.55)', zIndex: 10 }}
+          />
+        )}
       </ScrollView>
 
       {/* Bottom Button */}
@@ -598,9 +642,46 @@ export default function TransactionScreen() {
           onPress={handleSubmit}
           disabled={isSubmitting || !amount}
           isLoading={isSubmitting}
-          style={tourDepositHere ? tourFocusedPillStyle : undefined}
         />
+        {/* Confirmer assombri pendant les phases Montant/Rapides ; simplement laissé en lumière en phase 'confirm' */}
+        {tourVeilActive && !spotConfirm && (
+          <View
+            pointerEvents="none"
+            style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(28,30,51,0.55)' }]}
+          />
+        )}
       </View>
+
+      {/* Bouton flottant "Suivant" : visible tant qu'on n'est pas sur la phase Confirmer */}
+      {tourVeilActive && !spotConfirm && (
+        <TouchableOpacity
+          onPress={handleTourNext}
+          activeOpacity={0.85}
+          style={{
+            position: 'absolute',
+            right: 20,
+            bottom: insets.bottom + 92,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            backgroundColor: theme.accent,
+            paddingVertical: 10,
+            paddingHorizontal: 18,
+            borderRadius: 24,
+            zIndex: 40,
+            elevation: 40,
+            shadowColor: '#000',
+            shadowOpacity: 0.25,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 4 },
+          }}
+        >
+          <Text style={{ color: '#FFFFFF', fontFamily: CashouTheme.fonts.subheading, fontSize: 15, fontWeight: '600' }}>
+            Suivant
+          </Text>
+          <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
+        </TouchableOpacity>
+      )}
     </KeyboardAvoidingView>
   );
 }

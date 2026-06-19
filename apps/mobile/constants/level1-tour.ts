@@ -77,6 +77,22 @@ export function tourStepHeadline(step: Level1TourStep | null): string {
   }
 }
 
+/** Texte court pour la bulle "spotlight" pointant la carte mise en avant (drawer d'assets). */
+export function tourSpotlightText(step: Level1TourStep | null): string {
+  switch (step) {
+    case Level1TourStep.DepositOnLivretA:
+      return 'Ici, découvre les informations sur un asset puis clique sur « Déposer » pour aller plus loin';
+    case Level1TourStep.SelectLivretAInSheet:
+      return 'Commencez par placer votre épargne dans le Livret A';
+    case Level1TourStep.SelectLivretAForWithdraw:
+      return 'Ouvrez le Livret A pour retirer votre argent';
+    case Level1TourStep.WithdrawAndMoveToOtherLivret:
+      return 'Déplacez votre argent vers le Livret DDS';
+    default:
+      return '';
+  }
+}
+
 export function tourBubbleForStep(step: Level1TourStep | null, eventPhase: number): string {
   switch (step) {
     case Level1TourStep.OpenInvestSheet:
