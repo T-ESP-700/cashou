@@ -6,7 +6,6 @@ import type { AssetHistory, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {AssetHistoryCreateSchema, AssetHistoryDataSchema} from "../schemas-zod/asset-history-schema.ts";
 import { gameCache, cached } from "../../lib/cache.ts";
-import { impactCoefForAsset } from "../../lib/interest.ts";
 
 export class AssetHistoryService {
     private prisma: PrismaClient;
@@ -128,13 +127,6 @@ export class AssetHistoryService {
             return [];
         }
 
-        // Asset's field/submarket — needed to resolve sector-wide impacts
-        // (impacts targeting a fieldId + submarketId rather than a single assetId).
-        const asset = await this.prisma.asset.findUnique({
-            where: { id: assetId },
-            select: { id: true, fieldId: true, submarketId: true },
-        });
-
         const level = gameInstance.level;
         const speed = level.speed ?? 1;
         const duration = level.duration ?? 365;
@@ -179,13 +171,17 @@ export class AssetHistoryService {
             const eventGameDay = Math.floor(duration * (le.triggerPercent / 100));
             const eventHistoryDay = historyStartDay + eventGameDay;
 
-            // An event may carry several impacts touching this asset, either
-            // asset-specific (assetId) or sector-wide (fieldId + submarketId).
-            // impactCoefForAsset multiplies the coefs of every matching impact.
-            if (!asset) continue;
-            const eventCoef = impactCoefForAsset(le.event.impacts, asset);
-            if (eventCoef != null) {
-                eventImpacts.push({ historyDay: eventHistoryDay, coef: eventCoef });
+            // Find the coef for this specific asset.
+            // Only PRICE impacts touch the price curve; RATE impacts are handled
+            // separately by getRateImpacts() (they modify the annual rate, not the price).
+            const impact = le.event.impacts.find(
+                (imp: any) => imp.assetId === assetId && imp.impactType !== "RATE"
+            );
+            if (impact?.coef != null) {
+                eventImpacts.push({
+                    historyDay: eventHistoryDay,
+                    coef: impact.coef,
+                });
             }
         }
 
@@ -259,6 +255,111 @@ export class AssetHistoryService {
             }
         }
         return { price, changePct };
+    }
+
+    /**
+     * Build the interest-rate timeline for an asset in a given game.
+     *
+     * Mirrors the price-impact logic of findForGame() but for RATE impacts:
+     * each event with a RATE impact on this asset multiplies the annual rate by its
+     * coef, anchored on the same game-day the event triggers
+     * (eventGameDay = floor(duration × triggerPercent / 100)).
+     *
+     * Nothing is mutated — Asset.rate stays global and untouched; the effective rate
+     * is recomputed per game instance at read time, exactly like prices.
+     *
+     * @returns rate changes sorted by changeGameDay (cumulative: each newRate is the
+     *          rate in effect from that game-day onward)
+     */
+    async getRateImpacts(
+        assetId: number,
+        gameInstanceId: number
+    ): Promise<{ changeGameDay: number; newRate: number }[]> {
+        const gameInstance = await this.prisma.gameInstance.findUnique({
+            where: { id: gameInstanceId },
+            include: {
+                level: {
+                    include: {
+                        levelEvents: {
+                            include: { event: { include: { impacts: true } } },
+                            orderBy: { position: "asc" as const },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!gameInstance?.level) return [];
+
+        const asset = await this.prisma.asset.findUnique({
+            where: { id: assetId },
+            select: { rate: true },
+        });
+        if (asset?.rate == null) return [];
+
+        const duration = gameInstance.level.duration ?? 365;
+
+        // Collect (changeGameDay, coef) pairs for RATE impacts on this asset
+        const changes: { changeGameDay: number; coef: number }[] = [];
+        for (const le of gameInstance.level.levelEvents) {
+            const impact = le.event.impacts.find(
+                (imp) => imp.assetId === assetId && imp.impactType === "RATE"
+            );
+            if (impact?.coef != null) {
+                changes.push({
+                    changeGameDay: Math.floor(duration * (le.triggerPercent / 100)),
+                    coef: impact.coef,
+                });
+            }
+        }
+
+        // Resolve cumulative rates (rounded to 2 decimals, e.g. 1.7 × 0.882 ≈ 1.50)
+        changes.sort((a, b) => a.changeGameDay - b.changeGameDay);
+        let runningRate = asset.rate;
+        return changes.map((c) => {
+            runningRate = Math.round(runningRate * c.coef * 100) / 100;
+            return { changeGameDay: c.changeGameDay, newRate: runningRate };
+        });
+    }
+
+    /**
+     * Piecewise rate-based interest for a holding when the annual rate changes mid-game.
+     *
+     * Integrates the daily rate over [acquisitionGameDay, currentGameDay], switching rate
+     * at each change so interest already accrued before a rate cut keeps the old rate
+     * (the rate is never applied retroactively).
+     *
+     * interest = quantity × Σ_segment (rate/100/365 × daysInSegment)
+     */
+    static computeRateInterest(params: {
+        quantity: number;
+        baseRate: number;
+        rateChanges: { changeGameDay: number; newRate: number }[];
+        acquisitionGameDay: number;
+        currentGameDay: number;
+    }): number {
+        const { quantity, baseRate, rateChanges, acquisitionGameDay, currentGameDay } = params;
+        if (currentGameDay <= acquisitionGameDay || quantity <= 0) return 0;
+
+        // Rate in effect at the moment of acquisition (any change at/before that day applies)
+        let currentRate = baseRate;
+        for (const c of rateChanges) {
+            if (c.changeGameDay <= acquisitionGameDay) currentRate = c.newRate;
+        }
+
+        let interest = 0;
+        let segStart = acquisitionGameDay;
+        for (const c of rateChanges) {
+            if (c.changeGameDay <= acquisitionGameDay) continue; // already folded in
+            if (c.changeGameDay >= currentGameDay) break; // not reached yet
+            interest += quantity * (currentRate / 100 / 365) * (c.changeGameDay - segStart);
+            segStart = c.changeGameDay;
+            currentRate = c.newRate;
+        }
+        // Final segment up to "now"
+        interest += quantity * (currentRate / 100 / 365) * (currentGameDay - segStart);
+
+        return Math.max(0, interest);
     }
 
     /**

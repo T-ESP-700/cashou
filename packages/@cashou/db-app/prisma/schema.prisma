@@ -37,6 +37,14 @@ enum SubmarketType {
   STOCK     @map("Stock")
 }
 
+// Cible d'un impact d'événement :
+// - PRICE : multiplie le cours de l'actif (AssetHistory.value) — actions
+// - RATE  : multiplie le taux d'intérêt annuel (Asset.rate) — livrets/épargne
+enum ImpactType {
+  PRICE @map("Price")
+  RATE  @map("Rate")
+}
+
 // Modèle User avec better-auth + relations Cashou
 model User {
   id            String    @id @default(cuid())
@@ -131,6 +139,7 @@ model Level {
   startBalance   Int?     @map("start_balance")
   pointsRequired  Int?     @map("points_required")
   historyStartDay Int?     @map("history_start_day") // Day index in AssetHistory where the game begins
+  startDate       DateTime? @map("start_date") // Simulated calendar date of game-day 0 (in-game timeline anchor)
   description     String?
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
@@ -143,6 +152,8 @@ model Level {
   levelEvents          LevelEvent[]
   quiz                 Quiz[]
   userLevelCompletions UserLevelCompletion[]
+  notionLevels         NotionLevel[]
+  assetUnlocks         AssetUnlock[]
 
   @@map("levels")
 }
@@ -223,6 +234,7 @@ model LevelEvent {
   level              Level               @relation(fields: [levelId], references: [id])
   event              Event               @relation(fields: [eventId], references: [id])
   gameInstanceEvents GameInstanceEvent[]
+  assetUnlocks       AssetUnlock[]
 
   @@map("level_events")
 }
@@ -322,6 +334,7 @@ model Asset {
   transactions   Transaction[]
   impacts        Impact[]
   holdings       Holding[]
+  assetUnlocks   AssetUnlock[]
 
   @@map("assets")
 }
@@ -359,13 +372,14 @@ model EventAsset {
 
 model Impact {
   id          Int      @id @default(autoincrement())
-  eventId     Int?     @map("event_id")
-  fieldId     Int?     @map("field_id")
-  submarketId Int?     @map("submarket_id")
-  assetId     Int?     @map("asset_id")
+  eventId     Int?       @map("event_id")
+  fieldId     Int?       @map("field_id")
+  submarketId Int?       @map("submarket_id")
+  assetId     Int?       @map("asset_id")
   coef        Float?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  impactType  ImpactType @default(PRICE) @map("impact_type")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
 
   // Relations
   // Note: Validation métier requise - doit avoir soit assetId, soit (submarketId + fieldId)
@@ -638,6 +652,57 @@ model Notification {
   event        Event?        @relation(fields: [eventId], references: [id])
 
   @@map("notifications")
+}
+
+model Notion {
+  id          Int      @id @default(autoincrement())
+  name        String?
+  description String?
+  tags        String[] @default([])
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  notionLevels NotionLevel[]
+
+  @@map("notions")
+}
+
+model NotionLevel {
+  id        Int      @id @default(autoincrement())
+  notionId  Int      @map("notion_id")
+  levelId   Int      @map("level_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  notion Notion @relation(fields: [notionId], references: [id], onDelete: Cascade)
+  level  Level  @relation(fields: [levelId], references: [id], onDelete: Cascade)
+
+  @@unique([notionId, levelId])
+  @@map("notion_levels")
+}
+
+// Verrouillage d'un asset dans un niveau : il n'est disponible qu'à partir
+// d'un moment du jeu. Évalué à la lecture, par game-instance (cf. AssetService).
+// Condition de déblocage : soit après un LevelEvent (levelEventId), soit à
+// unlockPercent % de la durée. Un asset sans ligne ici est disponible d'emblée.
+model AssetUnlock {
+  id            Int      @id @default(autoincrement())
+  levelId       Int      @map("level_id")
+  assetId       Int      @map("asset_id")
+  levelEventId  Int?     @map("level_event_id") // déblocage après cet event du niveau
+  unlockPercent Int?     @map("unlock_percent")  // OU à X% de la durée (fallback si pas d'event)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  level      Level       @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  asset      Asset       @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  levelEvent LevelEvent? @relation(fields: [levelEventId], references: [id], onDelete: SetNull)
+
+  @@unique([levelId, assetId])
+  @@map("asset_unlocks")
 }
 
 model DicoEntry {

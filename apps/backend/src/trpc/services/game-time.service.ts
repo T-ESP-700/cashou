@@ -213,8 +213,7 @@ export class GameTimeService {
     gameInstance: GameInstanceWithLevel,
     sinceDate: Date
   ): Promise<number> {
-    // Preparation mode (paused without pausedAt and not ended): freeze elapsed time.
-    // This ensures holdings bought before the first start do not accrue interests.
+    // If paused without pausedAt (never started), elapsed = 0
     if (gameInstance.isPaused && !gameInstance.pausedAt && !gameInstance.isEnded) {
       return 0;
     }
@@ -280,25 +279,34 @@ export class GameTimeService {
   }
 
   /**
-   * Map a holding's lifetime onto the level's absolute game-day timeline
-   * (the same timeline on which events trigger at duration × triggerPercent).
-   * Returns the day the holding was acquired (`from`), the current day (`to`,
-   * capped at the level duration) and the number of game days held (`held`).
-   * Used by interest calculations that must integrate rate-changing events.
+   * Current absolute game day for a game instance (0-based, capped at level.duration).
+   * Mirrors the calculation used by AssetHistoryService so price- and rate-impacts
+   * are anchored on the exact same game-day timeline.
    */
-  async holdingGameDayWindow(
-    gameInstance: GameInstanceWithLevel,
-    acquiredAt: Date
-  ): Promise<{ from: number; to: number; held: number; duration: number }> {
+  getCurrentGameDay(gameInstance: GameInstanceWithLevel): number {
     const level = gameInstance.level;
-    const duration = level?.duration ?? 365;
-    if (!level) {
-      return { from: 0, to: 0, held: 0, duration };
+    if (!level) return 0;
+
+    const speed = level.speed ?? 1;
+    const duration = level.duration ?? 365;
+
+    // Created in preparation mode and never started → day 0
+    if (gameInstance.isPaused && !gameInstance.pausedAt && !gameInstance.isEnded) {
+      return 0;
     }
-    const heldSeconds = await this.calculateElapsedTimeSince(gameInstance, acquiredAt);
-    const held = this.convertRealSecondsToGameDays(level, heldSeconds);
-    const totalSeconds = this.calculateElapsedTime(gameInstance);
-    const current = Math.min(duration, this.convertRealSecondsToGameDays(level, totalSeconds));
-    return { from: Math.max(0, current - held), to: current, held, duration };
+
+    const now =
+      gameInstance.isEnded && gameInstance.endedAt
+        ? gameInstance.endedAt.getTime()
+        : gameInstance.isPaused && gameInstance.pausedAt
+          ? gameInstance.pausedAt.getTime()
+          : Date.now();
+
+    const elapsedRealSeconds = Math.max(
+      0,
+      (now - gameInstance.createdAt.getTime()) / 1000 - (gameInstance.totalPausedDuration ?? 0)
+    );
+
+    return Math.min(duration, Math.floor((elapsedRealSeconds * speed) / 86400));
   }
 }

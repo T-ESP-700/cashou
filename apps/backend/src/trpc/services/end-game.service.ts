@@ -8,7 +8,6 @@ import { GameTimeService } from "./game-time.service.ts";
 import { LevelCompletionService } from "./level-completion.service.ts";
 import { AssetHistoryService } from "./asset-history.service.ts";
 import { broadcastToGame, broadcastGameState } from "../../ws/game-socket.ts";
-import { impactCoefForAsset, rateBasedInterest, type RateChange } from "../../lib/interest.ts";
 
 type HoldingWithAsset = Holding & {
     asset: Asset;
@@ -79,13 +78,9 @@ export class EndGameService {
 
         if (!level || quantity === 0) return 0;
 
-        const feePct = asset.managementFee != null ? Number(asset.managementFee) : 0;
-
-        // Price-based calculation (assets that have a price history)
+        // Price-based calculation
         const currentPrice = await this.assetHistoryService.getCurrentPrice(asset.id, gameInstance.id);
         if (currentPrice) {
-            let returnRate: number | null = null;
-
             // Get average acquisition price from BUY transactions
             const buyTransactions = await this.prisma.transaction.findMany({
                 where: {
@@ -107,62 +102,53 @@ export class EndGameService {
                         totalQty += txQty;
                     }
                 }
+
                 if (totalQty > 0 && totalSpent > 0) {
                     const avgAcquisitionPrice = totalSpent / totalQty;
-                    returnRate = (currentPrice - avgAcquisitionPrice) / avgAcquisitionPrice;
+                    const returnRate = (currentPrice - avgAcquisitionPrice) / avgAcquisitionPrice;
+                    return Math.round(quantity * returnRate);
                 }
             }
 
-            if (returnRate === null) {
-                // Fallback: use game start price
-                const history = await this.assetHistoryService.findForGame(asset.id, gameInstance.id);
-                if (history.length > 0) {
-                    const historyStartDay = level.historyStartDay ?? 0;
-                    const startPoint = history[Math.min(historyStartDay, history.length - 1)];
-                    const startPrice = startPoint?.value ? Number(startPoint.value) : currentPrice;
-                    if (startPrice > 0) {
-                        returnRate = (currentPrice - startPrice) / startPrice;
-                    }
+            // Fallback: use game start price
+            const history = await this.assetHistoryService.findForGame(asset.id, gameInstance.id);
+            if (history.length > 0) {
+                const historyStartDay = level.historyStartDay ?? 0;
+                const startPoint = history[Math.min(historyStartDay, history.length - 1)];
+                const startPrice = startPoint?.value ? Number(startPoint.value) : currentPrice;
+                if (startPrice > 0) {
+                    const returnRate = (currentPrice - startPrice) / startPrice;
+                    return Math.round(quantity * returnRate);
                 }
-            }
-
-            if (returnRate !== null) {
-                const gross = quantity * returnRate;
-                // Annual management fee drags the realised return (felt over time).
-                let drag = 0;
-                if (feePct > 0) {
-                    const { held } = await this.gameTimeService.holdingGameDayWindow(gameInstance, new Date(holding.acquiredAt));
-                    drag = quantity * (feePct / 100) * (held / 365);
-                }
-                return Math.round(gross - drag);
             }
         }
 
-        // Rate-based calculation (capital-guaranteed assets without price history)
+        // Fallback: rate-based
         if (asset.rate) {
-            const { from, to, duration } = await this.gameTimeService.holdingGameDayWindow(gameInstance, new Date(holding.acquiredAt));
+            const elapsedRealSeconds = await this.gameTimeService.calculateElapsedTimeSince(
+                gameInstance, new Date(holding.acquiredAt)
+            );
+            const elapsedGameDays = this.gameTimeService.convertRealSecondsToGameDays(level, elapsedRealSeconds);
 
-            // Events that change this asset's rate (sector-wide or asset-specific impacts).
-            const levelEvents = await this.prisma.levelEvent.findMany({
-                where: { levelId: level.id },
-                include: { event: { include: { impacts: true } } },
-            });
-            const rateChanges: RateChange[] = [];
-            for (const le of levelEvents) {
-                const coef = impactCoefForAsset(le.event?.impacts ?? [], asset);
-                if (coef != null && coef !== 1) {
-                    rateChanges.push({ triggerGameDay: Math.floor(duration * (le.triggerPercent / 100)), coef });
-                }
+            // Mid-game rate change (e.g. "Baisse du taux du Livret A"): integrate piecewise
+            // so already-accrued interest keeps the old rate. Mirrors investment.service.
+            const rateChanges = await this.assetHistoryService.getRateImpacts(asset.id, gameInstance.id);
+            if (rateChanges.length > 0) {
+                const currentGameDay = this.gameTimeService.getCurrentGameDay(gameInstance);
+                const acquisitionGameDay = Math.max(0, currentGameDay - elapsedGameDays);
+                return Math.round(
+                    AssetHistoryService.computeRateInterest({
+                        quantity,
+                        baseRate: asset.rate,
+                        rateChanges,
+                        acquisitionGameDay,
+                        currentGameDay,
+                    })
+                );
             }
 
-            return rateBasedInterest({
-                quantity,
-                annualRatePct: asset.rate,
-                managementFeePct: feePct,
-                fromGameDay: from,
-                toGameDay: to,
-                rateChanges,
-            });
+            const dailyRate = asset.rate / 100 / 365;
+            return Math.max(0, quantity * dailyRate * elapsedGameDays);
         }
 
         return 0;

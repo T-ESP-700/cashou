@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, Fragment } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,12 +28,12 @@ import { useNotifications } from '@/hooks/use-notifications';
 import { LevelInfoModal } from '@/components/level-info-modal';
 import { ActionPillButton, GoalStarIcon } from '@/components/ui';
 import { Level1TourOverlay } from '@/components/level1-tour-overlay';
-import { Level1TourCallout } from '@/components/level1-tour-callout';
+import { Level1TourCoachBubble } from '@/components/level1-tour-coach-bubble';
 import { useLevel1Tour } from '@/contexts/level1-tour-context';
 import {
   Level1TourStep,
   tourBubbleForStep,
-  tourStepHeadline,
+  tourSpotlightText,
   isLivretAAsset,
   isSavingsLivretOtherThanA,
 } from '@/constants/level1-tour';
@@ -75,6 +75,12 @@ interface LevelGoalData {
   goal: { id: number; title: string | null; description: string | null };
 }
 
+interface NotionData {
+  id: number;
+  name: string | null;
+  description: string | null;
+}
+
 interface LevelData {
   level: {
     id: number;
@@ -87,6 +93,7 @@ interface LevelData {
   } | null;
   goals?: GoalData[];
   levelGoals?: LevelGoalData[];
+  notions?: NotionData[];
 }
 
 interface GameTimeState {
@@ -1415,16 +1422,35 @@ export default function GameCurrentScreen() {
     return result;
   }, [allAssets, selectedSubmarketId, assetsSearchQuery]);
 
+  // Dans le drawer, l'étape "DepositOnLivretA" (fiche) est traitée comme "SelectLivretAInSheet" :
+  // si l'utilisateur rouvre le drawer sans avoir déposé, on le re-guide vers le Livret A.
+  const drawerTourStep =
+    tour.step === Level1TourStep.DepositOnLivretA
+      ? Level1TourStep.SelectLivretAInSheet
+      : tour.step;
+
   const tourRestrictsAssetPicker = useMemo(
     () =>
       tour.sessionActive &&
-      (tour.step === Level1TourStep.SelectLivretAInSheet ||
-        tour.step === Level1TourStep.SelectLivretAForWithdraw ||
-        tour.step === Level1TourStep.WithdrawAndMoveToOtherLivret),
-    [tour.sessionActive, tour.step],
+      (drawerTourStep === Level1TourStep.SelectLivretAInSheet ||
+        drawerTourStep === Level1TourStep.SelectLivretAForWithdraw ||
+        drawerTourStep === Level1TourStep.WithdrawAndMoveToOtherLivret),
+    [tour.sessionActive, drawerTourStep],
   );
 
   const assetsListForSheet = filteredAssets;
+
+  // Index de la carte mise en avant par le tuto (pour assombrir davantage les cartes en dessous)
+  const tourHighlightIndex = useMemo(() => {
+    if (!tourRestrictsAssetPicker) return -1;
+    return assetsListForSheet.findIndex((asset: any) =>
+      ((drawerTourStep === Level1TourStep.SelectLivretAInSheet ||
+        drawerTourStep === Level1TourStep.SelectLivretAForWithdraw) &&
+        isLivretAAsset({ title: asset.title, symbol: asset.symbol })) ||
+      (drawerTourStep === Level1TourStep.WithdrawAndMoveToOtherLivret &&
+        isSavingsLivretOtherThanA({ title: asset.title, symbol: asset.symbol, submarket: asset.submarket })),
+    );
+  }, [assetsListForSheet, tourRestrictsAssetPicker, drawerTourStep]);
 
   // Map assetId → submarket info for badge display
   const assetSubmarketMap = useMemo(() => {
@@ -1455,6 +1481,25 @@ export default function GameCurrentScreen() {
     }, 0);
     return Math.round(stats.cash + holdingsTotal);
   }, [stats.cash, holdings, holdingValues]);
+
+  // Handle assombri pour le tuto : même voile (rgba(0,0,0,0.5)) que le contenu, par-dessus
+  // le fond blanc, avec coins arrondis alignés sur le sheet → continuité avec le voile.
+  const renderDarkHandle = useCallback(
+    () => (
+      <View
+        style={{
+          backgroundColor: 'rgba(0, 0, 0, 0.39)',
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          paddingVertical: 11,
+          alignItems: 'center',
+        }}
+      >
+        <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: theme.borderLight }} />
+      </View>
+    ),
+    [theme.borderLight],
+  );
 
   // Render backdrop for assets sheet
   const renderAssetsBackdrop = useCallback(
@@ -1556,12 +1601,12 @@ export default function GameCurrentScreen() {
         console.error('[GameCurrentScreen] Error pausing for assets sheet:', err);
       }
     }
-    // Fetch assets if not loaded yet
-    if (allAssets.length === 0) {
-      fetchAvailableAssets();
-    }
+    // Always refetch: asset availability is time-dependent. Assets unlock as the
+    // game progresses past their trigger event, so the list must reflect the
+    // current game day each time the sheet is opened (not just on first load).
+    await fetchAvailableAssets();
     assetsSheetRef.current?.present();
-  }, [allAssets.length, fetchAvailableAssets, gameHasBeenStarted, gameInstanceId, isAssetsSheetOpen, showAlert, walletId]);
+  }, [fetchAvailableAssets, gameHasBeenStarted, gameInstanceId, isAssetsSheetOpen, showAlert, walletId]);
 
   const handleResumeAfterEvent = async () => {
     if (!gameInstanceId || !isAwaitingEventResume) {
@@ -1588,6 +1633,10 @@ export default function GameCurrentScreen() {
       }
 
       setIsPaused(false);
+      // The event that just resolved may have unlocked new assets — refresh the
+      // available-assets list so they appear immediately (e.g. Livret DDS after
+      // "Baisse du taux du Livret A").
+      await fetchAvailableAssets();
       console.log('[GameCurrentScreen] ✅ Event completed, game resumed');
       await tourRef.current.notifyEventResumeCompleted();
     } catch (err) {
@@ -2098,6 +2147,7 @@ export default function GameCurrentScreen() {
             isMandatory: lg.isMandatory,
           })) ?? levelData?.goals) ?? []
         }
+        notions={levelData?.notions ?? []}
       />
 
       {/* Assets Bottom Sheet */}
@@ -2107,7 +2157,14 @@ export default function GameCurrentScreen() {
         onChange={handleAssetsSheetChange}
         enablePanDownToClose
         backdropComponent={renderAssetsBackdrop}
-        backgroundStyle={{ backgroundColor: theme.background }}
+        backgroundStyle={{
+          backgroundColor: theme.background,
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+        }}
+        // Pendant le tuto : handle personnalisé qui porte le même voile que le contenu
+        // (rgba(0,0,0,0.5) par-dessus le fond blanc) → pas de bande claire en haut.
+        handleComponent={tourRestrictsAssetPicker ? renderDarkHandle : undefined}
         handleIndicatorStyle={{
           backgroundColor: theme.borderLight,
           width: 40,
@@ -2117,15 +2174,6 @@ export default function GameCurrentScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 24 }}
         >
-          {tour.sessionActive &&
-            (tour.step === Level1TourStep.SelectLivretAInSheet ||
-              tour.step === Level1TourStep.SelectLivretAForWithdraw ||
-              tour.step === Level1TourStep.WithdrawAndMoveToOtherLivret) && (
-            <Level1TourCallout
-              title={tourStepHeadline(tour.step)}
-              message={tourBubbleForStep(tour.step, tour.eventPhase)}
-            />
-          )}
           {!tourRestrictsAssetPicker && (
             <>
               <View style={[styles.assetsSheetSearch, { backgroundColor: theme.card, borderColor: theme.borderLight }]}>
@@ -2177,38 +2225,52 @@ export default function GameCurrentScreen() {
           {assetsLoading ? (
             <ActivityIndicator size="large" color={theme.accent} style={{ marginTop: 24 }} />
           ) : (
-            assetsListForSheet.map((asset: any) => {
+            <>
+            {assetsListForSheet.map((asset: any) => {
               const tourHighlightThisRow =
                 tour.sessionActive &&
-                ((tour.step === Level1TourStep.SelectLivretAInSheet &&
+                ((drawerTourStep === Level1TourStep.SelectLivretAInSheet &&
                   isLivretAAsset({ title: asset.title, symbol: asset.symbol })) ||
-                  (tour.step === Level1TourStep.SelectLivretAForWithdraw &&
+                  (drawerTourStep === Level1TourStep.SelectLivretAForWithdraw &&
                     isLivretAAsset({ title: asset.title, symbol: asset.symbol })) ||
-                  (tour.step === Level1TourStep.WithdrawAndMoveToOtherLivret &&
+                  (drawerTourStep === Level1TourStep.WithdrawAndMoveToOtherLivret &&
                     isSavingsLivretOtherThanA({
                       title: asset.title,
                       symbol: asset.symbol,
                       submarket: asset.submarket,
                     })));
               return (
+              <Fragment key={asset.id}>
+              {tourHighlightThisRow && (
+                // zIndex élevé : la bulle passe AU-DESSUS du voile sombre
+                <View style={{ zIndex: 20 }}>
+                  <Level1TourCoachBubble message={tourSpotlightText(drawerTourStep)} />
+                </View>
+              )}
               <TouchableOpacity
-                key={asset.id}
                 style={[
                   styles.assetsSheetRow,
-                  {
-                    backgroundColor: theme.card,
-                    opacity: tourRestrictsAssetPicker && !tourHighlightThisRow ? 0.24 : 1,
+                  { backgroundColor: theme.card },
+                  // Carte cible : au-dessus du voile (zIndex/elevation) + halo accent
+                  tourHighlightThisRow && {
+                    zIndex: 20,
+                    borderWidth: 2,
+                    borderColor: theme.accent,
+                    shadowColor: theme.accent,
+                    shadowOpacity: 0.35,
+                    shadowRadius: 12,
+                    shadowOffset: { width: 0, height: 4 },
+                    elevation: 0,
                   },
-                  tourHighlightThisRow && { borderWidth: 2, borderColor: theme.accent },
                 ]}
                 activeOpacity={0.7}
                 disabled={
                   tour.sessionActive &&
-                  ((tour.step === Level1TourStep.SelectLivretAInSheet &&
+                  ((drawerTourStep === Level1TourStep.SelectLivretAInSheet &&
                     !isLivretAAsset({ title: asset.title, symbol: asset.symbol })) ||
-                    (tour.step === Level1TourStep.SelectLivretAForWithdraw &&
+                    (drawerTourStep === Level1TourStep.SelectLivretAForWithdraw &&
                       !isLivretAAsset({ title: asset.title, symbol: asset.symbol })) ||
-                    (tour.step === Level1TourStep.WithdrawAndMoveToOtherLivret &&
+                    (drawerTourStep === Level1TourStep.WithdrawAndMoveToOtherLivret &&
                       !isSavingsLivretOtherThanA({
                         title: asset.title,
                         symbol: asset.symbol,
@@ -2247,8 +2309,24 @@ export default function GameCurrentScreen() {
                   )}
                 </View>
               </TouchableOpacity>
+              </Fragment>
               );
-            })
+            })}
+            {tourRestrictsAssetPicker && tourHighlightIndex >= 0 && (
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: -20,
+                  right: -20,
+                  bottom: -(insets.bottom + 24),
+                  backgroundColor: 'rgba(0, 0, 0, 0.39)', // aligné sur le backdrop du sheet
+                  zIndex: 10,
+                }}
+              />
+            )}
+            </>
           )}
           {!assetsLoading && assetsListForSheet.length === 0 && (
             <Text style={{ color: theme.text, fontFamily: CashouTheme.fonts.body, textAlign: 'center', marginTop: 24, opacity: 0.6 }}>

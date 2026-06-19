@@ -108,18 +108,22 @@ export class LevelService {
     }
 
     /**
-     * Récupère un résumé: niveau + objectifs + événements + levelGoals (with isMandatory for stars)
+     * Récupère un résumé: niveau + objectifs + événements + levelGoals (with isMandatory for stars) + notions
      */
     async getSummary(levelId: number) {
         const levelWithGoals = await this.prisma.level.findUnique({
             where: { id: levelId },
             include: {
                 levelGoals: { include: { goal: true } },
+                notionLevels: { include: { notion: true } },
             },
         });
         const events = await this.findEvents(levelId);
         const levelGoals = levelWithGoals?.levelGoals ?? [];
         const goals = levelGoals.map((lg) => lg.goal).filter(Boolean);
+        const notions = (levelWithGoals?.notionLevels ?? [])
+            .map((nl) => nl.notion)
+            .filter(Boolean);
         const level = levelWithGoals
             ? {
                 id: levelWithGoals.id,
@@ -134,7 +138,7 @@ export class LevelService {
                 updatedAt: levelWithGoals.updatedAt,
             }
             : null;
-        return { level, goals, events, levelGoals };
+        return { level, goals, events, levelGoals, notions };
     }
 
     /**
@@ -153,6 +157,8 @@ export class LevelService {
             speed: src.speed ?? null,
             startBalance: src.startBalance ?? null,
             pointsRequired: src.pointsRequired ?? null,
+            historyStartDay: src.historyStartDay ?? null,
+            startDate: src.startDate ?? null,
             description: src.description ?? null,
         };
         const newLevel = await this.prisma.level.create({
