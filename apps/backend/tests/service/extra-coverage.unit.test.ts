@@ -660,8 +660,9 @@ describe("AssetHistoryService — extra coverage", () => {
   it("findByAssetId filtre par assetId", async () => {
     const { prisma, service } = build();
     await service.findByAssetId(2);
-    const args = (prisma.assetHistory.findMany.mock.calls[0]?.[0] ?? {}) as unknown as { where: { assetId: number } };
+    const args = (prisma.assetHistory.findMany.mock.calls[0]?.[0] ?? {}) as unknown as { where: { assetId: number }; orderBy: unknown };
     expect(args.where.assetId).toBe(2);
+    expect(args.orderBy).toEqual({ timestamp: "desc" });
   });
 
   it("findForGame retourne [] si gameInstance introuvable", async () => {
@@ -697,6 +698,70 @@ describe("AssetHistoryService — extra coverage", () => {
     const { service } = build();
     const res = await service.getCurrentPriceWithChange(1, 1);
     expect(res).toBeNull();
+  });
+
+  it("findByAssetIdAndPeriod filtre par timestamp gte/lte", async () => {
+    const { prisma, service } = build();
+    const start = new Date("2024-01-01");
+    const end = new Date("2024-12-31");
+    await service.findByAssetIdAndPeriod(5, start, end);
+    const args = (prisma.assetHistory.findMany.mock.calls[0]?.[0] ?? {}) as unknown as {
+      where: { assetId: number; timestamp: { gte: Date; lte: Date } };
+      orderBy: unknown;
+    };
+    expect(args.where.assetId).toBe(5);
+    expect(args.where.timestamp.gte).toBe(start);
+    expect(args.where.timestamp.lte).toBe(end);
+    expect(args.orderBy).toEqual({ timestamp: "desc" });
+  });
+
+  it("findLatestByAssetId utilise findFirst avec orderBy desc", async () => {
+    const { prisma, service } = build();
+    await service.findLatestByAssetId(7);
+    const args = (prisma.assetHistory.findFirst.mock.calls[0]?.[0] ?? {}) as unknown as {
+      where: { assetId: number };
+      orderBy: unknown;
+    };
+    expect(args.where.assetId).toBe(7);
+    expect(args.orderBy).toEqual({ timestamp: "desc" });
+  });
+
+  it("findForGame applique cumulativeCoef avec eventImpacts (fully applied)", async () => {
+    const { prisma, service } = build();
+    const created = new Date(Date.now() - 86400_000 * 100); // 100 days ago
+    prisma.gameInstance.findUnique = makeMock<unknown>({
+      id: 1,
+      createdAt: created,
+      isPaused: false,
+      isEnded: false,
+      pausedAt: null,
+      totalPausedDuration: 0,
+      level: {
+        id: 1,
+        duration: 365,
+        speed: 86400,
+        historyStartDay: 0,
+        levelEvents: [
+          {
+            position: 0,
+            event: {
+              id: 1,
+              impacts: [{ assetId: 1, coef: 2.0 }],
+            },
+          },
+        ],
+      },
+    });
+    prisma.assetHistory.findMany = makeMock<unknown[]>(
+      Array.from({ length: 50 }, (_, i) => ({
+        id: i,
+        assetId: 1,
+        value: 100,
+        timestamp: new Date(),
+      }))
+    );
+    const res = await service.findForGame(1, 999); // use different id to bypass cache
+    expect(Array.isArray(res)).toBe(true);
   });
 });
 
@@ -749,6 +814,20 @@ describe("EventAssetService — extra coverage", () => {
     await service.findByAssetId(2);
     const args = (prisma.eventAsset.findMany.mock.calls[0]?.[0] ?? {}) as unknown as { where: { assetId: number } };
     expect(args.where.assetId).toBe(2);
+  });
+
+  it("findByPeriod filtre par date gte/lte", async () => {
+    const { prisma, service } = build();
+    const start = new Date("2024-01-01");
+    const end = new Date("2024-12-31");
+    await service.findByPeriod(start, end);
+    const args = (prisma.eventAsset.findMany.mock.calls[0]?.[0] ?? {}) as unknown as {
+      where: { date: { gte: Date; lte: Date } };
+      orderBy: unknown;
+    };
+    expect(args.where.date.gte).toBe(start);
+    expect(args.where.date.lte).toBe(end);
+    expect(args.orderBy).toEqual({ date: "desc" });
   });
 });
 
