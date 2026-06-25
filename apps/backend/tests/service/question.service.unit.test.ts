@@ -1,6 +1,6 @@
 // tests/service/question.service.unit.test.ts
-import { describe, it, expect } from "bun:test";
-import type { Question } from "@cashou/db-app";
+import { describe, it, expect, mock } from "bun:test";
+import type { Question, PrismaClient } from "@cashou/db-app";
 import { QuestionService } from "../../src/trpc/services/question.service";
 import { createServiceTestSetup } from "../helpers/service-test-factory";
 
@@ -56,5 +56,24 @@ describe("QuestionService — Tests unitaires", () => {
     const result = await service.delete(10);
     expect(result.id).toBe(10);
     expect(wasMethodCalled("delete")).toBeTrue();
+  });
+});
+
+describe("QuestionService — search", () => {
+  it("search filtre par contains case-insensitive", async () => {
+    const prisma = {
+      question: {
+        findMany: mock(async (_a?: unknown): Promise<unknown[]> => []),
+      },
+    };
+    const service = new QuestionService(prisma as unknown as PrismaClient);
+    await service.search("bitcoin");
+    const args = (prisma.question.findMany.mock.calls[0]?.[0] ?? {}) as unknown as {
+      where: { text: { contains: string; mode: string } };
+      orderBy: unknown;
+    };
+    expect(args.where.text.contains).toBe("bitcoin");
+    expect(args.where.text.mode).toBe("insensitive");
+    expect(args.orderBy).toEqual({ createdAt: "desc" });
   });
 });

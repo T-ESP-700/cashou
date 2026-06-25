@@ -1,5 +1,5 @@
 // tests/router/level.router.test.ts
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import type { Level } from "@cashou/db-app";
 import { levelRouter } from "../../src/trpc/routers/level.router";
 import { LevelService } from "../../src/trpc/services/level.service";
@@ -86,5 +86,80 @@ describe("level.router — validations Zod (erreurs attendues)", () => {
   it("delete avec id invalide → rejette", async () => {
     const caller = levelRouter.createCaller({} as Ctx);
     expect(caller.delete({id: 0} as unknown as never)).rejects.toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Endpoints spécialisés
+// ---------------------------------------------------------------------------
+
+describe("level.router — Endpoints spécialisés", () => {
+  const extraMethods = [
+    "findGoals",
+    "findEvents",
+    "getSummary",
+    "getUserLevels",
+    "getAvailability",
+    "duplicate",
+  ] as const;
+
+  const callsByMethod: Record<string, unknown[][]> = {};
+  const originals: Record<string, unknown> = {};
+
+  beforeEach(() => {
+    for (const k of Object.keys(callsByMethod)) delete callsByMethod[k];
+    for (const m of extraMethods) {
+      callsByMethod[m] = [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      originals[m] = (LevelService.prototype as any)[m];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (LevelService.prototype as any)[m] = async function (...args: unknown[]) {
+        callsByMethod[m]!.push(args);
+        return { method: m, args };
+      };
+    }
+  });
+
+  afterEach(() => {
+    for (const m of extraMethods) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (LevelService.prototype as any)[m] = originals[m];
+    }
+  });
+
+  it("getGoals → findGoals(id)", async () => {
+    const caller = levelRouter.createCaller({} as Ctx);
+    await caller.getGoals({ id: 1 });
+    expect(callsByMethod.findGoals?.[0]?.[0]).toBe(1);
+  });
+
+  it("getEvents → findEvents(id)", async () => {
+    const caller = levelRouter.createCaller({} as Ctx);
+    await caller.getEvents({ id: 1 });
+    expect(callsByMethod.findEvents?.[0]?.[0]).toBe(1);
+  });
+
+  it("getSummary → getSummary(id)", async () => {
+    const caller = levelRouter.createCaller({} as Ctx);
+    await caller.getSummary({ id: 1 });
+    expect(callsByMethod.getSummary?.[0]?.[0]).toBe(1);
+  });
+
+  it("getUserLevels → getUserLevels(userId)", async () => {
+    const caller = levelRouter.createCaller({} as Ctx);
+    await caller.getUserLevels({ userId: "u1" });
+    expect(callsByMethod.getUserLevels?.[0]?.[0]).toBe("u1");
+  });
+
+  it("getAvailability → getAvailability(userId, levelId)", async () => {
+    const caller = levelRouter.createCaller({} as Ctx);
+    await caller.getAvailability({ userId: "u1", levelId: 2 });
+    expect(callsByMethod.getAvailability?.[0]).toEqual(["u1", 2]);
+  });
+
+  it("duplicate → duplicate(id)", async () => {
+    const caller = levelRouter.createCaller({} as Ctx);
+    await caller.duplicate({ id: 1 });
+    expect(callsByMethod.duplicate?.[0]?.[0]).toBe(1);
   });
 });
