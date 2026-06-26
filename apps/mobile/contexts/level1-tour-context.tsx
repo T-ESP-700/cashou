@@ -162,7 +162,8 @@ export function Level1TourProvider({ children }: { children: React.ReactNode }) 
       const { userId, gameInstanceId, levelNumber, hasLevel1CompletionRecord } = args;
 
       const levelNum = levelNumber == null ? NaN : Number(levelNumber);
-      if (!Number.isFinite(levelNum) || levelNum !== 1 || hasLevel1CompletionRecord) {
+      const blockedByCompletion = hasLevel1CompletionRecord && !__DEV__;
+      if (!Number.isFinite(levelNum) || levelNum !== 1 || blockedByCompletion) {
         await AsyncStorage.removeItem(level1TourStorageKey(userId, gameInstanceId));
         clearSession();
         return;

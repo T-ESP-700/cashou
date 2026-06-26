@@ -75,7 +75,10 @@ export const assetRouter = t.router({
         }),
 
     /**
-     * Récupère les actifs disponibles pour une partie donnée.
+     * Récupère uniquement les actifs actuellement DÉBLOQUÉS et achetables pour une partie.
+     * Les actifs encore verrouillés (déblocage par événement) sont exclus : cet endpoint
+     * alimente les écrans d'achat, qui ne doivent jamais proposer un actif indisponible.
+     * Pour la liste complète annotée (affichage grisé + besoins du tutoriel), voir getForGame.
      * Endpoint: GET http://localhost:3000/trpc/asset.getAvailableForGame?input={"gameInstanceId":1}
      * @input {gameInstanceId: number} - ID de la partie
      */
