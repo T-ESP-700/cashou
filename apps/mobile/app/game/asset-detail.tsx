@@ -23,11 +23,8 @@ import {
   Level1TourStep,
   isLivretAAsset,
   isSavingsLivretOtherThanA,
-  tourBubbleForStep,
-  tourStepHeadline,
   tourSpotlightText,
 } from '@/constants/level1-tour';
-import { Level1TourCallout } from '@/components/level1-tour-callout';
 import { Level1TourOverlay } from '@/components/level1-tour-overlay';
 
 export default function AssetDetailScreen() {
@@ -188,9 +185,13 @@ export default function AssetDetailScreen() {
   }, [asset?.id, level1Tour?.sessionActive, level1Tour?.step]);
 
   const livretAAsset = asset ? isLivretAAsset(asset) : false;
+  const otherSavingsAsset = asset ? isSavingsLivretOtherThanA(asset) : false;
   const tourDeposit = level1Tour?.sessionActive && level1Tour.step === Level1TourStep.DepositOnLivretA;
   const tourWithdrawA = level1Tour?.sessionActive && level1Tour.step === Level1TourStep.SelectLivretAForWithdraw;
   const tourMove = level1Tour?.sessionActive && level1Tour.step === Level1TourStep.WithdrawAndMoveToOtherLivret;
+  // Dernière étape, sur la fiche du DDS : on force le joueur vers « Déposer », puis on le
+  // laisse libre sur la page de transaction (pas de sous-parcours guidé là-bas).
+  const tourMoveHere = Boolean(tourMove && otherSavingsAsset);
 
   // Hauteur de la barre d'action (Déposer/Retirer) pour réserver sa zone hors du voile du tuto
   const [tourBottomBarHeight, setTourBottomBarHeight] = useState(0);
@@ -210,12 +211,21 @@ export default function AssetDetailScreen() {
     [],
   );
 
-  // Étape 2 du tuto : assombrir aussi le header (le voile de l'écran ne le couvre pas)
+  // Étapes guidées : assombrir aussi le header (le voile de l'écran ne le couvre pas).
+  // Dépôt/retrait → sur la fiche Livret A ; déplacement final → sur la fiche du DDS.
+  // Pas de reset au démontage (course non déterministe avec la ré-affirmation au focus de
+  // l'écran de jeu) : le reset se fait au blur via useFocusEffect ci-dessous.
   useEffect(() => {
-    const dim = Boolean(tourDeposit && livretAAsset);
+    const dim = Boolean(((tourDeposit || tourWithdrawA) && livretAAsset) || tourMoveHere);
     setHeaderOptions({ dimmed: dim });
-    return () => setHeaderOptions({ dimmed: false });
-  }, [tourDeposit, livretAAsset, setHeaderOptions]);
+  }, [tourDeposit, tourWithdrawA, livretAAsset, tourMoveHere, setHeaderOptions]);
+
+  // Reset du voile header au BLUR (ordre blur→focus garanti par expo-router).
+  useFocusEffect(
+    useCallback(() => {
+      return () => setHeaderOptions({ dimmed: false });
+    }, [setHeaderOptions])
+  );
 
   // Badge colors per submarket type (same as current.tsx)
   const getSubmarketBadgeStyle = (submarketTitle: string) => {
@@ -248,18 +258,6 @@ export default function AssetDetailScreen() {
           </View>
         ) : asset ? (
           <>
-            {tourWithdrawA && livretAAsset && (
-              <Level1TourCallout
-                title={tourStepHeadline(Level1TourStep.SelectLivretAForWithdraw)}
-                message={tourBubbleForStep(Level1TourStep.SelectLivretAForWithdraw, level1Tour?.eventPhase ?? 0)}
-              />
-            )}
-            {tourMove && (
-              <Level1TourCallout
-                title={tourStepHeadline(Level1TourStep.WithdrawAndMoveToOtherLivret)}
-                message={tourBubbleForStep(Level1TourStep.WithdrawAndMoveToOtherLivret, level1Tour?.eventPhase ?? 0)}
-              />
-            )}
             {/* Header Section with Title and Symbol */}
             <View style={[styles.headerSection, { backgroundColor: theme.card }]}>
               <Text style={[styles.assetTitle, { color: theme.text, fontFamily: CashouTheme.fonts.heading }]}>
@@ -503,10 +501,21 @@ export default function AssetDetailScreen() {
         ) : null}
       </ScrollView>
 
-      {/* Étape 2 du tuto : voile sur toute la page, barre d'action (Déposer) laissée en lumière + bulle */}
+      {/* Étapes guidées : voile sur toute la page, barre d'action laissée en lumière + bulle.
+          Dépôt → bouton « Déposer » ; retrait → bouton « Retirer ». */}
       <Level1TourOverlay
         visible={Boolean(tourDeposit && livretAAsset)}
         message={tourSpotlightText(Level1TourStep.DepositOnLivretA)}
+        reserveBottomPx={tourBottomBarHeight}
+      />
+      <Level1TourOverlay
+        visible={Boolean(tourWithdrawA && livretAAsset)}
+        message="Le taux du Livret A a baissé : appuies sur « Retirer » pour récupérer ton argent."
+        reserveBottomPx={tourBottomBarHeight}
+      />
+      <Level1TourOverlay
+        visible={tourMoveHere}
+        message="Placez l'argent récupéré ici : appuyez sur « Déposer »."
         reserveBottomPx={tourBottomBarHeight}
       />
 
@@ -516,9 +525,12 @@ export default function AssetDetailScreen() {
           style={[
             styles.bottomButtons,
             { paddingBottom: insets.bottom + 8 },
-            // Pendant le tuto : barre au-dessus du voile (overlay = elevation 200) → "Déposer"
-            // reste en lumière et cliquable, jamais assombri.
-            tourDeposit && livretAAsset && { zIndex: 300, elevation: 300 },
+            // Pendant le tuto : barre au-dessus du voile (overlay = elevation 200) → le bouton
+            // mis en avant (Déposer ou Retirer) reste en lumière et cliquable, jamais assombri.
+            (((tourDeposit || tourWithdrawA) && livretAAsset) || tourMoveHere) && {
+              zIndex: 300,
+              elevation: 300,
+            },
           ]}
           onLayout={(e) => setTourBottomBarHeight(e.nativeEvent.layout.height)}
         >
@@ -529,7 +541,7 @@ export default function AssetDetailScreen() {
             disabled={
               Boolean((tourWithdrawA && livretAAsset) || (tourMove && livretAAsset))
             }
-            style={tourDeposit && livretAAsset ? tourFocusedPillStyle : undefined}
+            style={(tourDeposit && livretAAsset) || tourMoveHere ? tourFocusedPillStyle : undefined}
           />
           <ActionPillButton
             label={isSavings ? 'Retirer' : 'Vendre'}
@@ -539,6 +551,7 @@ export default function AssetDetailScreen() {
               currentHolding === 0 ||
               Boolean((tourDeposit && livretAAsset) || (tourMove && !livretAAsset && isSavings))
             }
+            style={tourWithdrawA && livretAAsset ? tourFocusedPillStyle : undefined}
           />
         </View>
       )}

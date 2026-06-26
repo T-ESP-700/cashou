@@ -191,7 +191,9 @@ export function CashouHeader({
           pointerEvents="none"
           style={[
             styles.dimOverlay,
-            { backgroundColor: overlayColor(isDark), top: insets.top + 8 },
+            // top: 0 → le voile recouvre AUSSI la zone safe-area / status bar (sinon une bande
+            // claire restait en haut de l'écran pendant le tutoriel).
+            { backgroundColor: overlayColor(isDark), top: 0 },
           ]}
         />
       )}

@@ -242,15 +242,38 @@ export default function TransactionScreen() {
         isLivretAAsset(asset),
     );
 
+  // Étape de retrait du tuto : même parcours guidé (voile + spotlights + confirmer mis
+  // en lumière) que le dépôt, mais en mode vente sur le Livret A.
+  const tourWithdrawHere =
+    Boolean(
+      level1Tour?.sessionActive &&
+        level1Tour.step === Level1TourStep.SelectLivretAForWithdraw &&
+        type === 'sell' &&
+        asset &&
+        isLivretAAsset(asset),
+    );
+
+  // Un seul des deux est vrai à la fois : pilote tout le parcours guidé de cet écran.
+  const tourGuidedHere = tourDepositHere || tourWithdrawHere;
+
   const tourLivretPrefillAppliedRef = useRef(false);
 
   useEffect(() => {
-    if (!tourDepositHere) {
+    if (!tourGuidedHere) {
       tourLivretPrefillAppliedRef.current = false;
       return;
     }
     if (tourLivretPrefillAppliedRef.current || amount !== '') return;
     if (!asset) return;
+    if (tourWithdrawHere) {
+      // Retrait guidé : on propose de retirer la totalité du Livret A pour libérer le cash.
+      const full = Math.floor(currentHoldingValue);
+      if (full > 0) {
+        tourLivretPrefillAppliedRef.current = true;
+        setAmount(String(full));
+      }
+      return;
+    }
     const min = asset.minAmount != null ? Number(asset.minAmount) : 1;
     const maxFromCap =
       asset.maxAmount != null
@@ -264,27 +287,52 @@ export default function TransactionScreen() {
       tourLivretPrefillAppliedRef.current = true;
       setAmount(String(Math.floor(suggested)));
     }
-  }, [tourDepositHere, amount, asset, walletBalance, currentHolding]);
+  }, [tourGuidedHere, tourWithdrawHere, amount, asset, walletBalance, currentHolding, currentHoldingValue]);
 
   // Tuto étape 2 : auto-scroll pour cadrer la carte Montant, voile + spotlight sur le champ
   const scrollRef = useRef<ScrollView>(null);
   const [montantCardY, setMontantCardY] = useState(0);
   const tourScrolledRef = useRef(false);
 
-  // Sous-parcours du versement : 'amount' (champ Montant) → 'quick' (montants rapides) → 'confirm' (bouton)
+  // Sous-parcours guidé (dépôt ou retrait) : 'amount' (champ Montant) → 'quick' (montants rapides) → 'confirm' (bouton)
   const [tourDepositSubStep, setTourDepositSubStep] = useState<'amount' | 'quick' | 'confirm'>('amount');
   useEffect(() => {
-    if (tourDepositHere) setTourDepositSubStep('amount');
-  }, [tourDepositHere]);
-  const tourVeilActive = tourDepositHere; // voile présent durant tout le sous-parcours
-  const spotAmount = tourDepositHere && tourDepositSubStep === 'amount';
-  const spotQuick = tourDepositHere && tourDepositSubStep === 'quick';
-  const spotConfirm = tourDepositHere && tourDepositSubStep === 'confirm';
+    if (tourGuidedHere) setTourDepositSubStep('amount');
+  }, [tourGuidedHere]);
+  const tourVeilActive = tourGuidedHere; // voile présent durant tout le sous-parcours
+  const spotAmount = tourGuidedHere && tourDepositSubStep === 'amount';
+  const spotQuick = tourGuidedHere && tourDepositSubStep === 'quick';
+  const spotConfirm = tourGuidedHere && tourDepositSubStep === 'confirm';
   const handleTourNext = () => setTourDepositSubStep((s) => (s === 'amount' ? 'quick' : 'confirm'));
+
+  // Highlight "propre" (bordure blanche + ombre) appliqué au bouton confirmer en phase
+  // 'confirm' — identique au bouton « Commencer » et aux boutons Déposer/Retirer.
+  const tourFocusedPillStyle = useMemo(
+    () =>
+      Platform.OS === 'android'
+        ? { borderWidth: 3, borderColor: '#FFFFFF', elevation: 20 }
+        : {
+            borderWidth: 3,
+            borderColor: '#FFFFFF',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: 0.4,
+            shadowRadius: 8,
+          },
+    [],
+  );
+
+  // Textes des bulles, adaptés au dépôt ou au retrait.
+  const spotAmountMessage = tourWithdrawHere
+    ? "Retires l'argent placé sur ton Livret A"
+    : 'Déposes un montant à placer dans ton Livret A';
+  const spotQuickMessage = tourWithdrawHere
+    ? 'Ou choisis le montant à retirer'
+    : 'Ou choisis en un clic le montant à placer';
 
   // Cadrer la carte Montant (+ montants rapides) une fois mesurée, à l'entrée de l'étape
   useEffect(() => {
-    if (!tourDepositHere) {
+    if (!tourGuidedHere) {
       tourScrolledRef.current = false;
       return;
     }
@@ -294,13 +342,23 @@ export default function TransactionScreen() {
       scrollRef.current?.scrollTo({ y: Math.max(0, montantCardY - 24), animated: true });
     }, 350);
     return () => clearTimeout(t);
-  }, [tourDepositHere, montantCardY]);
+  }, [tourGuidedHere, montantCardY]);
 
-  // Assombrir aussi le header pendant l'étape (le voile de l'écran ne le couvre pas)
+  // Assombrir aussi le header pendant l'étape (le voile de l'écran ne le couvre pas).
+  // Pas de reset au démontage : il s'exécuterait de façon non déterministe par rapport à la
+  // ré-affirmation au focus de l'écran de jeu (course → header resté clair à l'étape suivante).
   useEffect(() => {
     setHeaderOptions({ dimmed: tourVeilActive });
-    return () => setHeaderOptions({ dimmed: false });
   }, [tourVeilActive, setHeaderOptions]);
+
+  // Reset du voile header au BLUR (et non au démontage) : expo-router garantit l'ordre
+  // blur(écran sortant) → focus(écran entrant), donc l'écran qui prend le focus impose
+  // ensuite sa propre valeur de `dimmed` sans course.
+  useFocusEffect(
+    useCallback(() => {
+      return () => setHeaderOptions({ dimmed: false });
+    }, [setHeaderOptions])
+  );
 
   const handleQuickAmount = (value: number) => {
     setAmount(value.toString());
@@ -358,12 +416,21 @@ export default function TransactionScreen() {
   };
 
   const goBackToCurrentWithSheet = () => {
-    const shouldReopenAssetsSheet =
-      !(
-        level1Tour?.sessionActive &&
-        level1Tour.step === Level1TourStep.WithdrawAndMoveToOtherLivret &&
-        type === 'buy'
-      );
+    // Pendant le tuto, un DÉPÔT (buy) clôt une étape guidée et doit ramener au jeu pour l'étape
+    // suivante, SANS rouvrir la feuille des actifs :
+    //   - dépôt Livret A → étape « ferme la feuille et appuie sur Commencer »
+    //   - dépôt DDS (post-événement) → étape « Reprendre »
+    // Rouvrir la feuille ici recréait un état confus (feuille rouverte alors que le tuto demande
+    // de fermer) et cassait la navigation au reclic. Les RETRAITS (sell), eux, rouvrent la feuille
+    // pour que le joueur puisse ensuite choisir le DDS.
+    // On teste l'action (buy sur un livret), pas le step du tour qui a pu déjà avancer.
+    const completedTutorialMove = Boolean(
+      level1Tour?.sessionActive &&
+        type === 'buy' &&
+        asset &&
+        (isLivretAAsset(asset) || isSavingsLivretOtherThanA(asset)),
+    );
+    const shouldReopenAssetsSheet = !completedTutorialMove;
 
     // Re-open the assets sheet when the user may need to keep browsing assets,
     // but return directly to the game once the tutorial move is completed.
@@ -574,7 +641,7 @@ export default function TransactionScreen() {
         {/* Bulle du tuto, sous le champ Montant (phase 1) */}
         {spotAmount && (
           <View style={{ zIndex: 20, elevation: 20 }}>
-            <Level1TourCoachBubble tail="up" message="Déposez un montant à placer dans votre Livret A" />
+            <Level1TourCoachBubble tail="up" message={spotAmountMessage} />
           </View>
         )}
 
@@ -621,7 +688,7 @@ export default function TransactionScreen() {
         {/* Bulle du tuto, sous les montants rapides (phase 2) */}
         {spotQuick && (
           <View style={{ zIndex: 20, elevation: 20 }}>
-            <Level1TourCoachBubble tail="up" message="Ou choisissez en un clic le montant à placer" />
+            <Level1TourCoachBubble tail="up" message={spotQuickMessage} />
           </View>
         )}
 
@@ -636,18 +703,24 @@ export default function TransactionScreen() {
 
       {/* Bottom Button */}
       <View style={[styles.bottomContainer, { paddingBottom: insets.bottom + 16 }]}>
-        <ActionPillButton
-          label={isSavings ? (isBuy ? 'Confirmer le dépôt' : 'Confirmer le retrait') : (isBuy ? "Confirmer l'achat" : 'Confirmer la vente')}
-          iconName={isBuy ? 'checkmark-circle' : 'cash'}
-          onPress={handleSubmit}
-          disabled={isSubmitting || !amount}
-          isLoading={isSubmitting}
-        />
-        {/* Confirmer assombri pendant les phases Montant/Rapides ; simplement laissé en lumière en phase 'confirm' */}
-        {tourVeilActive && !spotConfirm && (
+        {/* Seul le bouton est surélevé au-dessus du voile (zIndex 20) → seul lui est mis en
+            lumière en phase 'confirm', pas toute la barre du bas. */}
+        <View style={spotConfirm ? { zIndex: 20, elevation: 20 } : undefined}>
+          <ActionPillButton
+            label={isSavings ? (isBuy ? 'Confirmer le dépôt' : 'Confirmer le retrait') : (isBuy ? "Confirmer l'achat" : 'Confirmer la vente')}
+            iconName={isBuy ? 'checkmark-circle' : 'cash'}
+            onPress={handleSubmit}
+            disabled={isSubmitting || !amount}
+            isLoading={isSubmitting}
+            style={spotConfirm ? tourFocusedPillStyle : undefined}
+          />
+        </View>
+        {/* Voile sombre sur toute la barre pendant le tuto (y compris en phase 'confirm') :
+            il assombrit le pourtour, et le bouton (zIndex 20) ressort seul au-dessus. */}
+        {tourVeilActive && (
           <View
             pointerEvents="none"
-            style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(28,30,51,0.55)' }]}
+            style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(28,30,51,0.55)', zIndex: 10 }]}
           />
         )}
       </View>
