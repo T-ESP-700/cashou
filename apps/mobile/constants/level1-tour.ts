@@ -83,11 +83,11 @@ export function tourSpotlightText(step: Level1TourStep | null): string {
     case Level1TourStep.DepositOnLivretA:
       return 'Ici, découvre les informations sur un asset puis clique sur « Déposer » pour aller plus loin';
     case Level1TourStep.SelectLivretAInSheet:
-      return 'Commencez par placer votre épargne dans le Livret A';
+      return 'Commences par placer ton épargne dans le Livret A';
     case Level1TourStep.SelectLivretAForWithdraw:
-      return 'Ouvrez le Livret A pour retirer votre argent';
+      return 'Ouvres le Livret A pour retirer ton argent';
     case Level1TourStep.WithdrawAndMoveToOtherLivret:
-      return 'Déplacez votre argent vers le Livret DDS';
+      return 'Déplaces ton argent vers le Livret DDS';
     default:
       return '';
   }
@@ -98,21 +98,21 @@ export function tourBubbleForStep(step: Level1TourStep | null, eventPhase: numbe
     case Level1TourStep.OpenInvestSheet:
       return "Avant de lancer la partie, ouvres les assets : appuie sur « Investir » pour voir les actifs disponibles.";
     case Level1TourStep.SelectLivretAInSheet:
-      return "Seul le Livret A est disponible pour l'instant :appuie dessus pour ouvrir sa fiche, puis sur « Déposer » pour placer de l'argent.";
+      return "Seul le Livret A est disponible pour l'instant : appuie dessus pour ouvrir sa fiche, puis sur « Déposer » pour placer de l'argent.";
     case Level1TourStep.DepositOnLivretA:
-      return "Sur la fiche, touchez « Déposer », choisissez un montant (un montant vous est proposé), puis confirmez. Vous devez avoir au moins un versement avant de lancer la partie.";
+      return "Appuies sur « Déposer », choisis un montant, puis confirmes. Tu dois avoir au moins un versement avant de lancer la partie.";
     case Level1TourStep.CloseSheetAndPressStart:
-      return "Appues sur « Commencer » pour démarrer la partie.";
+      return "Appuies sur « Commencer » pour démarrer la partie.";
     case Level1TourStep.WaitFirstEvent:
-      return "Jouez jusqu'à l'événement du niveau. Quand il arrive, ouvrez les actifs pour déplacer votre argent.";
+      return "Joue jusqu'à l'événement du niveau. Quand il arrive, ouvre tes actifs pour déplacer ton argent.";
     case Level1TourStep.FirstEventResume:
-      return "Quand vous êtes prêt, touchez « Reprendre » pour continuer la partie.";
+      return "Quand tu es prêt, appuies sur « Reprendre » pour continuer la partie.";
     case Level1TourStep.PostEventOpenAssets:
-      return "L'événement a changé la situation du Livret A : touchez « Investir » pour ouvrir les actifs et déplacer votre argent.";
+      return "L'événement a changé la situation du Livret A : appuies sur « Investir » pour ouvrir les actifs et déplacer ton argent.";
     case Level1TourStep.SelectLivretAForWithdraw:
-      return "Seul le Livret A est disponible pour l'instant : ouvrez-le, touchez « Retirer », puis validez pour libérer du cash.";
+      return "Retournes sur ton Livret, appuies sur« Retirer », puis valides pour libérer du cash.";
     case Level1TourStep.WithdrawAndMoveToOtherLivret:
-      return "Seuls le livret DDS est maintenant disponible : choisissez-en un et déposez l'argent retiré du Livret A.";
+      return "Le livret DDS est maintenant disponible : choisis-le et déplaces l'argent retiré du Livret A.";
     case Level1TourStep.PostEventResume:
       return "Appuies sur « Reprendre » pour que la partie continue!";
     case Level1TourStep.SummaryQuizPrompt:

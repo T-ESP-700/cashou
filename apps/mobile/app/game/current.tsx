@@ -177,6 +177,12 @@ export default function GameCurrentScreen() {
   const [isEndingGame, setIsEndingGame] = useState(false);
   const [showEndGameModal, setShowEndGameModal] = useState(false);
   const [endGameResult, setEndGameResult] = useState<EndGameResult | null>(null);
+  // Sous-parcours guidé de la modale de fin (tuto) : 'quiz' (spotlight bouton Quiz) → 'recap'
+  // (spotlight bouton Récap). Réinitialisé à chaque ouverture de la modale.
+  const [endGameTourSubStep, setEndGameTourSubStep] = useState<'quiz' | 'recap'>('quiz');
+  useEffect(() => {
+    if (showEndGameModal) setEndGameTourSubStep('quiz');
+  }, [showEndGameModal]);
   const [levelQuizId, setLevelQuizId] = useState<number | null>(null);
   const [isReplayCreating, setIsReplayCreating] = useState(false);
   const [showLevelInfoModal, setShowLevelInfoModal] = useState(false);
@@ -194,6 +200,11 @@ export default function GameCurrentScreen() {
   const skipResumeOnCloseRef = useRef(false); // Don't resume game when closing sheet to navigate to asset-detail
   const navigatedToAssetDetailRef = useRef(false); // Track if we navigated away to asset-detail
   const [allAssets, setAllAssets] = useState<any[]>([]);
+  // Roster COMPLET du niveau (actifs débloqués ET verrouillés), annoté de `available`.
+  // Sert à la configuration statique du tutoriel (ex: "ce niveau a-t-il une autre épargne
+  // que le Livret A ?"), indépendamment de ce qui est achetable maintenant. Ne PAS l'utiliser
+  // pour l'achat : `allAssets` (filtré) est la seule source des actifs achetables.
+  const [levelRoster, setLevelRoster] = useState<any[]>([]);
   const [assetsLoading, setAssetsLoading] = useState(false);
   const [assetsSearchQuery, setAssetsSearchQuery] = useState('');
   const [selectedSubmarketId, setSelectedSubmarketId] = useState<number | null>(null);
@@ -1116,10 +1127,23 @@ export default function GameCurrentScreen() {
     }
   }, [isGameEnded, setHeaderOptions]);
 
-  // Dim header when assets bottom sheet is open
+  // Dim header when the tutorial overlay is visible
   useEffect(() => {
     setHeaderOptions({ dimmed: tutorialOverlayVisible });
   }, [tutorialOverlayVisible, setHeaderOptions]);
+
+  // Re-assert the header dim each time this screen regains focus. Necessary because
+  // transaction/asset-detail reset `dimmed: false` in their unmount cleanup; when we pop
+  // back to a still-guided step (e.g. PostEventResume), that cleanup can run AFTER the
+  // effect above (whose deps didn't change), leaving the header un-dimmed. The focus
+  // callback runs once the popped screen has finished unmounting, so it wins the race.
+  const tutorialOverlayVisibleRef = useRef(tutorialOverlayVisible);
+  tutorialOverlayVisibleRef.current = tutorialOverlayVisible;
+  useFocusEffect(
+    useCallback(() => {
+      setHeaderOptions({ dimmed: tutorialOverlayVisibleRef.current });
+    }, [setHeaderOptions])
+  );
 
   // Auto-show level info modal for new games (when no gameId is passed)
   useEffect(() => {
@@ -1222,6 +1246,20 @@ export default function GameCurrentScreen() {
     );
     if (!hasLivret) void t.abortTour();
   }, [tour.sessionActive, tour.step, allAssets]);
+
+  // Tell the tour whether the active level exposes any non-Livret-A savings asset.
+  // Drives the post-event branching (multi-livret rebalance vs. single-livret resume).
+  // Uses the FULL roster (not the filtered buy list) so a still-locked asset like the
+  // Livret DDS is taken into account before its unlock event — without ever exposing it
+  // as purchasable.
+  useEffect(() => {
+    if (!tour.sessionActive) return;
+    if (levelRoster.length === 0) return;
+    const hasOther = levelRoster.some((a: { title?: string | null; symbol?: string | null; submarket?: { type?: string | null; title?: string | null } | null }) =>
+      isSavingsLivretOtherThanA({ title: a.title, symbol: a.symbol, submarket: a.submarket })
+    );
+    tourRef.current.setHasOtherSavings(hasOther);
+  }, [tour.sessionActive, levelRoster]);
 
   useEffect(() => {
     if (!tour.sessionActive) return;
@@ -1379,6 +1417,23 @@ export default function GameCurrentScreen() {
       fetchAvailableAssets();
     }
   }, [gameInstanceId, fetchAvailableAssets]);
+
+  // Fetch the FULL level roster (incl. locked assets) once — used only to inform the
+  // tutorial about the level's configuration (e.g. presence of another savings asset).
+  // The roster is static for a level, so a single fetch on mount is enough.
+  useEffect(() => {
+    if (!gameInstanceId) return;
+    let cancelled = false;
+    trpcClient.asset.getForGame
+      .query({ gameInstanceId })
+      .then((data: any[]) => {
+        if (!cancelled) setLevelRoster(data);
+      })
+      .catch((err: unknown) => console.error('Error fetching level roster:', err));
+    return () => {
+      cancelled = true;
+    };
+  }, [gameInstanceId]);
 
   // Extract unique submarkets from assets
   const submarkets = useMemo(() => {
@@ -1844,6 +1899,18 @@ export default function GameCurrentScreen() {
   };
 
   const hasPrimaryGoalSuccess = endGameResult?.success === true;
+  // Parcours guidé du tuto sur la modale de fin : on est à l'étape AwaitEndGameChoice avec un
+  // succès (donc les boutons Récap + Quiz sont affichés).
+  const endGameTourGuided = Boolean(
+    tour.sessionActive &&
+      showEndGameModal &&
+      hasPrimaryGoalSuccess &&
+      tour.step === Level1TourStep.AwaitEndGameChoice,
+  );
+  const endGameBubbleMessage =
+    endGameTourSubStep === 'recap'
+      ? 'Ou regarde le récap de ta partie !'
+      : 'Bravo ! Tu as terminé la partie. Fais le quiz pour gagner ta troisième étoile.';
   const modalContent = endGameResult?.modal;
   // Use actual stars from level completion if available, otherwise derive from modal type
   const modalStarFillCount = endGameResult?.stars
@@ -2017,7 +2084,7 @@ export default function GameCurrentScreen() {
           tint={isDark ? 'dark' : 'light'}
           style={styles.endGameBlur}
         >
-          <View style={[styles.endGameOverlay, { backgroundColor: 'transparent' }]}>
+          <View style={[styles.endGameOverlay, { backgroundColor: endGameTourGuided ? 'rgba(28,30,51,0.55)' : 'transparent' }]}>
             <View style={[styles.endGameCardBackdrop, { backgroundColor: theme.secondary }]}>
             <View style={[styles.endGameCard, { backgroundColor: theme.card, shadowColor: theme.border }]}>
             <Text allowFontScaling={false} style={[styles.endGameTitle, { fontFamily: 'Anybody', color: theme.text }]}>
@@ -2081,7 +2148,18 @@ export default function GameCurrentScreen() {
               ))}
             </View>
 
-            <View style={styles.endGameActions}>
+            {/* Tuto fin de partie : bulle en ABSOLU par-dessus le contenu du haut (titre + étoiles),
+                pour ne pas agrandir la carte. */}
+            {endGameTourGuided && (
+              <View
+                pointerEvents="box-none"
+                style={{ position: 'absolute', top: 14, left: 14, right: 14, zIndex: 30, elevation: 30 }}
+              >
+                <Level1TourCoachBubble tail="down" message={endGameBubbleMessage} />
+              </View>
+            )}
+
+            <View style={[styles.endGameActions, endGameTourGuided && { zIndex: 20, elevation: 20 }]}>
               {hasPrimaryGoalSuccess ? (
                 <>
                   <ActionPillButton
@@ -2090,7 +2168,11 @@ export default function GameCurrentScreen() {
                     onPress={() => {
                       void handleOpenRecap();
                     }}
-                    style={{ flex: 1 }}
+                    style={StyleSheet.flatten([
+                      { flex: 1 },
+                      endGameTourGuided && endGameTourSubStep === 'recap' ? tourFocusedPillStyle : null,
+                      endGameTourGuided && endGameTourSubStep !== 'recap' ? { opacity: 0.35 } : null,
+                    ])}
                   />
                   <ActionPillButton
                     label="Quiz"
@@ -2098,7 +2180,11 @@ export default function GameCurrentScreen() {
                     onPress={() => {
                       void handleOpenQuiz();
                     }}
-                    style={{ flex: 1 }}
+                    style={StyleSheet.flatten([
+                      { flex: 1 },
+                      endGameTourGuided && endGameTourSubStep === 'quiz' ? tourFocusedPillStyle : null,
+                      endGameTourGuided && endGameTourSubStep !== 'quiz' ? { opacity: 0.35 } : null,
+                    ])}
                   />
                 </>
               ) : (
@@ -2111,6 +2197,43 @@ export default function GameCurrentScreen() {
                 />
               )}
             </View>
+
+            {/* Bouton "Suivant" : passe du spotlight Quiz au spotlight Récap (uniquement au 1er sous-pas) */}
+            {endGameTourGuided && endGameTourSubStep === 'quiz' && (
+              <TouchableOpacity
+                onPress={() => setEndGameTourSubStep('recap')}
+                activeOpacity={0.85}
+                style={{
+                  alignSelf: 'flex-end',
+                  marginTop: 10,
+                  zIndex: 20,
+                  elevation: 20,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  backgroundColor: theme.accent,
+                  paddingVertical: 8,
+                  paddingHorizontal: 16,
+                  borderRadius: 20,
+                }}
+              >
+                <Text style={{ color: '#FFFFFF', fontFamily: CashouTheme.fonts.subheading, fontSize: 14, fontWeight: '600' }}>
+                  Suivant
+                </Text>
+                <Ionicons name="chevron-forward" size={15} color="#FFFFFF" />
+              </TouchableOpacity>
+            )}
+
+            {/* Voile du tuto : assombrit toute la carte sauf le bouton mis en avant (zIndex 20) */}
+            {endGameTourGuided && (
+              <View
+                pointerEvents="none"
+                style={[
+                  StyleSheet.absoluteFillObject,
+                  { backgroundColor: 'rgba(28,30,51,0.55)', borderRadius: 30, zIndex: 10 },
+                ]}
+              />
+            )}
             </View>
           </View>
           </View>
