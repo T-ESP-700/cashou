@@ -4,6 +4,7 @@ import {
   Text,
   Modal,
   Pressable,
+  Platform,
   StyleSheet,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
@@ -14,6 +15,7 @@ import { useNotifications } from '@/hooks/use-notifications';
 import { ActionPillButton } from '@/components/ui';
 import { useOptionalLevel1Tour } from '@/contexts/level1-tour-context';
 import { tourBubbleForStep, Level1TourStep } from '@/constants/level1-tour';
+import { Level1TourCoachBubble } from '@/components/level1-tour-coach-bubble';
 
 export function EventNotificationModal() {
   const { colors, isDark } = useCashouTheme();
@@ -82,7 +84,10 @@ export function EventNotificationModal() {
         tint={isDark ? 'dark' : 'light'}
         style={styles.blur}
       >
-        <Pressable style={styles.overlay} onPress={restrictToAssetsOnly ? undefined : handleClose}>
+        <View style={[styles.overlay, { backgroundColor: restrictToAssetsOnly ? 'rgba(28,30,51,0.55)' : 'transparent' }]}>
+          {!restrictToAssetsOnly && (
+            <Pressable style={StyleSheet.absoluteFillObject} onPress={handleClose} />
+          )}
           <View
             onStartShouldSetResponder={() => true}
             style={[styles.cardBackdrop, { backgroundColor: colors.secondary }]}
@@ -103,36 +108,63 @@ export function EventNotificationModal() {
                 {eventNotification.body ?? 'Un événement vient de se produire dans le jeu. Consultez vos assets pour voir les changements.'}
               </Text>
 
+              {/* Tutorial bubble: absolutely overlaid, same pattern as end-game modal */}
               {restrictToAssetsOnly && level1Tour && (
-                <Text allowFontScaling={false} style={[styles.tourHint, { color: colors.text }]}>
-                  {tourBubbleForStep(Level1TourStep.PostEventOpenAssets, level1Tour.eventPhase)}
-                </Text>
+                <View
+                  pointerEvents="box-none"
+                  style={styles.tourBubbleAbs}
+                >
+                  <Level1TourCoachBubble
+                    tail="down"
+                    message={tourBubbleForStep(Level1TourStep.PostEventOpenAssets, level1Tour.eventPhase)}
+                  />
+                </View>
               )}
 
               {/* Buttons */}
-              <View style={[styles.actions, restrictToAssetsOnly && styles.actionsSingle]}>
-                {!restrictToAssetsOnly && (
+              <View style={[styles.actions, restrictToAssetsOnly && { zIndex: 20, elevation: 20 }]}>
+                <View style={styles.btnWrap}>
                   <ActionPillButton
                     label="Plus tard"
                     iconName="checkmark"
                     onPress={handleClose}
-                    style={{ flex: 1 }}
+                    style={StyleSheet.flatten([
+                      styles.btnFull,
+                      restrictToAssetsOnly ? { opacity: 0.35 } : null,
+                    ])}
                   />
-                )}
-                <ActionPillButton
-                  label="Investir"
-                  iconName="add"
-                  onPress={handleGoToAssets}
-                  style={restrictToAssetsOnly ? styles.investOnlyButton : { flex: 1 }}
-                />
+                </View>
+                <View style={styles.btnWrap}>
+                  <ActionPillButton
+                    label="Investir"
+                    iconName="add"
+                    onPress={handleGoToAssets}
+                    style={StyleSheet.flatten([
+                      styles.btnFull,
+                      restrictToAssetsOnly ? tourFocusedPillStyle : null,
+                    ])}
+                  />
+                </View>
               </View>
             </View>
           </View>
-        </Pressable>
+        </View>
       </BlurView>
     </Modal>
   );
 }
+
+const tourFocusedPillStyle =
+  Platform.OS === 'android'
+    ? { borderWidth: 3, borderColor: '#FFFFFF', elevation: 20 }
+    : {
+        borderWidth: 3,
+        borderColor: '#FFFFFF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.4,
+        shadowRadius: 8,
+      };
 
 const styles = StyleSheet.create({
   blur: {
@@ -186,14 +218,13 @@ const styles = StyleSheet.create({
     opacity: 0.85,
     marginBottom: 16,
   },
-  tourHint: {
-    fontSize: 13,
-    fontFamily: 'Anybody',
-    textAlign: 'center',
-    lineHeight: 19,
-    opacity: 0.9,
-    marginBottom: 12,
-    paddingHorizontal: 4,
+  tourBubbleAbs: {
+    position: 'absolute',
+    top: 14,
+    left: 14,
+    right: 14,
+    zIndex: 30,
+    elevation: 30,
   },
   actions: {
     flexDirection: 'row',
@@ -201,10 +232,10 @@ const styles = StyleSheet.create({
     gap: 8,
     width: '100%',
   },
-  actionsSingle: {
-    justifyContent: 'center',
+  btnWrap: {
+    flex: 1,
   },
-  investOnlyButton: {
+  btnFull: {
     width: '100%',
   },
 });

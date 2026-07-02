@@ -15,10 +15,9 @@ interface Level1TourCoachBubbleProps {
  * `tail="up"`   : la bulle est en-dessous de la cible (flèche vers le haut).
  */
 export function Level1TourCoachBubble({ message, tail = 'down' }: Level1TourCoachBubbleProps) {
-  const { colors, fonts, borderRadius, isDark } = useCashouTheme();
-  const accent = colors.accent;
-  // Fond opaque (pas de transparence) pour que la flèche masque proprement la bordure de la bulle.
-  const bg = isDark ? colors.card : '#FFF6EC';
+  const { colors, fonts, borderRadius } = useCashouTheme();
+  const bg = colors.card;
+  const borderColor = colors.border;
 
   if (!message) return null;
 
@@ -27,10 +26,10 @@ export function Level1TourCoachBubble({ message, tail = 'down' }: Level1TourCoac
     <View
       style={[
         styles.tail,
-        { backgroundColor: bg, borderColor: accent },
+        { backgroundColor: bg, borderColor },
         tail === 'down'
-          ? { marginTop: -9, borderRightWidth: 2, borderBottomWidth: 2 }
-          : { marginBottom: -9, borderLeftWidth: 2, borderTopWidth: 2 },
+          ? { marginTop: -9, borderRightWidth: 1, borderBottomWidth: 1 }
+          : { marginBottom: -9, borderLeftWidth: 1, borderTopWidth: 1 },
       ]}
     />
   );
@@ -41,13 +40,13 @@ export function Level1TourCoachBubble({ message, tail = 'down' }: Level1TourCoac
       <View
         style={[
           styles.bubble,
-          { backgroundColor: bg, borderColor: accent, borderRadius: borderRadius.lg },
+          { backgroundColor: bg, borderColor, borderRadius: borderRadius.lg },
         ]}
       >
-        <View style={[styles.iconCircle, { backgroundColor: `${accent}33` }]}>
-          <Ionicons name="school" size={16} color={accent} />
+        <View style={[styles.iconCircle, { backgroundColor: `${colors.text}10` }]}>
+          <Ionicons name="school" size={16} color={colors.text} />
         </View>
-        <Text style={[styles.text, { color: colors.text, fontFamily: fonts.subheading }]}>
+        <Text style={[styles.text, { color: colors.text, fontFamily: fonts.body }]}>
           {message}
         </Text>
       </View>
@@ -65,14 +64,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderWidth: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
+    padding: 14,
+    borderWidth: 1,
   },
   iconCircle: {
     width: 30,
@@ -84,8 +77,7 @@ const styles = StyleSheet.create({
   text: {
     flex: 1,
     fontSize: 15,
-    lineHeight: 20,
-    fontWeight: '600',
+    lineHeight: 22,
   },
   tail: {
     width: 16,

@@ -12,27 +12,25 @@ interface Level1TourCalloutProps {
  * High-contrast tutoriel strip for in-sheet / asset-detail / transaction flows.
  */
 export function Level1TourCallout({ title, message }: Level1TourCalloutProps) {
-  const { colors, fonts, borderRadius, isDark } = useCashouTheme();
-  const accent = colors.accent;
-  const bg = isDark ? `${accent}18` : `${accent}14`;
+  const { colors, fonts, borderRadius } = useCashouTheme();
 
   return (
     <View
       style={[
         styles.wrap,
         {
-          backgroundColor: bg,
-          borderColor: accent,
+          backgroundColor: colors.card,
+          borderColor: colors.border,
           borderRadius: borderRadius.lg,
         },
       ]}
     >
-      <View style={[styles.iconCircle, { backgroundColor: `${accent}33` }]}>
-        <Ionicons name="school" size={22} color={accent} />
+      <View style={[styles.iconCircle, { backgroundColor: `${colors.text}10` }]}>
+        <Ionicons name="school" size={22} color={colors.text} />
       </View>
       <View style={styles.textCol}>
-        <Text style={[styles.title, { color: colors.text, fontFamily: fonts.subheading }]}>{title}</Text>
-        <Text style={[styles.body, { color: colors.text, fontFamily: fonts.body, opacity: 0.95 }]}>
+        <Text style={[styles.title, { color: colors.text, fontFamily: fonts.body }]}>{title}</Text>
+        <Text style={[styles.body, { color: colors.text, fontFamily: fonts.body }]}>
           {message}
         </Text>
       </View>
@@ -46,7 +44,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 12,
     padding: 14,
-    borderWidth: 2,
+    borderWidth: 1,
     marginBottom: 14,
   },
   iconCircle: {
@@ -62,10 +60,10 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   title: {
-    fontSize: 17,
-    fontWeight: '700',
-    marginBottom: 6,
-    letterSpacing: -0.2,
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '600',
+    marginBottom: 4,
   },
   body: {
     fontSize: 15,
