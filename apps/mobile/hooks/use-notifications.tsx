@@ -130,8 +130,8 @@ interface NotificationContextValue {
   assetsScreenDepthRef: React.MutableRefObject<number>;
   pausedByAssets: boolean;
   setPausedByAssets: (paused: boolean) => void;
-  shouldOpenAssetsSheet: boolean;
-  setShouldOpenAssetsSheet: (value: boolean) => void;
+  requestedAssetsSheetGameId: number | null;
+  setRequestedAssetsSheetGameId: (gameInstanceId: number | null) => void;
 }
 
 const NotificationContext = createContext<NotificationContextValue | null>(null);
@@ -189,7 +189,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [assetsScreenDepth, setAssetsScreenDepthState] = useState<number>(0); // Track nested navigation (assets -> asset-detail)
   const assetsScreenDepthRef = useRef<number>(0); // Shared ref for immediate depth access
   const [pausedByAssets, setPausedByAssets] = useState<boolean>(false); // Track if we paused the game from assets screen
-  const [shouldOpenAssetsSheet, setShouldOpenAssetsSheet] = useState<boolean>(false);
+  const [requestedAssetsSheetGameId, setRequestedAssetsSheetGameId] = useState<number | null>(null);
   const { user, isAuthenticated, authResolved } = useAuth();
   const hasCheckedPendingForUserRef = useRef<string | null>(null);
 
@@ -484,8 +484,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         assetsScreenDepthRef,
         pausedByAssets,
         setPausedByAssets,
-        shouldOpenAssetsSheet,
-        setShouldOpenAssetsSheet,
+        requestedAssetsSheetGameId,
+        setRequestedAssetsSheetGameId,
       }}
     >
       {children}

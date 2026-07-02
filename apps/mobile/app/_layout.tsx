@@ -26,6 +26,8 @@ import { useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/hooks/use-auth';
 import { HeaderProvider, useHeader } from '@/hooks/use-header';
 import { NotificationProvider } from '@/hooks/use-notifications';
+import { Level1TourProvider, useOptionalLevel1Tour } from '@/contexts/level1-tour-context';
+import { Level1TourStep } from '@/constants/level1-tour';
 import { AlertProvider } from '@/hooks/use-alert';
 import { ThemePreferenceProvider, useThemePreference } from '@/hooks/use-theme-provider';
 import { CashouHeader } from '@/components/cashou-header';
@@ -42,6 +44,18 @@ SplashScreen.preventAutoHideAsync();
 function RootNavigatorContent() {
   const { isAuthenticated, isLoading } = useAuth();
   const { options: headerOptions } = useHeader();
+  const level1Tour = useOptionalLevel1Tour();
+  // Voile du header piloté DIRECTEMENT par le contexte du tour pour les étapes qui se déroulent
+  // sur l'écran de jeu (resume, ouverture des actifs…). Source unique réactive → pas de course
+  // entre écrans qui poussent/réinitialisent `headerOptions.dimmed` au montage/démontage.
+  const tourHeaderDim = Boolean(
+    level1Tour?.sessionActive &&
+      (level1Tour.step === Level1TourStep.OpenInvestSheet ||
+        level1Tour.step === Level1TourStep.CloseSheetAndPressStart ||
+        level1Tour.step === Level1TourStep.FirstEventResume ||
+        level1Tour.step === Level1TourStep.PostEventOpenAssets ||
+        level1Tour.step === Level1TourStep.PostEventResume),
+  );
   const segments = useSegments();
   const navigationState = useRootNavigationState();
   const { isDark } = useThemePreference();
@@ -61,7 +75,6 @@ function RootNavigatorContent() {
   const inGame = segments[0] === 'game';
   // const isInitialRoute = (segments as string[]).length === 0;
 
-  console.log('[RootNavigator] segments:', segments, 'isAuthenticated:', isAuthenticated);
 
   // Handle redirects BEFORE rendering Stack
   if (!isAuthenticated && (inTabs || inGame)) {
@@ -85,6 +98,7 @@ function RootNavigatorContent() {
           subtitle={headerOptions.subtitle}
           showBackButton={headerOptions.showBackButton}
           isPaused={headerOptions.isPaused}
+          dimmed={headerOptions.dimmed || tourHeaderDim}
           onTitlePress={headerOptions.onTitlePress}
           onMenuPress={headerOptions.onMenuPress}
           onBackPress={headerOptions.onBackPress}
@@ -148,9 +162,11 @@ export default function RootLayout() {
       <ThemePreferenceProvider>
         <AuthProvider>
           <NotificationProvider>
-            <BottomSheetModalProvider>
-              <RootLayoutInner />
-            </BottomSheetModalProvider>
+            <Level1TourProvider>
+              <BottomSheetModalProvider>
+                <RootLayoutInner />
+              </BottomSheetModalProvider>
+            </Level1TourProvider>
           </NotificationProvider>
         </AuthProvider>
       </ThemePreferenceProvider>

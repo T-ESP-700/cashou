@@ -21,8 +21,6 @@ const OVERLAY_PH = 18;
 const BACKDROP_PADDING = 6;
 const BACKDROP_MAX_WIDTH = 410;
 const BACKDROP_RATIO = 0.97;
-const TOTAL_PAGES = 2;
-
 interface LevelInfoData {
   id: number;
   title: string | null;
@@ -40,15 +38,22 @@ interface GoalData {
   isMandatory?: boolean;
 }
 
+interface NotionData {
+  id: number;
+  name: string | null;
+  description: string | null;
+}
+
 interface LevelInfoModalProps {
   visible: boolean;
   onClose: () => void;
   level: LevelInfoData | null;
   goals: GoalData[];
+  notions?: NotionData[];
   fromCurrentScreen?: boolean;
 }
 
-export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScreen = false }: LevelInfoModalProps) {
+export function LevelInfoModal({ visible, onClose, level, goals, notions = [], fromCurrentScreen = false }: LevelInfoModalProps) {
   const { colors, isDark } = useCashouTheme();
   const [currentPage, setCurrentPage] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
@@ -57,9 +62,15 @@ export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScre
   const pageWidth = backdropWidth - BACKDROP_PADDING * 2;
 
   // Height animation
-  const pageHeights = useRef<number[]>([0, 0]);
+  const pageHeights = useRef<number[]>([0, 0, 0]);
   const animatedHeight = useRef(new Animated.Value(0)).current;
   const [measured, setMeasured] = useState(false);
+
+  // Accordéon des notions : quelles notions sont dépliées
+  const [expandedNotions, setExpandedNotions] = useState<Record<number, boolean>>({});
+  const toggleNotion = useCallback((id: number) => {
+    setExpandedNotions((prev) => ({ ...prev, [id]: !prev[id] }));
+  }, []);
 
   const animateToPage = useCallback((page: number) => {
     const targetHeight = pageHeights.current[page];
@@ -75,19 +86,24 @@ export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScre
 
   const handlePageLayout = useCallback((pageIndex: number, height: number) => {
     if (height <= 0) return;
+    const prevHeight = pageHeights.current[pageIndex];
     pageHeights.current[pageIndex] = height;
     // Once page 0 is measured, set height instantly and enable animated mode
     if (pageIndex === 0 && !measured) {
       animatedHeight.setValue(height);
       setMeasured(true);
+    } else if (measured && pageIndex === currentPage && height !== prevHeight) {
+      // Le contenu de la page visible a changé de hauteur (ex: notion dépliée) → suivre
+      animateToPage(pageIndex);
     }
-  }, [animatedHeight, measured]);
+  }, [animatedHeight, measured, currentPage, animateToPage]);
 
   // Reset to first page when modal opens
   useEffect(() => {
     if (visible) {
       setCurrentPage(0);
       setMeasured(false);
+      setExpandedNotions({});
       scrollRef.current?.scrollTo({ x: 0, animated: false });
     }
   }, [visible]);
@@ -104,6 +120,9 @@ export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScre
         { id: 2, title: 'Bonus', description: 'Atteignez les objectifs secondaires', isMandatory: false }
       ];
 
+  // La tab "Notions" n'apparaît que si le niveau a des notions associées
+  const hasNotions = notions.length > 0;
+  const totalPages = hasNotions ? 3 : 2;
   const formatDuration = (duration: number | null): string => {
     if (!duration) return '30 jours';
     return `${duration} jours`;
@@ -117,7 +136,7 @@ export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScre
     }
   };
 
-  const isLastPage = currentPage === TOTAL_PAGES - 1;
+  const isLastPage = currentPage === totalPages - 1;
 
   const handleButtonPress = () => {
     if (!isLastPage) {
@@ -254,13 +273,70 @@ export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScre
                         );
                       })}
                     </View>
+
+                    {/* Page 2: Notions (affichée seulement si le niveau en a) */}
+                    {hasNotions && (
+                      <View
+                        style={[styles.levelInfoPage, { width: pageWidth }]}
+                        onLayout={(e) => handlePageLayout(2, e.nativeEvent.layout.height)}
+                      >
+                        {/* Title */}
+                        <Text style={[styles.levelInfoTitle, { color: colors.text }]}>
+                          Notions
+                        </Text>
+
+                        {/* Notions (accordéon) */}
+                        {notions.map((notion, index) => {
+                          const expanded = !!expandedNotions[notion.id];
+                          return (
+                          <View
+                            key={notion.id}
+                            style={[
+                              styles.levelInfoNotionCard,
+                              { backgroundColor: colors.secondary },
+                              index < notions.length - 1 && { marginBottom: 8 },
+                            ]}
+                          >
+                            <Pressable
+                              style={styles.levelInfoNotionHeader}
+                              onPress={() => toggleNotion(notion.id)}
+                              hitSlop={8}
+                            >
+                              <Text style={[styles.levelInfoNotionName, { color: colors.text }]} numberOfLines={2}>
+                                {notion.name || `Notion ${index + 1}`}
+                              </Text>
+                              <Ionicons
+                                name={expanded ? 'chevron-up' : 'chevron-down'}
+                                size={18}
+                                color={colors.text}
+                                style={styles.levelInfoNotionChevron}
+                              />
+                            </Pressable>
+                            {expanded && !!notion.description && (
+                              <Text style={[styles.levelInfoNotionDescription, { color: colors.text }]}>
+                                {notion.description}
+                              </Text>
+                            )}
+                          </View>
+                          );
+                        })}
+                      </View>
+                    )}
                   </ScrollView>
                 </Animated.View>
 
                 {/* Page Indicator */}
                 <View style={styles.levelInfoDots}>
-                  <View style={[styles.levelInfoDot, { backgroundColor: colors.progressBarBackground }, currentPage === 0 && { backgroundColor: colors.accent }]} />
-                  <View style={[styles.levelInfoDot, { backgroundColor: colors.progressBarBackground }, currentPage === 1 && { backgroundColor: colors.accent }]} />
+                  {Array.from({ length: totalPages }).map((_, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.levelInfoDot,
+                        { backgroundColor: colors.progressBarBackground },
+                        currentPage === i && { backgroundColor: colors.accent },
+                      ]}
+                    />
+                  ))}
                 </View>
 
                 {/* Button */}
@@ -381,6 +457,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Anybody',
     marginBottom: 4,
+  },
+  levelInfoNotionCard: {
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  levelInfoNotionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  levelInfoNotionName: {
+    flex: 1,
+    textAlign: 'left',
+    paddingRight: 26, // gouttière pour le chevron, aligne le titre sur la description
+    fontSize: 16,
+    fontFamily: 'Anybody',
+    fontWeight: '600',
+  },
+  levelInfoNotionChevron: {
+    position: 'absolute',
+    right: 0,
+  },
+  levelInfoNotionDescription: {
+    fontSize: 13,
+    fontFamily: 'Anybody',
+    textAlign: 'left',
+    paddingRight: 26, // même marge droite que le titre
+    opacity: 0.7,
+    lineHeight: 20,
+    marginTop: 8,
   },
   levelInfoGoalDescription: {
     fontSize: 13,

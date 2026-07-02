@@ -63,7 +63,7 @@ export class EndGameService {
 
     constructor(prismaClient?: PrismaClient) {
         this.prisma = prismaClient || defaultPrisma;
-        this.gameTimeService = new GameTimeService();
+        this.gameTimeService = new GameTimeService(this.prisma);
         this.levelCompletionService = new LevelCompletionService(prismaClient);
         this.assetHistoryService = new AssetHistoryService(this.prisma);
     }
@@ -126,10 +126,28 @@ export class EndGameService {
 
         // Fallback: rate-based
         if (asset.rate) {
-            const elapsedRealSeconds = this.gameTimeService.calculateElapsedTimeSince(
+            const elapsedRealSeconds = await this.gameTimeService.calculateElapsedTimeSince(
                 gameInstance, new Date(holding.acquiredAt)
             );
             const elapsedGameDays = this.gameTimeService.convertRealSecondsToGameDays(level, elapsedRealSeconds);
+
+            // Mid-game rate change (e.g. "Baisse du taux du Livret A"): integrate piecewise
+            // so already-accrued interest keeps the old rate. Mirrors investment.service.
+            const rateChanges = await this.assetHistoryService.getRateImpacts(asset.id, gameInstance.id);
+            if (rateChanges.length > 0) {
+                const currentGameDay = this.gameTimeService.getCurrentGameDay(gameInstance);
+                const acquisitionGameDay = Math.max(0, currentGameDay - elapsedGameDays);
+                return Math.round(
+                    AssetHistoryService.computeRateInterest({
+                        quantity,
+                        baseRate: asset.rate,
+                        rateChanges,
+                        acquisitionGameDay,
+                        currentGameDay,
+                    })
+                );
+            }
+
             const dailyRate = asset.rate / 100 / 365;
             return Math.max(0, quantity * dailyRate * elapsedGameDays);
         }

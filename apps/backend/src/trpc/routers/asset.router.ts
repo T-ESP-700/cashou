@@ -22,6 +22,20 @@ export const assetRouter = t.router({
     }),
 
     /**
+     * Récupère les actifs annotés de leur disponibilité dans une partie donnée.
+     * Chaque actif porte `available` (false si encore verrouillé) et `unlock`
+     * (jour de déblocage + event qui le débloque), pour l'affichage grisé côté front.
+     * Endpoint: GET /trpc/asset.getForGame?input={"gameInstanceId":1}
+     */
+    getForGame: t.procedure
+        .input(z.object({
+            gameInstanceId: z.number().min(1, "L'ID de la partie doit être un nombre > 0")
+        }))
+        .query(async ({ input }) => {
+            return await assetService.findForGame(input.gameInstanceId);
+        }),
+
+    /**
      * Récupère un actif par son ID
      * Endpoint: GET http://localhost:3000/trpc/asset.getById?input={"id":1}
      * @input {id: number} - ID de l'actif recherché, validé par assetIdSchema
@@ -56,6 +70,23 @@ export const assetRouter = t.router({
         }))
         .query(async ({ input }) => {
             return await assetService.findBySubmarketId(input.submarketId);
+        }),
+
+    /**
+     * Récupère uniquement les actifs actuellement DÉBLOQUÉS et achetables pour une partie.
+     * Les actifs encore verrouillés (déblocage par événement) sont exclus : cet endpoint
+     * alimente les écrans d'achat, qui ne doivent jamais proposer un actif indisponible.
+     * Pour la liste complète annotée (affichage grisé + besoins du tutoriel), voir getForGame.
+     * Endpoint: GET http://localhost:3000/trpc/asset.getAvailableForGame?input={"gameInstanceId":1}
+     * @input {gameInstanceId: number} - ID de la partie
+     */
+    getAvailableForGame: t.procedure
+        .input(z.object({
+            gameInstanceId: z.number().min(1, "L'ID de la partie doit être un nombre > 0")
+        }))
+        .query(async ({ input }) => {
+            const assets = await assetService.findForGame(input.gameInstanceId);
+            return assets.filter((asset) => asset.available);
         }),
 
     /**

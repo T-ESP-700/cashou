@@ -3,13 +3,15 @@ import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { CashouTheme } from '@/constants/cashou-theme';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { useAlert } from '@/hooks/use-alert';
 import { trpcClient } from '@/lib/trpc';
-import { useHeaderOptions } from '@/hooks/use-header';
+import { useHeader, useHeaderOptions } from '@/hooks/use-header';
 import { useAuth } from '@/hooks/use-auth';
 import { ActionPillButton, GoalStarIcon } from '@/components/ui';
+import { Level1TourOverlay } from '@/components/level1-tour-overlay';
+import { useOptionalLevel1Tour } from '@/contexts/level1-tour-context';
+import { Level1TourStep, tourBubbleForStep } from '@/constants/level1-tour';
 import QuizActionIcon from '@/assets/images/quiz-action.svg';
 import TxIconBuy from '@/assets/images/tx-icon-buy.svg';
 import TxIconSell from '@/assets/images/tx-icon-sell.svg';
@@ -93,6 +95,8 @@ export default function GameSummaryScreen() {
   const { colors: theme, isDark } = useCashouTheme();
   const { showAlert } = useAlert();
   const insets = useSafeAreaInsets();
+  const { setOptions: setHeaderOptions } = useHeader();
+  const level1Tour = useOptionalLevel1Tour();
 
   useHeaderOptions({ showBackButton: true, title: 'Résumé' });
 
@@ -107,6 +111,9 @@ export default function GameSummaryScreen() {
   const [isReplaying, setIsReplaying] = useState(false);
   const [isDetailedView, setIsDetailedView] = useState(false);
   const [transactionGroups, setTransactionGroups] = useState<TransactionGroup[] | null>(null);
+  const [bottomChromeHeight, setBottomChromeHeight] = useState(() =>
+    Math.round(72 + insets.bottom),
+  );
   const transactionsFetched = useRef(false);
 
   // --- Chargement mode normal (depuis fin de partie ou quiz) ---
@@ -279,8 +286,11 @@ export default function GameSummaryScreen() {
     router.replace('/(tabs)');
   };
 
-  const handleGoToQuiz = () => {
+  const handleGoToQuiz = async () => {
     if (!levelQuizId) return;
+    if (level1Tour?.sessionActive && level1Tour.step === Level1TourStep.SummaryQuizPrompt) {
+      await level1Tour.abortTour();
+    }
     router.push({
       pathname: '/(tabs)/daily-quiz',
       params: {
@@ -362,6 +372,29 @@ export default function GameSummaryScreen() {
   const isQuizDoneForThisGame = quizStatusForGame !== 'notDone';
   const isQuizPassedForThisGame = quizStatusForGame === 'doneAndPassed';
   const shouldShowQuizCta = !isHistoryMode && endGameResult?.success === true && hasLevelQuiz && !isQuizDoneForThisGame;
+  const shouldShowTourQuizPrompt =
+    !isHistoryMode &&
+    shouldShowQuizCta &&
+    level1Tour?.sessionActive &&
+    level1Tour.step === Level1TourStep.SummaryQuizPrompt;
+
+  useEffect(() => {
+    setHeaderOptions({ dimmed: Boolean(shouldShowTourQuizPrompt) });
+    return () => {
+      setHeaderOptions({ dimmed: false });
+    };
+  }, [setHeaderOptions, shouldShowTourQuizPrompt]);
+
+  useEffect(() => {
+    if (
+      !isLoading &&
+      level1Tour?.sessionActive &&
+      level1Tour.step === Level1TourStep.SummaryQuizPrompt &&
+      !shouldShowQuizCta
+    ) {
+      void level1Tour.abortTour();
+    }
+  }, [isLoading, level1Tour, shouldShowQuizCta]);
 
   if (isLoading) {
     return (
@@ -620,13 +653,37 @@ export default function GameSummaryScreen() {
         )}
       </ScrollView>
 
+      <Level1TourOverlay
+        visible={Boolean(shouldShowTourQuizPrompt)}
+        message={tourBubbleForStep(Level1TourStep.SummaryQuizPrompt, level1Tour?.eventPhase ?? 0)}
+        reserveBottomPx={bottomChromeHeight}
+      />
+
       {user && gameInstance?.level?.id && (
-        <View style={[styles.bottomActions, { paddingBottom: insets.bottom + 10, backgroundColor: theme.background }]}>
+        <View
+          onLayout={(event) => {
+            const next = Math.round(event.nativeEvent.layout.height);
+            if (Math.abs(next - bottomChromeHeight) > 2) {
+              setBottomChromeHeight(next);
+            }
+          }}
+          style={[
+            styles.bottomActions,
+            {
+              paddingBottom: insets.bottom + 10,
+              backgroundColor: shouldShowTourQuizPrompt
+                ? 'transparent'
+                : theme.background,
+              zIndex: 400,
+              elevation: 400,
+            },
+          ]}
+        >
           <ActionPillButton
             label={isReplaying ? '...' : 'Rejouer'}
             iconName="refresh-outline"
             onPress={handleReplay}
-            disabled={isReplaying}
+            disabled={isReplaying || Boolean(shouldShowTourQuizPrompt)}
             isLoading={isReplaying}
           />
 
@@ -635,7 +692,10 @@ export default function GameSummaryScreen() {
               <ActionPillButton
                 label="Quiz"
                 customIcon={<QuizActionIcon width={18} height={18} />}
-                onPress={handleGoToQuiz}
+                onPress={() => {
+                  void handleGoToQuiz();
+                }}
+                style={shouldShowTourQuizPrompt ? styles.tourFocusedPill : undefined}
               />
             ) : (
               !!nextLevel?.id && (
@@ -915,6 +975,19 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   bottomActionButton: {
+  },
+  tourFocusedPill: {
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 20,
+    transform: [{ scale: 1.03 }],
+  },
+  tourMutedPill: {
+    opacity: 0.25,
   },
   levelContextTitle: {
     fontSize: 16,
