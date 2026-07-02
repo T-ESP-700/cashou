@@ -1,13 +1,13 @@
 import React from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   useWindowDimensions,
   Pressable,
   Platform,
 } from 'react-native';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
+import { TutorialBubble } from '@/components/tutorial-bubble';
 
 interface Level1TourOverlayProps {
   visible: boolean;
@@ -31,7 +31,7 @@ export function Level1TourOverlay({
   onBackdropPress,
 }: Level1TourOverlayProps) {
   const { height: sh } = useWindowDimensions();
-  const { colors, fonts, spacing, borderRadius, isDark } = useCashouTheme();
+  const { spacing, isDark } = useCashouTheme();
 
   if (!visible || !message) {
     return null;
@@ -67,21 +67,7 @@ export function Level1TourOverlay({
           },
         ]}
       >
-        <View
-          pointerEvents="none"
-          style={[
-            styles.bubble,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              borderRadius: borderRadius.lg,
-            },
-          ]}
-        >
-          <Text style={[styles.bubbleText, { color: colors.text, fontFamily: fonts.body }]}>
-            {message}
-          </Text>
-        </View>
+        <TutorialBubble message={message} />
       </View>
     </View>
   );
@@ -104,15 +90,5 @@ const styles = StyleSheet.create({
   },
   bubbleWrap: {
     position: 'absolute',
-  },
-  bubble: {
-    padding: 14,
-    borderWidth: 1,
-    maxWidth: '100%',
-    maxHeight: 220,
-  },
-  bubbleText: {
-    fontSize: 15,
-    lineHeight: 22,
   },
 });
