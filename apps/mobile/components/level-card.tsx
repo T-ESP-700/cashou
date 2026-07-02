@@ -65,7 +65,7 @@ export function LevelCard({
               Niveau {level}
             </Text>
             <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#9CD6FF', alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="lock-open-outline" size={16} color="#FFFFFF" />
+              <Ionicons name="lock-open-outline" size={16} color="#006DBB" />
             </View>
           </View>
 
@@ -85,12 +85,6 @@ export function LevelCard({
           </View>
 
           {/* Status badge (bottom left) */}
-          <View style={{ flexDirection: 'row', marginTop: spacing.sm + 4 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#9CD6FF', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 }}>
-              <Ionicons name="flag-outline" size={14} color="#FFFFFF" />
-              <Text style={{ fontSize: 14, fontFamily: fonts.body, color: '#FFFFFF' }}>À commencer</Text>
-            </View>
-          </View>
         </Card>
       </TouchableOpacity>
     );
@@ -122,9 +116,14 @@ export function LevelCard({
               </View>
             )}
           </View>
-          {status === 'in_progress' && (
+          {status === 'in_progress' && isPaused && (
+            <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#A0A0A0', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="pause" size={18} color="#303030" />
+            </View>
+          )}
+          {status === 'in_progress' && !isPaused && (
             <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#FFB472', alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="arrow-forward" size={18} color="#000000" />
+              <Ionicons name="arrow-forward" size={18} color="#2B2C48" />
             </View>
           )}
           {status === 'quiz_pending' && (
@@ -137,18 +136,6 @@ export function LevelCard({
 
         {/* Line 2: Status badge (left) + Cash amount + Return % (right) */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          {status === 'in_progress' && isPaused && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#A0A0A0', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 }}>
-              <Ionicons name="pause" size={14} color="#FFFFFF" />
-              <Text style={{ fontSize: 14, fontFamily: fonts.body, color: '#FFFFFF' }}>En pause</Text>
-            </View>
-          )}
-          {status === 'in_progress' && !isPaused && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#FFB472', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 }}>
-              <Ionicons name="play" size={14} color="#FFFFFF" />
-              <Text style={{ fontSize: 14, fontFamily: fonts.body, color: '#FFFFFF' }}>En cours</Text>
-            </View>
-          )}
 
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
             <Text style={{ fontSize: 32, fontFamily: fonts.body, color: colors.text }}>

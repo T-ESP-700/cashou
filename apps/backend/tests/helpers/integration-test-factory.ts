@@ -139,7 +139,6 @@ export class IntegrationTestFactory {
         submarketId,
         rate: data?.rate !== undefined ? data.rate : 1.0, // Respecter null explicite
         description: data?.description ?? null,
-        taux: data?.taux ?? 0.02,
         maxAmount: data?.maxAmount ?? new Prisma.Decimal(100000),
         minAmount: data?.minAmount ?? new Prisma.Decimal(100),
       },

@@ -60,10 +60,10 @@ export function DailyQuizCard({
   };
 
   const isTodo = status === 'todo';
-  const ringColor = isTodo ? '#9CD6FF' : '#88D498';
+  const ringColor = isTodo ? special.pillBlueLight : special.pillGreenLight;
   const iconName = isTodo ? 'lock-open-outline' : 'checkmark';
-  const textColor = isTodo ? '#006DBB' : '#3D7248';
-  const iconColor = isTodo ? '#006DBB' : '#3D7248';
+  const textColor = isTodo ? special.pillBlueDark : special.pillGreenDark;
+  const iconColor = isTodo ? special.pillBlueDark : special.pillGreenDark;
   const elapsedPercent = Math.max(0, Math.min(100, timeInfo.progress * 100));
   const timerWidth = 48;
   const timerHeight = 32;
@@ -74,8 +74,8 @@ export function DailyQuizCard({
   const effectiveTimerRadius = Math.min(timerRadius, timerPathWidth / 2, timerPathHeight / 2);
   const timerPerimeter = 2 * (timerPathWidth + timerPathHeight - (4 * effectiveTimerRadius)) + (2 * Math.PI * effectiveTimerRadius);
   const timerProgressLength = (elapsedPercent / 100) * timerPerimeter;
-  const timerBgColor = isTodo ? '#9CD6FF' : '#88D498';
-  const timerProgressColor = isTodo ? '#006DBB' : '#3D7248';
+  const timerBgColor = isTodo ? special.pillBlueLight : special.pillGreenLight;
+  const timerProgressColor = isTodo ? special.pillBlueDark : special.pillGreenDark;
   const timerX = timerStroke / 2;
   const timerY = timerStroke / 2;
   const topSegmentLength = timerPathWidth - (2 * effectiveTimerRadius);
@@ -112,13 +112,13 @@ export function DailyQuizCard({
                 minWidth: timerWidth,
                 height: timerHeight,
                 justifyContent: 'center',
-                backgroundColor: colors.primary,
+                backgroundColor: special.pillOrangeLight,
                 borderRadius: timerRadius,
                 paddingHorizontal: 8,
               }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 18, fontFamily: fonts.body, fontWeight: '700', color: '#4C2E14' }}>
+                <Text style={{ fontSize: 18, fontFamily: fonts.body, fontWeight: '700', color: special.pillOrangeDark }}>
                   {streak}
                 </Text>
                 <Ionicons name="flame" size={18} color="#E53935" style={{ marginLeft: 2, marginRight: -2 }} />

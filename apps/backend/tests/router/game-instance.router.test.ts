@@ -19,6 +19,7 @@ function makeGameInstance(id: number, over: Partial<GameInstance> = {}): GameIns
     actionRequired: over.actionRequired ?? false,
     totalPausedDuration: over.totalPausedDuration ?? 0,
     currentEventIndex: over.currentEventIndex ?? 0,
+    endingStartedAt: over.endingStartedAt ?? null,
     isEnded: over.isEnded ?? false,
     endedAt: over.endedAt ?? null,
     marketId: over.marketId ?? null,
@@ -127,16 +128,25 @@ afterEach(() => {
 
 type Ctx = Parameters<typeof gameInstanceRouter.createCaller>[0];
 
+const mockCtx = {
+  req: new Request("http://localhost/test"),
+  session: {
+    user: { id: "user1", email: "test@example.com" },
+    session: { id: "test-session-id", userId: "user1" },
+  },
+  backofficeAdmin: null,
+} as unknown as Ctx;
+
 describe("gameInstance.router — CRUD standard", () => {
   it("gameInstance.getAll → appelle service.findAll", async () => {
-    const caller = gameInstanceRouter.createCaller({} as Ctx);
+    const caller = gameInstanceRouter.createCaller(mockCtx);
     const res = await caller.getAll();
     expect(res).toHaveLength(1);
     expect(wasMethodCalled("findAll")).toBe(true);
   });
 
   it("gameInstance.getById → appelle service.findOne(id)", async () => {
-    const caller = gameInstanceRouter.createCaller({} as Ctx);
+    const caller = gameInstanceRouter.createCaller(mockCtx);
     const res = await caller.getById({ id: 7 });
     expect(res).toMatchObject({ id: 7 });
     const hit = findCall("findOne");
@@ -144,7 +154,7 @@ describe("gameInstance.router — CRUD standard", () => {
   });
 
   it("gameInstance.create → appelle service.create(input)", async () => {
-    const caller = gameInstanceRouter.createCaller({} as Ctx);
+    const caller = gameInstanceRouter.createCaller(mockCtx);
     const data = { userId: "user123", levelId: 2, startBalance: 5000 };
     const res = await caller.create(data);
     expect(res.id).toBe(123);
@@ -152,7 +162,7 @@ describe("gameInstance.router — CRUD standard", () => {
   });
 
   it("gameInstance.update → appelle service.update(input)", async () => {
-    const caller = gameInstanceRouter.createCaller({} as Ctx);
+    const caller = gameInstanceRouter.createCaller(mockCtx);
     const res = await caller.update({ id: 99, startBalance: 20000 });
     expect(res).toMatchObject({ id: 99 });
     const hit = extraCalls.find((c) => c.method === "update");
@@ -160,7 +170,7 @@ describe("gameInstance.router — CRUD standard", () => {
   });
 
   it("gameInstance.delete → appelle service.delete(id)", async () => {
-    const caller = gameInstanceRouter.createCaller({} as Ctx);
+    const caller = gameInstanceRouter.createCaller(mockCtx);
     const res = await caller.delete({ id: 5 });
     expect(res.id).toBe(5);
     const hit = findCall("delete");
@@ -170,7 +180,7 @@ describe("gameInstance.router — CRUD standard", () => {
 
 describe("gameInstance.router — Méthodes spéciales", () => {
   it("gameInstance.getByUser → appelle service.findByUser(userId)", async () => {
-    const caller = gameInstanceRouter.createCaller({} as Ctx);
+    const caller = gameInstanceRouter.createCaller(mockCtx);
     const res = await caller.getByUser({ userId: "user123" });
     expect(res).toMatchObject([{ userId: "user123" }]);
     const hit = extraCalls.find((c) => c.method === "findByUser");
@@ -178,7 +188,7 @@ describe("gameInstance.router — Méthodes spéciales", () => {
   });
 
   it("gameInstance.getByLevel → appelle service.findByLevel(levelId)", async () => {
-    const caller = gameInstanceRouter.createCaller({} as Ctx);
+    const caller = gameInstanceRouter.createCaller(mockCtx);
     const res = await caller.getByLevel({ levelId: 2 });
     expect(res).toMatchObject([{ levelId: 2 }]);
     const hit = extraCalls.find((c) => c.method === "findByLevel");
@@ -186,7 +196,7 @@ describe("gameInstance.router — Méthodes spéciales", () => {
   });
 
   it("gameInstance.pause → appelle service.pause(id)", async () => {
-    const caller = gameInstanceRouter.createCaller({} as Ctx);
+    const caller = gameInstanceRouter.createCaller(mockCtx);
     const res = await caller.pause({ id: 10 });
     expect(res).toMatchObject({ id: 10, isPaused: true });
     const hit = extraCalls.find((c) => c.method === "pause");
@@ -194,7 +204,7 @@ describe("gameInstance.router — Méthodes spéciales", () => {
   });
 
   it("gameInstance.resume → appelle service.resume(id)", async () => {
-    const caller = gameInstanceRouter.createCaller({} as Ctx);
+    const caller = gameInstanceRouter.createCaller(mockCtx);
     const res = await caller.resume({ id: 10 });
     expect(res).toMatchObject({ id: 10, isPaused: false });
     const hit = extraCalls.find((c) => c.method === "resume");
@@ -202,7 +212,7 @@ describe("gameInstance.router — Méthodes spéciales", () => {
   });
 
   it("gameInstance.start → appelle service.start(id)", async () => {
-    const caller = gameInstanceRouter.createCaller({} as Ctx);
+    const caller = gameInstanceRouter.createCaller(mockCtx);
     const res = await caller.start({ id: 10 });
     expect(res).toMatchObject({ id: 10 });
     const hit = extraCalls.find((c) => c.method === "start");
@@ -210,7 +220,7 @@ describe("gameInstance.router — Méthodes spéciales", () => {
   });
 
   it("gameInstance.setActionRequired → appelle service.setActionRequired(id, actionRequired)", async () => {
-    const caller = gameInstanceRouter.createCaller({} as Ctx);
+    const caller = gameInstanceRouter.createCaller(mockCtx);
     const res = await caller.setActionRequired({ id: 10, actionRequired: true });
     expect(res).toMatchObject({ id: 10, actionRequired: true });
     const hit = extraCalls.find((c) => c.method === "setActionRequired");
@@ -218,7 +228,7 @@ describe("gameInstance.router — Méthodes spéciales", () => {
   });
 
   it("gameInstance.completeEvent → appelle service.completeEvent(id)", async () => {
-    const caller = gameInstanceRouter.createCaller({} as Ctx);
+    const caller = gameInstanceRouter.createCaller(mockCtx);
     const res = await caller.completeEvent({ id: 10 });
     expect(res).toMatchObject({ id: 10 });
     const hit = extraCalls.find((c) => c.method === "completeEvent");
@@ -226,7 +236,7 @@ describe("gameInstance.router — Méthodes spéciales", () => {
   });
 
   it("gameInstance.getTimeInfo → appelle service.getTimeInfo(id)", async () => {
-    const caller = gameInstanceRouter.createCaller({} as Ctx);
+    const caller = gameInstanceRouter.createCaller(mockCtx);
     const res = await caller.getTimeInfo({ id: 10 });
     expect(res).toBeDefined();
     const hit = extraCalls.find((c) => c.method === "getTimeInfo");
@@ -234,7 +244,7 @@ describe("gameInstance.router — Méthodes spéciales", () => {
   });
 
   it("gameInstance.resetLevel → appelle service.resetLevelForUser(userId, levelId)", async () => {
-    const caller = gameInstanceRouter.createCaller({} as Ctx);
+    const caller = gameInstanceRouter.createCaller(mockCtx);
     const res = await caller.resetLevel({ userId: "user123", levelId: 2 });
     expect(res).toMatchObject({ deletedCount: 1 });
     const hit = extraCalls.find((c) => c.method === "resetLevelForUser");
@@ -242,7 +252,7 @@ describe("gameInstance.router — Méthodes spéciales", () => {
   });
 
   it("gameInstance.endGame → appelle endGameService.endGame(id)", async () => {
-    const caller = gameInstanceRouter.createCaller({} as Ctx);
+    const caller = gameInstanceRouter.createCaller(mockCtx);
     const res = await caller.endGame({ id: 10 });
     expect(res.success).toBe(true);
     expect(res.gameInstanceId).toBe(10);
@@ -254,17 +264,17 @@ describe("gameInstance.router — Méthodes spéciales", () => {
 
 describe("gameInstance.router — Validations Zod", () => {
   it("getById avec id invalide → rejette", async () => {
-    const caller = gameInstanceRouter.createCaller({} as Ctx);
+    const caller = gameInstanceRouter.createCaller(mockCtx);
     expect(caller.getById({ id: 0 })).rejects.toBeDefined();
   });
 
   it("pause avec id invalide → rejette", async () => {
-    const caller = gameInstanceRouter.createCaller({} as Ctx);
+    const caller = gameInstanceRouter.createCaller(mockCtx);
     expect(caller.pause({ id: 0 })).rejects.toBeDefined();
   });
 
   it("resume avec id invalide → rejette", async () => {
-    const caller = gameInstanceRouter.createCaller({} as Ctx);
+    const caller = gameInstanceRouter.createCaller(mockCtx);
     expect(caller.resume({ id: -1 })).rejects.toBeDefined();
   });
 });

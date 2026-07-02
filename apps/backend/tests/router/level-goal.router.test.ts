@@ -21,6 +21,7 @@ function makeLevelGoal(id: number, over: Partial<LevelGoal> = {}): LevelGoal {
         id,
         levelId: over.levelId ?? 1,
         goalId: over.goalId ?? 1,
+        isMandatory: over.isMandatory ?? true,
         createdAt: over.createdAt ?? now,
         updatedAt: over.updatedAt ?? now,
     };
@@ -121,7 +122,7 @@ describe("levelGoal.router — createCaller (sans HTTP)", () => {
         const res = await caller.create(payload);
         expect(res).toMatchObject({ id: 123, ...payload });
         const hit = calls.find((c) => c.method === "create");
-        expect(hit?.args).toEqual({ data: payload });
+        expect(hit?.args).toEqual({ data: { ...payload, isMandatory: true } });
     });
 
     it("levelGoal.update → appelle service.update(id, data)", async () => {
@@ -129,7 +130,7 @@ describe("levelGoal.router — createCaller (sans HTTP)", () => {
         const res = await caller.update({ id: 99, data: { levelId: 4, goalId: 5 } });
         expect(res).toMatchObject({ id: 99, levelId: 4, goalId: 5 });
         const hit = calls.find((c) => c.method === "update");
-        expect(hit?.args).toEqual({ id: 99, data: { levelId: 4, goalId: 5 } });
+        expect(hit?.args).toEqual({ id: 99, data: { levelId: 4, goalId: 5, isMandatory: true } });
     });
 
     it("levelGoal.delete → appelle service.delete(id)", async () => {

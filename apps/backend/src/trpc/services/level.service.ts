@@ -154,6 +154,7 @@ export class LevelService {
             speed: src.speed ?? null,
             startBalance: src.startBalance ?? null,
             pointsRequired: src.pointsRequired ?? null,
+            historyStartDay: src.historyStartDay ?? null,
             description: src.description ?? null,
             tip: src.tip ?? null,
         };
