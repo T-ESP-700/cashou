@@ -13,6 +13,7 @@ function makeImpact(id: number, over: Partial<Impact> = {}): Impact {
     submarketId: over.submarketId ?? null,
     assetId: over.assetId ?? 1,
     coef: over.coef ?? 0.05,
+    impactType: over.impactType ?? "PRICE",
     createdAt: over.createdAt ?? now,
     updatedAt: over.updatedAt ?? now,
   };

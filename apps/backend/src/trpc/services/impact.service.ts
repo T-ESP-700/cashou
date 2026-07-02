@@ -2,7 +2,7 @@
 // Couche d'abstraction entre les routers et la base de données
 // Import depuis @cashou/db-app (et non @prisma/client) car Bun crée des copies séparées
 // de @prisma/client par contexte de résolution, ce qui cause des types incompatibles
-import type { Impact, PrismaClient } from "@cashou/db-app";
+import type { Impact, PrismaClient, Prisma } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {ImpactCreateSchema, ImpactDataSchema} from "../schemas-zod/impact-schema.ts";
 
@@ -152,7 +152,7 @@ export class ImpactService {
      * @returns Promise<Impact> - L'impact créé avec son ID généré
      */
     async create(data: ImpactCreateSchema): Promise<Impact> {
-        return this.prisma.impact.create({ data });
+        return this.prisma.impact.create({ data: data as Prisma.ImpactUncheckedCreateInput });
     }
 
     /**
@@ -164,7 +164,7 @@ export class ImpactService {
     async update(id: number, data: ImpactDataSchema): Promise<Impact> {
         return this.prisma.impact.update({
             where: { id },
-            data
+            data: data as Prisma.ImpactUncheckedUpdateInput
         });
     }
 

@@ -17,6 +17,7 @@ function makeAsset(id: number, over: Partial<Asset> = {}): Asset {
     submarketId: over.submarketId ?? null,
     maxAmount: over.maxAmount ?? null,
     minAmount: over.minAmount ?? null,
+    managementFee: over.managementFee ?? null,
     createdAt: over.createdAt ?? now,
     updatedAt: over.updatedAt ?? now,
   };

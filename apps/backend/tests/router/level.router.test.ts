@@ -16,6 +16,7 @@ function makeLevel(id: number, over: Partial<Level> = {}): Level {
     startBalance: over.startBalance ?? null,
     pointsRequired: over.pointsRequired ?? null,
     historyStartDay: over.historyStartDay ?? null,
+    startDate: over.startDate ?? null,
     description: over.description ?? null,
     tip: over.tip ?? null,
     createdAt: over.createdAt ?? now,
