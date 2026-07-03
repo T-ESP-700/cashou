@@ -115,6 +115,7 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
             const response = await fetch(`${AUTH_URL}/sign-up/email`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
+                credentials: "omit",
                 body: JSON.stringify({
                     email: email.trim(),
                     password,
@@ -126,9 +127,12 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
             const data = await response.json();
 
             if (!response.ok || data.error) {
+                // 429 rate-limit / 403 / 5xx portent leur message au premier niveau.
                 showAlert(
                     "Inscription échouée",
-                    data.error?.message || "Impossible de créer le compte",
+                    data.error?.message ||
+                        data.message ||
+                        "Impossible de créer le compte",
                 );
             } else {
                 await tokenStorage.setToken(data.token);

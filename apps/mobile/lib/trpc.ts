@@ -24,7 +24,9 @@ export const trpcClient = createTRPCClient<AppRouter>({
         return token ? { authorization: `Bearer ${token}` } : {};
       },
       fetch(url, options) {
-        return fetch(url, options).then(async (response) => {
+        // credentials: "omit" — l'auth passe par le header Authorization (Bearer),
+        // jamais par cookie : évite que iOS stocke/renvoie le cookie better-auth.
+        return fetch(url, { ...options, credentials: 'omit' } as RequestInit).then(async (response) => {
           // Handle expired/invalid token — silently clear and redirect to login
           if (response.status === 401 && !isHandlingAuthError) {
             isHandlingAuthError = true;

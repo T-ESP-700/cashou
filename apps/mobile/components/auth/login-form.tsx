@@ -29,18 +29,28 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         }
         setIsLoading(true);
         try {
+            // credentials: "omit" — flux 100% Bearer. Sans ça, iOS renvoie le cookie
+            // de session better-auth (même révoqué) et le CSRF check répond 403
+            // MISSING_OR_NULL_ORIGIN (RN n'envoie pas de header Origin).
             const response = await fetch(`${AUTH_BASE_URL}/sign-in/email`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
+                credentials: "omit",
                 body: JSON.stringify({ email, password }),
             });
 
             const data = await response.json();
 
             if (!response.ok || data.error) {
+                // 401 = vrais identifiants invalides ; tout le reste (429 rate-limit,
+                // 403 CSRF, 5xx…) doit montrer sa vraie cause, pas "Invalid credentials".
+                const serverMessage = data.error?.message || data.message;
                 showAlert(
                     "Login Failed",
-                    data.error?.message || "Invalid credentials",
+                    serverMessage ||
+                        (response.status === 401
+                            ? "Invalid credentials"
+                            : `Server error (HTTP ${response.status})`),
                 );
             } else {
                 console.log("[LoginForm] Login successful, storing token...");

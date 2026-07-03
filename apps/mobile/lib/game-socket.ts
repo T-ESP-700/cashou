@@ -43,6 +43,7 @@ export function connectGameSocket(
       const res = await fetch(`${getApiBaseUrl()}/api/ws-ticket`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
+        credentials: "omit",
       });
       if (!res.ok) return null;
       const data = (await res.json()) as { ticket?: string };
