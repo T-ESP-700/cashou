@@ -1,7 +1,6 @@
 # Dependencies (Bun/Node.js)
+# NB: le lockfile Bun (bun.lock) doit être versionné — nécessaire aux builds EAS/CI
 node_modules
-bun.lockb
-bun.lock
 .pnp.*
 
 # Build outputs
