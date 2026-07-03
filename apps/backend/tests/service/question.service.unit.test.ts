@@ -1,6 +1,6 @@
 // tests/service/question.service.unit.test.ts
-import { describe, it, expect } from "bun:test";
-import type { Question } from "@cashou/db-app";
+import { describe, it, expect, mock } from "bun:test";
+import type { Question, PrismaClient } from "@cashou/db-app";
 import { QuestionService } from "../../src/trpc/services/question.service";
 import { createServiceTestSetup } from "../helpers/service-test-factory";
 
@@ -36,14 +36,10 @@ describe("QuestionService — Tests unitaires", () => {
 
   it("create crée une nouvelle question", async () => {
     const data = { text: "Nouvelle question?", explanation: "Explication" };
-    try {
-      const result = await service.create(data);
-      expect(result.id).toBe(123);
-    } catch (e) {
-      // Accepter une erreur si le service a de la validation
-      expect(true).toBeTrue();
-    }
-    expect(wasMethodCalled("create")).toBeDefined();
+    const result = await service.create(data);
+    expect(result.question.id).toBe(123);
+    expect(result.message).toBe("La question a été créée avec succès");
+    expect(wasMethodCalled("create")).toBeTrue();
   });
 
   it("update met à jour une question", async () => {
@@ -56,5 +52,24 @@ describe("QuestionService — Tests unitaires", () => {
     const result = await service.delete(10);
     expect(result.id).toBe(10);
     expect(wasMethodCalled("delete")).toBeTrue();
+  });
+});
+
+describe("QuestionService — search", () => {
+  it("search filtre par contains case-insensitive", async () => {
+    const prisma = {
+      question: {
+        findMany: mock(async (_a?: unknown): Promise<unknown[]> => []),
+      },
+    };
+    const service = new QuestionService(prisma as unknown as PrismaClient);
+    await service.search("bitcoin");
+    const args = (prisma.question.findMany.mock.calls[0]?.[0] ?? {}) as unknown as {
+      where: { text: { contains: string; mode: string } };
+      orderBy: unknown;
+    };
+    expect(args.where.text.contains).toBe("bitcoin");
+    expect(args.where.text.mode).toBe("insensitive");
+    expect(args.orderBy).toEqual({ createdAt: "desc" });
   });
 });

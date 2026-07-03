@@ -92,3 +92,60 @@ describe("impact.router — Validations Zod", () => {
     expect(caller.delete({ id: 0 })).rejects.toBeDefined();
   });
 });
+
+describe("impact.router — Méthodes additionnelles", () => {
+  const extraMethods = [
+    "findByFieldId",
+    "findBySubmarketId",
+    "findByAssetId",
+    "findByMinCoefficient",
+  ] as const;
+
+  const callsByMethod: Record<string, unknown[][]> = {};
+  const originals: Record<string, unknown> = {};
+
+  beforeEach(() => {
+    for (const k of Object.keys(callsByMethod)) delete callsByMethod[k];
+    for (const m of extraMethods) {
+      callsByMethod[m] = [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      originals[m] = (ImpactService.prototype as any)[m];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (ImpactService.prototype as any)[m] = async function (...args: unknown[]) {
+        callsByMethod[m]!.push(args);
+        return [];
+      };
+    }
+  });
+
+  afterEach(() => {
+    for (const m of extraMethods) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (ImpactService.prototype as any)[m] = originals[m];
+    }
+  });
+
+  it("getByFieldId → findByFieldId(fieldId)", async () => {
+    const caller = impactRouter.createCaller({} as Ctx);
+    await caller.getByFieldId({ fieldId: 1 });
+    expect(callsByMethod.findByFieldId?.[0]?.[0]).toBe(1);
+  });
+
+  it("getBySubmarketId → findBySubmarketId(submarketId)", async () => {
+    const caller = impactRouter.createCaller({} as Ctx);
+    await caller.getBySubmarketId({ submarketId: 1 });
+    expect(callsByMethod.findBySubmarketId?.[0]?.[0]).toBe(1);
+  });
+
+  it("getByAssetId → findByAssetId(assetId)", async () => {
+    const caller = impactRouter.createCaller({} as Ctx);
+    await caller.getByAssetId({ assetId: 1 });
+    expect(callsByMethod.findByAssetId?.[0]?.[0]).toBe(1);
+  });
+
+  it("getByMinCoefficient → findByMinCoefficient(minCoef)", async () => {
+    const caller = impactRouter.createCaller({} as Ctx);
+    await caller.getByMinCoefficient({ minCoef: 5 });
+    expect(callsByMethod.findByMinCoefficient?.[0]?.[0]).toBe(5);
+  });
+});

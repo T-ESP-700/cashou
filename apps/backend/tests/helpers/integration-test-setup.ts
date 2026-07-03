@@ -18,8 +18,14 @@
  * ```
  */
 
-import { beforeAll, afterAll } from "bun:test";
+import { beforeAll, afterAll, describe } from "bun:test";
 import prisma from "../../src/database";
+
+// describe wrapper qui skip automatiquement le bloc si CASHOU_DB_URL est absent.
+// Évite les échecs bruyants (Prisma init error) lors des runs locaux sans DB.
+export const describeIntegration = process.env.CASHOU_DB_URL
+  ? describe
+  : describe.skip;
 
 /**
  * Configure la base de données pour les tests d'intégration
