@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cashou - Présentation 10 Juillet 2026</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* ── Palette ──────────────────────────────────────────────
+           --bg        : #F7F9FC  fond général
+           --card      : #FFFFFF  cartes
+           --border    : #E4E8F2  bordures
+           --text      : #1A1C2E  texte principal
+           --text-2    : #3D4266  texte secondaire
+           --muted     : #717892  texte discret
+           --orange    : #FFB472  orange Cashou (icônes / accents)
+           --orange-h  : #FFB472  orange Cashou (titres sur fond clair)
+           --code      : #EFF2FA  fond code / tags
+        ─────────────────────────────────────────────────────────── */
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html {
+            height: 100vh;
+            height: 100dvh;
+            min-height: -webkit-fill-available;
+        }
+
+        body {
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #F7F9FC;
+            color: #1A1C2E;
+            overflow: hidden;
+            height: 100vh;
+            height: 100dvh;
+            min-height: -webkit-fill-available;
+        }
+
+        .slide {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            min-height: -webkit-fill-available;
+            padding: 60px 80px;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .slide:not(.intro-slide):not(.demo-slide) { padding-top: 0; }
+
+        .slide:not(.intro-slide):not(.demo-slide) h2 {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 160px);
+            max-width: 1200px;
+            margin: 0;
+            padding: 0;
+        }
+
+        .slide:not(.intro-slide):not(.demo-slide) .content { margin-top: 130px; }
+
+        .slide.active { display: flex; }
+
+        h1 {
+            font-family: 'Rowdies', sans-serif;
+            font-size: 4rem;
+            font-weight: 700;
+            color: #FFB472;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .intro-slide h1 {
+            position: absolute;
+            top: 70px;
+            left: 0;
+            right: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0 80px;
+            text-align: center;
+        }
+
+        .intro-slide .intro-content { margin-top: 130px; }
+
+        h2 {
+            font-size: 2.4rem;
+            font-weight: 700;
+            color: #FFB472;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        h3 {
+            font-size: 1.3rem;
+            color: #1A1C2E;
+            margin-bottom: 10px;
+        }
+
+        .content { max-width: 1200px; width: 100%; }
+
+        /* Animations */
+        .animate-item {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .animate-item.visible { opacity: 1; transform: translateY(0); }
+        body.no-transitions * { transition: none !important; }
+
+        /* Intro */
+        .intro-slide { justify-content: center; }
+        .intro-content { text-align: center; max-width: 900px; margin: 0 auto; }
+        .intro-logo {
+            max-width: 260px;
+            height: auto;
+            margin: 10px auto 25px auto;
+            display: block;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(26,28,46,0.10);
+        }
+        .intro-tagline {
+            font-size: 1.7rem;
+            color: #3D4266;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        .intro-date { font-size: 1.1rem; color: #717892; margin-bottom: 35px; }
+        .intro-features {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 35px;
+            flex-wrap: wrap;
+        }
+        .intro-feature { text-align: center; flex: 0 0 auto; }
+        .intro-feature-icon { font-size: 2.5rem; margin-bottom: 10px; display: block; }
+        .intro-feature-title { color: #FFB472; font-size: 1rem; font-weight: bold; margin-bottom: 4px; }
+        .intro-feature-desc { color: #717892; font-size: 0.85rem; }
+
+        /* Cards */
+        .value-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            margin-top: 30px;
+        }
+        .value-card {
+            background: #FFFFFF;
+            border: 1px solid #E4E8F2;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(26,28,46,0.05);
+        }
+        .value-card h3 { color: #FFB472; margin-bottom: 12px; }
+        .value-card p { color: #3D4266; font-size: 0.95rem; line-height: 1.6; }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 24px;
+        }
+        .feature-card {
+            background: #EEEEF6;
+            border-radius: 20px;
+            padding: 32px 20px 28px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 18px;
+        }
+        .feature-card .feature-icon {
+            font-size: 2.6rem;
+            color: #FFB472;
+        }
+        .feature-card .feature-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #1A1C2E;
+            line-height: 1.3;
+        }
+        .feature-card .feature-desc {
+            font-size: 0.82rem;
+            color: #717892;
+            line-height: 1.4;
+        }
+
+        .advantage-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .advantage-item {
+            background: #FFFFFF;
+            border: 1px solid #E4E8F2;
+            border-radius: 12px;
+            padding: 22px;
+            text-align: center;
+            box-shadow: 0 2px 6px rgba(26,28,46,0.04);
+        }
+        .advantage-item h4 { color: #FFB472; font-size: 1.1rem; margin-bottom: 8px; }
+        .advantage-item p { color: #717892; font-size: 0.88rem; line-height: 1.5; }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .metric-card {
+            background: #FFFFFF;
+            border: 1px solid #E4E8F2;
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(26,28,46,0.05);
+        }
+        .metric-number { font-size: 2.4rem; font-weight: bold; color: #FFB472; margin-bottom: 8px; }
+        .metric-label { color: #3D4266; font-size: 0.95rem; }
+
+        /* Team */
+        .team-grid {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 40px;
+            flex-wrap: wrap;
+        }
+        .team-card {
+            background: #FFFFFF;
+            border: 1px solid #E4E8F2;
+            border-radius: 16px;
+            padding: 28px 24px;
+            text-align: center;
+            width: 200px;
+            box-shadow: 0 2px 8px rgba(26,28,46,0.05);
+        }
+        .team-avatar {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            overflow: hidden;
+            margin: 0 auto 14px auto;
+            border: 3px solid #FFE4C4;
+        }
+        .team-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center top;
+            display: block;
+        }
+        .team-name { color: #FFB472; font-weight: bold; font-size: 1.05rem; margin-bottom: 6px; }
+        .team-role { color: #717892; font-size: 0.85rem; }
+
+        /* Schema DB */
+        .schema-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin-top: 24px;
+        }
+        .schema-group {
+            background: #FFFFFF;
+            border: 1px solid #E4E8F2;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 2px 6px rgba(26,28,46,0.04);
+        }
+        .schema-group h4 { color: #FFB472; font-size: 1rem; margin-bottom: 10px; border-bottom: 1px solid #E4E8F2; padding-bottom: 6px; }
+        .schema-table {
+            background: #EFF2FA;
+            border-radius: 6px;
+            padding: 6px 10px;
+            margin-bottom: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.78rem;
+            color: #3D4266;
+        }
+        .schema-table:last-child { margin-bottom: 0; }
+
+        /* Code block */
+        .code-block {
+            background: #1A1C2E;
+            border: 1px solid #2D3054;
+            border-radius: 10px;
+            padding: 18px 22px;
+            font-family: 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 0.82rem;
+            color: #E2E5F0;
+            line-height: 1.7;
+            overflow-x: auto;
+            margin-top: 16px;
+        }
+        .code-block .keyword { color: #C792EA; }
+        .code-block .string { color: #C3E88D; }
+        .code-block .comment { color: #546E7A; }
+        .code-block .function { color: #82AAFF; }
+        .code-block .type { color: #FFCB6B; }
+
+        /* Tag */
+        .tag {
+            display: inline-block;
+            background: #EFF2FA;
+            color: #3D4266;
+            font-size: 0.72rem;
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 20px;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+        .tag-orange {
+            background: rgba(255,155,66,0.12);
+            color: #FFB472;
+            border: 1px solid rgba(255,155,66,0.35);
+        }
+
+        /* Split layout */
+        .split-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 24px;
+            align-items: start;
+        }
+
+        /* Quality items */
+        .quality-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-top: 24px;
+        }
+        .quality-item {
+            background: #FFFFFF;
+            border: 1px solid #E4E8F2;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            box-shadow: 0 2px 6px rgba(26,28,46,0.04);
+        }
+        .quality-icon { font-size: 1.6rem; color: #FFB472; flex-shrink: 0; margin-top: 2px; }
+        .quality-text h4 { color: #FFB472; font-size: 1rem; margin-bottom: 5px; }
+        .quality-text p { color: #717892; font-size: 0.85rem; line-height: 1.5; }
+
+        /* Notion workflow */
+        .workflow-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+            margin-top: 26px;
+        }
+        .workflow-card {
+            background: #FFFFFF;
+            border: 1px solid #E4E8F2;
+            border-radius: 14px;
+            padding: 20px;
+            box-shadow: 0 2px 6px rgba(26,28,46,0.04);
+        }
+        .workflow-card h4 { color: #FFB472; font-size: 1rem; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .workflow-card ul { list-style: none; padding: 0; }
+        .workflow-card ul li {
+            color: #717892;
+            font-size: 0.85rem;
+            padding: 4px 0 4px 14px;
+            position: relative;
+        }
+        .workflow-card ul li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #FFB472;
+        }
+
+        /* Stack */
+        .stack-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+            margin-top: 30px;
+        }
+        .stack-card {
+            background: #FFFFFF;
+            border: 1px solid #E4E8F2;
+            border-radius: 14px;
+            padding: 20px 14px;
+            text-align: center;
+            box-shadow: 0 2px 6px rgba(26,28,46,0.04);
+        }
+        .stack-card i { font-size: 2.2rem; color: #FFB472; margin-bottom: 12px; display: block; }
+        .stack-card h3 { color: #FFB472; font-size: 1.05rem; margin-bottom: 8px; }
+        .stack-card p { color: #717892; font-size: 0.82rem; line-height: 1.5; }
+
+        /* Pipeline */
+        .pipeline-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 28px;
+            flex-wrap: wrap;
+        }
+        .pipeline-step {
+            background: #FFFFFF;
+            border: 1px solid #E4E8F2;
+            border-radius: 12px;
+            padding: 14px 20px;
+            text-align: center;
+            min-width: 120px;
+            box-shadow: 0 2px 6px rgba(26,28,46,0.04);
+        }
+        .pipeline-step i { font-size: 1.5rem; color: #FFB472; margin-bottom: 6px; display: block; }
+        .pipeline-step h4 { color: #1A1C2E; font-size: 0.9rem; margin-bottom: 3px; }
+        .pipeline-step p { color: #717892; font-size: 0.78rem; }
+        .pipeline-arrow { color: #FFB472; font-size: 1.3rem; }
+
+        /* Test types */
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 26px;
+        }
+        .test-card {
+            background: #FFFFFF;
+            border: 1px solid #E4E8F2;
+            border-radius: 14px;
+            padding: 22px;
+            box-shadow: 0 2px 8px rgba(26,28,46,0.05);
+        }
+        .test-card .test-number { font-size: 2.2rem; font-weight: bold; color: #FFB472; }
+        .test-card h4 { color: #1A1C2E; margin: 6px 0 10px; }
+        .test-card ul { list-style: none; padding: 0; }
+        .test-card ul li { color: #717892; font-size: 0.85rem; padding: 3px 0 3px 14px; position: relative; }
+        .test-card ul li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #FFB472;
+        }
+
+        /* Highlight box */
+        .highlight-box {
+            background: #FFF7ED;
+            border: 1px solid rgba(255,155,66,0.35);
+            border-radius: 12px;
+            padding: 18px 24px;
+            margin-top: 20px;
+        }
+        .highlight-box p { color: #3D4266; font-size: 0.95rem; line-height: 1.6; }
+        .highlight-box strong { color: #FFB472; }
+
+        /* Demo */
+        .demo-slide {
+            text-align: center;
+            background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%);
+            justify-content: center;
+        }
+        .demo-slide h1 { font-size: 5rem; animation: pulse 2s ease-in-out infinite; }
+        .demo-slide p { font-size: 2rem; color: #3D4266; margin-top: 20px; }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.9; }
+        }
+
+        /* Indicators */
+        .slide-indicator {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 1000;
+        }
+        .indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #CDD1E0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .indicator.active { background: #FFB472; transform: scale(1.3); }
+
+        .icon { color: #FFB472; display: inline-block; margin-right: 8px; }
+
+        .slide-num {
+            position: fixed;
+            top: 24px;
+            right: 30px;
+            color: #CDD1E0;
+            font-size: 0.85rem;
+            z-index: 1000;
+            font-family: monospace;
+        }
+
+        @media (max-width: 768px) {
+            .slide { padding: 40px 30px; }
+            h1 { font-size: 2.5rem; }
+            h2 { font-size: 1.8rem; }
+            .value-grid, .advantage-grid, .stack-grid, .schema-container,
+            .workflow-grid, .test-grid, .quality-row, .metrics-grid { grid-template-columns: 1fr; }
+            .split-layout { grid-template-columns: 1fr; }
+            .team-grid { gap: 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- Slide 1 : Bonjour -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="slide active intro-slide" data-slide="0">
+    <div class="content">
+        <div class="intro-content">
+            <h1 class="animate-item">Cashou</h1>
+            <img src="cashou-logo.png" alt="Logo Cashou" class="intro-logo animate-item">
+            <p class="intro-tagline animate-item">Présentation complète du projet</p>
+            <p class="intro-date animate-item">10 Juillet 2026</p>
+            <div class="intro-features animate-item">
+                <div class="intro-feature">
+                    <span class="intro-feature-icon"><i class="fas fa-gamepad" style="color:#FFB472"></i></span>
+                    <div class="intro-feature-title">App mobile</div>
+                    <div class="intro-feature-desc">Simulation financière</div>
+                </div>
+                <div class="intro-feature">
+                    <span class="intro-feature-icon"><i class="fas fa-server" style="color:#FFB472"></i></span>
+                    <div class="intro-feature-title">Backend API</div>
+                    <div class="intro-feature-desc">Bun + PostgreSQL</div>
+                </div>
+                <div class="intro-feature">
+                    <span class="intro-feature-icon"><i class="fas fa-tools" style="color:#FFB472"></i></span>
+                    <div class="intro-feature-title">Backoffice</div>
+                    <div class="intro-feature-desc">Gestion du contenu</div>
+                </div>
+                <div class="intro-feature">
+                    <span class="intro-feature-icon"><i class="fas fa-globe" style="color:#FFB472"></i></span>
+                    <div class="intro-feature-title">Site vitrine</div>
+                    <div class="intro-feature-desc">cashou.app</div>
+                </div>
+                <div class="intro-feature">
+                    <span class="intro-feature-icon"><i class="fas fa-users" style="color:#FFB472"></i></span>
+                    <div class="intro-feature-title">Équipe</div>
+                    <div class="intro-feature-desc">7 membres</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- Slide 2 : A quel besoin répond Cashou et comment ? -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="slide" data-slide="1">
+    <div class="content">
+        <h2 class="animate-item"><i class="fas fa-bullseye icon"></i> À quel besoin répond Cashou ?</h2>
+
+        <p class="animate-item" style="text-align: center; font-size: 1.15rem; color: #717892; margin-bottom: 22px; font-style: italic;">
+            "L'app qui vous apprend à gérer votre argent en toute sécurité"
+        </p>
+
+        <div class="metrics-grid animate-item">
+            <div class="metric-card">
+                <div class="metric-number">73%</div>
+                <div class="metric-label">des particuliers estiment ne pas être suffisamment informés pour investir</div>
+                <div style="color: #4A4D65; font-size: 0.72rem; margin-top: 10px; font-style: italic;">Bricks.co 2025</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-number">82%</div>
+                <div class="metric-label">déclarent que leur entourage n'est pas mieux informé qu'eux</div>
+                <div style="color: #4A4D65; font-size: 0.72rem; margin-top: 10px; font-style: italic;">Bricks.co 2025</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-number">44%</div>
+                <div class="metric-label">des Français décident seuls de leurs placements, sans accompagnement</div>
+                <div style="color: #4A4D65; font-size: 0.72rem; margin-top: 10px; font-style: italic;">AMF Baromètre 2025</div>
+            </div>
+            <div class="metric-card" style="border-color: rgba(255,180,114,0.35);">
+                <div class="metric-number">35%</div>
+                <div class="metric-label">déclarent leurs intentions d'investir dans les 12 prochains mois</div>
+                <div style="color: #4A4D65; font-size: 0.72rem; margin-top: 10px; font-style: italic;">AMF Baromètre 2025</div>
+            </div>
+        </div>
+
+        <div class="highlight-box animate-item" style="margin-top: 18px; text-align: center;">
+            <p>Un marché qui veut investir, mais qui n'a ni les outils ni les connaissances pour le faire seul.<br>
+            <strong>C'est exactement le vide que Cashou comble.</strong></p>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- Slide 3 : Équipe -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="slide" data-slide="2">
+    <div class="content">
+        <h2 class="animate-item"><i class="fas fa-users icon"></i> L'équipe</h2>
+        <div class="team-grid animate-item" style="gap: 20px;">
+            <div class="team-card">
+                <div class="team-avatar"><img src="chloe.jpg" alt="Chloé"></div>
+                <div class="team-name">Chloé</div>
+            </div>
+            <div class="team-card">
+                <div class="team-avatar"><img src="clement.png" alt="Clément"></div>
+                <div class="team-name">Clément</div>
+            </div>
+            <div class="team-card">
+                <div class="team-avatar"><img src="flavie.png" alt="Flavie"></div>
+                <div class="team-name">Flavie</div>
+            </div>
+            <div class="team-card">
+                <div class="team-avatar"><img src="francois.jpg" alt="François"></div>
+                <div class="team-name">François</div>
+            </div>
+            <div class="team-card">
+                <div class="team-avatar"><img src="nafissatou.jpg" alt="Nafissatou"></div>
+                <div class="team-name">Nafissatou</div>
+            </div>
+            <div class="team-card">
+                <div class="team-avatar"><img src="tom.png" alt="Tom"></div>
+                <div class="team-name">Tom</div>
+            </div>
+            <div class="team-card">
+                <div class="team-avatar"><img src="yohan.jpg" alt="Yohan"></div>
+                <div class="team-name">Yohan</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- Slide 4 : Contexte — qu'est-ce que Cashou ? -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="slide" data-slide="3">
+    <div class="content">
+        <h2 class="animate-item"><i class="fas fa-question-circle icon"></i> Qu'est-ce que Cashou ?</h2>
+        <div class="feature-grid">
+            <div class="feature-card animate-item">
+                <i class="fas fa-gamepad feature-icon"></i>
+                <div class="feature-title">Apprentissage par le jeu</div>
+            </div>
+            <div class="feature-card animate-item">
+                <i class="fas fa-chart-bar feature-icon"></i>
+                <div class="feature-title">Portefeuille virtuel</div>
+            </div>
+            <div class="feature-card animate-item">
+                <i class="fas fa-trophy feature-icon"></i>
+                <div class="feature-title">Système de points</div>
+            </div>
+            <div class="feature-card animate-item">
+                <i class="fas fa-calendar-alt feature-icon"></i>
+                <div class="feature-title">Quiz quotidiens</div>
+            </div>
+            <div class="feature-card animate-item">
+                <i class="fas fa-book-open feature-icon"></i>
+                <div class="feature-title">Dictionnaire financier</div>
+            </div>
+            <div class="feature-card animate-item">
+                <i class="fas fa-lock feature-icon"></i>
+                <div class="feature-title">100% sécurisé</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- Slide 5 : Business Plan -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="slide" data-slide="4">
+    <div class="content">
+        <h2 class="animate-item"><i class="fas fa-briefcase icon"></i> Business Plan</h2>
+        <div class="split-layout" style="gap: 28px;">
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+                <div class="value-card animate-item" style="padding: 18px 20px;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+                        <i class="fas fa-unlock-alt" style="color: #FFB472; font-size: 1.2rem;"></i>
+                        <strong style="color: #1A1C2E; font-size: 1rem;">Freemium</strong>
+                    </div>
+                    <p style="color: #717892; font-size: 0.88rem; margin: 0;">Niveaux 1–5 gratuits · fonctionnalités de base accessibles à tous</p>
+                </div>
+                <div class="value-card animate-item" style="padding: 18px 20px;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+                        <i class="fas fa-star" style="color: #FFB472; font-size: 1.2rem;"></i>
+                        <strong style="color: #1A1C2E; font-size: 1rem;">Abonnement — 9,99 €/mois</strong>
+                    </div>
+                    <p style="color: #717892; font-size: 0.88rem; margin: 0;">Accès complet 20 niveaux · analyses avancées · contenu exclusif</p>
+                </div>
+                <div class="value-card animate-item" style="padding: 18px 20px;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+                        <i class="fas fa-building" style="color: #FFB472; font-size: 1.2rem;"></i>
+                        <strong style="color: #1A1C2E; font-size: 1rem;">B2B — 5 000 €/licence/an</strong>
+                    </div>
+                    <p style="color: #717892; font-size: 0.88rem; margin: 0;">Licences entreprises · marque blanche · tableau de bord RH</p>
+                </div>
+                <div class="highlight-box animate-item" style="padding: 12px 16px;">
+                    <p style="font-size: 0.88rem; margin: 0;"><strong>Cible :</strong> 18–24 ans (principale) · 25–34 ans (secondaire) · 89,7 % intéressés par l'app (sondage)</p>
+                </div>
+            </div>
+            <div class="animate-item">
+                <p style="font-size: 0.78rem; color: #717892; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px;">Profit net sur 3 ans</p>
+                <!-- Bar chart -->
+                <div style="display: flex; align-items: flex-end; gap: 24px; height: 160px; border-bottom: 2px solid #E4E8F2; padding: 0 8px;">
+                    <!-- An 1 — 14928 / 134979 * 160 ≈ 18px -->
+                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0; height: 100%; justify-content: flex-end;">
+                        <div style="width: 100%; height: 18px; background: linear-gradient(180deg, #FFB472 0%, rgba(255,180,114,0.55) 100%); border-radius: 6px 6px 0 0;"></div>
+                    </div>
+                    <!-- An 2 — 69699 / 134979 * 160 ≈ 83px -->
+                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0; height: 100%; justify-content: flex-end;">
+                        <div style="width: 100%; height: 83px; background: linear-gradient(180deg, #FFB472 0%, rgba(255,180,114,0.55) 100%); border-radius: 6px 6px 0 0;"></div>
+                    </div>
+                    <!-- An 3 — 134979 / 134979 * 160 = 160px -->
+                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0; height: 100%; justify-content: flex-end;">
+                        <div style="width: 100%; height: 160px; background: linear-gradient(180deg, #FFB472 0%, rgba(255,180,114,0.55) 100%); border-radius: 6px 6px 0 0;"></div>
+                    </div>
+                </div>
+                <!-- Timeline dots + labels -->
+                <div style="display: flex; gap: 24px; padding: 0 8px; margin-top: 0;">
+                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative;">
+                        <div style="width: 10px; height: 10px; background: #FFB472; border-radius: 50%; margin-top: -5px;"></div>
+                        <span style="font-size: 0.8rem; color: #717892;">An 1</span>
+                        <span style="font-size: 0.95rem; font-weight: 700; color: #FFB472;">+14 928 €</span>
+                        <span style="font-size: 0.72rem; color: #9BA1B6;">20 000 users</span>
+                    </div>
+                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative;">
+                        <div style="width: 10px; height: 10px; background: #FFB472; border-radius: 50%; margin-top: -5px;"></div>
+                        <span style="font-size: 0.8rem; color: #717892;">An 2</span>
+                        <span style="font-size: 0.95rem; font-weight: 700; color: #FFB472;">+69 699 €</span>
+                        <span style="font-size: 0.72rem; color: #9BA1B6;">28 000 users</span>
+                    </div>
+                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative;">
+                        <div style="width: 10px; height: 10px; background: #FFB472; border-radius: 50%; margin-top: -5px;"></div>
+                        <span style="font-size: 0.8rem; color: #717892;">An 3</span>
+                        <span style="font-size: 0.95rem; font-weight: 700; color: #FFB472;">+134 979 €</span>
+                        <span style="font-size: 0.72rem; color: #9BA1B6;">39 200 users</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- Slide 6 : Marketing et communication -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="slide" data-slide="5">
+    <div class="content">
+        <h2 class="animate-item"><i class="fas fa-bullhorn icon"></i> Marketing et communication</h2>
+        <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 24px;">
+            <div class="feature-card animate-item" style="width: calc(33.33% - 14px);">
+                <i class="fas fa-globe feature-icon"></i>
+                <div class="feature-title">Site vitrine</div>
+                <div class="feature-desc">cashou.app déployée sur Vercel avec formulaire de pré-inscription iOS/Android.</div>
+            </div>
+            <div class="feature-card animate-item" style="width: calc(33.33% - 14px);">
+                <i class="fab fa-linkedin feature-icon"></i>
+                <div class="feature-title">LinkedIn</div>
+                <div class="feature-desc">Page entreprise active avec posts réguliers sur l'avancement et l'éducation financière.</div>
+            </div>
+            <div class="feature-card animate-item" style="width: calc(33.33% - 14px);">
+                <i class="fas fa-image feature-icon"></i>
+                <div class="feature-title">Affiche / Print</div>
+                <div class="feature-desc">Supports visuels identité Cashou pour l'affichage campus et les événements.</div>
+            </div>
+            <div class="feature-card animate-item" style="width: calc(33.33% - 14px);">
+                <i class="fas fa-envelope feature-icon"></i>
+                <div class="feature-title">Collecte emails</div>
+                <div class="feature-desc">Pré-inscriptions par plateforme avec vérification d'email et option de désabonnement.</div>
+            </div>
+            <div class="feature-card animate-item" style="width: calc(33.33% - 14px);">
+                <i class="fas fa-chart-bar feature-icon"></i>
+                <div class="feature-title">Analytics</div>
+                <div class="feature-desc">Suivi des visites et conversions sans Google Analytics, conforme RGPD.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- Slide 7 : Organisation du travail -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="slide" data-slide="6">
+    <div class="content">
+        <h2 class="animate-item"><i class="fas fa-tasks icon"></i> Organisation du travail</h2>
+        <div class="feature-grid">
+            <div class="feature-card animate-item">
+                <i class="fas fa-book feature-icon"></i>
+                <div class="feature-title">Notion</div>
+            </div>
+            <div class="feature-card animate-item">
+                <i class="fas fa-ticket-alt feature-icon"></i>
+                <div class="feature-title">Tickets et sprints</div>
+            </div>
+            <div class="feature-card animate-item">
+                <i class="fas fa-code-branch feature-icon"></i>
+                <div class="feature-title">Conventions & Process</div>
+            </div>
+            <div class="feature-card animate-item">
+                <i class="fas fa-sync-alt feature-icon"></i>
+                <div class="feature-title">Synchronisation équipe</div>
+            </div>
+            <div class="feature-card animate-item">
+                <i class="fas fa-file-code feature-icon"></i>
+                <div class="feature-title">Documentation</div>
+            </div>
+            <div class="feature-card animate-item">
+                <i class="fas fa-project-diagram feature-icon"></i>
+                <div class="feature-title">Outils de gestion de projet</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- Slide 8 : Documentation automatique -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="slide" data-slide="7">
+    <div class="content">
+        <h2 class="animate-item"><i class="fas fa-file-alt icon"></i> Documentation automatique</h2>
+        <div class="advantage-grid">
+            <div class="advantage-item animate-item">
+                <i class="fas fa-plug" style="font-size: 2rem; color: #FFB472; margin-bottom: 10px; display: block;"></i>
+                <h4>OpenAPI / Swagger</h4>
+                <p>Spécification générée automatiquement depuis les routes TypeScript — toujours synchronisée avec le code.</p>
+            </div>
+            <div class="advantage-item animate-item">
+                <i class="fas fa-database" style="font-size: 2rem; color: #FFB472; margin-bottom: 10px; display: block;"></i>
+                <h4>Prisma Docs</h4>
+                <p>Schéma auto-documenté, génération du client typé — le modèle de données est la source de vérité.</p>
+            </div>
+            <div class="advantage-item animate-item">
+                <i class="fas fa-vial" style="font-size: 2rem; color: #FFB472; margin-bottom: 10px; display: block;"></i>
+                <h4>Collection Bruno</h4>
+                <p>Toutes les routes API versionnées dans Bruno (équivalent open-source de Postman), committées dans le repo.</p>
+            </div>
+        </div>
+        <div class="value-grid animate-item" style="margin-top: 20px;">
+            <div class="value-card">
+                <h3><i class="fas fa-terminal icon"></i> Outillage développeur</h3>
+                <p>Génération de types depuis Prisma, scripts de migration, hooks de build — la chaîne d'outils automatise les tâches répétitives et réduit les erreurs manuelles.</p>
+            </div>
+            <div class="value-card">
+                <h3><i class="fas fa-sync icon"></i> Toujours à jour</h3>
+                <p>La documentation est un artefact du code, pas une tâche séparée. Chaque changement de schéma ou de route met à jour la doc via les hooks de build.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- Slide 9 : Stack technique — Vue d'ensemble -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="slide" data-slide="8">
+    <div class="content">
+        <h2 class="animate-item"><i class="fas fa-layer-group icon"></i> Stack technique</h2>
+        <div class="stack-grid">
+            <div class="stack-card animate-item">
+                <i class="fas fa-database"></i>
+                <h3>Base de données</h3>
+                <p>PostgreSQL<br>Prisma ORM<br>2 schémas séparés</p>
+            </div>
+            <div class="stack-card animate-item">
+                <i class="fas fa-server"></i>
+                <h3>API</h3>
+                <p>Bun · TypeScript<br>tRPC · Better-Auth</p>
+            </div>
+            <div class="stack-card animate-item">
+                <i class="fas fa-tools"></i>
+                <h3>Backoffice</h3>
+                <p>React · Vite<br>React Router</p>
+            </div>
+            <div class="stack-card animate-item">
+                <i class="fas fa-mobile-alt"></i>
+                <h3>App mobile</h3>
+                <p>React Native<br>Expo<br>React Query</p>
+            </div>
+            <div class="stack-card animate-item">
+                <i class="fas fa-globe"></i>
+                <h3>Site web</h3>
+                <p>Astro<br>Vercel</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- Slide 10 : Base de données -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="slide" data-slide="9">
+    <div class="content">
+        <h2 class="animate-item"><i class="fas fa-database icon"></i> Base de données</h2>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 28px;">
+            <!-- Métriques -->
+            <div class="animate-item" style="display: flex; gap: 20px; justify-content: center;">
+                <div style="background: #EEEEF6; border-radius: 16px; padding: 20px 40px; text-align: center;">
+                    <div style="font-size: 2.8rem; font-weight: 800; color: #FFB472; line-height: 1;">35</div>
+                    <div style="font-size: 0.85rem; color: #717892; margin-top: 6px;">tables</div>
+                </div>
+                <div style="background: #EEEEF6; border-radius: 16px; padding: 20px 40px; text-align: center;">
+                    <div style="font-size: 2.8rem; font-weight: 800; color: #FFB472; line-height: 1;">7</div>
+                    <div style="font-size: 0.85rem; color: #717892; margin-top: 6px;">domaines</div>
+                </div>
+            </div>
+            <!-- Stack -->
+            <div class="animate-item" style="display: flex; align-items: center; gap: 10px; justify-content: center;">
+                <div style="background: #FFFFFF; border: 1px solid #E4E8F2; border-radius: 12px; padding: 14px 40px; text-align: center;">
+                    <span style="font-size: 1.8rem; display: block; margin-bottom: 6px;">🐘</span>
+                    <div style="font-weight: 700; font-size: 0.9rem; color: #1A1C2E;">PostgreSQL</div>
+                </div>
+                <span style="color: #FFB472; font-size: 1.2rem;">▸</span>
+                <div style="background: #FFFFFF; border: 1px solid #E4E8F2; border-radius: 12px; padding: 14px 40px; text-align: center;">
+                    <i class="fas fa-gem" style="color: #FFB472; font-size: 1.4rem; display: block; margin-bottom: 6px;"></i>
+                    <div style="font-weight: 700; font-size: 0.9rem; color: #1A1C2E;">Prisma ORM</div>
+                </div>
+            </div>
+            <!-- 7 domaines -->
+            <div class="animate-item" style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                <span style="background: #FFF7ED; border: 1px solid rgba(255,180,114,0.35); color: #1A1C2E; font-size: 0.88rem; font-weight: 600; padding: 8px 18px; border-radius: 20px;"><i class="fas fa-user" style="color:#FFB472; margin-right:6px;"></i>Auth</span>
+                <span style="background: #FFF7ED; border: 1px solid rgba(255,180,114,0.35); color: #1A1C2E; font-size: 0.88rem; font-weight: 600; padding: 8px 18px; border-radius: 20px;"><i class="fas fa-layer-group" style="color:#FFB472; margin-right:6px;"></i>Niveaux</span>
+                <span style="background: #FFF7ED; border: 1px solid rgba(255,180,114,0.35); color: #1A1C2E; font-size: 0.88rem; font-weight: 600; padding: 8px 18px; border-radius: 20px;"><i class="fas fa-gamepad" style="color:#FFB472; margin-right:6px;"></i>Game</span>
+                <span style="background: #FFF7ED; border: 1px solid rgba(255,180,114,0.35); color: #1A1C2E; font-size: 0.88rem; font-weight: 600; padding: 8px 18px; border-radius: 20px;"><i class="fas fa-chart-line" style="color:#FFB472; margin-right:6px;"></i>Marché</span>
+                <span style="background: #FFF7ED; border: 1px solid rgba(255,180,114,0.35); color: #1A1C2E; font-size: 0.88rem; font-weight: 600; padding: 8px 18px; border-radius: 20px;"><i class="fas fa-wallet" style="color:#FFB472; margin-right:6px;"></i>Portefeuille</span>
+                <span style="background: #FFF7ED; border: 1px solid rgba(255,180,114,0.35); color: #1A1C2E; font-size: 0.88rem; font-weight: 600; padding: 8px 18px; border-radius: 20px;"><i class="fas fa-brain" style="color:#FFB472; margin-right:6px;"></i>Quiz & Dico</span>
+                <span style="background: #FFF7ED; border: 1px solid rgba(255,180,114,0.35); color: #1A1C2E; font-size: 0.88rem; font-weight: 600; padding: 8px 18px; border-radius: 20px;"><i class="fas fa-bell" style="color:#FFB472; margin-right:6px;"></i>Contenu</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- Slide 11 : API -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="slide" data-slide="10">
+    <div class="content">
+        <h2 class="animate-item"><i class="fas fa-plug icon"></i> API</h2>
+        <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 24px;">
+            <div class="feature-card animate-item" style="width: calc(33.33% - 14px);">
+                <i class="fas fa-bolt feature-icon"></i>
+                <div class="feature-title">Bun runtime</div>
+            </div>
+            <div class="feature-card animate-item" style="width: calc(33.33% - 14px);">
+                <i class="fas fa-exchange-alt feature-icon"></i>
+                <div class="feature-title">tRPC</div>
+            </div>
+            <div class="feature-card animate-item" style="width: calc(33.33% - 14px);">
+                <i class="fas fa-lock feature-icon"></i>
+                <div class="feature-title">Better-Auth</div>
+            </div>
+            <div class="feature-card animate-item" style="width: calc(33.33% - 14px);">
+                <i class="fas fa-shield-alt feature-icon"></i>
+                <div class="feature-title">TypeScript strict</div>
+            </div>
+            <div class="feature-card animate-item" style="width: calc(33.33% - 14px);">
+                <img src="bruno.png" alt="Bruno" style="width: 52px; height: 52px; border-radius: 50%; object-fit: cover; object-position: center top;">
+                <div class="feature-title">Collection Bruno</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- Slide 12 : Backoffice -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="slide" data-slide="11">
+    <div class="content">
+        <h2 class="animate-item"><i class="fas fa-tools icon"></i> Backoffice</h2>
+        <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 24px;">
+            <div class="feature-card animate-item" style="width: calc(33.33% - 14px);">
+                <i class="fas fa-edit feature-icon"></i>
+                <div class="feature-title">Gestion du contenu</div>
+            </div>
+            <div class="feature-card animate-item" style="width: calc(33.33% - 14px);">
+                <i class="fas fa-copy feature-icon"></i>
+                <div class="feature-title">Schéma dédié</div>
+            </div>
+            <div class="feature-card animate-item" style="width: calc(33.33% - 14px);">
+                <i class="fas fa-users-cog feature-icon"></i>
+                <div class="feature-title">Rôles et accès</div>
+            </div>
+            <div class="feature-card animate-item" style="width: calc(33.33% - 14px);">
+                <i class="fas fa-chart-pie feature-icon"></i>
+                <div class="feature-title">Tableau de bord</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- Slide 13 : APP — Game Design -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="slide" data-slide="12">
+    <div class="content">
+        <h2 class="animate-item"><i class="fas fa-gamepad icon"></i> App : Game Design</h2>
+        <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 24px;">
+            <div class="feature-card animate-item" style="width: calc(33.33% - 14px);">
+                <i class="fas fa-layer-group feature-icon"></i>
+                <div class="feature-title">20 niveaux progressifs</div>
+            </div>
+            <div class="feature-card animate-item" style="width: calc(33.33% - 14px);">
+                <i class="fas fa-bolt feature-icon"></i>
+                <div class="feature-title">57 événements de marché</div>
+            </div>
+            <div class="feature-card animate-item" style="width: calc(33.33% - 14px);">
+                <i class="fas fa-bullseye feature-icon"></i>
+                <div class="feature-title">Objectifs principal + bonus</div>
+            </div>
+            <div class="feature-card animate-item" style="width: calc(33.33% - 14px);">
+                <i class="fas fa-piggy-bank feature-icon"></i>
+                <div class="feature-title">7 enveloppes fiscales</div>
+            </div>
+            <div class="feature-card animate-item" style="width: calc(33.33% - 14px);">
+                <i class="fas fa-hand-pointer feature-icon"></i>
+                <div class="feature-title">Tutoriel niveau 1</div>
+            </div>
+            <div class="feature-card animate-item" style="width: calc(33.33% - 14px);">
+                <i class="fas fa-trophy feature-icon"></i>
+                <div class="feature-title">Meilleur score persistant</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- Slide 14 : APP — Front -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="slide" data-slide="13">
+    <div class="content">
+        <h2 class="animate-item"><i class="fas fa-mobile-alt icon"></i> App : Front</h2>
+        <div style="display: flex; flex-direction: column; gap: 28px;">
+            <!-- Stack -->
+            <div class="animate-item" style="display: flex; gap: 14px; justify-content: center;">
+                <div style="background: #FFFFFF; border: 1px solid #E4E8F2; border-radius: 14px; padding: 16px 28px; text-align: center;">
+                    <i class="fas fa-mobile-alt" style="color: #FFB472; font-size: 1.4rem; display: block; margin-bottom: 8px;"></i>
+                    <div style="font-weight: 700; font-size: 0.9rem; color: #1A1C2E;">React Native · Expo</div>
+                </div>
+                <span style="display: flex; align-items: center; color: #FFB472; font-size: 1.4rem;">▸</span>
+                <div style="background: #FFFFFF; border: 1px solid #E4E8F2; border-radius: 14px; padding: 16px 28px; text-align: center;">
+                    <i class="fas fa-sync-alt" style="color: #FFB472; font-size: 1.4rem; display: block; margin-bottom: 8px;"></i>
+                    <div style="font-weight: 700; font-size: 0.9rem; color: #1A1C2E;">React Query</div>
+                </div>
+                <span style="display: flex; align-items: center; color: #FFB472; font-size: 1.4rem;">▸</span>
+                <div style="background: #FFFFFF; border: 1px solid #E4E8F2; border-radius: 14px; padding: 16px 28px; text-align: center;">
+                    <i class="fas fa-palette" style="color: #FFB472; font-size: 1.4rem; display: block; margin-bottom: 8px;"></i>
+                    <div style="font-weight: 700; font-size: 0.9rem; color: #1A1C2E;">Thème unifié</div>
+                </div>
+            </div>
+            <!-- Séparateur -->
+            <div class="animate-item" style="display: flex; align-items: center; gap: 14px;">
+                <div style="flex: 1; height: 1px; background: #E4E8F2;"></div>
+                <span style="font-size: 0.78rem; font-weight: 700; color: #1A1C2E; text-transform: uppercase; letter-spacing: 0.1em;">Écrans</span>
+                <div style="flex: 1; height: 1px; background: #E4E8F2;"></div>
+            </div>
+            <!-- Écrans -->
+            <div class="animate-item" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 14px;">
+                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 22px; font-size: 0.88rem; font-weight: 600; color: #1A1C2E; display: flex; align-items: center; gap: 8px;">🏠 Accueil</div>
+                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 22px; font-size: 0.88rem; font-weight: 600; color: #1A1C2E; display: flex; align-items: center; gap: 8px;">📝 Daily quiz</div>
+                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 22px; font-size: 0.88rem; font-weight: 600; color: #1A1C2E; display: flex; align-items: center; gap: 8px;">📖 Historique quiz</div>
+                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 22px; font-size: 0.88rem; font-weight: 600; color: #1A1C2E; display: flex; align-items: center; gap: 8px;">📊 Liste des niveaux</div>
+                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 22px; font-size: 0.88rem; font-weight: 600; color: #1A1C2E; display: flex; align-items: center; gap: 8px;">💰 Assets</div>
+                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 22px; font-size: 0.88rem; font-weight: 600; color: #1A1C2E; display: flex; align-items: center; gap: 8px;">🔄 Transactions</div>
+                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 22px; font-size: 0.88rem; font-weight: 600; color: #1A1C2E; display: flex; align-items: center; gap: 8px;">⚡ Événements</div>
+                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 22px; font-size: 0.88rem; font-weight: 600; color: #1A1C2E; display: flex; align-items: center; gap: 8px;">🧠 Quiz fin de partie</div>
+                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 22px; font-size: 0.88rem; font-weight: 600; color: #1A1C2E; display: flex; align-items: center; gap: 8px;">🏁 Récap</div>
+                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 22px; font-size: 0.88rem; font-weight: 600; color: #1A1C2E; display: flex; align-items: center; gap: 8px;">📚 Dico</div>
+                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 22px; font-size: 0.88rem; font-weight: 600; color: #1A1C2E; display: flex; align-items: center; gap: 8px;">👤 Profil</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- Slide 15 : Qualité -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="slide" data-slide="14">
+    <div class="content">
+        <h2 class="animate-item"><i class="fas fa-shield-alt icon"></i> Qualité</h2>
+        <div class="quality-row">
+            <div class="quality-item animate-item">
+                <i class="fas fa-code quality-icon"></i>
+                <div class="quality-text">
+                    <h4>TypeScript strict mode</h4>
+                    <p>Typage complet sur API et App — les erreurs de type sont détectées à la compilation, pas en production.</p>
+                </div>
+            </div>
+            <div class="quality-item animate-item">
+                <i class="fas fa-search quality-icon"></i>
+                <div class="quality-text">
+                    <h4>ESLint + formatage</h4>
+                    <p>Règles ESLint strictes appliquées à chaque PR — code homogène sur toute la base de code.</p>
+                </div>
+            </div>
+            <div class="quality-item animate-item">
+                <i class="fas fa-code-branch quality-icon"></i>
+                <div class="quality-text">
+                    <h4>Branch protection</h4>
+                    <p>Merge sur main bloqué sans review et sans CI verte — aucun code non validé en production.</p>
+                </div>
+            </div>
+            <div class="quality-item animate-item">
+                <i class="fas fa-history quality-icon"></i>
+                <div class="quality-text">
+                    <h4>Conventional commits</h4>
+                    <p>Historique git lisible, CHANGELOG générable automatiquement, versioning sémantique.</p>
+                </div>
+            </div>
+            <div class="quality-item animate-item">
+                <i class="fas fa-gem quality-icon"></i>
+                <div class="quality-text">
+                    <h4>Prisma migrations versionnées</h4>
+                    <p>Chaque changement de schéma DB est une migration versionée, rejouable et réversible.</p>
+                </div>
+            </div>
+            <div class="quality-item animate-item">
+                <i class="fas fa-eye quality-icon"></i>
+                <div class="quality-text">
+                    <h4>Revue de code systématique</h4>
+                    <p>Chaque PR est relue par un second développeur avant merge — détection de bugs, respect des conventions, qualité du code vérifiée en continu.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- Slide 16 : Tests -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="slide" data-slide="15">
+    <div class="content">
+        <h2 class="animate-item"><i class="fas fa-vial icon"></i> Tests</h2>
+        <div class="test-grid">
+            <div class="test-card animate-item">
+                <div class="test-number">1</div>
+                <h4>Tests unitaires</h4>
+                <ul>
+                    <li>Bun test runner natif</li>
+                    <li>Logique métier isolée</li>
+                    <li>Calculs financiers (frais, intérêts, score)</li>
+                    <li>Validateurs de données</li>
+                </ul>
+            </div>
+            <div class="test-card animate-item">
+                <div class="test-number">2</div>
+                <h4>Tests d'intégration</h4>
+                <ul>
+                    <li>Base de données réelle (pas de mock)</li>
+                    <li>Factory de données centralisée</li>
+                    <li>Tests isolés et reproductibles</li>
+                    <li>Nettoyage auto après chaque test</li>
+                </ul>
+            </div>
+            <div class="test-card animate-item">
+                <div class="test-number">3</div>
+                <h4>Tests E2E</h4>
+                <ul>
+                    <li>Parcours utilisateur complet</li>
+                    <li>Inscription → quiz → progression</li>
+                    <li>Scénarios métier réels</li>
+                    <li>Déclenchés sur chaque PR</li>
+                </ul>
+            </div>
+        </div>
+        <div class="pipeline-flow animate-item" style="margin-top: 24px;">
+            <div class="pipeline-step">
+                <i class="fas fa-code-branch"></i>
+                <h4>Push PR</h4>
+                <p>Déclencheur CI</p>
+            </div>
+            <span class="pipeline-arrow"><i class="fas fa-arrow-right"></i></span>
+            <div class="pipeline-step">
+                <i class="fas fa-search"></i>
+                <h4>Lint + Types</h4>
+                <p>ESLint + TSC</p>
+            </div>
+            <span class="pipeline-arrow"><i class="fas fa-arrow-right"></i></span>
+            <div class="pipeline-step">
+                <i class="fas fa-cube"></i>
+                <h4>Build Docker</h4>
+                <p>+ Prisma client</p>
+            </div>
+            <span class="pipeline-arrow"><i class="fas fa-arrow-right"></i></span>
+            <div class="pipeline-step">
+                <i class="fas fa-vial"></i>
+                <h4>Tests</h4>
+                <p>Unit + Integ + E2E</p>
+            </div>
+            <span class="pipeline-arrow"><i class="fas fa-arrow-right"></i></span>
+            <div class="pipeline-step">
+                <i class="fas fa-check-circle"></i>
+                <h4>Merge autorisé</h4>
+                <p>Branch protection</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- Slide 17 : Démo -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="slide demo-slide" data-slide="16">
+    <div class="content">
+        <h1 class="animate-item"><i class="fas fa-film" style="color: #FFB472;"></i></h1>
+        <h2 class="animate-item" style="color: #FFB472; font-size: 3.5rem;">Démo !</h2>
+        <p class="animate-item">Passons à la démonstration</p>
+    </div>
+</div>
+
+<!-- Slide number -->
+<div class="slide-num" id="slide-num">1 / 17</div>
+
+<!-- Indicators -->
+<div class="slide-indicator">
+    <span class="indicator active" onclick="goToSlide(0)"></span>
+    <span class="indicator" onclick="goToSlide(1)"></span>
+    <span class="indicator" onclick="goToSlide(2)"></span>
+    <span class="indicator" onclick="goToSlide(3)"></span>
+    <span class="indicator" onclick="goToSlide(4)"></span>
+    <span class="indicator" onclick="goToSlide(5)"></span>
+    <span class="indicator" onclick="goToSlide(6)"></span>
+    <span class="indicator" onclick="goToSlide(7)"></span>
+    <span class="indicator" onclick="goToSlide(8)"></span>
+    <span class="indicator" onclick="goToSlide(9)"></span>
+    <span class="indicator" onclick="goToSlide(10)"></span>
+    <span class="indicator" onclick="goToSlide(11)"></span>
+    <span class="indicator" onclick="goToSlide(12)"></span>
+    <span class="indicator" onclick="goToSlide(13)"></span>
+    <span class="indicator" onclick="goToSlide(14)"></span>
+    <span class="indicator" onclick="goToSlide(15)"></span>
+    <span class="indicator" onclick="goToSlide(16)"></span>
+</div>
+
+<script>
+    let currentSlide = 0;
+    let slideAnimations = {};
+    const slides = document.querySelectorAll('.slide');
+    const indicators = document.querySelectorAll('.indicator');
+    const totalSlides = slides.length;
+    const slideNumEl = document.getElementById('slide-num');
+
+    slides.forEach((_, i) => { slideAnimations[i] = 0; });
+
+    function getAnimateItems(idx) {
+        return slides[idx] ? slides[idx].querySelectorAll('.animate-item') : [];
+    }
+
+    function revealNextItem(idx) {
+        const items = getAnimateItems(idx);
+        const cur = slideAnimations[idx];
+        if (cur < items.length) {
+            items[cur].classList.add('visible');
+            slideAnimations[idx] = cur + 1;
+            return false;
+        }
+        return true;
+    }
+
+    function resetSlideAnimations(idx) {
+        getAnimateItems(idx).forEach(el => el.classList.remove('visible'));
+        slideAnimations[idx] = 0;
+    }
+
+    function updateSlideNum() {
+        if (slideNumEl) slideNumEl.textContent = (currentSlide + 1) + ' / ' + totalSlides;
+    }
+
+    function showSlide(n, revealAll = false) {
+        if (revealAll) document.body.classList.add('no-transitions');
+
+        slides[currentSlide].classList.remove('active');
+        indicators[currentSlide].classList.remove('active');
+
+        currentSlide = (n + totalSlides) % totalSlides;
+
+        slides[currentSlide].classList.add('active');
+        indicators[currentSlide].classList.add('active');
+        updateSlideNum();
+
+        resetSlideAnimations(currentSlide);
+
+        const isDemo = slides[currentSlide].classList.contains('demo-slide');
+
+        if (revealAll || isDemo) {
+            const items = getAnimateItems(currentSlide);
+            items.forEach(el => el.classList.add('visible'));
+            slideAnimations[currentSlide] = items.length;
+            if (revealAll) setTimeout(() => document.body.classList.remove('no-transitions'), 10);
+        } else {
+            revealNextItem(currentSlide);
+        }
+    }
+
+    function nextSlide() {
+        const items = getAnimateItems(currentSlide);
+        const allRevealed = slideAnimations[currentSlide] >= items.length;
+        const isDemo = slides[currentSlide].classList.contains('demo-slide');
+        if (isDemo || allRevealed) {
+            showSlide(currentSlide + 1);
+        } else {
+            revealNextItem(currentSlide);
+        }
+    }
+
+    function previousSlide() {
+        const items = getAnimateItems(currentSlide);
+        if (slideAnimations[currentSlide] > 0 && slideAnimations[currentSlide] < items.length + 1) {
+            const cur = slideAnimations[currentSlide] - 1;
+            items[cur].classList.remove('visible');
+            slideAnimations[currentSlide] = cur;
+        } else {
+            showSlide(currentSlide - 1, true);
+        }
+    }
+
+    function goToSlide(n) { showSlide(n, true); }
+
+    document.addEventListener('keydown', e => {
+        if (['ArrowRight','ArrowDown','PageDown',' '].includes(e.key)) { e.preventDefault(); nextSlide(); }
+        else if (['ArrowLeft','ArrowUp','PageUp'].includes(e.key)) { e.preventDefault(); previousSlide(); }
+    });
+
+    let touchStartX = 0;
+    document.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; });
+    document.addEventListener('touchend', e => {
+        const dx = e.changedTouches[0].screenX - touchStartX;
+        if (dx > 50) previousSlide();
+        if (dx < -50) nextSlide();
+    });
+
+    let isChangingSlide = false;
+    let wheelDeltaX = 0;
+    let lastWheelTime = 0;
+
+    document.addEventListener('wheel', e => {
+        if (isChangingSlide) { e.preventDefault(); return; }
+        if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+            e.preventDefault();
+            const now = Date.now();
+            if (now - lastWheelTime > 50) wheelDeltaX = 0;
+            wheelDeltaX += e.deltaX;
+            lastWheelTime = now;
+            if (Math.abs(wheelDeltaX) > 500) {
+                isChangingSlide = true;
+                if (wheelDeltaX > 0) showSlide(currentSlide + 1, true);
+                else showSlide(currentSlide - 1, true);
+                wheelDeltaX = 0;
+                setTimeout(() => { isChangingSlide = false; }, 400);
+            }
+        }
+    }, { passive: false });
+
+    showSlide(0, true);
+</script>
+</body>
+</html>
