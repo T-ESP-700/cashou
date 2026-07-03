@@ -9,8 +9,36 @@ type ServerInstance = Awaited<ReturnType<typeof startServer>>;
 const TEST_PORT = process.env.TEST_PORT || '3001';
 const TEST_URL = `http://localhost:${TEST_PORT}`;
 
-function isErrorWithCode(error: unknown): error is { data?: { code?: string }; code?: string } {
+type ErrorWithCode = { data?: { code?: string }; code?: string; message?: string };
+
+function isErrorWithCode(error: unknown): error is ErrorWithCode {
   return typeof error === 'object' && error !== null;
+}
+
+// Assertion inconditionnelle : force la vérification du code d'erreur tRPC.
+// Si le code n'est pas surface (bug client tRPC v11), on log et échoue explicitement.
+function expectTRPCErrorCode(error: unknown, expectedCode: string): void {
+  expect(error).toBeDefined();
+  expect(isErrorWithCode(error)).toBe(true);
+  const err = error as ErrorWithCode;
+  const code = err.data?.code ?? err.code;
+  expect(code).toBe(expectedCode);
+}
+
+async function expectRejection<T>(
+  promise: Promise<T>,
+  expectedCode: string
+): Promise<void> {
+  let thrown: unknown = undefined;
+  try {
+    await promise;
+  } catch (error) {
+    thrown = error;
+  }
+  if (thrown === undefined) {
+    throw new Error(`Expected rejection with code ${expectedCode} but promise resolved`);
+  }
+  expectTRPCErrorCode(thrown, expectedCode);
 }
 
 describe('tRPC Routes Tests', () => {
@@ -18,13 +46,8 @@ describe('tRPC Routes Tests', () => {
   let server: ServerInstance;
 
   beforeAll(async () => {
-    // Set TEST_PORT env var before starting server
     process.env.TEST_PORT = TEST_PORT;
-    
-    // Start the server explicitly
     server = await startServer();
-
-    // Create tRPC client
     client = createTRPCProxyClient<AppRouter>({
       links: [
         httpBatchLink({
@@ -52,76 +75,53 @@ describe('tRPC Routes Tests', () => {
   describe('Auth Router', () => {
     describe('Public Procedures', () => {
       it('should handle invalid login credentials', async () => {
-        try {
-          await client.auth.login.mutate({
+        await expectRejection(
+          client.auth.login.mutate({
             email: 'invalid@example.com',
             password: 'invalidpassword',
-          });
-          expect(true).toBe(false); // Should not reach here
-        } catch (error: unknown) {
-          if (isErrorWithCode(error)) {
-            expect(error.data?.code || error.code).toBe('UNAUTHORIZED');
-          }
-        }
+          }),
+          'UNAUTHORIZED'
+        );
       });
 
       it('should handle invalid registration data', async () => {
-        try {
-          await client.auth.register.mutate({
+        await expectRejection(
+          client.auth.register.mutate({
             email: 'invalid-email',
             password: 'short',
-          });
-          expect(true).toBe(false); // Should not reach here
-        } catch (error: unknown) {
-          if (isErrorWithCode(error)) {
-            expect(error.data?.code || error.code).toBe('BAD_REQUEST');
-          }
-        }
+          }),
+          'BAD_REQUEST'
+        );
       });
 
       it('should handle forgot password (not implemented)', async () => {
+        // Le serveur renvoie TRPCError NOT_IMPLEMENTED. La sérialisation client tRPC
+        // v11 peut être inconsistante — on garde une assertion inconditionnelle
+        // "rejeté avec un objet d'erreur" et on renforce si le code est présent.
+        let thrown: unknown = undefined;
         try {
           await client.auth.forgotPassword.mutate({
             email: 'nonexistent@example.com',
           });
-          expect(true).toBe(false); // Should not reach here
-        } catch (error: unknown) {
-          // Server throws TRPCError with code NOT_IMPLEMENTED. The client may surface
-          // the code via error.data.code, error.code, or just as a thrown error —
-          // tRPC's serialization for NOT_IMPLEMENTED is inconsistent across versions.
-          // We just verify SOMETHING was thrown (forgot password is rejected).
-          expect(error).toBeDefined();
-          if (isErrorWithCode(error)) {
-            const code = error.data?.code || error.code;
-            if (code !== undefined) {
-              expect(code).toBe('NOT_IMPLEMENTED');
-            }
-          }
+        } catch (error) {
+          thrown = error;
+        }
+        expect(thrown).toBeDefined();
+        expect(isErrorWithCode(thrown)).toBe(true);
+        const code = (thrown as ErrorWithCode).data?.code ?? (thrown as ErrorWithCode).code;
+        if (code !== undefined) {
+          expect(code).toBe('NOT_IMPLEMENTED');
         }
       });
     });
 
     describe('Protected Procedures', () => {
       it('should reject unauthenticated requests', async () => {
-        try {
-          await client.auth.me.query();
-          expect(true).toBe(false); // Should not reach here
-        } catch (error: unknown) {
-          if (isErrorWithCode(error)) {
-            expect(error.data?.code || error.code).toBe('UNAUTHORIZED');
-          }
-        }
+        await expectRejection(client.auth.me.query(), 'UNAUTHORIZED');
       });
 
       it('should reject unauthenticated logout', async () => {
-        try {
-          await client.auth.logout.mutate();
-          expect(true).toBe(false); // Should not reach here
-        } catch (error: unknown) {
-          if (isErrorWithCode(error)) {
-            expect(error.data?.code || error.code).toBe('UNAUTHORIZED');
-          }
-        }
+        await expectRejection(client.auth.logout.mutate(), 'UNAUTHORIZED');
       });
     });
   });
@@ -129,98 +129,66 @@ describe('tRPC Routes Tests', () => {
   describe('User Router', () => {
     describe('Protected Procedures', () => {
       it('should reject unauthenticated user list', async () => {
-        try {
-          await client.user.list.query({
-            limit: 10,
-            offset: 0,
-          });
-          expect(true).toBe(false); // Should not reach here
-        } catch (error: unknown) {
-          if (isErrorWithCode(error)) {
-            expect(error.data?.code || error.code).toBe('UNAUTHORIZED');
-          }
-        }
+        await expectRejection(
+          client.user.list.query({ limit: 10, offset: 0 }),
+          'UNAUTHORIZED'
+        );
       });
 
       it('should reject unauthenticated user getById', async () => {
-        try {
-          await client.user.getById.query('some-user-id');
-          expect(true).toBe(false); // Should not reach here
-        } catch (error: unknown) {
-          if (isErrorWithCode(error)) {
-            expect(error.data?.code || error.code).toBe('UNAUTHORIZED');
-          }
-        }
+        await expectRejection(
+          client.user.getById.query('some-user-id'),
+          'UNAUTHORIZED'
+        );
       });
 
       it('should reject unauthenticated user create', async () => {
-        try {
-          await client.user.create.mutate({
+        await expectRejection(
+          client.user.create.mutate({
             email: 'test@example.com',
             username: 'testuser',
             password: 'password123',
-          });
-          expect(true).toBe(false); // Should not reach here
-        } catch (error: unknown) {
-          if (isErrorWithCode(error)) {
-            expect(error.data?.code || error.code).toBe('UNAUTHORIZED');
-          }
-        }
+          }),
+          'UNAUTHORIZED'
+        );
       });
 
       it('should reject unauthenticated user update', async () => {
-        try {
-          await client.user.update.mutate({
+        await expectRejection(
+          client.user.update.mutate({
             id: 'some-user-id',
             username: 'newusername',
-          });
-          expect(true).toBe(false); // Should not reach here
-        } catch (error: unknown) {
-          if (isErrorWithCode(error)) {
-            expect(error.data?.code || error.code).toBe('UNAUTHORIZED');
-          }
-        }
+          }),
+          'UNAUTHORIZED'
+        );
       });
 
       it('should reject unauthenticated user delete', async () => {
-        try {
-          await client.user.delete.mutate('some-user-id');
-          expect(true).toBe(false); // Should not reach here
-        } catch (error: unknown) {
-          if (isErrorWithCode(error)) {
-            expect(error.data?.code || error.code).toBe('UNAUTHORIZED');
-          }
-        }
+        await expectRejection(
+          client.user.delete.mutate('some-user-id'),
+          'UNAUTHORIZED'
+        );
       });
 
       it('should reject unauthenticated profile update', async () => {
-        try {
-          await client.user.updateProfile.mutate({
-            username: 'newusername',
-          });
-          expect(true).toBe(false); // Should not reach here
-        } catch (error: unknown) {
-          if (isErrorWithCode(error)) {
-            expect(error.data?.code || error.code).toBe('UNAUTHORIZED');
-          }
-        }
+        await expectRejection(
+          client.user.updateProfile.mutate({ username: 'newusername' }),
+          'UNAUTHORIZED'
+        );
       });
     });
   });
 
   describe('Error Handling', () => {
     it('should handle malformed JSON in tRPC requests', async () => {
-      try {
-        await fetch(`${TEST_URL}/api/trpc/auth.login`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: 'invalid json',
-        });
-      } catch (error: unknown) {
-        expect(error).toBeDefined();
-      }
+      const response = await fetch(`${TEST_URL}/api/trpc/auth.login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: 'invalid json',
+      });
+      // Le serveur doit rejeter avec un statut d'erreur (>= 400), pas silencer.
+      expect(response.ok).toBe(false);
+      expect(response.status).toBeGreaterThanOrEqual(400);
     });
 
     it('should handle invalid tRPC endpoints', async () => {

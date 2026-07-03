@@ -36,14 +36,10 @@ describe("QuestionService — Tests unitaires", () => {
 
   it("create crée une nouvelle question", async () => {
     const data = { text: "Nouvelle question?", explanation: "Explication" };
-    try {
-      const result = await service.create(data);
-      expect(result.id).toBe(123);
-    } catch (e) {
-      // Accepter une erreur si le service a de la validation
-      expect(true).toBeTrue();
-    }
-    expect(wasMethodCalled("create")).toBeDefined();
+    const result = await service.create(data);
+    expect(result.question.id).toBe(123);
+    expect(result.message).toBe("La question a été créée avec succès");
+    expect(wasMethodCalled("create")).toBeTrue();
   });
 
   it("update met à jour une question", async () => {

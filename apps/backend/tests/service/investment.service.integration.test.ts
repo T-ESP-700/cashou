@@ -15,7 +15,9 @@ import { InvestmentService } from "../../src/trpc/services/investment.service";
 import { IntegrationTestFactory } from "../helpers/integration-test-factory";
 import { setupTestDatabase } from "../helpers/integration-test-setup";
 
-describe("InvestmentService — Tests d'intégration", () => {
+const shouldRun = !!process.env.CASHOU_DB_URL;
+
+(shouldRun ? describe : describe.skip)("InvestmentService — Tests d'intégration", () => {
   setupTestDatabase();
 
   const factory = new IntegrationTestFactory(prisma);
