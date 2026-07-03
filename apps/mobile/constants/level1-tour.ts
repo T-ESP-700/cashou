@@ -87,7 +87,7 @@ export function tourSpotlightText(step: Level1TourStep | null): string {
     case Level1TourStep.SelectLivretAForWithdraw:
       return 'Ouvres le Livret A pour retirer ton argent';
     case Level1TourStep.WithdrawAndMoveToOtherLivret:
-      return 'Déplaces ton argent vers le Livret DDS';
+      return 'Déplaces ton argent vers le Livret Cashou';
     default:
       return '';
   }
@@ -112,7 +112,7 @@ export function tourBubbleForStep(step: Level1TourStep | null, eventPhase: numbe
     case Level1TourStep.SelectLivretAForWithdraw:
       return "Retournes sur ton Livret, appuies sur« Retirer », puis valides pour libérer du cash.";
     case Level1TourStep.WithdrawAndMoveToOtherLivret:
-      return "Le livret DDS est maintenant disponible : choisis-le et déplaces l'argent retiré du Livret A.";
+      return "Le livret Cashou est maintenant disponible : choisis-le et déplaces l'argent retiré du Livret A.";
     case Level1TourStep.PostEventResume:
       return "Appuies sur « Reprendre » pour que la partie continue!";
     case Level1TourStep.SummaryQuizPrompt:
