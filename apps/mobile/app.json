@@ -55,7 +55,10 @@
     },
     "extra": {
       "router": {},
-      "eas": {}
-    }
+      "eas": {
+        "projectId": "c13ec14d-a5dc-41fb-ace9-b190ab050de6"
+      }
+    },
+    "owner": "tang0tom"
   }
 }
