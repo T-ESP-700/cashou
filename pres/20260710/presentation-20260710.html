@@ -155,9 +155,9 @@
         }
         .value-card {
             background: #FFFFFF;
-            border: 1px solid #E4E8F2;
             border-radius: 16px;
             padding: 24px;
+            border: 2px solid #FFB472;
             box-shadow: 0 2px 8px rgba(26,28,46,0.05);
         }
         .value-card h3 { color: #FFB472; margin-bottom: 12px; }
@@ -170,13 +170,15 @@
             margin-top: 24px;
         }
         .feature-card {
-            background: #EEEEF6;
+            background: #ffffff;
             border-radius: 20px;
             padding: 32px 20px 28px;
             display: flex;
             flex-direction: column;
             align-items: center;
             text-align: center;
+            border: 2px solid #FFB472;
+            box-shadow: 0 2px 8px rgba(26,28,46,0.05);
             gap: 18px;
         }
         .feature-card .feature-icon {
@@ -220,7 +222,7 @@
         }
         .metric-card {
             background: #FFFFFF;
-            border: 1px solid #E4E8F2;
+            border: 2px solid #FFB472;
             border-radius: 16px;
             padding: 24px;
             text-align: center;
@@ -239,11 +241,11 @@
         }
         .team-card {
             background: #FFFFFF;
-            border: 1px solid #E4E8F2;
             border-radius: 16px;
             padding: 28px 24px;
             text-align: center;
             width: 200px;
+            border: 2px solid #FFB472;
             box-shadow: 0 2px 8px rgba(26,28,46,0.05);
         }
         .team-avatar {
@@ -354,7 +356,7 @@
             box-shadow: 0 2px 6px rgba(26,28,46,0.04);
         }
         .quality-icon { font-size: 1.6rem; color: #FFB472; flex-shrink: 0; margin-top: 2px; }
-        .quality-text h4 { color: #FFB472; font-size: 1rem; margin-bottom: 5px; }
+        .quality-text h4 { color: #000000; font-size: 1rem; margin-bottom: 5px; }
         .quality-text p { color: #717892; font-size: 0.85rem; line-height: 1.5; }
 
         /* Notion workflow */
@@ -400,14 +402,14 @@
         }
         .stack-card {
             background: #FFFFFF;
-            border: 1px solid #E4E8F2;
             border-radius: 14px;
             padding: 20px 14px;
             text-align: center;
-            box-shadow: 0 2px 6px rgba(26,28,46,0.04);
+            border: 2px solid #FFB472;
+            box-shadow: 0 2px 8px rgba(26,28,46,0.05);
         }
         .stack-card i { font-size: 2.2rem; color: #FFB472; margin-bottom: 12px; display: block; }
-        .stack-card h3 { color: #FFB472; font-size: 1.05rem; margin-bottom: 8px; }
+        .stack-card h3 { color: #000000; font-size: 1.05rem; margin-bottom: 8px; }
         .stack-card p { color: #717892; font-size: 0.82rem; line-height: 1.5; }
 
         /* Pipeline */
@@ -421,12 +423,12 @@
         }
         .pipeline-step {
             background: #FFFFFF;
-            border: 1px solid #E4E8F2;
             border-radius: 12px;
             padding: 14px 20px;
             text-align: center;
             min-width: 120px;
-            box-shadow: 0 2px 6px rgba(26,28,46,0.04);
+            border: 2px solid #FFB472;
+            box-shadow: 0 2px 8px rgba(26,28,46,0.05);
         }
         .pipeline-step i { font-size: 1.5rem; color: #FFB472; margin-bottom: 6px; display: block; }
         .pipeline-step h4 { color: #1A1C2E; font-size: 0.9rem; margin-bottom: 3px; }
@@ -442,9 +444,9 @@
         }
         .test-card {
             background: #FFFFFF;
-            border: 1px solid #E4E8F2;
             border-radius: 14px;
             padding: 22px;
+            border: 2px solid #FFB472;
             box-shadow: 0 2px 8px rgba(26,28,46,0.05);
         }
         .test-card .test-number { font-size: 2.2rem; font-weight: bold; color: #FFB472; }
@@ -471,7 +473,7 @@
             padding: 18px 24px;
             margin-top: 20px;
         }
-        .highlight-box p { color: #3D4266; font-size: 0.95rem; line-height: 1.6; }
+        .highlight-box p { color: #000000; font-size: 0.95rem; line-height: 1.6; }
         .highlight-box strong { color: #FFB472; }
 
         /* Demo */
@@ -558,7 +560,7 @@
             "L'app qui vous apprend à gérer votre argent en toute sécurité"
         </p>
 
-        <div class="metrics-grid animate-item">
+        <div class="metrics-grid animate-item" style="margin-bottom: 20px;">
             <div class="metric-card">
                 <div class="metric-number">73%</div>
                 <div class="metric-label">des particuliers estiment ne pas être suffisamment informés pour investir</div>
@@ -574,14 +576,14 @@
                 <div class="metric-label">des Français décident seuls de leurs placements, sans accompagnement</div>
                 <div style="color: #4A4D65; font-size: 0.72rem; margin-top: 10px; font-style: italic;">AMF Baromètre 2025</div>
             </div>
-            <div class="metric-card" style="border-color: rgba(255,180,114,0.35);">
+            <div class="metric-card">
                 <div class="metric-number">35%</div>
                 <div class="metric-label">déclarent leurs intentions d'investir dans les 12 prochains mois</div>
                 <div style="color: #4A4D65; font-size: 0.72rem; margin-top: 10px; font-style: italic;">AMF Baromètre 2025</div>
             </div>
         </div>
 
-        <div class="highlight-box animate-item" style="margin-top: 18px; text-align: center;">
+        <div class="highlight-box animate-item" style="text-align: center; width: fit-content; margin: auto;">
             <p>Un marché qui veut investir, mais qui n'a ni les outils ni les connaissances pour le faire seul.<br>
             <strong>C'est exactement le vide que Cashou comble.</strong></p>
         </div>
@@ -879,24 +881,20 @@
         <h2 class="animate-item">Base de données</h2>
         <div style="display: flex; flex-direction: column; align-items: center; gap: 28px;">
             <!-- Métriques -->
-            <div class="animate-item" style="display: flex; gap: 20px; justify-content: center;">
-                <div style="background: #EEEEF6; border-radius: 16px; padding: 20px 40px; text-align: center;">
-                    <div style="font-size: 2.8rem; font-weight: 800; color: #FFB472; line-height: 1;">35</div>
-                    <div style="font-size: 0.85rem; color: #717892; margin-top: 6px;">tables</div>
-                </div>
-                <div style="background: #EEEEF6; border-radius: 16px; padding: 20px 40px; text-align: center;">
-                    <div style="font-size: 2.8rem; font-weight: 800; color: #FFB472; line-height: 1;">7</div>
-                    <div style="font-size: 0.85rem; color: #717892; margin-top: 6px;">domaines</div>
-                </div>
+            <div class="highlight-box animate-item visible" style="padding: 12px 16px;">
+                <p style="font-size: 0.88rem; margin: 0;"><strong>Schéma :</strong> 35 Tables & 7 domaines</p>
             </div>
+
             <!-- Stack -->
             <div class="animate-item" style="display: flex; align-items: center; gap: 10px; justify-content: center;">
-                <div style="background: #FFFFFF; border: 1px solid #E4E8F2; border-radius: 12px; padding: 14px 40px; text-align: center;">
+                <div style="background: #ffffff; border-radius: 16px; padding: 20px 40px; text-align: center; border: 2px solid #FFB472;
+            box-shadow: 0 2px 8px rgba(26,28,46,0.05);">
                     <span style="font-size: 1.8rem; display: block; margin-bottom: 6px;">🐘</span>
                     <div style="font-weight: 700; font-size: 0.9rem; color: #1A1C2E;">PostgreSQL</div>
                 </div>
                 <span style="color: #FFB472; font-size: 1.2rem;">▸</span>
-                <div style="background: #FFFFFF; border: 1px solid #E4E8F2; border-radius: 12px; padding: 14px 40px; text-align: center;">
+                <div style="background: #ffffff; border-radius: 16px; padding: 20px 40px; text-align: center; border: 2px solid #FFB472;
+            box-shadow: 0 2px 8px rgba(26,28,46,0.05);">
                     <i class="fas fa-gem" style="color: #FFB472; font-size: 1.4rem; display: block; margin-bottom: 6px;"></i>
                     <div style="font-weight: 700; font-size: 0.9rem; color: #1A1C2E;">Prisma ORM</div>
                 </div>
@@ -1017,17 +1015,17 @@
         <div style="display: flex; flex-direction: column; gap: 28px;">
             <!-- Stack -->
             <div class="animate-item" style="display: flex; gap: 14px; justify-content: center;">
-                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 28px; text-align: center;">
+                <div class="metric-card" style="text-align: center;">
                     <i class="fas fa-mobile-alt" style="color: #FFB472; font-size: 1.4rem; display: block; margin-bottom: 8px;"></i>
                     <div style="font-weight: 700; font-size: 0.9rem; color: #1A1C2E;">React Native · Expo</div>
                 </div>
                 <span style="display: flex; align-items: center; color: #FFB472; font-size: 1.4rem;">▸</span>
-                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 28px; text-align: center;">
+                <div class="metric-card" style="text-align: center;">
                     <i class="fas fa-sync-alt" style="color: #FFB472; font-size: 1.4rem; display: block; margin-bottom: 8px;"></i>
                     <div style="font-weight: 700; font-size: 0.9rem; color: #1A1C2E;">React Query</div>
                 </div>
                 <span style="display: flex; align-items: center; color: #FFB472; font-size: 1.4rem;">▸</span>
-                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 28px; text-align: center;">
+                <div class="metric-card" style="text-align: center;">
                     <i class="fas fa-palette" style="color: #FFB472; font-size: 1.4rem; display: block; margin-bottom: 8px;"></i>
                     <div style="font-weight: 700; font-size: 0.9rem; color: #1A1C2E;">Thème unifié</div>
                 </div>
@@ -1039,18 +1037,18 @@
                 <div style="flex: 1; height: 1px; background: #E4E8F2;"></div>
             </div>
             <!-- Écrans -->
-            <div class="animate-item" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 14px;">
-                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 22px; font-size: 0.88rem; font-weight: 600; color: #1A1C2E; display: flex; align-items: center; gap: 8px;">🏠 Accueil</div>
-                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 22px; font-size: 0.88rem; font-weight: 600; color: #1A1C2E; display: flex; align-items: center; gap: 8px;">📝 Daily quiz</div>
-                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 22px; font-size: 0.88rem; font-weight: 600; color: #1A1C2E; display: flex; align-items: center; gap: 8px;">📖 Historique quiz</div>
-                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 22px; font-size: 0.88rem; font-weight: 600; color: #1A1C2E; display: flex; align-items: center; gap: 8px;">📊 Liste des niveaux</div>
-                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 22px; font-size: 0.88rem; font-weight: 600; color: #1A1C2E; display: flex; align-items: center; gap: 8px;">💰 Assets</div>
-                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 22px; font-size: 0.88rem; font-weight: 600; color: #1A1C2E; display: flex; align-items: center; gap: 8px;">🔄 Transactions</div>
-                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 22px; font-size: 0.88rem; font-weight: 600; color: #1A1C2E; display: flex; align-items: center; gap: 8px;">⚡ Événements</div>
-                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 22px; font-size: 0.88rem; font-weight: 600; color: #1A1C2E; display: flex; align-items: center; gap: 8px;">🧠 Quiz fin de partie</div>
-                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 22px; font-size: 0.88rem; font-weight: 600; color: #1A1C2E; display: flex; align-items: center; gap: 8px;">🏁 Récap</div>
-                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 22px; font-size: 0.88rem; font-weight: 600; color: #1A1C2E; display: flex; align-items: center; gap: 8px;">📚 Dico</div>
-                <div style="background: #EEEEF6; border-radius: 14px; padding: 16px 22px; font-size: 0.88rem; font-weight: 600; color: #1A1C2E; display: flex; align-items: center; gap: 8px;">👤 Profil</div>
+            <div class="animate-item visible" style="display: flex; gap: 5px; flex-wrap: wrap; width: 900px; margin: 0 auto;">
+                <div style="background: #FFF7ED; border: 1px solid rgba(255,180,114,0.35); color: #1A1C2E; font-size: 0.88rem; font-weight: 600; margin: auto; padding: 8px 18px; border-radius: 20px;">🏠 Accueil</div>
+                <div style="background: #FFF7ED; border: 1px solid rgba(255,180,114,0.35); color: #1A1C2E; font-size: 0.88rem; font-weight: 600; margin: auto; padding: 8px 18px; border-radius: 20px;">📝 Daily quiz</div>
+                <div style="background: #FFF7ED; border: 1px solid rgba(255,180,114,0.35); color: #1A1C2E; font-size: 0.88rem; font-weight: 600; margin: auto; padding: 8px 18px; border-radius: 20px;">📖 Historique quiz</div>
+                <div style="background: #FFF7ED; border: 1px solid rgba(255,180,114,0.35); color: #1A1C2E; font-size: 0.88rem; font-weight: 600; margin: auto; padding: 8px 18px; border-radius: 20px;">📊 Liste des niveaux</div>
+                <div style="background: #FFF7ED; border: 1px solid rgba(255,180,114,0.35); color: #1A1C2E; font-size: 0.88rem; font-weight: 600; margin: auto; padding: 8px 18px; border-radius: 20px;">💰 Assets</div>
+                <div style="background: #FFF7ED; border: 1px solid rgba(255,180,114,0.35); color: #1A1C2E; font-size: 0.88rem; font-weight: 600; margin: auto; padding: 8px 18px; border-radius: 20px;">🔄 Transactions</div>
+                <div style="background: #FFF7ED; border: 1px solid rgba(255,180,114,0.35); color: #1A1C2E; font-size: 0.88rem; font-weight: 600; margin: auto; padding: 8px 18px; border-radius: 20px;">⚡ Événements</div>
+                <div style="background: #FFF7ED; border: 1px solid rgba(255,180,114,0.35); color: #1A1C2E; font-size: 0.88rem; font-weight: 600; margin: auto; padding: 8px 18px; border-radius: 20px;">🧠 Quiz fin de partie</div>
+                <div style="background: #FFF7ED; border: 1px solid rgba(255,180,114,0.35); color: #1A1C2E; font-size: 0.88rem; font-weight: 600; margin: auto; padding: 8px 18px; border-radius: 20px;">🏁 Récap</div>
+                <div style="background: #FFF7ED; border: 1px solid rgba(255,180,114,0.35); color: #1A1C2E; font-size: 0.88rem; font-weight: 600; margin: auto; padding: 8px 18px; border-radius: 20px;">📚 Dico</div>
+                <div style="background: #FFF7ED; border: 1px solid rgba(255,180,114,0.35); color: #1A1C2E; font-size: 0.88rem; font-weight: 600; margin: auto; padding: 8px 18px; border-radius: 20px;">👤 Profil</div>
             </div>
         </div>
     </div>
