@@ -32,6 +32,7 @@ export class GameEndTriggerService {
         title: "Dommage !",
         primaryMessage: "La partie est déjà terminée.",
         secondaryMessage: null,
+        tip: null,
       },
     };
   }

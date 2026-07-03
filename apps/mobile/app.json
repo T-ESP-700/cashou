@@ -47,7 +47,14 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Cashou utilise vos photos pour définir votre avatar de profil.",
+          "cameraPermission": "Cashou utilise l'appareil photo pour prendre une photo de profil."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

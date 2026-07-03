@@ -141,6 +141,7 @@ export const authRouter = router({
     };
   }),
 
+  // TODO: Enable password reset when Better-Auth is configured with email plugin
   // Request password reset
   forgotPassword: publicProcedure
     .input(
@@ -148,9 +149,16 @@ export const authRouter = router({
         email: z.string().email(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async () => {
+      throw new TRPCError({
+        code: 'NOT_IMPLEMENTED',
+        message: 'Password reset is not configured yet (Better-Auth email plugin pending).',
+      });
+      // Implémentation désactivée : le plugin email Better-Auth n'est pas configuré.
+      // À réactiver en supprimant le throw ci-dessus et en décommentant le bloc ci-dessous.
+      /*
       try {
-        await auth.api.forgetPassword({
+        await (auth.api as any).forgetPassword({
           body: {
             email: input.email,
             redirectTo: (process.env.FRONTEND_URL || 'http://localhost:3000') + '/reset-password',
@@ -168,6 +176,7 @@ export const authRouter = router({
           message,
         });
       }
+      */
     }),
 
   // Reset password
@@ -178,26 +187,12 @@ export const authRouter = router({
         newPassword: z.string().min(8),
       })
     )
-    .mutation(async ({ input }) => {
-      try {
-        await auth.api.resetPassword({
-          body: {
-            token: input.token,
-            newPassword: input.newPassword,
-          },
-        });
-
-        return {
-          success: true,
-          message: 'Password reset successful',
-        };
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Failed to reset password';
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message,
-        });
-      }
+    .mutation(async ({ input: _input }) => {
+      // Better-Auth requires email plugin for password reset
+      throw new TRPCError({
+        code: 'NOT_IMPLEMENTED',
+        message: 'Password reset is not yet configured',
+      });
     }),
 
   // Get home screen data (user + game info)

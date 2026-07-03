@@ -3,7 +3,7 @@
  * Utilise l'API backend au lieu de Supabase
  */
 
-import { trpc } from './trpc'
+import { vanillaTrpcClient } from './trpc'
 
 const TOKEN_KEY = 'backoffice_auth_token'
 const USER_KEY = 'backoffice_user'
@@ -40,7 +40,7 @@ export class LocalAuthService {
 
   static async signIn(email: string, password: string) {
     try {
-      const result = await trpc.backofficeAuth.signIn.mutate({ email, password })
+      const result = await vanillaTrpcClient.backofficeAuth.signIn.mutate({ email, password })
 
       this.setToken(result.token)
       this.setUser(result.user)
@@ -58,7 +58,7 @@ export class LocalAuthService {
     }
 
     try {
-      const result = await trpc.backofficeAuth.verify.query({ token })
+      const result = await vanillaTrpcClient.backofficeAuth.verify.query({ token })
       this.setUser(result.user)
       return result.user
     } catch (error) {

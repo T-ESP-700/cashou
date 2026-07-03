@@ -136,7 +136,7 @@ describe("Mobile Query Cache", () => {
       await swr("test", async () => ({ value: "original" }), 50);
       await new Promise((r) => setTimeout(r, 60));
 
-      const result = await swr(
+      const result = await swr<{ value: string }>(
         "test",
         async () => {
           throw new Error("network error");

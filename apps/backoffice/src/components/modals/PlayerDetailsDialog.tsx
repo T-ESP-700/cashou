@@ -295,7 +295,7 @@ export function PlayerDetailsDialog({ userId, open, onOpenChange }: PlayerDetail
           <div className="p-4">
             {data.gameInstances?.length ? (
               <div className="space-y-2">
-                {data.gameInstances.map((game) => {
+                {data.gameInstances.map((game: Record<string, unknown> & { id?: number | string; type?: string | null; isPaused?: boolean | null; createdAt?: string | Date }) => {
                   const statusConfig = getGameStatusConfig(game.type, game.isPaused ?? false)
                   const StatusIcon = statusConfig.icon
 

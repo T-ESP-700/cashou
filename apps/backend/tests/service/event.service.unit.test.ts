@@ -1,6 +1,6 @@
 import { describe, test, expect, mock, beforeEach } from "bun:test";
 import { EventService } from "../../src/trpc/services/event.service";
-import type { Event, PrismaClient } from "@prisma/client";
+import type { Event, PrismaClient } from "@cashou/db-app";
 
 // Fonction utilitaire pour créer des événements de test
 function makeEvent(id: number, over: Partial<Event> = {}): Event {
@@ -19,11 +19,11 @@ function makeEvent(id: number, over: Partial<Event> = {}): Event {
 function createMockPrisma() {
     return {
         event: {
-            findMany: mock(),
-            findUnique: mock(),
-            create: mock(),
-            update: mock(),
-            delete: mock(),
+            findMany: mock(() => Promise.resolve([])),
+            findUnique: mock(() => Promise.resolve(null)),
+            create: mock(() => Promise.resolve({})),
+            update: mock(() => Promise.resolve({})),
+            delete: mock(() => Promise.resolve({})),
         }
     } as unknown as PrismaClient;
 }
@@ -41,7 +41,7 @@ describe("EventService", () => {
         test("doit récupérer tous les événements avec leurs relations", async () => {
             // Arrange
             const mockEvents = [makeEvent(1), makeEvent(2)];
-            (mockPrisma.event.findMany as any).mockResolvedValue(mockEvents);
+            (mockPrisma.event.findMany as ReturnType<typeof mock>).mockResolvedValue(mockEvents);
 
             // Act
             const result = await eventService.findAll();
@@ -63,7 +63,7 @@ describe("EventService", () => {
         test("doit récupérer un événement par son ID", async () => {
             // Arrange
             const mockEvent = makeEvent(1);
-            (mockPrisma.event.findUnique as any).mockResolvedValue(mockEvent);
+            (mockPrisma.event.findUnique as ReturnType<typeof mock>).mockResolvedValue(mockEvent);
 
             // Act
             const result = await eventService.findOne(1);
@@ -82,7 +82,7 @@ describe("EventService", () => {
 
         test("doit retourner null si l'événement n'existe pas", async () => {
             // Arrange
-            (mockPrisma.event.findUnique as any).mockResolvedValue(null);
+            (mockPrisma.event.findUnique as ReturnType<typeof mock>).mockResolvedValue(null);
 
             // Act
             const result = await eventService.findOne(999);
@@ -97,7 +97,7 @@ describe("EventService", () => {
             // Arrange
             const eventData = { title: "Nouvel événement", description: "Description test", hasImpact: true };
             const createdEvent = makeEvent(1, eventData);
-            (mockPrisma.event.create as any).mockResolvedValue(createdEvent);
+            (mockPrisma.event.create as ReturnType<typeof mock>).mockResolvedValue(createdEvent);
 
             // Act
             const result = await eventService.create(eventData);
@@ -113,7 +113,7 @@ describe("EventService", () => {
             // Arrange
             const eventData = { title: "Événement modifié", description: "Nouvelle description", hasImpact: false };
             const updatedEvent = makeEvent(1, eventData);
-            (mockPrisma.event.update as any).mockResolvedValue(updatedEvent);
+            (mockPrisma.event.update as ReturnType<typeof mock>).mockResolvedValue(updatedEvent);
 
             // Act
             const result = await eventService.update(1, eventData);
@@ -131,7 +131,7 @@ describe("EventService", () => {
         test("doit supprimer un événement", async () => {
             // Arrange
             const deletedEvent = makeEvent(1);
-            (mockPrisma.event.delete as any).mockResolvedValue(deletedEvent);
+            (mockPrisma.event.delete as ReturnType<typeof mock>).mockResolvedValue(deletedEvent);
 
             // Act
             const result = await eventService.delete(1);

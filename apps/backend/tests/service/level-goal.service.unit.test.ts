@@ -1,6 +1,6 @@
 // tests/service/level-goal.service.unit.test.ts
 import { describe, it, expect } from "bun:test";
-import type { Prisma, LevelGoal, PrismaClient } from "@prisma/client";
+import type { Prisma, LevelGoal, PrismaClient } from "@cashou/db-app";
 import { LevelGoalService } from "../../src/trpc/services/level-goal.service";
 
 type Call =
@@ -31,6 +31,7 @@ function makePrismaMock() {
                     id: 123,
                     levelId: (data as LevelGoal).levelId ?? 1,
                     goalId: (data as LevelGoal).goalId ?? 1,
+                    isMandatory: (data as LevelGoal).isMandatory ?? true,
                     createdAt: now,
                     updatedAt: now,
                 };
@@ -44,6 +45,7 @@ function makePrismaMock() {
                     id,
                     levelId: (data as LevelGoal).levelId ?? 1,
                     goalId: (data as LevelGoal).goalId ?? 1,
+                    isMandatory: (data as LevelGoal).isMandatory ?? true,
                     createdAt: now,
                     updatedAt: now,
                 };
@@ -56,6 +58,7 @@ function makePrismaMock() {
                     id,
                     levelId: 1,
                     goalId: 1,
+                    isMandatory: true,
                     createdAt: now,
                     updatedAt: now,
                 };
@@ -124,7 +127,7 @@ describe("LevelGoalService — Tests unitaires", () => {
     it("create transmet les données telles quelles à Prisma", async () => {
         const { prisma, calls } = makePrismaMock();
         const service = new LevelGoalService(prisma as unknown as PrismaClient);
-        const data = { levelId: 2, goalId: 3 };
+        const data = { levelId: 2, goalId: 3, isMandatory: true };
         const created = await service.create(data);
         expect(created).toMatchObject({ id: 123, ...data });
         const createCall = calls.find((c) => c.method === "create");
@@ -134,10 +137,10 @@ describe("LevelGoalService — Tests unitaires", () => {
     it("update transmet where.id + data", async () => {
         const { prisma, calls } = makePrismaMock();
         const service = new LevelGoalService(prisma as unknown as PrismaClient);
-        const updated = await service.update(7, { levelId: 4, goalId: 5 });
+        const updated = await service.update(7, { levelId: 4, goalId: 5, isMandatory: true });
         expect(updated).toMatchObject({ id: 7, levelId: 4, goalId: 5 });
         const updateCall = calls.find((c) => c.method === "update");
-        expect(updateCall?.args).toEqual({ where: { id: 7 }, data: { levelId: 4, goalId: 5 } });
+        expect(updateCall?.args).toEqual({ where: { id: 7 }, data: { levelId: 4, goalId: 5, isMandatory: true } });
     });
 
     it("delete transmet where.id", async () => {

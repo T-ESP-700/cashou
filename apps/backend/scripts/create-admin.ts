@@ -43,7 +43,7 @@ async function createAdminUser() {
         });
 
         if (signInResponse.ok) {
-          const data = await signInResponse.json();
+          const data = await signInResponse.json() as { user: { id: string; email: string; name: string } };
           console.log('Admin user signed in successfully:', {
             id: data.user.id,
             email: data.user.email,
@@ -54,7 +54,7 @@ async function createAdminUser() {
       return;
     }
 
-    const data = await response.json();
+    const data = await response.json() as { user: { id: string; email: string; name: string } };
 
     console.log('Admin user created successfully:', {
       id: data.user.id,

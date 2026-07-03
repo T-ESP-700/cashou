@@ -1,3 +1,5 @@
+// Import depuis @cashou/db-app (et non @prisma/client) car Bun crée des copies séparées
+// de @prisma/client par contexte de résolution, ce qui cause des types incompatibles
 import type { Wallet, PrismaClient } from "@cashou/db-app";
 import { Prisma } from "@cashou/db-app";
 
@@ -56,8 +58,8 @@ export class WalletService {
            ? null
            : new Prisma.Decimal(
                typeof data.amount === "string"
-                 ? data.amount.replace(/,/g, "")
-                 : data.amount
+                 ? (data.amount as string).replace(/,/g, "")
+                 : String(data.amount)
              ),
      };
 
@@ -68,7 +70,7 @@ export class WalletService {
      return {
        ...wallet,
        amount: wallet.amount ? Number(wallet.amount) : wallet.amount,
-     };
+     } as unknown as Wallet;
    }
 
   /**
@@ -131,12 +133,9 @@ export class WalletService {
    * @param amountToAdd - Montant à ajouter
    */
   async addAmount(id: number, amountToAdd: number): Promise<Wallet> {
-    const wallet = await this.findOne(id);
-    if (!wallet) throw new Error("Portefeuille introuvable");
-    const current = wallet.amount ? Number(wallet.amount) : 0;
     return this.prisma.wallet.update({
       where: { id },
-      data: { amount: (current + amountToAdd).toString() },
+      data: { amount: { increment: amountToAdd } },
     });
   }
 }

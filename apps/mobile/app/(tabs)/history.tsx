@@ -16,6 +16,26 @@ interface DayStatus {
   quizId?: number;
 }
 
+const formatDateKeyParis = (date: Date): string => (
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Paris',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date)
+);
+
+const normalizeToParisDateKey = (value: Date | string): string => {
+  if (typeof value === 'string') {
+    // Preserve YYYY-MM-DD when API returns an ISO-like string with offset.
+    const isoMatch = value.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (isoMatch) {
+      return isoMatch[1];
+    }
+  }
+  return formatDateKeyParis(new Date(value));
+};
+
 export default function HistoryScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -55,6 +75,25 @@ export default function HistoryScreen() {
 
     setIsLoading(true);
     try {
+      const allQuizzes = await trpcClient.quiz.getByType.query({ type: 'DAILY' });
+      const dailyQuizzes = allQuizzes as any[];
+
+      // Associe chaque jour Paris au quiz DAILY le plus récent trouvé pour ce jour.
+      const quizByParisDay = new Map<string, any>();
+      for (const quiz of dailyQuizzes) {
+        const dayKey = normalizeToParisDateKey(quiz.date ?? quiz.createdAt);
+        const current = quizByParisDay.get(dayKey);
+        if (!current) {
+          quizByParisDay.set(dayKey, quiz);
+          continue;
+        }
+        const currentRef = new Date(current.date ?? current.createdAt);
+        const candidateRef = new Date(quiz.date ?? quiz.createdAt);
+        if (candidateRef.getTime() > currentRef.getTime()) {
+          quizByParisDay.set(dayKey, quiz);
+        }
+      }
+
       const dates: Date[] = [];
       for (let day = 1; day <= daysInMonth; day++) {
         dates.push(new Date(currentYear, currentMonth, day));
@@ -62,22 +101,8 @@ export default function HistoryScreen() {
 
       const statusPromises = dates.map(async (date): Promise<DayStatus> => {
         try {
-          const startOfDay = new Date(date);
-          startOfDay.setHours(0, 0, 0, 0);
-
-          const allQuizzes = await trpcClient.quiz.getByType.query({ type: 'DAILY' });
-          const dailyQuizzes = allQuizzes as any[];
-
-          let quizForDate = null;
-          for (const quiz of dailyQuizzes) {
-            const quizDate = quiz.date ? new Date(quiz.date) : new Date(quiz.createdAt);
-            const quizDateStart = new Date(quizDate);
-            quizDateStart.setHours(0, 0, 0, 0);
-            if (quizDateStart.getTime() === startOfDay.getTime()) {
-              quizForDate = quiz;
-              break;
-            }
-          }
+          const dayKey = formatDateKeyParis(date);
+          const quizForDate = quizByParisDay.get(dayKey) ?? null;
 
           if (!quizForDate) {
             return { date, hasQuiz: false, isCompleted: false };
@@ -157,11 +182,9 @@ export default function HistoryScreen() {
 
   const getDayStatus = (day: number): DayStatus | null => {
     const dayDate = new Date(currentYear, currentMonth, day);
+    const dayKey = formatDateKeyParis(dayDate);
     return daysStatus.find(
-      (s) =>
-        s.date.getDate() === dayDate.getDate() &&
-        s.date.getMonth() === dayDate.getMonth() &&
-        s.date.getFullYear() === dayDate.getFullYear()
+      (s) => formatDateKeyParis(s.date) === dayKey
     ) || null;
   };
 
@@ -170,8 +193,10 @@ export default function HistoryScreen() {
     router.push({
       pathname: '/(tabs)/daily-quiz',
       params: {
+        source: 'history',
         quizId: dayStatus.quizId.toString(),
         showCompleted: dayStatus.isCompleted ? 'true' : 'false',
+        initialView: dayStatus.isCompleted ? 'correction' : 'question',
       },
     });
   };

@@ -27,6 +27,47 @@ import type {
   PlayerSnapshot,
 } from '@/lib/domain'
 
+// Generic CRUD operations interface for backoffice modules
+export interface CrudOperations {
+  list: () => Promise<unknown>
+  create: (payload: Record<string, unknown>) => Promise<unknown>
+  update?: (payload: Record<string, unknown>) => Promise<unknown>
+  delete: (id: number) => Promise<unknown>
+}
+
+// User type for mapping
+interface BackofficeUser {
+  id: string | number
+  email?: string
+  username?: string
+  level?: number
+  levelId?: number
+  points?: number
+  role?: string
+  status?: string
+  activeGame?: unknown
+  walletAmount?: number
+  lastActivity?: string
+  updatedAt?: string
+  createdAt?: string
+}
+
+// Game instance type for mapping
+interface BackofficeGameInstance {
+  id: number
+  title?: string
+  type?: string
+  status?: string
+  isPaused?: boolean
+  actionRequired?: boolean
+  marketId?: number | null
+  levelId?: number | null
+  userId?: string | null
+  user?: { id: string }
+  createdAt?: string | null
+  updatedAt?: string | null
+}
+
 const normalizeApiUrl = (rawUrl?: string) => {
   if (!rawUrl || rawUrl.trim() === '') {
     return 'http://localhost:3000/api/trpc'
@@ -116,7 +157,7 @@ async function callApi<T>(action: () => Promise<T>): Promise<T> {
   }
 }
 
-const mapUsersToPlayerSnapshots = (users: any[]): PlayerSnapshot[] => {
+const mapUsersToPlayerSnapshots = (users: BackofficeUser[]): PlayerSnapshot[] => {
   if (!Array.isArray(users)) return []
   return users
     .map((user) => {
@@ -142,7 +183,7 @@ const mapUsersToPlayerSnapshots = (users: any[]): PlayerSnapshot[] => {
     .filter((player): player is PlayerSnapshot => Boolean(player))
 }
 
-const mapGameInstances = (instances: any[]): GameInstance[] => {
+const mapGameInstances = (instances: BackofficeGameInstance[]): GameInstance[] => {
   if (!Array.isArray(instances)) return []
   return instances
     .map((instance) => {
@@ -190,36 +231,36 @@ export async function fetchBackofficeDataset(): Promise<BackofficeData> {
     gameInstances,
     dicoEntries,
   ] = await Promise.all([
-    callApi(() => client.level.getAll.query()) as Promise<any>,
-    callApi(() => client.goal.getAll.query()) as Promise<any>,
-    callApi(() => client.levelGoal.getAll.query()) as Promise<any>,
-    callApi(() => client.levelEvent.getAll.query()) as Promise<any>,
-    callApi(() => client.quiz.getAll.query()) as Promise<any>,
-    callApi(() => client.question.getAll.query()) as Promise<any>,
-    callApi(() => client.answer.getAll.query()) as Promise<any>,
-    callApi(() => client.quizQuestion.getAll.query()) as Promise<any>,
-    callApi(() => client.market.getAll.query()) as Promise<any>,
-    callApi(() => client.submarket.getAll.query()) as Promise<any>,
-    callApi(() => client.field.getAll.query()) as Promise<any>,
-    callApi(() => client.asset.getAll.query()) as Promise<any>,
-    callApi(() => client.event.getAll.query()) as Promise<any>,
-    callApi(() => client.assetHistory.getAll.query()) as Promise<any>,
-    callApi(() => client.eventAsset.getAll.query()) as Promise<any>,
-    callApi(() => client.impact.getAll.query()) as Promise<any>,
-    callApi(() => client.user.getAll.query()).catch(() => []) as Promise<any>,
-    callApi(() => client.gameInstance.getAll.query()).catch(() => []) as Promise<any>,
-    callApi(() => client.dicoEntry.getAll.query()).catch(() => []) as Promise<any>,
+    callApi(() => client.level.getAll.query()) as Promise<Level[]>,
+    callApi(() => client.goal.getAll.query()) as Promise<Goal[]>,
+    callApi(() => client.levelGoal.getAll.query()) as Promise<LevelGoal[]>,
+    callApi(() => client.levelEvent.getAll.query()) as Promise<LevelEvent[]>,
+    callApi(() => client.quiz.getAll.query()) as Promise<Quiz[]>,
+    callApi(() => client.question.getAll.query()) as Promise<Question[]>,
+    callApi(() => client.answer.getAll.query()) as Promise<Answer[]>,
+    callApi(() => client.quizQuestion.getAll.query()) as Promise<QuizQuestion[]>,
+    callApi(() => client.market.getAll.query()) as Promise<Market[]>,
+    callApi(() => client.submarket.getAll.query()) as Promise<Submarket[]>,
+    callApi(() => client.field.getAll.query()) as Promise<Field[]>,
+    callApi(() => client.asset.getAll.query()) as Promise<Asset[]>,
+    callApi(() => client.event.getAll.query()) as Promise<Event[]>,
+    callApi(() => client.assetHistory.getAll.query()) as Promise<AssetHistory[]>,
+    callApi(() => client.eventAsset.getAll.query()) as Promise<EventAsset[]>,
+    callApi(() => client.impact.getAll.query()) as Promise<Impact[]>,
+    callApi(() => client.user.getAll.query()).catch(() => []) as Promise<BackofficeUser[]>,
+    callApi(() => client.gameInstance.getAll.query()).catch(() => []) as Promise<BackofficeGameInstance[]>,
+    callApi(() => client.dicoEntry.getAll.query()).catch(() => []) as Promise<DicoEntry[]>,
   ])
 
   // Map users to PlayerSnapshot format
-  const players = (users as any[]).map((user: any) => ({
-    id: user.id,
+  const players = (users as BackofficeUser[]).map((user) => ({
+    id: String(user.id),
     username: user.username || user.email,
     levelId: user.level ?? user.levelId,
     points: user.points,
     role: user.role ?? 'USER',
     lastActivity: user.updatedAt || user.createdAt,
-  }))
+  })) as PlayerSnapshot[]
 
   return {
     levels: levels as Level[],
@@ -244,56 +285,58 @@ export async function fetchBackofficeDataset(): Promise<BackofficeData> {
   }
 }
 
+// Helper type for typed payload casting
+type InferMutationInput<T> = T extends { mutate: (input: infer I) => unknown } ? I : never;
+
+// Get client type for inference
+type Client = ReturnType<typeof getClient>;
+
 export const backofficeApi = {
   level: {
     list: async () => callApi(() => getClient().level.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().level.create.mutate(payload)),
+      callApi(() => getClient().level.create.mutate(payload as InferMutationInput<Client['level']['create']>)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().level.update.mutate(payload)),
+      callApi(() => getClient().level.update.mutate(payload as InferMutationInput<Client['level']['update']>)),
     delete: async (id: number) => callApi(() => getClient().level.delete.mutate({ id })),
   },
   goal: {
     list: async () => callApi(() => getClient().goal.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().goal.create.mutate(payload)),
+      callApi(() => getClient().goal.create.mutate(payload as InferMutationInput<Client['goal']['create']>)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().goal.update.mutate(payload)),
+      callApi(() => getClient().goal.update.mutate(payload as InferMutationInput<Client['goal']['update']>)),
     delete: async (id: number) => callApi(() => getClient().goal.delete.mutate({ id })),
   },
   levelGoal: {
     list: async () => callApi(() => getClient().levelGoal.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().levelGoal.create.mutate(payload)),
-    update: async (id: number, payload: Record<string, unknown>) =>
-      callApi(() => getClient().levelGoal.update.mutate({ id, data: payload })),
+      callApi(() => getClient().levelGoal.create.mutate(payload as InferMutationInput<Client['levelGoal']['create']>)),
+    update: async (payload: Record<string, unknown>) =>
+      callApi(() => getClient().levelGoal.update.mutate(payload as InferMutationInput<Client['levelGoal']['update']>)),
     delete: async (id: number) => callApi(() => getClient().levelGoal.delete.mutate({ id })),
   },
   levelEvent: {
     list: async () => callApi(() => getClient().levelEvent.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().levelEvent.create.mutate(payload)),
+      callApi(() => getClient().levelEvent.create.mutate(payload as InferMutationInput<Client['levelEvent']['create']>)),
     delete: async (id: number) => callApi(() => getClient().levelEvent.delete.mutate({ id })),
   },
   market: {
     list: async () => callApi(() => getClient().market.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().market.create.mutate(payload)),
+      callApi(() => getClient().market.create.mutate(payload as InferMutationInput<Client['market']['create']>)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().market.update.mutate(payload)),
+      callApi(() => getClient().market.update.mutate(payload as InferMutationInput<Client['market']['update']>)),
     delete: async (id: number) => callApi(() => getClient().market.delete.mutate({ id })),
     overview: async (marketId: number) =>
-      (await callApi(() => getClient().market.getOverview.query({ marketId }))) as MarketOverview,
+      callApi(() => getClient().market.getOverview.query({ marketId })) as Promise<MarketOverview>,
     snapshot: async (marketId: number) =>
-      (await callApi(() => getClient().market.getSnapshot.query({ marketId }))) as MarketSnapshot,
+      callApi(() => getClient().market.getSnapshot.query({ marketId })) as unknown as Promise<MarketSnapshot>,
     history: async (marketId: number, from: string, to: string) =>
-      (await callApi(() =>
-        getClient().market.getHistory.query({ marketId, from, to }),
-      )) as MarketHistory,
+      callApi(() => getClient().market.getHistory.query({ marketId, from, to })) as unknown as Promise<MarketHistory>,
     heatmap: async (marketId: number, metric: HeatmapMetric) =>
-      (await callApi(() =>
-        getClient().market.getHeatmap.query({ marketId, metric }),
-      )) as MarketHeatmap,
+      callApi(() => getClient().market.getHeatmap.query({ marketId, metric })) as unknown as Promise<MarketHeatmap>,
     tree: async (marketId: number) =>
       callApi(() => getClient().market.getTree.query({ marketId })),
     search: async (query: string) =>
@@ -302,65 +345,65 @@ export const backofficeApi = {
   submarket: {
     list: async () => callApi(() => getClient().submarket.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().submarket.create.mutate(payload)),
+      callApi(() => getClient().submarket.create.mutate(payload as InferMutationInput<Client['submarket']['create']>)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().submarket.update.mutate(payload)),
+      callApi(() => getClient().submarket.update.mutate(payload as InferMutationInput<Client['submarket']['update']>)),
     delete: async (id: number) => callApi(() => getClient().submarket.delete.mutate({ id })),
   },
   field: {
     list: async () => callApi(() => getClient().field.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().field.create.mutate(payload)),
+      callApi(() => getClient().field.create.mutate(payload as InferMutationInput<Client['field']['create']>)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().field.update.mutate(payload)),
+      callApi(() => getClient().field.update.mutate(payload as InferMutationInput<Client['field']['update']>)),
     delete: async (id: number) => callApi(() => getClient().field.delete.mutate({ id })),
   },
   asset: {
     list: async () => callApi(() => getClient().asset.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().asset.create.mutate(payload)),
+      callApi(() => getClient().asset.create.mutate(payload as InferMutationInput<Client['asset']['create']>)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().asset.update.mutate(payload)),
+      callApi(() => getClient().asset.update.mutate(payload as InferMutationInput<Client['asset']['update']>)),
     delete: async (id: number) => callApi(() => getClient().asset.delete.mutate({ id })),
   },
   event: {
     list: async () => callApi(() => getClient().event.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().event.create.mutate(payload)),
+      callApi(() => getClient().event.create.mutate(payload as InferMutationInput<Client['event']['create']>)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().event.update.mutate(payload)),
+      callApi(() => getClient().event.update.mutate(payload as InferMutationInput<Client['event']['update']>)),
     delete: async (id: number) => callApi(() => getClient().event.delete.mutate({ id })),
   },
   assetHistory: {
     list: async () => callApi(() => getClient().assetHistory.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().assetHistory.create.mutate(payload)),
+      callApi(() => getClient().assetHistory.create.mutate(payload as InferMutationInput<Client['assetHistory']['create']>)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().assetHistory.update.mutate(payload)),
+      callApi(() => getClient().assetHistory.update.mutate(payload as InferMutationInput<Client['assetHistory']['update']>)),
     delete: async (id: number) => callApi(() => getClient().assetHistory.delete.mutate({ id })),
   },
   eventAsset: {
     list: async () => callApi(() => getClient().eventAsset.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().eventAsset.create.mutate(payload)),
+      callApi(() => getClient().eventAsset.create.mutate(payload as InferMutationInput<Client['eventAsset']['create']>)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().eventAsset.update.mutate(payload)),
+      callApi(() => getClient().eventAsset.update.mutate(payload as InferMutationInput<Client['eventAsset']['update']>)),
     delete: async (id: number) => callApi(() => getClient().eventAsset.delete.mutate({ id })),
   },
   impact: {
     list: async () => callApi(() => getClient().impact.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().impact.create.mutate(payload)),
+      callApi(() => getClient().impact.create.mutate(payload as InferMutationInput<Client['impact']['create']>)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().impact.update.mutate(payload)),
+      callApi(() => getClient().impact.update.mutate(payload as InferMutationInput<Client['impact']['update']>)),
     delete: async (id: number) => callApi(() => getClient().impact.delete.mutate({ id })),
   },
   quiz: {
     list: async () => callApi(() => getClient().quiz.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().quiz.create.mutate(payload)),
+      callApi(() => getClient().quiz.create.mutate(payload as InferMutationInput<Client['quiz']['create']>)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().quiz.update.mutate(payload)),
+      callApi(() => getClient().quiz.update.mutate(payload as InferMutationInput<Client['quiz']['update']>)),
     delete: async (id: number) => callApi(() => getClient().quiz.delete.mutate({ id })),
     dailyQuizExists: async (date: string) =>
       callApi(() => getClient().quiz.dailyQuizExists.query({ date })),
@@ -368,31 +411,31 @@ export const backofficeApi = {
   question: {
     list: async () => callApi(() => getClient().question.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().question.create.mutate(payload)),
+      callApi(() => getClient().question.create.mutate(payload as InferMutationInput<Client['question']['create']>)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().question.update.mutate(payload)),
+      callApi(() => getClient().question.update.mutate(payload as InferMutationInput<Client['question']['update']>)),
     delete: async (id: number) => callApi(() => getClient().question.delete.mutate({ id })),
   },
   answer: {
     list: async () => callApi(() => getClient().answer.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().answer.create.mutate(payload)),
+      callApi(() => getClient().answer.create.mutate(payload as InferMutationInput<Client['answer']['create']>)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().answer.update.mutate(payload)),
+      callApi(() => getClient().answer.update.mutate(payload as InferMutationInput<Client['answer']['update']>)),
     delete: async (id: number) => callApi(() => getClient().answer.delete.mutate({ id })),
   },
   quizQuestion: {
     list: async () => callApi(() => getClient().quizQuestion.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().quizQuestion.create.mutate(payload)),
+      callApi(() => getClient().quizQuestion.create.mutate(payload as InferMutationInput<Client['quizQuestion']['create']>)),
     delete: async (id: number) => callApi(() => getClient().quizQuestion.delete.mutate({ id })),
   },
   dicoEntry: {
     list: async () => callApi(() => getClient().dicoEntry.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().dicoEntry.create.mutate(payload)),
+      callApi(() => getClient().dicoEntry.create.mutate(payload as InferMutationInput<Client['dicoEntry']['create']>)),
     update: async (payload: Record<string, unknown>) =>
-      callApi(() => getClient().dicoEntry.update.mutate(payload)),
+      callApi(() => getClient().dicoEntry.update.mutate(payload as InferMutationInput<Client['dicoEntry']['update']>)),
     delete: async (id: number) => callApi(() => getClient().dicoEntry.delete.mutate({ id })),
   },
 }

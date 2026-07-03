@@ -1,6 +1,6 @@
 // tests/service/level-goal.service.integration.test.ts
 import { describe, it, expect, afterAll, beforeAll } from "bun:test";
-import { PrismaClient, type LevelGoal } from "@prisma/client";
+import { PrismaClient, type LevelGoal } from "@cashou/db-app";
 import { LevelGoalService } from "../../src/trpc/services/level-goal.service";
 
 const shouldRun = !!process.env.CASHOU_DB_URL;
@@ -66,6 +66,7 @@ const shouldRun = !!process.env.CASHOU_DB_URL;
         const data: Omit<LevelGoal, "id" | "createdAt" | "updatedAt"> = {
             levelId: testLevelId,
             goalId: testGoalId,
+            isMandatory: true,
         };
 
         const created = await service.create(data);
@@ -86,8 +87,6 @@ const shouldRun = !!process.env.CASHOU_DB_URL;
 
         const deleted = await service.delete(createdId!);
         expect(deleted.id).toBe(createdId);
-
-        const again = await prisma.levelGoal.create({ data });
-        createdId = again.id;
+        createdId = null; // Mark as deleted so afterAll doesn't try to delete again
     });
 });

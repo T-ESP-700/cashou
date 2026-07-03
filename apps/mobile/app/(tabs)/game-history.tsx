@@ -200,18 +200,18 @@ export default function LevelsScreen() {
     switch (item.status) {
       case 'completed':
         return (
-          <Ionicons name="checkmark-circle" size={34} color="#88D498" />
+          <Ionicons name="checkmark" size={17} color="#3D7248" backgroundColor="#88D498" borderRadius={99} borderWidth={6} borderColor="#88D498" />
         );
       case 'current':
         return (
           <View style={styles.statusIconUnlocked}>
-            <Ionicons name="lock-open-outline" size={16} color="#FFFFFF" />
+            <Ionicons name="lock-open-outline" size={16} color="#006DBB" />
           </View>
         );
       case 'locked':
         return (
           <View style={styles.statusIconLocked}>
-            <Ionicons name="lock-closed" size={16} color="#FFFFFF" />
+            <Ionicons name="lock-closed" size={16} color="#303030" />
           </View>
         );
     }

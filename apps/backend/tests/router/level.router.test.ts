@@ -1,17 +1,9 @@
 // tests/router/level.router.test.ts
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import type { Level } from "@prisma/client";
+import type { Level } from "@cashou/db-app";
 import { levelRouter } from "../../src/trpc/routers/level.router";
 import { LevelService } from "../../src/trpc/services/level.service";
-
-type Call =
-    | { method: "findAll"; args?: undefined }
-    | { method: "findOne"; args: { id: number } }
-    | { method: "create"; args: { data: Partial<Level> } }
-    | { method: "update"; args: { id: number; data: Partial<Level> } }
-    | { method: "delete"; args: { id: number } };
-
-const calls: Call[] = [];
+import { createRouterTestSetup } from "../helpers/router-test-factory";
 
 function makeLevel(id: number, over: Partial<Level> = {}): Level {
   const now = new Date();
@@ -23,57 +15,16 @@ function makeLevel(id: number, over: Partial<Level> = {}): Level {
     speed: over.speed ?? null,
     startBalance: over.startBalance ?? null,
     pointsRequired: over.pointsRequired ?? null,
+    historyStartDay: over.historyStartDay ?? null,
     description: over.description ?? null,
+    tip: over.tip ?? null,
     createdAt: over.createdAt ?? now,
     updatedAt: over.updatedAt ?? now,
   };
 }
 
-const original = {
-  findAll: LevelService.prototype.findAll,
-  findOne: LevelService.prototype.findOne,
-  create: LevelService.prototype.create,
-  update: LevelService.prototype.update,
-  delete: LevelService.prototype.delete,
-};
-
-beforeEach(() => {
-  calls.length = 0;
-
-  LevelService.prototype.findAll = (async function (this: unknown): Promise<Level[]> {
-    calls.push({ method: "findAll" });
-    return [makeLevel(1, { title: "N1" })];
-  });
-
-  LevelService.prototype.findOne = (async function (this: unknown, id: number): Promise<Level | null> {
-    calls.push({ method: "findOne", args: { id } });
-    if (id === 404) return null;
-    return makeLevel(id);
-  });
-
-  LevelService.prototype.create = (async function (this: unknown, data: Partial<Level>): Promise<Level> {
-    calls.push({ method: "create", args: { data } });
-    return makeLevel(123, data);
-  });
-
-  LevelService.prototype.update = (async function (this: unknown, id: number, data: Partial<Level>): Promise<Level> {
-    calls.push({ method: "update", args: { id, data } });
-    return makeLevel(id, data);
-  });
-
-  LevelService.prototype.delete = (async function (this: unknown, id: number): Promise<Pick<Level, "id">> {
-    calls.push({ method: "delete", args: { id } });
-    return { id };
-  }) as unknown as typeof LevelService.prototype.delete;
-});
-
-afterEach(() => {
-  LevelService.prototype.findAll = original.findAll;
-  LevelService.prototype.findOne = original.findOne;
-  LevelService.prototype.create = original.create;
-  LevelService.prototype.update = original.update;
-  LevelService.prototype.delete = original.delete;
-});
+// Configuration automatique des mocks avec le helper
+const { calls } = createRouterTestSetup(LevelService, makeLevel);
 
 type Ctx = Parameters<typeof levelRouter.createCaller>[0];
 
@@ -135,5 +86,80 @@ describe("level.router — validations Zod (erreurs attendues)", () => {
   it("delete avec id invalide → rejette", async () => {
     const caller = levelRouter.createCaller({} as Ctx);
     expect(caller.delete({id: 0} as unknown as never)).rejects.toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Endpoints spécialisés
+// ---------------------------------------------------------------------------
+
+describe("level.router — Endpoints spécialisés", () => {
+  const extraMethods = [
+    "findGoals",
+    "findEvents",
+    "getSummary",
+    "getUserLevels",
+    "getAvailability",
+    "duplicate",
+  ] as const;
+
+  const callsByMethod: Record<string, unknown[][]> = {};
+  const originals: Record<string, unknown> = {};
+
+  beforeEach(() => {
+    for (const k of Object.keys(callsByMethod)) delete callsByMethod[k];
+    for (const m of extraMethods) {
+      callsByMethod[m] = [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      originals[m] = (LevelService.prototype as any)[m];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (LevelService.prototype as any)[m] = async function (...args: unknown[]) {
+        callsByMethod[m]!.push(args);
+        return { method: m, args };
+      };
+    }
+  });
+
+  afterEach(() => {
+    for (const m of extraMethods) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (LevelService.prototype as any)[m] = originals[m];
+    }
+  });
+
+  it("getGoals → findGoals(id)", async () => {
+    const caller = levelRouter.createCaller({} as Ctx);
+    await caller.getGoals({ id: 1 });
+    expect(callsByMethod.findGoals?.[0]?.[0]).toBe(1);
+  });
+
+  it("getEvents → findEvents(id)", async () => {
+    const caller = levelRouter.createCaller({} as Ctx);
+    await caller.getEvents({ id: 1 });
+    expect(callsByMethod.findEvents?.[0]?.[0]).toBe(1);
+  });
+
+  it("getSummary → getSummary(id)", async () => {
+    const caller = levelRouter.createCaller({} as Ctx);
+    await caller.getSummary({ id: 1 });
+    expect(callsByMethod.getSummary?.[0]?.[0]).toBe(1);
+  });
+
+  it("getUserLevels → getUserLevels(userId)", async () => {
+    const caller = levelRouter.createCaller({} as Ctx);
+    await caller.getUserLevels({ userId: "u1" });
+    expect(callsByMethod.getUserLevels?.[0]?.[0]).toBe("u1");
+  });
+
+  it("getAvailability → getAvailability(userId, levelId)", async () => {
+    const caller = levelRouter.createCaller({} as Ctx);
+    await caller.getAvailability({ userId: "u1", levelId: 2 });
+    expect(callsByMethod.getAvailability?.[0]).toEqual(["u1", 2]);
+  });
+
+  it("duplicate → duplicate(id)", async () => {
+    const caller = levelRouter.createCaller({} as Ctx);
+    await caller.duplicate({ id: 1 });
+    expect(callsByMethod.duplicate?.[0]?.[0]).toBe(1);
   });
 });
