@@ -133,3 +133,60 @@ describe("holding.router — Validations Zod", () => {
     expect(caller.delete({ id: 0 })).rejects.toBeDefined();
   });
 });
+
+describe("holding.router — Méthodes additionnelles", () => {
+  const extraMethods = [
+    "findByGameInstance",
+    "updateQuantity",
+    "addQuantity",
+    "subtractQuantity",
+  ] as const;
+
+  const callsByMethod: Record<string, unknown[][]> = {};
+  const originals: Record<string, unknown> = {};
+
+  beforeEach(() => {
+    for (const k of Object.keys(callsByMethod)) delete callsByMethod[k];
+    for (const m of extraMethods) {
+      callsByMethod[m] = [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      originals[m] = (HoldingService.prototype as any)[m];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (HoldingService.prototype as any)[m] = async function (...args: unknown[]) {
+        callsByMethod[m]!.push(args);
+        return { method: m, args };
+      };
+    }
+  });
+
+  afterEach(() => {
+    for (const m of extraMethods) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (HoldingService.prototype as any)[m] = originals[m];
+    }
+  });
+
+  it("getByGameInstance → findByGameInstance(gameInstanceId)", async () => {
+    const caller = holdingRouter.createCaller({} as Ctx);
+    await caller.getByGameInstance({ gameInstanceId: 1 });
+    expect(callsByMethod.findByGameInstance?.[0]?.[0]).toBe(1);
+  });
+
+  it("updateQuantity → updateQuantity(id, quantity)", async () => {
+    const caller = holdingRouter.createCaller({} as Ctx);
+    await caller.updateQuantity({ id: 1, quantity: 50 });
+    expect(callsByMethod.updateQuantity?.[0]).toEqual([1, 50]);
+  });
+
+  it("addQuantity → addQuantity(id, amountToAdd)", async () => {
+    const caller = holdingRouter.createCaller({} as Ctx);
+    await caller.addQuantity({ id: 1, amountToAdd: 10 });
+    expect(callsByMethod.addQuantity?.[0]).toEqual([1, 10]);
+  });
+
+  it("subtractQuantity → subtractQuantity(id, amountToSubtract)", async () => {
+    const caller = holdingRouter.createCaller({} as Ctx);
+    await caller.subtractQuantity({ id: 1, amountToSubtract: 5 });
+    expect(callsByMethod.subtractQuantity?.[0]).toEqual([1, 5]);
+  });
+});

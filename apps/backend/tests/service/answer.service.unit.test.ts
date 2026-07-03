@@ -1,6 +1,6 @@
 // tests/service/answer.service.unit.test.ts
-import { describe, it, expect } from "bun:test";
-import type { Answer } from "@cashou/db-app";
+import { describe, it, expect, mock } from "bun:test";
+import type { Answer, PrismaClient } from "@cashou/db-app";
 import { AnswerService } from "../../src/trpc/services/answer.service";
 import { createServiceTestSetup } from "../helpers/service-test-factory";
 
@@ -52,5 +52,23 @@ describe("AnswerService — Tests unitaires", () => {
     const result = await service.delete(10);
     expect(result.id).toBe(10);
     expect(wasMethodCalled("delete")).toBeTrue();
+  });
+});
+
+describe("AnswerService — findByQuestion", () => {
+  it("findByQuestion filtre par questionId + orderBy createdAt asc", async () => {
+    const prisma = {
+      answer: {
+        findMany: mock(async (_a?: unknown): Promise<unknown[]> => []),
+      },
+    };
+    const service = new AnswerService(prisma as unknown as PrismaClient);
+    await service.findByQuestion(42);
+    const args = (prisma.answer.findMany.mock.calls[0]?.[0] ?? {}) as unknown as {
+      where: { questionId: number };
+      orderBy: unknown;
+    };
+    expect(args.where.questionId).toBe(42);
+    expect(args.orderBy).toEqual({ createdAt: "asc" });
   });
 });
