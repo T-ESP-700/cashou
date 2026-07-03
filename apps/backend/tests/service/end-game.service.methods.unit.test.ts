@@ -12,6 +12,7 @@ mock.module("../../src/ws/game-socket", () => ({
 
 // Import après le mock pour capter les remplacements.
 import { EndGameService } from "../../src/trpc/services/end-game.service";
+import { gameCache, computeCache } from "../../src/lib/cache";
 
 function makeGameInstance(over: Record<string, unknown> = {}) {
   return {
@@ -91,6 +92,15 @@ function buildPrisma() {
     }),
   };
 }
+
+// Vide les caches LRU singletons avant chaque test pour éviter la pollution
+// (getCurrentPrice, findForGame sont cachés par (assetId, gameInstanceId)).
+// Sans ce clear, les integration tests du CI polluent le cache et font échouer
+// price-based tests qui attendent des valeurs mockées spécifiques.
+beforeEach(() => {
+  gameCache.clear();
+  computeCache.clear();
+});
 
 describe("EndGameService.endGame", () => {
   let prisma: ReturnType<typeof buildPrisma>;

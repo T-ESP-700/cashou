@@ -5,6 +5,7 @@ import { describe, test, expect, mock, beforeEach } from "bun:test";
 import { Prisma } from "@cashou/db-app";
 import type { PrismaClient } from "@cashou/db-app";
 import { InvestmentService } from "../../src/trpc/services/investment.service";
+import { gameCache, computeCache } from "../../src/lib/cache";
 
 type AnyMock = ReturnType<typeof mock>;
 
@@ -76,6 +77,13 @@ function createMockPrisma() {
 }
 
 type MockPrisma = ReturnType<typeof createMockPrisma>;
+
+// Vide les caches LRU singletons avant chaque test pour éviter la pollution
+// (getCurrentPrice, findForGame, portfolio sont cachés par (assetId, gameInstanceId)).
+beforeEach(() => {
+  gameCache.clear();
+  computeCache.clear();
+});
 
 function buildService(prisma: MockPrisma) {
   const service = new InvestmentService(prisma as unknown as PrismaClient);
