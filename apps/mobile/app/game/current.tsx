@@ -1553,10 +1553,13 @@ export default function GameCurrentScreen() {
         disappearsOnIndex={-1}
         appearsOnIndex={0}
         opacity={0.5}
-        pressBehavior="close"
+        // Pendant les étapes guidées (ex: « clique sur le Livret A »), l'appui sur le fond en
+        // haut ne doit PAS fermer la sheet : on force l'action demandée. La fermeture
+        // programmatique (sélection d'un actif → ref.dismiss()) reste possible.
+        pressBehavior={tourRestrictsAssetPicker ? 'none' : 'close'}
       />
     ),
-    []
+    [tourRestrictsAssetPicker]
   );
 
   // Handle assets sheet state changes (pause/resume game)
@@ -2150,13 +2153,16 @@ export default function GameCurrentScreen() {
               ))}
             </View>
 
-            {/* Tuto fin de partie : bulle en ABSOLU par-dessus le contenu du haut (titre + étoiles),
-                pour ne pas agrandir la carte. */}
+            {/* Légende du système d'étoiles : explique comment gagner chacune des 3 étoiles. */}
+            <Text allowFontScaling={false} style={[styles.endGameStarsLegend, { color: theme.text }]}>
+              3 étoiles à gagner : 1 pour l'objectif principal, 1 pour l'objectif bonus et 1 pour le quiz.
+            </Text>
+
+            {/* Tuto fin de partie : bulle DANS LE FLUX, juste au-dessus des boutons (flèche vers
+                le bas → elle pointe les boutons). Placée en flux (et non en absolu par-dessus le
+                titre) pour ne plus masquer le titre / le message / les étoiles de la modale. */}
             {endGameTourGuided && (
-              <View
-                pointerEvents="box-none"
-                style={{ position: 'absolute', top: 14, left: 14, right: 14, zIndex: 30, elevation: 30 }}
-              >
+              <View style={{ width: '100%', zIndex: 20, elevation: 20 }}>
                 <Level1TourCoachBubble tail="down" message={endGameBubbleMessage} />
               </View>
             )}
@@ -2170,6 +2176,8 @@ export default function GameCurrentScreen() {
                     onPress={() => {
                       void handleOpenRecap();
                     }}
+                    // Pendant le tuto, Récap n'est actionnable qu'au 2e sous-pas (frame « recap »).
+                    disabled={endGameTourGuided && endGameTourSubStep !== 'recap'}
                     style={StyleSheet.flatten([
                       { flex: 1 },
                       endGameTourGuided && endGameTourSubStep === 'recap' ? tourFocusedPillStyle : null,
@@ -2180,8 +2188,16 @@ export default function GameCurrentScreen() {
                     label="Quiz"
                     customIcon={<QuizActionIcon width={18} height={18} />}
                     onPress={() => {
+                      // Durant le tuto, le bouton Quiz ne lance PAS le quiz : il fait avancer vers
+                      // la frame suivante (spotlight du bouton Récap, qui mène au vrai récap).
+                      if (endGameTourGuided && endGameTourSubStep === 'quiz') {
+                        setEndGameTourSubStep('recap');
+                        return;
+                      }
                       void handleOpenQuiz();
                     }}
+                    // Pendant le tuto, Quiz n'est actionnable qu'au 1er sous-pas (frame « quiz »).
+                    disabled={endGameTourGuided && endGameTourSubStep !== 'quiz'}
                     style={StyleSheet.flatten([
                       { flex: 1 },
                       endGameTourGuided && endGameTourSubStep === 'quiz' ? tourFocusedPillStyle : null,
@@ -2199,32 +2215,6 @@ export default function GameCurrentScreen() {
                 />
               )}
             </View>
-
-            {/* Bouton "Suivant" : passe du spotlight Quiz au spotlight Récap (uniquement au 1er sous-pas) */}
-            {endGameTourGuided && endGameTourSubStep === 'quiz' && (
-              <TouchableOpacity
-                onPress={() => setEndGameTourSubStep('recap')}
-                activeOpacity={0.85}
-                style={{
-                  alignSelf: 'flex-end',
-                  marginTop: 10,
-                  zIndex: 20,
-                  elevation: 20,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 6,
-                  backgroundColor: theme.accent,
-                  paddingVertical: 8,
-                  paddingHorizontal: 16,
-                  borderRadius: 20,
-                }}
-              >
-                <Text style={{ color: '#FFFFFF', fontFamily: CashouTheme.fonts.subheading, fontSize: 14, fontWeight: '600' }}>
-                  Suivant
-                </Text>
-                <Ionicons name="chevron-forward" size={15} color="#FFFFFF" />
-              </TouchableOpacity>
-            )}
 
             {/* Voile du tuto : assombrit toute la carte sauf le bouton mis en avant (zIndex 20) */}
             {endGameTourGuided && (
@@ -2247,6 +2237,9 @@ export default function GameCurrentScreen() {
         visible={showLevelInfoModal}
         onClose={() => setShowLevelInfoModal(false)}
         fromCurrentScreen
+        // Tuto niveau 1 : modale verrouillée (masque + bouton en surbrillance) pour forcer
+        // l'utilisateur à la traverser via son bouton plutôt qu'en tapant en dehors.
+        lockForTutorial={tour.sessionActive}
         level={levelData?.level ? {
           ...levelData.level,
           description: levelData.level.description ?? null,
@@ -2267,7 +2260,9 @@ export default function GameCurrentScreen() {
         ref={assetsSheetRef}
         snapPoints={['85%']}
         onChange={handleAssetsSheetChange}
-        enablePanDownToClose
+        // Pendant les étapes guidées, on interdit aussi le glissement vers le bas pour fermer,
+        // afin que le joueur ne puisse pas quitter la sheet autrement qu'en suivant le tuto.
+        enablePanDownToClose={!tourRestrictsAssetPicker}
         backdropComponent={renderAssetsBackdrop}
         backgroundStyle={{
           backgroundColor: theme.background,
@@ -2759,6 +2754,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#F7B167",
     paddingHorizontal: 7,
     paddingVertical: 5,
+  },
+  endGameStarsLegend: {
+    fontSize: 12,
+    fontFamily: "Anybody",
+    textAlign: "center",
+    lineHeight: 17,
+    opacity: 0.7,
+    marginBottom: 6,
+    paddingHorizontal: 8,
   },
   endGameActions: {
     flexDirection: "row",

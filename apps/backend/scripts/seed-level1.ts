@@ -148,11 +148,11 @@ async function main() {
   console.log(`✅ Actif créé: ${livretA.title} (${livretA.symbol}) - Rate: ${livretA.rate}% - Plafond: ${livretA.maxAmount}€`);
 
   const livretLED = await prisma.asset.upsert({
-    where: { symbol: 'LIVRET_DDS' },
+    where: { symbol: 'LIVRET_CASHOU' },
     update: {
-      title: 'Livret DDS',
+      title: 'Livret Cashou',
       fieldId: null,
-      rate: 1.7,
+      rate: 2,
       description: 'Livret d\'épargne sécurisé dédié au financement de projets responsables et durables. Rendement stable et légèrement supérieur au Livret A dans l\'univers Cashou. Idéal pour initier le joueur à la notion d\'impact positif tout en conservant une gestion prudente et sans risque.',
       marketId: market.id,
       submarketId: submarket.id,
@@ -160,10 +160,10 @@ async function main() {
       minAmount: 10     // Montant minimum de dépôt
     },
     create: {
-      title: 'Livret DDS',
-      symbol: 'LIVRET_DDS',
+      title: 'Livret Cashou',
+      symbol: 'LIVRET_CASHOU',
       fieldId: null,
-      rate: 1.7,
+      rate: 2,
       description: 'Livret d\'épargne sécurisé dédié au financement de projets responsables et durables. Rendement stable et légèrement supérieur au Livret A dans l\'univers Cashou. Idéal pour initier le joueur à la notion d\'impact positif tout en conservant une gestion prudente et sans risque.',
       marketId: market.id,
       submarketId: submarket.id,
@@ -402,9 +402,9 @@ async function main() {
   }
   console.log(`✅ Level-Event créé: Level ${level.number} ↔ Event "${event.title}" (déclenche à ${eventDateLabel})`);
 
-  // 10b. Verrouiller le Livret DDS jusqu'à l'event (démo du gating d'asset par niveau).
+  // 10b. Verrouiller le Livret Cashou jusqu'à l'event (démo du gating d'asset par niveau).
   // Il n'apparaît (grisé) puis devient achetable qu'après "Baisse du taux du Livret A".
-  console.log('🔒 Verrouillage du Livret DDS jusqu\'à l\'événement...');
+  console.log('🔒 Verrouillage du Livret Cashou jusqu\'à l\'événement...');
   const existingUnlock = await prisma.assetUnlock.findFirst({
     where: { levelId: level.id, assetId: livretLED.id },
   });

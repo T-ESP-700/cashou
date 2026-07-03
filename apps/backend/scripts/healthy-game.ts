@@ -22,7 +22,7 @@ const SIMULATED_REAL_SECONDS = 60; // secondes reelles simulees
 const INTEREST_TOLERANCE = 0.01; // tolerance pour la verification des interets
 
 // Symboles des assets accessibles au niveau 1
-const LEVEL1_ASSET_SYMBOLS = ['LIVRET_A', 'LIVRET_DDS'];
+const LEVEL1_ASSET_SYMBOLS = ['LIVRET_A', 'LIVRET_CASHOU'];
 
 type LevelWithGoals = Level & {
     levelGoals: (LevelGoal & { goal: Goal | null })[];
