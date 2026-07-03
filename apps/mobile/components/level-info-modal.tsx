@@ -9,6 +9,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Pressable,
+  Platform,
   Animated,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
@@ -51,9 +52,15 @@ interface LevelInfoModalProps {
   goals: GoalData[];
   notions?: NotionData[];
   fromCurrentScreen?: boolean;
+  /**
+   * Tutoriel niveau 1 : verrouille la modale de début de partie. Le fond agit comme masque
+   * (aucune fermeture au clic extérieur ni via le bouton retour Android) et le bouton d'action
+   * est mis en surbrillance (« visible ») pour forcer l'utilisateur à avancer par ce bouton.
+   */
+  lockForTutorial?: boolean;
 }
 
-export function LevelInfoModal({ visible, onClose, level, goals, notions = [], fromCurrentScreen = false }: LevelInfoModalProps) {
+export function LevelInfoModal({ visible, onClose, level, goals, notions = [], fromCurrentScreen = false, lockForTutorial = false }: LevelInfoModalProps) {
   const { colors, isDark } = useCashouTheme();
   const [currentPage, setCurrentPage] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
@@ -172,14 +179,16 @@ export function LevelInfoModal({ visible, onClose, level, goals, notions = [], f
       transparent
       animationType="fade"
       statusBarTranslucent
-      onRequestClose={onClose}
+      // Pendant le tuto, le bouton retour Android ne doit pas non plus fermer la modale.
+      onRequestClose={lockForTutorial ? () => {} : onClose}
     >
       <BlurView
         intensity={60}
         tint={isDark ? 'dark' : 'light'}
         style={styles.levelInfoBlur}
       >
-        <Pressable style={styles.levelInfoOverlay} onPress={onClose}>
+        {/* Fond « masque » : verrouillé pendant le tuto → le clic extérieur ne ferme plus rien. */}
+        <Pressable style={styles.levelInfoOverlay} onPress={lockForTutorial ? undefined : onClose}>
           <View
             onStartShouldSetResponder={() => true}
             style={[styles.levelInfoCardBackdrop, { backgroundColor: colors.secondary }]}
@@ -242,6 +251,11 @@ export function LevelInfoModal({ visible, onClose, level, goals, notions = [], f
                         Objectifs
                       </Text>
 
+                      {/* Explication du système d'objectifs (principal vs bonus) */}
+                      <Text style={[styles.levelInfoSlideIntro, { color: colors.text }]}>
+                        L'objectif principal est obligatoire : le réussir valide le niveau et te rapporte ta première étoile. Les objectifs bonus sont optionnels et rapportent chacun une étoile supplémentaire.
+                      </Text>
+
                       {/* Goals List */}
                       {displayGoals.map((goal, index) => {
                         const isMandatory = goal.isMandatory !== false;
@@ -283,6 +297,11 @@ export function LevelInfoModal({ visible, onClose, level, goals, notions = [], f
                         {/* Title */}
                         <Text style={[styles.levelInfoTitle, { color: colors.text }]}>
                           Notions
+                        </Text>
+
+                        {/* Explication : à quoi servent les notions */}
+                        <Text style={[styles.levelInfoSlideIntro, { color: colors.text }]}>
+                          Les notions sont les concepts financiers clés abordés dans ce niveau. Appuie sur une notion pour dérouler son explication.
                         </Text>
 
                         {/* Notions (accordéon) */}
@@ -345,6 +364,9 @@ export function LevelInfoModal({ visible, onClose, level, goals, notions = [], f
                     label={buttonLabel}
                     customIcon={buttonIcon}
                     onPress={handleButtonPress}
+                    // Bouton « visible » : mis en avant (bordure blanche) pendant le tuto pour
+                    // signaler l'unique action autorisée sur cette modale verrouillée.
+                    style={lockForTutorial ? tourFocusedPillStyle : undefined}
                   />
                 </View>
               </View>
@@ -354,6 +376,20 @@ export function LevelInfoModal({ visible, onClose, level, goals, notions = [], f
     </Modal>
   );
 }
+
+// Surbrillance « visible » du bouton d'action pendant le tuto (même rendu que la modale
+// d'événement et les pills de l'écran de jeu, pour une signalétique cohérente).
+const tourFocusedPillStyle =
+  Platform.OS === 'android'
+    ? { borderWidth: 3, borderColor: '#FFFFFF', elevation: 20 }
+    : {
+        borderWidth: 3,
+        borderColor: '#FFFFFF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.4,
+        shadowRadius: 8,
+      };
 
 const styles = StyleSheet.create({
   levelInfoBlur: {
@@ -407,6 +443,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Anybody',
     textAlign: 'center',
     lineHeight: 20,
+    marginBottom: 14,
+  },
+  levelInfoSlideIntro: {
+    fontSize: 13,
+    fontFamily: 'Anybody',
+    textAlign: 'center',
+    lineHeight: 19,
+    opacity: 0.75,
     marginBottom: 14,
   },
   levelInfoCardsRow: {

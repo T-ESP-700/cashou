@@ -54,7 +54,14 @@ function RootNavigatorContent() {
         level1Tour.step === Level1TourStep.CloseSheetAndPressStart ||
         level1Tour.step === Level1TourStep.FirstEventResume ||
         level1Tour.step === Level1TourStep.PostEventOpenAssets ||
-        level1Tour.step === Level1TourStep.PostEventResume),
+        level1Tour.step === Level1TourStep.PostEventResume ||
+        // Étapes se déroulant sur l'écran transaction (dépôt / retrait / déplacement) : le voile
+        // de contenu de cet écran ne couvre PAS le header (rendu ici, au-dessus du Stack). On dim
+        // donc le header directement depuis le contexte du tour pour masquer jusqu'en haut de
+        // l'écran, sans course avec `current.tsx` qui, monté en dessous, remet `dimmed:false`.
+        level1Tour.step === Level1TourStep.DepositOnLivretA ||
+        level1Tour.step === Level1TourStep.SelectLivretAForWithdraw ||
+        level1Tour.step === Level1TourStep.WithdrawAndMoveToOtherLivret),
   );
   const segments = useSegments();
   const navigationState = useRootNavigationState();
