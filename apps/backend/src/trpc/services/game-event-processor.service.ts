@@ -222,7 +222,11 @@ export class GameEventProcessorService {
         },
         levelEvent: {
           include: {
-            event: true,
+            event: {
+              include: {
+                impacts: true,
+              },
+            },
           },
         },
       },
@@ -305,6 +309,20 @@ export class GameEventProcessorService {
           "event_pause",
           tx,
         );
+
+        // Cash grant (ex: "Cadeau !") : crédit direct du wallet, sans Transaction —
+        // ce n'est pas un achat/vente du joueur, donc ça ne doit pas apparaître
+        // dans son historique de transactions.
+        const cashGrantTotal = (event.impacts ?? [])
+          .filter((impact) => impact.impactType === "CASH_GRANT" && impact.amount != null)
+          .reduce((sum, impact) => sum + Number(impact.amount), 0);
+
+        if (cashGrantTotal > 0) {
+          await tx.wallet.updateMany({
+            where: { gameInstanceId: gameInstance.id },
+            data: { amount: { increment: cashGrantTotal } },
+          });
+        }
 
         await tx.notification.create({
           data: {
