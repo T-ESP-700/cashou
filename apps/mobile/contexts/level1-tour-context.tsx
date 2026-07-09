@@ -30,6 +30,8 @@ interface Level1TourContextValue {
   sessionActive: boolean;
   step: Level1TourStep;
   eventPhase: number;
+  /** Whether the level roster includes a savings livret other than Livret A. */
+  hasOtherSavings: boolean;
   restrictEventModalToAssetsOnly: boolean;
 
   initFromGameScreen: (args: {
@@ -42,6 +44,9 @@ interface Level1TourContextValue {
   goToStep: (s: Level1TourStep) => Promise<void>;
 
   syncHoldings: (holdings: HoldingLike[]) => Promise<void>;
+
+  /** Sync flag from current.tsx once the level asset roster is loaded. */
+  setHasOtherSavings: (value: boolean) => void;
 
   notifyEventResumeCompleted: () => Promise<void>;
 
@@ -93,11 +98,20 @@ export function Level1TourProvider({ children }: { children: React.ReactNode }) 
   const [sessionActive, setSessionActive] = useState(false);
   const [step, setStepState] = useState<Level1TourStep>(Level1TourStep.Done);
   const [eventPhase, setEventPhase] = useState(0);
+  const [hasOtherSavings, setHasOtherSavingsState] = useState(false);
   const storageContextRef = useRef<{ userId: string; gameInstanceId: number } | null>(null);
   const stepRef = useRef(step);
   const eventPhaseRef = useRef(0);
+  const hasOtherSavingsRef = useRef(false);
   stepRef.current = step;
   eventPhaseRef.current = eventPhase;
+  hasOtherSavingsRef.current = hasOtherSavings;
+
+  const setHasOtherSavings = useCallback((value: boolean) => {
+    if (hasOtherSavingsRef.current === value) return;
+    hasOtherSavingsRef.current = value;
+    setHasOtherSavingsState(value);
+  }, []);
 
   const persist = useCallback(async (s: Level1TourStep, phase: number) => {
     const ctx = storageContextRef.current;
@@ -122,8 +136,10 @@ export function Level1TourProvider({ children }: { children: React.ReactNode }) 
     setSessionActive(false);
     setStepState(Level1TourStep.Done);
     setEventPhase(0);
+    setHasOtherSavingsState(false);
     stepRef.current = Level1TourStep.Done;
     eventPhaseRef.current = 0;
+    hasOtherSavingsRef.current = false;
     storageContextRef.current = null;
   }, []);
 
@@ -227,6 +243,7 @@ export function Level1TourProvider({ children }: { children: React.ReactNode }) 
 
   const restrictEventModalToAssetsOnly =
     sessionActive &&
+    hasOtherSavings &&
     eventPhase === 0 &&
     (step === Level1TourStep.WaitFirstEvent ||
       step === Level1TourStep.PostEventOpenAssets);
@@ -248,10 +265,12 @@ export function Level1TourProvider({ children }: { children: React.ReactNode }) 
       sessionActive,
       step,
       eventPhase,
+      hasOtherSavings,
       restrictEventModalToAssetsOnly,
       initFromGameScreen,
       goToStep,
       syncHoldings,
+      setHasOtherSavings,
       notifyEventResumeCompleted,
       notifyGameClockStarted,
       abortTour,
@@ -262,10 +281,12 @@ export function Level1TourProvider({ children }: { children: React.ReactNode }) 
       sessionActive,
       step,
       eventPhase,
+      hasOtherSavings,
       restrictEventModalToAssetsOnly,
       initFromGameScreen,
       goToStep,
       syncHoldings,
+      setHasOtherSavings,
       notifyEventResumeCompleted,
       notifyGameClockStarted,
       abortTour,
