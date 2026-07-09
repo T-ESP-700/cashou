@@ -142,6 +142,15 @@ const GAME_START_DATE = new Date(today.getFullYear(), today.getMonth(), today.ge
 const UPDATE_INTERVAL_MS = 1000;
 const PORTFOLIO_REFRESH_INTERVAL_MS = 3_000;
 
+/** Étapes du tuto situées avant la résolution du premier événement (eventPhase 0). */
+const PRE_EVENT_TOUR_STEPS: ReadonlySet<Level1TourStep> = new Set([
+  Level1TourStep.OpenInvestSheet,
+  Level1TourStep.SelectLivretAInSheet,
+  Level1TourStep.DepositOnLivretA,
+  Level1TourStep.CloseSheetAndPressStart,
+  Level1TourStep.WaitFirstEvent,
+]);
+
 // Constantes pour l'animation visuelle de la date
 const DAY_ANIMATION_MS = 30; // Vitesse par jour (30ms = très rapide)
 const MONTH_PAUSE_MS = 150; // Pause supplémentaire au changement de mois
@@ -519,6 +528,11 @@ export default function GameCurrentScreen() {
       setWalletId(wallet.id);
       setIsPaused(true);
       setIsGameEnded(false);
+      // Une instance de préparation n'a jamais été démarrée : sans ce reset, un "Réinitialiser le
+      // niveau" laisse gameHasBeenStarted/pendingEventCompletion de la partie précédente et la barre
+      // d'action affiche "Reprendre" (désactivé par le tuto) au lieu de "Commencer".
+      setGameHasBeenStarted(false);
+      setPendingEventCompletion(null);
       setHoldings([]);
       setHoldingDeposited({});
       setHoldingWithdrawn({});
@@ -850,9 +864,15 @@ export default function GameCurrentScreen() {
     if (requestedAssetsSheetGameId !== gameInstanceId) return;
 
     setRequestedAssetsSheetGameId(null);
-    setIsAssetsSheetOpen(true); // Freeze date animation immediately
-
+    // Surtout ne pas lever isAssetsSheetOpen ici : handleAddAsset court-circuite sur ce drapeau, la
+    // sheet ne s'ouvrirait jamais et l'écran resterait marqué "sheet ouverte" (voile figé, aucune
+    // consigne). handleAddAsset le lève lui-même dès qu'il décide d'ouvrir.
     const openAssetsFromEvent = async () => {
+      // La demande arrive au montage de l'écran (navigation depuis la modale d'event) : la
+      // BottomSheetModal n'a pas encore de ref et present() serait un no-op silencieux.
+      for (let i = 0; i < 20 && !assetsSheetRef.current; i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
       await handleAddAsset();
     };
 
@@ -1103,12 +1123,35 @@ export default function GameCurrentScreen() {
   const localFormattedDate = gameInstanceId
     ? `${String(gameDate.getDate()).padStart(2, '0')}/${String(gameDate.getMonth() + 1).padStart(2, '0')}/${gameDate.getFullYear()}`
     : null;
+  // Les étapes "in-sheet" (choix d'un livret) sont guidées par la bulle coach de la sheet. Quand la
+  // sheet est fermée — retour arrière, rechargement de l'app — l'écran n'a plus aucune consigne et
+  // "Reprendre" est désactivé : on ré-affiche alors l'overlay pour renvoyer vers "Investir".
+  const tourStepNeedsAssetsSheet =
+    tour.step === Level1TourStep.SelectLivretAForWithdraw ||
+    tour.step === Level1TourStep.WithdrawAndMoveToOtherLivret;
   const tutorialOverlayVisible =
     tour.sessionActive &&
+    // La sheet a son propre voile + bulle coach ; superposer l'overlay masquerait sa bulle derrière.
+    !isAssetsSheetOpen &&
     (tour.step === Level1TourStep.OpenInvestSheet ||
       tour.step === Level1TourStep.CloseSheetAndPressStart ||
       tour.step === Level1TourStep.FirstEventResume ||
       tour.step === Level1TourStep.PostEventOpenAssets ||
+      tour.step === Level1TourStep.PostEventResume ||
+      tourStepNeedsAssetsSheet);
+  const tutorialOverlayMessage = tourStepNeedsAssetsSheet
+    ? 'Appuies sur « Investir » pour rouvrir tes actifs et poursuivre le tutoriel.'
+    : tourBubbleForStep(tour.step, tour.eventPhase);
+
+  // Barre d'action : exactement une pastille allumée à chaque étape guidée, jamais zéro.
+  const tourFocusesInvestPill =
+    tour.sessionActive &&
+    (tour.step === Level1TourStep.OpenInvestSheet ||
+      tour.step === Level1TourStep.PostEventOpenAssets ||
+      tourStepNeedsAssetsSheet);
+  const tourFocusesResumePill =
+    tour.sessionActive &&
+    (tour.step === Level1TourStep.FirstEventResume ||
       tour.step === Level1TourStep.PostEventResume);
   // Don't inject subtitle until level is loaded (avoids header flicker)
   useGameHeaderSubtitle(
@@ -1200,26 +1243,53 @@ export default function GameCurrentScreen() {
     stats.level,
   ]);
 
+  // Réconciliation tuto ↔ partie. Les étapes d'avant-partie n'avancent normalement que sur des
+  // notifications ponctuelles (notifyGameClockStarted, arrivée de l'événement). Si l'une est manquée
+  // — chrono du niveau 1 très court, remontage d'écran, rechargement de l'app — le tuto reste
+  // derrière la partie et aucune pastille n'est plus cliquable. On resynchronise donc à chaque
+  // rendu depuis l'état faisant autorité (partie démarrée / événement en attente) plutôt que sur le
+  // front montant de `pendingEventCompletion`.
   useEffect(() => {
-    const now = gameInstanceId != null && pendingEventCompletion === gameInstanceId;
-    if (!tourRef.current.sessionActive) {
-      prevPendingEventRef.current = now;
+    const eventPending = gameInstanceId != null && pendingEventCompletion === gameInstanceId;
+    if (!tourRef.current.sessionActive || !gameInstanceId) {
+      prevPendingEventRef.current = eventPending;
       return;
     }
-    if (!gameInstanceId) {
-      prevPendingEventRef.current = false;
-      return;
-    }
-    if (now && !prevPendingEventRef.current) {
-      void (async () => {
-        const t = tourRef.current;
-        if (t.step === Level1TourStep.WaitFirstEvent && t.eventPhase === 0) {
-          await t.goToStep(Level1TourStep.PostEventOpenAssets);
-        }
-      })();
-    }
-    prevPendingEventRef.current = now;
-  }, [gameInstanceId, pendingEventCompletion, tour.sessionActive, tour.step, tour.eventPhase]);
+    prevPendingEventRef.current = eventPending;
+
+    const t = tourRef.current;
+    if (t.eventPhase !== 0) return;
+    if (!PRE_EVENT_TOUR_STEPS.has(t.step)) return;
+
+    void (async () => {
+      if (eventPending) {
+        // `hasOtherSavings` vient du roster du niveau : tant qu'il n'est pas chargé, on ne peut pas
+        // choisir entre le parcours mono-livret et le rééquilibrage.
+        if (levelRoster.length === 0) return;
+        // If the level only exposes Livret A (no other savings to migrate to), the
+        // event is purely narrative — skip the rebalance flow and head straight to resume.
+        await t.goToStep(
+          t.hasOtherSavings
+            ? Level1TourStep.PostEventOpenAssets
+            : Level1TourStep.FirstEventResume
+        );
+        return;
+      }
+      // La partie tourne déjà mais le tuto en est encore à la préparation : rattrapage.
+      if (gameHasBeenStarted && t.step !== Level1TourStep.WaitFirstEvent) {
+        await t.goToStep(Level1TourStep.WaitFirstEvent);
+      }
+    })();
+  }, [
+    gameInstanceId,
+    pendingEventCompletion,
+    gameHasBeenStarted,
+    levelRoster.length,
+    tour.sessionActive,
+    tour.step,
+    tour.eventPhase,
+    tour.hasOtherSavings,
+  ]);
 
   useEffect(() => {
     const t = tourRef.current;
@@ -1370,6 +1440,11 @@ export default function GameCurrentScreen() {
       setHoldingDeposited({});
       setHoldingWithdrawn({});
       setIsPaused(true);
+      // router.replace() ne remonte pas l'écran : sans ces deux resets, la nouvelle partie hérite du
+      // cycle de vie de la précédente et la barre d'action propose "Reprendre" au lieu de
+      // "Commencer" — que le tuto, lui, demande d'appuyer.
+      setGameHasBeenStarted(false);
+      setPendingEventCompletion(null);
 
       setGameInstanceId(newGame.id);
       setWalletId(wallet.id);
@@ -1464,19 +1539,36 @@ export default function GameCurrentScreen() {
 
   // Dans le drawer, l'étape "DepositOnLivretA" (fiche) est traitée comme "SelectLivretAInSheet" :
   // si l'utilisateur rouvre le drawer sans avoir déposé, on le re-guide vers le Livret A.
+  // "PostEventOpenAssets" est traitée comme "SelectLivretAForWithdraw" : l'effet qui fait avancer
+  // l'étape ne s'exécute qu'après la peinture, et sans ce mapping la sheet apparaît une frame sans
+  // carte mise en avant — donc sans bulle coach, écran voilé et muet.
   const drawerTourStep =
     tour.step === Level1TourStep.DepositOnLivretA
       ? Level1TourStep.SelectLivretAInSheet
-      : tour.step;
+      : tour.step === Level1TourStep.PostEventOpenAssets
+        ? Level1TourStep.SelectLivretAForWithdraw
+        : tour.step;
 
-  const tourRestrictsAssetPicker = useMemo(
-    () =>
-      tour.sessionActive &&
-      (drawerTourStep === Level1TourStep.SelectLivretAInSheet ||
-        drawerTourStep === Level1TourStep.SelectLivretAForWithdraw ||
-        drawerTourStep === Level1TourStep.WithdrawAndMoveToOtherLivret),
-    [tour.sessionActive, drawerTourStep],
-  );
+  // Une ligne cible existe-t-elle pour l'étape en cours ? Sinon on ne verrouille pas la sheet :
+  // sans carte à mettre en avant il n'y a ni halo ni bulle coach, et le joueur se retrouverait
+  // enfermé dans une liste voilée et muette (asset encore verrouillé, filtre de recherche actif…).
+  const tourTargetRowExists = useMemo(() => {
+    if (!tour.sessionActive) return false;
+    if (
+      drawerTourStep === Level1TourStep.SelectLivretAInSheet ||
+      drawerTourStep === Level1TourStep.SelectLivretAForWithdraw
+    ) {
+      return filteredAssets.some((a: any) => isLivretAAsset({ title: a.title, symbol: a.symbol }));
+    }
+    if (drawerTourStep === Level1TourStep.WithdrawAndMoveToOtherLivret) {
+      return filteredAssets.some((a: any) =>
+        isSavingsLivretOtherThanA({ title: a.title, symbol: a.symbol, submarket: a.submarket })
+      );
+    }
+    return false;
+  }, [tour.sessionActive, drawerTourStep, filteredAssets]);
+
+  const tourRestrictsAssetPicker = tourTargetRowExists;
 
   const assetsListForSheet = filteredAssets;
 
@@ -1644,12 +1736,19 @@ export default function GameCurrentScreen() {
         console.error('[GameCurrentScreen] Error pausing for assets sheet:', err);
       }
     }
-    // Fetch assets if not loaded yet
-    if (allAssets.length === 0) {
-      fetchAvailableAssets();
+    // Always refetch: asset availability is time-dependent. Assets unlock as the
+    // game progresses past their trigger event, so the list must reflect the
+    // current game day each time the sheet is opened (not just on first load).
+    await fetchAvailableAssets();
+    if (assetsSheetRef.current) {
+      assetsSheetRef.current.present();
+    } else {
+      // La sheet n'est pas montée : sans ce retour arrière, isAssetsSheetOpen resterait vrai alors
+      // qu'aucune sheet n'est affichée (écran voilé, tuto sans consigne, boutons inertes).
+      console.warn('[GameCurrentScreen] assets sheet not mounted — aborting open');
+      setIsAssetsSheetOpen(false);
     }
-    assetsSheetRef.current?.present();
-  }, [allAssets.length, fetchAvailableAssets, gameHasBeenStarted, gameInstanceId, isAssetsSheetOpen, showAlert, walletId]);
+  }, [fetchAvailableAssets, gameHasBeenStarted, gameInstanceId, isAssetsSheetOpen, showAlert, walletId]);
 
   const handleResumeAfterEvent = async () => {
     if (!gameInstanceId || !isAwaitingEventResume) {
@@ -2443,7 +2542,7 @@ export default function GameCurrentScreen() {
 
       <Level1TourOverlay
         visible={tutorialOverlayVisible}
-        message={tourBubbleForStep(tour.step, tour.eventPhase)}
+        message={tutorialOverlayMessage}
         reserveBottomPx={bottomChromeHeight}
       />
 
@@ -2470,13 +2569,7 @@ export default function GameCurrentScreen() {
                   tour.sessionActive &&
                   tour.step === Level1TourStep.CloseSheetAndPressStart
                 }
-                style={
-                  tour.sessionActive &&
-                  (tour.step === Level1TourStep.OpenInvestSheet ||
-                    tour.step === Level1TourStep.PostEventOpenAssets)
-                    ? tourFocusedPillStyle
-                    : undefined
-                }
+                style={tourFocusesInvestPill ? tourFocusedPillStyle : undefined}
               />
               <ActionPillButton
                 label="Commencer"
@@ -2506,31 +2599,17 @@ export default function GameCurrentScreen() {
                   tour.sessionActive &&
                   tour.step === Level1TourStep.CloseSheetAndPressStart
                 }
-                style={
-                  tour.sessionActive &&
-                  (tour.step === Level1TourStep.OpenInvestSheet ||
-                    tour.step === Level1TourStep.PostEventOpenAssets)
-                    ? tourFocusedPillStyle
-                    : undefined
-                }
+                style={tourFocusesInvestPill ? tourFocusedPillStyle : undefined}
               />
               <ActionPillButton
                 label="Reprendre"
                 iconName="play"
                 onPress={handleResumeAfterEvent}
                 isLoading={isStarting}
-                disabled={
-                  tour.sessionActive &&
-                  tour.step !== Level1TourStep.FirstEventResume &&
-                  tour.step !== Level1TourStep.PostEventResume
-                }
-                style={
-                  tour.sessionActive &&
-                  (tour.step === Level1TourStep.FirstEventResume ||
-                    tour.step === Level1TourStep.PostEventResume)
-                    ? tourFocusedPillStyle
-                    : undefined
-                }
+                // Ne désactiver que si une autre pastille est allumée : sinon l'écran n'offre
+                // plus aucune action possible.
+                disabled={tourFocusesInvestPill}
+                style={tourFocusesResumePill ? tourFocusedPillStyle : undefined}
               />
             </View>
           ) : hasGameStarted && isPaused && !isAssetsSheetOpen ? (
@@ -2539,26 +2618,14 @@ export default function GameCurrentScreen() {
                 label="Investir"
                 iconName="add"
                 onPress={handleAddAsset}
-                style={
-                  tour.sessionActive &&
-                  (tour.step === Level1TourStep.OpenInvestSheet ||
-                    tour.step === Level1TourStep.PostEventOpenAssets)
-                    ? tourFocusedPillStyle
-                    : undefined
-                }
+                style={tourFocusesInvestPill ? tourFocusedPillStyle : undefined}
               />
               <ActionPillButton
                 label="Reprendre"
                 iconName="play"
                 onPress={handleManualResume}
                 isLoading={isStarting}
-                style={
-                  tour.sessionActive &&
-                  (tour.step === Level1TourStep.FirstEventResume ||
-                    tour.step === Level1TourStep.PostEventResume)
-                    ? tourFocusedPillStyle
-                    : undefined
-                }
+                style={tourFocusesResumePill ? tourFocusedPillStyle : undefined}
               />
             </View>
           ) : (
@@ -2566,13 +2633,7 @@ export default function GameCurrentScreen() {
               label="Investir"
               iconName="add"
               onPress={handleAddAsset}
-              style={
-                tour.sessionActive &&
-                (tour.step === Level1TourStep.OpenInvestSheet ||
-                  tour.step === Level1TourStep.PostEventOpenAssets)
-                  ? tourFocusedPillStyle
-                  : undefined
-              }
+              style={tourFocusesInvestPill ? tourFocusedPillStyle : undefined}
             />
           )}
         </View>
