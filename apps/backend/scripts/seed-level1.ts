@@ -9,7 +9,7 @@ const TEST_USER_PASSWORD = 'azerty123456';
 const TEST_USER_NAME = 'Test User';
 
 async function main() {
-  console.log('🌱 Début du seeding du niveau 1: Premier pas dans l\'épargne...');
+  console.log('🌱 Début du seeding du niveau 1: Tutoriel...');
 
   // 0. Créer l'utilisateur de test
   console.log('👤 Création de l\'utilisateur de test...');
@@ -102,7 +102,8 @@ async function main() {
       where: { id: submarket.id },
       data: {
         description: 'Produits d\'épargne réglementés offrant un rendement faible mais garanti. Idéal pour introduire la notion de capital sécurisé et de réserve d\'urgence.',
-        marketId: market.id
+        marketId: market.id,
+        type: 'SAVINGS',
       }
     });
   } else {
@@ -110,7 +111,8 @@ async function main() {
       data: {
         title: 'Livrets d\'épargne',
         description: 'Produits d\'épargne réglementés offrant un rendement faible mais garanti. Idéal pour introduire la notion de capital sécurisé et de réserve d\'urgence.',
-        marketId: market.id
+        marketId: market.id,
+        type: 'SAVINGS',
       }
     });
   }
@@ -146,11 +148,11 @@ async function main() {
   console.log(`✅ Actif créé: ${livretA.title} (${livretA.symbol}) - Rate: ${livretA.rate}% - Plafond: ${livretA.maxAmount}€`);
 
   const livretLED = await prisma.asset.upsert({
-    where: { symbol: 'LIVRET_DDS' },
+    where: { symbol: 'LIVRET_CASHOU' },
     update: {
-      title: 'Livret DDS',
+      title: 'Livret Cashou',
       fieldId: null,
-      rate: 1.7,
+      rate: 2,
       description: 'Livret d\'épargne sécurisé dédié au financement de projets responsables et durables. Rendement stable et légèrement supérieur au Livret A dans l\'univers Cashou. Idéal pour initier le joueur à la notion d\'impact positif tout en conservant une gestion prudente et sans risque.',
       marketId: market.id,
       submarketId: submarket.id,
@@ -158,10 +160,10 @@ async function main() {
       minAmount: 10     // Montant minimum de dépôt
     },
     create: {
-      title: 'Livret DDS',
-      symbol: 'LIVRET_DDS',
+      title: 'Livret Cashou',
+      symbol: 'LIVRET_CASHOU',
       fieldId: null,
-      rate: 1.7,
+      rate: 2,
       description: 'Livret d\'épargne sécurisé dédié au financement de projets responsables et durables. Rendement stable et légèrement supérieur au Livret A dans l\'univers Cashou. Idéal pour initier le joueur à la notion d\'impact positif tout en conservant une gestion prudente et sans risque.',
       marketId: market.id,
       submarketId: submarket.id,
@@ -171,8 +173,21 @@ async function main() {
   });
   console.log(`✅ Actif créé: ${livretLED.title} (${livretLED.symbol}) - Rate: ${livretLED.rate}% - Plafond: ${livretLED.maxAmount}€`);
 
-  // 5. Créer le Level
+  // 5. Créer le Level (Tutoriel)
   console.log('📚 Création du niveau...');
+  const LEVEL_FIELDS = {
+    title: 'Tutoriel',
+    duration: 435,
+    speed: 1314000, // speed conservé (rythme actuel)
+    startBalance: 2000,
+    pointsRequired: 0,
+    startDate: new Date(Date.UTC(2025, 11, 1)), // jour 0 = 15/06/2025 (ancre calendaire in-game)
+    description:
+      'Bienvenue dans Cashou !\n\n' +
+      'Ce premier niveau a pour objectif de vous présenter le fonctionnement d’une partie.\n\n' +
+      'Triomphez de vos premiers objectifs tout en découvrant comment jouer 😃',
+    tip: 'Pense à placer ton capital dans un produit sécurisé dès le début pour générer des intérêts. Même un petit rendement garanti peut faire la différence sur la durée !',
+  };
   let level = await prisma.level.findFirst({
     where: { number: 1 }
   });
@@ -180,59 +195,61 @@ async function main() {
   if (level) {
     level = await prisma.level.update({
       where: { id: level.id },
-      data: {
-        title: 'Premier pas dans l\'épargne',
-        duration: 1825,
-        speed: 1314000,
-        startBalance: 2000,
-        pointsRequired: 0,
-        description: 'Découvre les bases de l\'épargne avec des produits sécurisés. Apprends à gérer ton capital sans risque et à comprendre les notions essentielles de la finance personnelle.',
-        tip: 'Pense à placer ton capital dans un produit sécurisé dès le début pour générer des intérêts. Même un petit rendement garanti peut faire la différence sur la durée !'
-      }
+      data: LEVEL_FIELDS,
     });
   } else {
     level = await prisma.level.create({
-      data: {
-        title: 'Premier pas dans l\'épargne',
-        number: 1,
-        duration: 1825,
-        speed: 1314000,
-        startBalance: 2000,
-        pointsRequired: 0,
-        description: 'Découvre les bases de l\'épargne avec des produits sécurisés. Apprends à gérer ton capital sans risque et à comprendre les notions essentielles de la finance personnelle.',
-        tip: 'Pense à placer ton capital dans un produit sécurisé dès le début pour générer des intérêts. Même un petit rendement garanti peut faire la différence sur la durée !'
-      }
+      data: { number: 1, ...LEVEL_FIELDS },
     });
   }
-  console.log(`✅ Niveau créé: ${level.title} (Niveau ${level.number})`);
+  console.log(`✅ Niveau créé: ${level.title} (Niveau ${level.number}) — durée ${level.duration}j, speed ${level.speed}`);
 
-  // 6. Créer l'Event "Baisse du livret A"
+  // 5b. Lier les actifs du niveau 1 (LevelAsset) — indispensable depuis que d'autres niveaux
+  // partagent le même marché/sous-marché : sans ça, un niveau sans lignes LevelAsset voit
+  // TOUS les actifs de la base (donc aussi ceux d'autres niveaux, ex: LDDS du niveau 2).
+  console.log('🔗 Liaison niveau-actifs...');
+  for (const asset of [livretA, livretLED]) {
+    const existingLevelAsset = await prisma.levelAsset.findFirst({
+      where: { levelId: level.id, assetId: asset.id },
+    });
+    if (!existingLevelAsset) {
+      await prisma.levelAsset.create({ data: { levelId: level.id, assetId: asset.id } });
+    }
+  }
+  console.log(`✅ Level-Assets créés: ${livretA.symbol}, ${livretLED.symbol} liés au niveau 1`);
+
+  // 6. Créer l'Event "Baisse du taux du Livret A"
   console.log('🎯 Création de l\'événement...');
+  const EVENT_TITLE = 'Baisse du taux du Livret A';
+  const EVENT_DESCRIPTION =
+    'Breaking News : Les instances gouvernementales ont pris la décision de baisser le taux du Livret A. Actuellement égal à 1,7%, celui-ci sera de 1,5% à partir du 1er février.';
   let event = await prisma.event.findFirst({
-    where: { title: 'Baisse du livret A' }
+    where: { title: EVENT_TITLE }
   });
 
   if (event) {
     event = await prisma.event.update({
       where: { id: event.id },
       data: {
-        description: 'Le taux d\'intérêt du livret passe de 1,7% à 1,2%',
+        description: EVENT_DESCRIPTION,
         hasImpact: true
       }
     });
   } else {
     event = await prisma.event.create({
       data: {
-        title: 'Baisse du livret A',
-        description: 'Le taux d\'intérêt du livret passe de 1,7% à 1,2%',
+        title: EVENT_TITLE,
+        description: EVENT_DESCRIPTION,
         hasImpact: true
       }
     });
   }
   console.log(`✅ Événement créé: ${event.title}`);
 
-  // 7. Créer l'Impact
-  console.log('💥 Création de l\'impact...');
+  // 7. Créer l'Impact (RATE : baisse du TAUX du Livret A, pas de son cours)
+  // coef 0.882 → nouveau taux = round(1.7 × 0.882, 2) = 1.50 %
+  console.log('💥 Création de l\'impact (taux)...');
+  const RATE_COEF = 0.882;
   let impact = await prisma.impact.findFirst({
     where: {
       eventId: event.id,
@@ -244,7 +261,8 @@ async function main() {
     impact = await prisma.impact.update({
       where: { id: impact.id },
       data: {
-        coef: 0.7
+        coef: RATE_COEF,
+        impactType: 'RATE'
       }
     });
   } else {
@@ -252,42 +270,46 @@ async function main() {
       data: {
         eventId: event.id,
         assetId: livretA.id,
-        coef: 0.7
+        coef: RATE_COEF,
+        impactType: 'RATE'
       }
     });
   }
-  console.log(`✅ Impact créé: Event ${event.title} → Asset ${livretA.symbol} (Coef: ${impact.coef}%)`);
+  console.log(`✅ Impact créé: Event ${event.title} → Asset ${livretA.symbol} (TAUX × ${impact.coef} ≈ ${Math.round((livretA.rate ?? 1.7) * RATE_COEF * 100) / 100}%)`);
 
-  // 8. Créer le Goal
-  console.log('🎯 Création de l\'objectif...');
+  // 8. Créer le Goal obligatoire "Terminer le niveau"
+  // goalType null → toujours validé (cf. end-game.service validateGoal).
+  // Comme la réussite du niveau ne dépend que des objectifs obligatoires,
+  // le niveau 1 (tutoriel) est toujours réussi quel que soit le solde final.
+  console.log('🎯 Création de l\'objectif obligatoire...');
   let goal = await prisma.goal.findFirst({
-    where: { title: 'Reste en positif' }
+    where: { title: 'Terminer le niveau' }
   });
 
   if (goal) {
     goal = await prisma.goal.update({
       where: { id: goal.id },
       data: {
-        description: 'Ne pas perdre d\'argent par rapport à ton capital initial.',
-        successMessage: 'Tu as réussi à rester en positif.',
-        failureMessage: 'Tu n’as pas réussi à rester en positif, mais ce n’est pas grave, tu feras mieux la prochaine fois !',
-        goalType: 'wallet_gte_start',
-        goalValue: 0
+        description: 'Va au bout de ce premier niveau pour découvrir les bases de l\'épargne.',
+        successMessage: 'Bravo, tu as terminé ton premier niveau !',
+        failureMessage: '',
+        goalType: null,
+        goalValue: null
       }
     });
   } else {
     goal = await prisma.goal.create({
       data: {
-        title: "Reste en positif",
-        description: "Ne pas perdre d'argent par rapport à ton capital initial.",
-        successMessage: "Tu as réussi à rester en positif.",
-        failureMessage: "Tu n’as pas réussi à rester en positif, mais ce n’est pas grave, tu feras mieux la prochaine fois !",
-        goalType: 'wallet_gte_start',
-        goalValue: 0
+        title: "Terminer le niveau",
+        description: "Va au bout de ce premier niveau pour découvrir les bases de l'épargne.",
+        successMessage: "Bravo, tu as terminé ton premier niveau !",
+        failureMessage: "",
+        goalType: null,
+        goalValue: null
       },
     });
   }
-  console.log(`✅ Objectif créé: ${goal.title} (type: ${goal.goalType})`);
+  console.log(`✅ Objectif obligatoire créé: ${goal.title} (type: ${goal.goalType ?? 'toujours validé'})`);
 
   // 9. Créer le LevelGoal
   console.log('🔗 Liaison niveau-objectif...');
@@ -309,8 +331,10 @@ async function main() {
   }
   console.log(`✅ Level-Goal créé: Level ${level.number} ↔ Goal "${goal.title}" (obligatoire)`);
 
-  // 9b. Optional: create a bonus goal for level 1 (demonstrates mandatory vs bonus)
-  const bonusGoalTitle = "Gagner au moins 100";
+  // 9b. Objectif bonus "S'amuser !" (goalType null → toujours validé).
+  // Les objectifs bonus n'affectent QUE les étoiles (pas la réussite). Avec un bonus
+  // toujours validé, le niveau 1 garantit 2 étoiles, et 3 si le quiz est réussi.
+  const bonusGoalTitle = "S'amuser !";
   let bonusGoal = await prisma.goal.findFirst({
     where: { title: bonusGoalTitle }
   });
@@ -318,11 +342,11 @@ async function main() {
     bonusGoal = await prisma.goal.update({
       where: { id: bonusGoal.id },
       data: {
-        description: "Avoir au moins 100 cashou de plus que ton capital de départ à la fin du niveau.",
-        successMessage: "Tu as même réussi à faire plus de 100 cashou de plus-value !",
-        failureMessage: "Par contre, tu n’as pas atteint l’objectif secondaire cette fois.",
-        goalType: "wallet_min",
-        goalValue: (level.startBalance ?? 2000) + 100
+        description: "Profite du jeu et explore sans pression !",
+        successMessage: "Et en plus tu t'es amusé(e) : c'est l'essentiel !",
+        failureMessage: "",
+        goalType: null,
+        goalValue: null
       }
     });
     console.log(`✅ Objectif bonus mis à jour: ${bonusGoal.title}`);
@@ -330,11 +354,11 @@ async function main() {
     bonusGoal = await prisma.goal.create({
       data: {
         title: bonusGoalTitle,
-        description: "Avoir au moins 100 de plus que ton capital de départ à la fin du niveau.",
-        successMessage: "Tu as même réussi à faire plus de 100 cashou de plus-value !",
-        failureMessage: "Par contre, tu n’as pas atteint l’objectif secondaire cette fois.",
-        goalType: "wallet_min",
-        goalValue: (level.startBalance ?? 2000) + 100
+        description: "Profite du jeu et explore sans pression !",
+        successMessage: "Et en plus tu t'es amusé(e) : c'est l'essentiel !",
+        failureMessage: "",
+        goalType: null,
+        goalValue: null
       }
     });
     console.log(`✅ Objectif bonus créé: ${bonusGoal.title}`);
@@ -356,8 +380,9 @@ async function main() {
     console.log(`✅ Level-Goal bonus créé: Level ${level.number} ↔ Goal "${bonusGoal.title}"`);
   }
 
-  // 10. Créer le LevelEvent (timing: ~608 jours = 1/3 de 1825)
+  // 10. Créer le LevelEvent (déclenchement à 16% de la durée = "1er février")
   console.log('🔗 Liaison niveau-événement...');
+  const EVENT_TRIGGER_PERCENT = 16;
   let levelEvent = await prisma.levelEvent.findFirst({
     where: {
       levelId: level.id,
@@ -365,15 +390,50 @@ async function main() {
     }
   });
 
-  if (!levelEvent) {
+  if (levelEvent) {
+    levelEvent = await prisma.levelEvent.update({
+      where: { id: levelEvent.id },
+      data: {
+        triggerPercent: EVENT_TRIGGER_PERCENT,
+        position: 1
+      }
+    });
+  } else {
     levelEvent = await prisma.levelEvent.create({
       data: {
         levelId: level.id,
-        eventId: event.id
+        eventId: event.id,
+        triggerPercent: EVENT_TRIGGER_PERCENT,
+        position: 1
       }
     });
   }
-  console.log(`✅ Level-Event créé: Level ${level.number} ↔ Event "${event.title}"`);
+  // Date calendaire déduite : startDate + jour de jeu de l'event
+  const eventGameDay = Math.floor((level.duration ?? 0) * (levelEvent.triggerPercent / 100));
+  let eventDateLabel = `${levelEvent.triggerPercent}% (jour ${eventGameDay})`;
+  if (level.startDate) {
+    const eventDate = new Date(level.startDate.getTime() + eventGameDay * 86400 * 1000);
+    eventDateLabel += ` → ${eventDate.toISOString().slice(0, 10)}`;
+  }
+  console.log(`✅ Level-Event créé: Level ${level.number} ↔ Event "${event.title}" (déclenche à ${eventDateLabel})`);
+
+  // 10b. Verrouiller le Livret Cashou jusqu'à l'event (démo du gating d'asset par niveau).
+  // Il n'apparaît (grisé) puis devient achetable qu'après "Baisse du taux du Livret A".
+  console.log('🔒 Verrouillage du Livret Cashou jusqu\'à l\'événement...');
+  const existingUnlock = await prisma.assetUnlock.findFirst({
+    where: { levelId: level.id, assetId: livretLED.id },
+  });
+  if (existingUnlock) {
+    await prisma.assetUnlock.update({
+      where: { id: existingUnlock.id },
+      data: { levelEventId: levelEvent.id, unlockPercent: null },
+    });
+  } else {
+    await prisma.assetUnlock.create({
+      data: { levelId: level.id, assetId: livretLED.id, levelEventId: levelEvent.id },
+    });
+  }
+  console.log(`✅ Verrou créé: ${livretLED.symbol} débloqué après "${event.title}"`);
 
   // 11. Créer les Questions et Réponses pour le Quiz MCQ
   console.log('❓ Création des questions et réponses pour le quiz MCQ...');
@@ -797,33 +857,82 @@ async function main() {
 
   console.log(`✅ 2 Daily Quiz vérifiés/créés (hier et aujourd'hui) avec 3 questions chacun`);
 
-  // Optional: create a UserLevelCompletion for demo stars — only for the dedicated test user
-  // IMPORTANT: never overwrite real user data with demo values (use findUnique, not findFirst)
-  const demoUser = await prisma.user.findFirst({
-    where: { email: 'test-stars@cashou.fr' }
-  });
-  if (demoUser) {
-    // Only CREATE if no completion exists — never overwrite existing real data
-    const existing = await (prisma as any).userLevelCompletion.findUnique({
-      where: { userId_levelId: { userId: demoUser.id, levelId: level.id } }
-    });
-    if (!existing) {
-      await (prisma as any).userLevelCompletion.create({
-        data: {
-          userId: demoUser.id,
-          levelId: level.id,
-          stars: 2,
-          mandatoryGoalsMet: true,
-          bonusGoalsMet: false,
-          quizPassed: true,
-          completedAt: new Date()
-        }
+  // 15. Créer les Notions pédagogiques et les lier au niveau 1
+  console.log('📖 Création des notions...');
+  const notionsData = [
+    {
+      name: 'Taux d’intérêt',
+      description:
+        'Le taux d’intérêt est le pourcentage qui permet de calculer l’argent gagné grâce à une somme placée sur un livret. Il représente donc la rémunération de l’épargne : plus le taux est élevé, plus le livret rapporte d’argent au titulaire.',
+      tags: ['Vocabulaire', 'base'],
+    },
+    {
+      name: 'Livret A',
+      description:
+        'Le Livret A est un produit d’épargne réglementé, ce qui signifie que ses principales caractéristiques, notamment son taux d’intérêt et son plafond de dépôt, sont fixées par les pouvoirs publics. Depuis le 1er février 2026, son taux d’intérêt est de 1,5 %. Son plafond est fixé à 22 950 €. Les intérêts sont calculés par quinzaine (le 1er et le 16 de chaque mois) en fonction des sommes déposées et de leur durée de présence sur le livret, puis capitalisés une seule fois par an, le 31 décembre.',
+      tags: ['Livret', 'Epargne', 'produit bancaire'],
+    },
+    {
+      name: 'Livret Cashou',
+      description:
+        'Le Livret Cashou est un livret un peu spécial. Il n’existe pas en dehors du jeu. Ses caractéristiques, comme son taux d’intérêt et son plafond, sont évolutives en fonction des besoins pédagogiques.',
+      tags: ['Livret', 'Epargne'],
+    },
+  ];
+
+  for (const n of notionsData) {
+    let notion = await prisma.notion.findFirst({ where: { name: n.name } });
+    if (notion) {
+      notion = await prisma.notion.update({
+        where: { id: notion.id },
+        data: { description: n.description, tags: n.tags },
       });
-      console.log(`✅ UserLevelCompletion créée pour démo (user: ${demoUser.email}, level 1, 2 étoiles)`);
     } else {
-      console.log(`ℹ️  UserLevelCompletion existante pour ${demoUser.email} — non écrasée`);
+      notion = await prisma.notion.create({
+        data: { name: n.name, description: n.description, tags: n.tags },
+      });
     }
+
+    // Lier la notion au niveau 1 (contrainte unique [notionId, levelId])
+    const existingLink = await prisma.notionLevel.findFirst({
+      where: { notionId: notion.id, levelId: level.id },
+    });
+    if (!existingLink) {
+      await prisma.notionLevel.create({
+        data: { notionId: notion.id, levelId: level.id },
+      });
+    }
+    console.log(`✅ Notion: ${notion.name} [${notion.tags.join(', ')}] ↔ Level ${level.number}`);
   }
+
+  // // Optional: create a UserLevelCompletion for demo stars if a user exists
+  // const demoUser = await prisma.user.findFirst({
+  //   where: { email: 'test-stars@cashou.fr' }
+  // }) ?? await prisma.user.findFirst({ take: 1 });
+  // if (demoUser) {
+  //   await (prisma as any).userLevelCompletion.upsert({
+  //     where: {
+  //       userId_levelId: { userId: demoUser.id, levelId: level.id }
+  //     },
+  //     create: {
+  //       userId: demoUser.id,
+  //       levelId: level.id,
+  //       stars: 2,
+  //       mandatoryGoalsMet: true,
+  //       bonusGoalsMet: false,
+  //       quizPassed: true,
+  //       completedAt: new Date()
+  //     },
+  //     update: {
+  //       stars: 2,
+  //       mandatoryGoalsMet: true,
+  //       bonusGoalsMet: false,
+  //       quizPassed: true,
+  //       completedAt: new Date()
+  //     }
+  //   });
+  //   console.log(`✅ UserLevelCompletion créée pour démo (user: ${demoUser.email ?? demoUser.id}, level 1, 2 étoiles)`);
+  // }
 
   console.log('\n✨ ========================================');
   console.log('✅ Seeding du niveau 1 terminé avec succès !');
@@ -833,11 +942,13 @@ async function main() {
   console.log(`   - 1 Submarket: ${submarket.title}`);
   console.log(`   - 2 Assets: ${livretA.symbol}, ${livretLED.symbol}`);
   console.log(`   - 1 Level: ${level.title} (Niveau ${level.number})`);
-  console.log(`   - 1 Event: ${event.title}`);
-  console.log(`   - 1 Impact: ${impact.coef}% sur ${livretA.symbol}`);
-  console.log(`   - 2 Goals: ${goal.title}, ${bonusGoal.title}`);
+  console.log(`   - 1 Event: ${event.title} (déclenche à ${levelEvent.triggerPercent}%)`);
+  console.log(`   - 1 Impact TAUX: ${livretA.symbol} ×${impact.coef} (1,7% → 1,5%)`);
+  console.log(`   - 2 Goals: ${goal.title} (obligatoire), ${bonusGoal.title} (bonus)`);
   console.log(`   - 1 Quiz MCQ avec ${createdQuestions.length} questions`);
   console.log(`   - 2 Daily Quiz (hier et aujourd'hui)`);
+  console.log(`   - 3 Notions liées au niveau 1`);
+  console.log(`   - 1 Verrou: ${livretLED.symbol} débloqué après l'événement`);
   if (testUser) {
     console.log(`   - 1 User de test: ${testUser.email}`);
   }

@@ -57,6 +57,9 @@ describe("GameInstanceService.resume", () => {
           gameInstanceEvent: {
             update: async () => null,
           },
+          // resume() clôt l'intervalle de pause via endPause(…, tx), en SQL brut.
+          $queryRaw: async () => [],
+          $executeRaw: async () => 0,
         }),
     };
 

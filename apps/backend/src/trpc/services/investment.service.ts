@@ -7,6 +7,7 @@ import { HoldingService } from "./holding.service.ts";
 import { WalletService } from "./wallet.service.ts";
 import { GameTimeService } from "./game-time.service.ts";
 import { AssetHistoryService } from "./asset-history.service.ts";
+import { AssetService } from "./asset.service.ts";
 import type { BuySchema, SellSchema } from "../schemas-zod/investment-schema.ts";
 import { gameCache, cached } from "../../lib/cache.ts";
 
@@ -40,22 +41,25 @@ export class InvestmentService {
   private walletService: WalletService;
   private gameTimeService: GameTimeService;
   private assetHistoryService: AssetHistoryService;
+  private assetService: AssetService;
 
   constructor(prismaClient?: PrismaClient) {
     this.prisma = prismaClient || defaultPrisma;
     this.holdingService = new HoldingService(this.prisma);
     this.walletService = new WalletService(this.prisma);
-    this.gameTimeService = new GameTimeService();
+    this.gameTimeService = new GameTimeService(this.prisma);
     this.assetHistoryService = new AssetHistoryService(this.prisma);
+    this.assetService = new AssetService(this.prisma);
   }
 
   /**
    * Achète un asset (dépôt sur livret, achat d'actions, etc.)
    */
   async buy(data: BuySchema): Promise<Holding> {
-    const { walletId, assetId, amount, gameInstanceId } = data;
+    const { walletId, assetId, gameInstanceId, depositMax } = data;
+    let amount = data.amount;
 
-    // 1. Récupérer le wallet et vérifier le solde
+    // 1. Récupérer le wallet
     const wallet = await this.walletService.findOne(walletId);
     if (!wallet) {
       throw new TRPCError({
@@ -63,16 +67,9 @@ export class InvestmentService {
         message: "Portefeuille introuvable",
       });
     }
-
     const walletBalance = wallet.amount ? Number(wallet.amount) : 0;
-    if (walletBalance < amount) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: `Solde insuffisant. Disponible: ${walletBalance}€, Demandé: ${amount}€`,
-      });
-    }
 
-    // 2. Récupérer l'asset et vérifier le plafond
+    // 2. Récupérer l'asset
     const asset = await this.prisma.asset.findUnique({
       where: { id: assetId },
     });
@@ -84,12 +81,63 @@ export class InvestmentService {
       });
     }
 
-    // 3. Vérifier le plafond si défini
-    const existingHolding = await this.holdingService.findByWalletAndAsset(walletId, assetId);
-    const currentAmount = existingHolding?.quantity ? Number(existingHolding.quantity) : 0;
-    const newTotal = currentAmount + amount;
+    // 2b. Vérifier que l'asset est débloqué dans cette partie (verrou par niveau).
+    // Garde-fou serveur : empêche d'acheter un asset encore verrouillé, même si le
+    // front l'affiche grisé ou si l'appel passe directement par l'API.
+    const isAvailable = await this.assetService.isAssetAvailableForGame(assetId, gameInstanceId);
+    if (!isAvailable) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Cet actif n'est pas encore disponible dans cette partie.",
+      });
+    }
 
-    if (asset.maxAmount && newTotal > Number(asset.maxAmount)) {
+    // 3. Valeur COURANTE du holding, intérêts déjà générés inclus (même si pas encore
+    // capitalisés dans `quantity`). Sans ça, un joueur pourrait déposer comme si les intérêts
+    // accumulés depuis le début n'existaient pas.
+    const existingHolding = await this.holdingService.findByWalletAndAsset(walletId, assetId);
+    const currentQuantity = existingHolding?.quantity ? Number(existingHolding.quantity) : 0;
+    const gameInstance = await this.prisma.gameInstance.findUnique({
+      where: { id: gameInstanceId },
+      include: { level: true },
+    });
+    const liveInterest = existingHolding && gameInstance
+      ? await this.calculateInterests(existingHolding as HoldingWithAsset, gameInstance as GameInstanceWithLevel)
+      : 0;
+    const currentAmount = currentQuantity + liveInterest;
+
+    // 3b. Dépôt "Max" : le serveur calcule lui-même le montant au moment de l'exécution,
+    // immunisé contre la dérive due aux intérêts qui courent en continu entre le calcul
+    // du bouton Max côté client et la confirmation (peu importe le délai entre les deux).
+    if (depositMax) {
+      const remainingCapacity = asset.maxAmount != null
+        ? Math.max(0, Number(asset.maxAmount) - currentAmount)
+        : walletBalance;
+      amount = Math.floor(Math.min(walletBalance, remainingCapacity));
+      if (amount <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: asset.maxAmount != null && currentAmount >= Number(asset.maxAmount)
+            ? "Plafond déjà atteint, aucun dépôt possible."
+            : "Solde insuffisant pour déposer.",
+        });
+      }
+    }
+
+    // 4. Vérifier le solde du wallet
+    if (walletBalance < amount) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Solde insuffisant. Disponible: ${walletBalance}€, Demandé: ${amount}€`,
+      });
+    }
+
+    // 5. Vérifier le plafond si défini
+    // `newTotal` cristallise les intérêts déjà courus dans `quantity` (au lieu de les laisser
+    // recalculés à la prochaine lecture sur la base du nouveau total plus gros depuis l'ancienne
+    // `acquiredAt` — ce qui ferait gonfler l'intérêt rétroactivement et dépasser le plafond).
+    const newTotal = currentQuantity + liveInterest + amount;
+    if (asset.maxAmount && currentAmount + amount > Number(asset.maxAmount)) {
       const maxAmount = Number(asset.maxAmount);
       const remainingCapacity = maxAmount - currentAmount;
       throw new TRPCError({
@@ -98,7 +146,7 @@ export class InvestmentService {
       });
     }
 
-    // 4. Vérifier le montant minimum si défini
+    // 6. Vérifier le montant minimum si défini
     if (asset.minAmount && amount < Number(asset.minAmount)) {
       throw new TRPCError({
         code: "BAD_REQUEST",
@@ -106,11 +154,11 @@ export class InvestmentService {
       });
     }
 
-    // 5. Get current market price for this asset
+    // 7. Get current market price for this asset
     const currentPrice = await this.assetHistoryService.getCurrentPrice(assetId, gameInstanceId);
     const marketPrice = currentPrice ?? 10000; // fallback 100€ in cents
 
-    // 6. Exécuter la transaction dans une transaction Prisma
+    // 8. Exécuter la transaction dans une transaction Prisma
     return await this.prisma.$transaction(async (tx) => {
       // 6.1 Débiter le wallet
       await tx.wallet.update({
@@ -127,6 +175,10 @@ export class InvestmentService {
           where: { id: existingHolding.id },
           data: {
             quantity: new Prisma.Decimal(newTotal),
+            // Reset : les intérêts courus jusqu'ici sont désormais dans `quantity`, le calcul
+            // d'intérêt live reprend de zéro sur le nouveau total à partir de maintenant.
+            acquiredAt: new Date(),
+            lastInterestAt: liveInterest > 0 ? new Date() : existingHolding.lastInterestAt,
           },
           include: {
             asset: true,
@@ -134,6 +186,22 @@ export class InvestmentService {
             gameInstance: true,
           },
         });
+
+        if (liveInterest > 0) {
+          await tx.transaction.create({
+            data: {
+              walletId,
+              assetId,
+              gameInstanceId,
+              type: "INTEREST",
+              quantity: Math.floor(liveInterest),
+              unitPrice: new Prisma.Decimal(1),
+              totalValue: new Prisma.Decimal(liveInterest),
+              transactionDate: new Date(),
+              source: "buy_crystallization",
+            },
+          });
+        }
       } else {
         holding = await tx.holding.create({
           data: {
@@ -344,11 +412,29 @@ export class InvestmentService {
     // Fallback: rate-based calculation (for levels without price history)
     if (asset.rate) {
       const annualRate = asset.rate;
-      const elapsedRealSeconds = this.gameTimeService.calculateElapsedTimeSince(
+      const elapsedRealSeconds = await this.gameTimeService.calculateElapsedTimeSince(
         gameInstance,
         new Date(holding.acquiredAt)
       );
       const elapsedGameDays = this.gameTimeService.convertRealSecondsToGameDays(level, elapsedRealSeconds);
+
+      // If an event changes this asset's rate mid-game, integrate the rate piecewise
+      // so interest accrued before the change keeps the old rate.
+      const rateChanges = await this.assetHistoryService.getRateImpacts(asset.id, gameInstance.id);
+      if (rateChanges.length > 0) {
+        const currentGameDay = this.gameTimeService.getCurrentGameDay(gameInstance);
+        const acquisitionGameDay = Math.max(0, currentGameDay - elapsedGameDays);
+        return Math.round(
+          AssetHistoryService.computeRateInterest({
+            quantity,
+            baseRate: annualRate,
+            rateChanges,
+            acquisitionGameDay,
+            currentGameDay,
+          })
+        );
+      }
+
       const dailyRate = annualRate / 100 / 365;
       return Math.max(0, quantity * dailyRate * elapsedGameDays);
     }

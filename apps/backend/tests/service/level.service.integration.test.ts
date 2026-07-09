@@ -37,6 +37,7 @@ const shouldRun = !!process.env.CASHOU_DB_URL;
       startBalance: 5000,
       pointsRequired: 250,
       historyStartDay: 0,
+      startDate: null,
       description: "Cas d'intégration",
       tip: null,
     };

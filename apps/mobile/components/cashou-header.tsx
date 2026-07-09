@@ -186,8 +186,29 @@ export function CashouHeader({
         onClose={() => setMenuVisible(false)}
       />
 
+      {dimmed && (
+        // Voile du tutoriel : capte les touches (onStartShouldSetResponder → responder) pour
+        // rendre les boutons du header (retour, info, menu) NON cliquables tant qu'une seule
+        // zone est mise en avant ailleurs. Sans ça, le voile était purement visuel
+        // (pointerEvents="none") et l'utilisateur pouvait quitter le tuto via ces boutons.
+        <View
+          onStartShouldSetResponder={() => true}
+          onResponderRelease={() => {}}
+          style={[
+            styles.dimOverlay,
+            // top: 0 → le voile recouvre AUSSI la zone safe-area / status bar (sinon une bande
+            // claire restait en haut de l'écran pendant le tutoriel).
+            { backgroundColor: overlayColor(isDark), top: 0 },
+          ]}
+        />
+      )}
+
     </View>
   );
+}
+
+function overlayColor(isDark: boolean): string {
+  return isDark ? 'rgba(0,0,0,0.72)' : 'rgba(28,30,51,0.55)';
 }
 
 const BUTTON_SIZE = 44;
@@ -199,6 +220,10 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
     paddingBottom: 12,
+    position: 'relative',
+  },
+  dimOverlay: {
+    ...StyleSheet.absoluteFillObject,
   },
   row: {
     flexDirection: 'row',

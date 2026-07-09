@@ -67,6 +67,9 @@ function createMockPrisma(gi: ReturnType<typeof makeGameInstance> | null) {
       findMany: mock(async (): Promise<unknown[]> => []),
       update: mock(async (): Promise<unknown> => ({})),
     },
+    // GamePauseIntervalService écrit les intervalles de pause en SQL brut.
+    $queryRaw: mock(async (): Promise<unknown[]> => []),
+    $executeRaw: mock(async (): Promise<number> => 0),
   };
 }
 

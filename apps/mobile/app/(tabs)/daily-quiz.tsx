@@ -134,7 +134,13 @@ export default function DailyQuizScreen() {
     []
   );
 
+  const userId = user?.id ?? null;
+
   useEffect(() => {
+    // Un fetch obsolète ne doit jamais réécrire l'état : sinon il écrase la vue
+    // "correction" ouverte entre-temps et rouvre la modale de résultat.
+    let cancelled = false;
+
     const fetchQuiz = async () => {
       try {
         // Toujours mettre isLoading à true au début pour masquer le contenu
@@ -167,6 +173,8 @@ export default function DailyQuizScreen() {
           quizData = await trpcClient.quiz.getTodaysDailyQuiz.query();
         }
 
+        if (cancelled) return;
+
         if (quizData && user) {
           setQuiz(quizData as Quiz);
 
@@ -178,6 +186,8 @@ export default function DailyQuizScreen() {
               gameInstanceId,
             });
 
+            if (cancelled) return;
+
             setLevelUserQuizId(result.userQuiz.id);
             setQuestions([result.question as Question]);
             setCurrentQuestionIndex(0);
@@ -188,6 +198,8 @@ export default function DailyQuizScreen() {
             const questionsData = await trpcClient.quizQuestion.getQuestionsWithAnswers.query({
               quizId: (quizData as Quiz).id,
             });
+
+            if (cancelled) return;
 
             const formattedQuestions: Question[] = questionsData.map((qq: any) => ({
               id: qq.question.id,
@@ -266,6 +278,9 @@ export default function DailyQuizScreen() {
             });
 
             const answersResults = await Promise.all(answersPromises);
+
+            if (cancelled) return;
+
             const answersMap = new Map<number, { answerId: number; isCorrect: boolean }>();
             answersResults.forEach((result) => {
               if (result) {
@@ -301,6 +316,8 @@ export default function DailyQuizScreen() {
                 })
               );
 
+              if (cancelled) return;
+
               const firstUnansweredIndex = answeredQuestions.findIndex((answeredId) => answeredId === null);
 
               if (firstUnansweredIndex === -1) {
@@ -323,17 +340,26 @@ export default function DailyQuizScreen() {
           setQuizState(null);
         }
       } catch (err) {
+        if (cancelled) return;
         console.error('Error fetching quiz:', err);
         setError(specificQuizId ? 'Impossible de charger le quiz' : 'Impossible de charger le quiz du jour');
         setQuizState(null);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchQuiz();
+
+    return () => {
+      cancelled = true;
+    };
+    // userId et non user : refreshUser() renvoie un nouvel objet à chaque appel,
+    // ce qui relancerait le fetch et réinitialiserait le quiz en cours.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, showCompleted, resolvedQuizId, source, gameInstanceId, isLevelQuiz, resolvedInitialView]); // Ne pas inclure quizState dans les dépendances pour éviter les rechargements
+  }, [userId, showCompleted, resolvedQuizId, source, gameInstanceId, isLevelQuiz, resolvedInitialView]); // Ne pas inclure quizState dans les dépendances pour éviter les rechargements
 
   // Rafraîchir les données utilisateur quand on quitte la page (si le quiz est complété)
   // Cela permet de mettre à jour le currentStreak et le statut du quiz sur la page d'accueil
@@ -510,10 +536,13 @@ export default function DailyQuizScreen() {
   }, [gameInstanceId, isLevelQuiz, router]);
 
   const handleOpenCorrection = useCallback(() => {
+    // Sans questions, la vue correction ne rend rien : garder la modale ouverte
+    // plutôt que d'afficher un écran vide.
+    if (isLoading || questions.length === 0) return;
     setIsResultModalVisible(false);
     setCorrectionQuestionIndex(0);
     setQuizState('correction');
-  }, []);
+  }, [isLoading, questions.length]);
 
   useEffect(() => {
     if (quizState === 'completed') {

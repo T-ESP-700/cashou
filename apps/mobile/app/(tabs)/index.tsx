@@ -381,7 +381,7 @@ export default function HomeScreen() {
   const handleLevelPress = () => {
     if (levelCardData.levelId) {
       if (levelCardData.hasGame && levelCardData.gameId) {
-        router.push({
+        router.replace({
           pathname: '/game/current',
           params: {
             levelId: levelCardData.levelId.toString(),
@@ -389,7 +389,7 @@ export default function HomeScreen() {
           }
         });
       } else {
-        router.push({
+        router.replace({
           pathname: '/game/current',
           params: { levelId: levelCardData.levelId.toString() }
         });
