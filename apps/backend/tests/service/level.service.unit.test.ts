@@ -36,7 +36,10 @@ function makePrismaMock() {
           speed: (data as Level).speed ?? null,
           startBalance: (data as Level).startBalance ?? null,
           pointsRequired: (data as Level).pointsRequired ?? null,
+          historyStartDay: (data as Level).historyStartDay ?? null,
+          startDate: (data as Level).startDate ?? null,
           description: (data as Level).description ?? null,
+          tip: (data as Level).tip ?? null,
           createdAt: now,
           updatedAt: now,
         };
@@ -54,7 +57,10 @@ function makePrismaMock() {
           speed: (data as Level).speed ?? null,
           startBalance: (data as Level).startBalance ?? null,
           pointsRequired: (data as Level).pointsRequired ?? null,
+          historyStartDay: (data as Level).historyStartDay ?? null,
+          startDate: (data as Level).startDate ?? null,
           description: (data as Level).description ?? null,
+          tip: (data as Level).tip ?? null,
           createdAt: now,
           updatedAt: now,
         };
@@ -71,7 +77,10 @@ function makePrismaMock() {
           speed: null,
           startBalance: null,
           pointsRequired: null,
+          historyStartDay: null,
+          startDate: null,
           description: null,
+          tip: null,
           createdAt: now,
           updatedAt: now,
         };
@@ -154,5 +163,202 @@ describe("LevelService — Tests unitaires", () => {
     expect(deleted.id).toBe(9);
     const deleteCall = calls.find((c) => c.method === "delete");
     expect(deleteCall?.args).toEqual({ where: { id: 9 } });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests intensifs : findGoals, findEvents, getSummary, duplicate,
+// getUserLevels, getAvailability
+// ---------------------------------------------------------------------------
+import { mock, beforeEach } from "bun:test";
+
+function buildFullPrisma() {
+  return {
+    level: {
+      findUnique: mock(async (_a?: unknown): Promise<unknown> => null),
+      findMany: mock(async (_a?: unknown): Promise<unknown[]> => []),
+      create: mock(async (a: { data: Record<string, unknown> }) => ({ id: 99, ...a.data })),
+    },
+    goal: {
+      findMany: mock(async (_a?: unknown): Promise<unknown[]> => []),
+    },
+    event: {
+      findMany: mock(async (_a?: unknown): Promise<unknown[]> => []),
+    },
+    levelGoal: {
+      createMany: mock(async () => ({ count: 0 })),
+    },
+    levelEvent: {
+      createMany: mock(async () => ({ count: 0 })),
+    },
+    user: {
+      findUnique: mock(async (_a?: unknown): Promise<unknown> => null),
+    },
+    userLevelCompletion: {
+      findMany: mock(async (_a?: unknown): Promise<unknown[]> => []),
+    },
+  };
+}
+
+describe("LevelService — Méthodes spécialisées", () => {
+  let prisma: ReturnType<typeof buildFullPrisma>;
+  let service: LevelService;
+
+  beforeEach(() => {
+    prisma = buildFullPrisma();
+    service = new LevelService(prisma as unknown as PrismaClient);
+  });
+
+  describe("findGoals", () => {
+    it("filtre goals par levelGoals.some.levelId", async () => {
+      prisma.goal.findMany = mock(async () => [{ id: 1, title: "Goal" }]);
+      const res = await service.findGoals(5);
+      expect(res).toHaveLength(1);
+      const args = (prisma.goal.findMany.mock.calls[0]?.[0] ?? {}) as { where: { levelGoals: { some: { levelId: number } } } };
+      expect(args.where.levelGoals.some.levelId).toBe(5);
+    });
+  });
+
+  describe("findEvents", () => {
+    it("filtre events par levelEvents.some.levelId", async () => {
+      prisma.event.findMany = mock(async () => [{ id: 1, title: "Event" }]);
+      const res = await service.findEvents(7);
+      expect(res).toHaveLength(1);
+    });
+  });
+
+  describe("getSummary", () => {
+    it("retourne level=null si introuvable", async () => {
+      prisma.level.findUnique = mock(async () => null);
+      const res = await service.getSummary(999);
+      expect(res.level).toBeNull();
+    });
+
+    it("retourne level + goals + events + levelGoals", async () => {
+      prisma.level.findUnique = mock(async () => ({
+        id: 1,
+        title: "L1",
+        number: 1,
+        description: "d",
+        tip: null,
+        startBalance: 1000,
+        pointsRequired: 0,
+        duration: 30,
+        speed: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        levelGoals: [{ id: 10, goalId: 100, goal: { id: 100, title: "G" }, isMandatory: true }],
+      }));
+      prisma.event.findMany = mock(async () => [{ id: 1, title: "E" }]);
+      const res = await service.getSummary(1);
+      expect(res.level?.id).toBe(1);
+      expect(res.goals).toHaveLength(1);
+      expect(res.events).toHaveLength(1);
+    });
+  });
+
+  describe("duplicate", () => {
+    it("retourne null si le niveau source n'existe pas", async () => {
+      prisma.level.findUnique = mock(async () => null);
+      const res = await service.duplicate(999);
+      expect(res).toBeNull();
+    });
+
+    it("clone le niveau + recrée levelGoals et levelEvents", async () => {
+      const src = {
+        id: 1,
+        title: "Source",
+        number: 1,
+        duration: 30,
+        speed: 1,
+        startBalance: 1000,
+        pointsRequired: 50,
+        historyStartDay: 0,
+        description: "d",
+        tip: null,
+        levelGoals: [{ goalId: 10, isMandatory: false }],
+        levelEvents: [{ eventId: 20 }],
+      };
+      // First call: get src; later calls: getSummary on duplicate
+      let call = 0;
+      prisma.level.findUnique = mock(async () => {
+        call++;
+        if (call === 1) return src;
+        return { ...src, id: 99, levelGoals: [{ id: 1, goalId: 10, goal: { id: 10 }, isMandatory: false }] };
+      });
+      const res = await service.duplicate(1);
+      expect(prisma.level.create).toHaveBeenCalled();
+      expect(prisma.levelGoal.createMany).toHaveBeenCalled();
+      expect(prisma.levelEvent.createMany).toHaveBeenCalled();
+      expect(res).toBeDefined();
+    });
+
+    it("ne recrée rien si pas de levelGoals/levelEvents", async () => {
+      prisma.level.findUnique = mock(async () => ({
+        id: 1,
+        title: "Source",
+        number: 1,
+        duration: 30,
+        speed: 1,
+        startBalance: 1000,
+        pointsRequired: 50,
+        historyStartDay: 0,
+        description: "d",
+        tip: null,
+        levelGoals: [],
+        levelEvents: [],
+      }));
+      await service.duplicate(1);
+      expect(prisma.levelGoal.createMany).not.toHaveBeenCalled();
+      expect(prisma.levelEvent.createMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getUserLevels", () => {
+    it("retourne [] si user introuvable", async () => {
+      prisma.user.findUnique = mock(async () => null);
+      const res = await service.getUserLevels("u1");
+      expect(res).toEqual([]);
+    });
+
+    it("merge levels + completions, calcule unlocked", async () => {
+      prisma.user.findUnique = mock(async () => ({ id: "u1", levelId: 2, points: 100 }));
+      prisma.level.findMany = mock(async () => [
+        { id: 1, number: 1, pointsRequired: 0 },
+        { id: 2, number: 2, pointsRequired: 50 },
+        { id: 3, number: 3, pointsRequired: 200 },
+      ]);
+      prisma.userLevelCompletion.findMany = mock(async () => [
+        { levelId: 1, stars: 3, mandatoryGoalsMet: true, bonusGoalsMet: true, quizPassed: true },
+      ]);
+      const res = await service.getUserLevels("u1");
+      expect(res).toHaveLength(3);
+      expect(res[0].stars).toBe(3);
+      expect(res[0].unlocked).toBe(true);
+      expect(res[2].unlocked).toBe(false); // pointsRequired (200) > user.points (100)
+    });
+  });
+
+  describe("getAvailability", () => {
+    it("retourne NOT_FOUND si user ou level introuvable", async () => {
+      prisma.user.findUnique = mock(async () => null);
+      prisma.level.findUnique = mock(async () => null);
+      const res = await service.getAvailability("u1", 1);
+      expect(res).toMatchObject({ canUnlock: false, reason: "NOT_FOUND" });
+    });
+
+    it("canUnlock=true si user.points >= level.pointsRequired", async () => {
+      prisma.user.findUnique = mock(async () => ({ id: "u1", points: 100 }));
+      prisma.level.findUnique = mock(async () => ({ id: 1, pointsRequired: 50 }));
+      const res = await service.getAvailability("u1", 1);
+      expect(res).toMatchObject({ canUnlock: true, required: 50, userPoints: 100 });
+    });
+
+    it("canUnlock=false si points insuffisants", async () => {
+      prisma.user.findUnique = mock(async () => ({ id: "u1", points: 10 }));
+      prisma.level.findUnique = mock(async () => ({ id: 1, pointsRequired: 50 }));
+      const res = await service.getAvailability("u1", 1);
+      expect(res).toMatchObject({ canUnlock: false });
+    });
   });
 });

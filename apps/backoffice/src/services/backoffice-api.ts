@@ -1,5 +1,4 @@
 import { createApiClient } from '@cashou/api'
-import type { AppRouter } from '../../../backend/src/trpc/router'
 import type {
   Asset,
   AssetHistory,
@@ -95,7 +94,7 @@ const DEFAULT_API_URL = normalizeApiUrl(
 )
 
 let authToken: string | null = null
-let cachedClient: ReturnType<typeof createApiClient<AppRouter>> | null = null
+let cachedClient: ReturnType<typeof createApiClient> | null = null
 let apiBaseUrl = DEFAULT_API_URL
 
 const buildHeaders = async () => {
@@ -108,7 +107,7 @@ const buildHeaders = async () => {
 
 const getClient = () => {
   if (!cachedClient) {
-    cachedClient = createApiClient<AppRouter>(apiBaseUrl, buildHeaders)
+    cachedClient = createApiClient(apiBaseUrl, buildHeaders)
   }
   return cachedClient
 }
@@ -313,6 +312,8 @@ export const backofficeApi = {
     list: async () => callApi(() => getClient().levelGoal.getAll.query()),
     create: async (payload: Record<string, unknown>) =>
       callApi(() => getClient().levelGoal.create.mutate(payload as InferMutationInput<Client['levelGoal']['create']>)),
+    update: async (payload: Record<string, unknown>) =>
+      callApi(() => getClient().levelGoal.update.mutate(payload as InferMutationInput<Client['levelGoal']['update']>)),
     delete: async (id: number) => callApi(() => getClient().levelGoal.delete.mutate({ id })),
   },
   levelEvent: {

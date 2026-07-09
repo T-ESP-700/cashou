@@ -41,9 +41,11 @@ export const assetRouter = t.router({
      * @input {id: number} - ID de l'actif recherché, validé par assetIdSchema
      */
     getById: t.procedure
-        .input(assetIdSchema) // Validation automatique de l'entrée
+        .input(assetIdSchema.extend({
+            gameInstanceId: z.number().int().positive().optional(),
+        }))
         .query(async ({ input }) => {
-            return await assetService.findOne(input.id);
+            return await assetService.findOne(input.id, input.gameInstanceId);
         }),
 
     /**

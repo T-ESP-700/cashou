@@ -33,7 +33,9 @@ mock.module("../../src/lib/job-queue", () => ({
   scheduleGameEnd: mock(() => Promise.resolve()),
 }));
 
-describe("Game Event Flow — Tests d'intégration", () => {
+const shouldRun = !!process.env.CASHOU_DB_URL;
+
+(shouldRun ? describe : describe.skip)("Game Event Flow — Tests d'intégration", () => {
   setupTestDatabase();
 
   const factory = new IntegrationTestFactory(prisma);

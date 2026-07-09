@@ -28,6 +28,7 @@
     "test:regression": "bun test tests/service/level.service.regression.test.ts",
     "test:router": "bun test tests/router/level.router.test.ts",
     "test:grep:unit": "bun test --grep='Tests unitaires'",
+    "test:transactions": "SKIP_PRISMA_INIT=1 bun test tests/service/*.unit.test.ts",
     "healthy:game": "bun run scripts/healthy-game.ts",
     "db:seed:fake-levels": "bun run scripts/seed-fake-levels.ts",
     "db:seed:level-esp": "bun run scripts/seed-level-esp.ts",

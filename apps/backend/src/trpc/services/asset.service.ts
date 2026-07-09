@@ -54,17 +54,18 @@ export class AssetService {
      * @param id - Identifiant unique de l'actif
      * @returns Promise<Asset | null> - L'actif trouvé ou null si inexistant
      */
-    async findOne(id: number): Promise<Asset | null> {
+    async findOne(id: number, gameInstanceId?: number): Promise<Asset | null> {
         return this.prisma.asset.findUnique({
             where: { id },
             include: {
-                // Même structure que findAll pour la cohérence des données
                 market: true,
                 submarket: true,
                 field: true,
                 assetHistories: true,
                 eventAssets: true,
-                transactions: true
+                transactions: gameInstanceId
+                    ? { where: { gameInstanceId } }
+                    : true
             }
         });
     }

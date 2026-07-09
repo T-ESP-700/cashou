@@ -1,0 +1,92 @@
+name: CI Monorepo
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  # 1. Qualité du code : typecheck + lint (rapide, sans DB)
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+            apps/*/node_modules
+            packages/@cashou/*/node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Generate Prisma clients
+        run: bun run db:generate
+      - name: TypeScript check
+        run: bun run typecheck
+      - name: Lint
+        run: bunx eslint . --ext .ts,.tsx
+        working-directory: apps/backend
+
+  # 2. Tests d'intégration backend (avec vraies bases Postgres)
+  test:
+    runs-on: ubuntu-latest
+    needs: quality
+    env:
+      CASHOU_DB_URL: postgresql://postgres:password@localhost:5432/cashou_db?schema=public
+      BACKOFFICE_DB_URL: postgresql://postgres:password@localhost:5433/backoffice_db?schema=public
+    services:
+      postgres-app:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: cashou_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      postgres-backoffice:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: backoffice_db
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+            apps/*/node_modules
+            packages/@cashou/*/node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Generate Prisma clients
+        run: bun run db:generate
+      - name: Run migrations (app + backoffice)
+        run: bun run migrate:deploy
+      - name: Run tests with coverage (seuil 90 % défini dans apps/backend/bunfig.toml)
+        run: bun run --filter backend test --coverage --timeout 30000

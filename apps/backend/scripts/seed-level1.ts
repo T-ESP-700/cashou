@@ -186,6 +186,7 @@ async function main() {
       'Bienvenue dans Cashou !\n\n' +
       'Ce premier niveau a pour objectif de vous présenter le fonctionnement d’une partie.\n\n' +
       'Triomphez de vos premiers objectifs tout en découvrant comment jouer 😃',
+    tip: 'Pense à placer ton capital dans un produit sécurisé dès le début pour générer des intérêts. Même un petit rendement garanti peut faire la différence sur la durée !',
   };
   let level = await prisma.level.findFirst({
     where: { number: 1 }

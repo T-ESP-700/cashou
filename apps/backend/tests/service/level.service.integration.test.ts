@@ -36,7 +36,10 @@ const shouldRun = !!process.env.CASHOU_DB_URL;
       speed: 2,
       startBalance: 5000,
       pointsRequired: 250,
+      historyStartDay: 0,
+      startDate: null,
       description: "Cas d'intégration",
+      tip: null,
     };
 
     const created = await service.create(data);

@@ -16,9 +16,9 @@ function makeAsset(id: number, over: Partial<Asset> = {}): Asset {
     description: over.description ?? `Description ${id}`,
     marketId: over.marketId ?? 1,
     submarketId: over.submarketId ?? 1,
-    taux: over.taux ?? 0.05,
     maxAmount: over.maxAmount ?? new Prisma.Decimal(10000),
     minAmount: over.minAmount ?? new Prisma.Decimal(10),
+    managementFee: over.managementFee ?? null,
     createdAt: over.createdAt ?? now,
     updatedAt: over.updatedAt ?? now,
   };

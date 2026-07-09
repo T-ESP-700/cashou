@@ -1,0 +1,9 @@
+[test]
+# Seuil minimum de couverture de lignes. Le job CI échoue si on tombe sous ce seuil.
+# On cible uniquement les lignes (interprétation standard de "X% coverage").
+# Les fichiers d'infra (auth, ws, workers, job-queue) tirent la couverture des
+# fonctions vers le bas mais sont hors scope des tests unitaires.
+# Activer la mesure : `bun test --coverage`.
+coverageThreshold = { line = 0.90 }
+# Exclut les fichiers de tests eux-mêmes du calcul de coverage.
+coverageSkipTestFiles = true

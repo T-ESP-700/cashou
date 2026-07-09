@@ -10,6 +10,7 @@ function makeGameInstanceEvent(id: number, over: Partial<GameInstanceEvent> = {}
     gameInstanceId: over.gameInstanceId ?? 1,
     levelEventId: over.levelEventId ?? 1,
     scheduledAt: over.scheduledAt ?? now,
+    processingStartedAt: over.processingStartedAt ?? null,
     triggeredAt: over.triggeredAt ?? null,
     createdAt: over.createdAt ?? now,
     updatedAt: over.updatedAt ?? now,
