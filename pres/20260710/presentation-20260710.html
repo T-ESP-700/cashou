@@ -1076,7 +1076,7 @@
             <div class="feature-card animate-item">
                 <i class="fas fa-code-branch quality-icon"></i>
                 <div class="quality-text">
-                    <h4>Branch protection</h4>
+                    <h4>Branch protection + Revue</h4>
                 </div>
             </div>
             <div class="feature-card animate-item">
@@ -1094,7 +1094,7 @@
             <div class="feature-card animate-item">
                 <i class="fas fa-eye quality-icon"></i>
                 <div class="quality-text">
-                    <h4>Revue de code systématique</h4>
+                    <h4>Courverture > 90% en CI</h4>
                 </div>
             </div>
         </div>
@@ -1113,29 +1113,31 @@
                 <h4>Tests unitaires</h4>
                 <ul>
                     <li>Bun test runner natif</li>
-                    <li>Logique métier isolée</li>
-                    <li>Calculs financiers (frais, intérêts, score)</li>
-                    <li>Validateurs de données</li>
+                    <li>Services CRUD + méthodes métiers</li>
+                    <li>Routeur tRCP avec services mockés</li>
+                    <li>Schémas Zod (validation, transforms)</li>
+                    <li>Calculs financiers(intérêts, plus-values)</li>
                 </ul>
             </div>
             <div class="test-card animate-item">
                 <div class="test-number">2</div>
                 <h4>Tests d'intégration</h4>
                 <ul>
-                    <li>Base de données réelle (pas de mock)</li>
-                    <li>Factory de données centralisée</li>
-                    <li>Tests isolés et reproductibles</li>
-                    <li>Nettoyage auto après chaque test</li>
+                    <li>Base PostgreSQL (pas de mock)</li>
+                    <li>IntegrationTestFactory centralisée</li>
+                    <li>Skip auto si CASHOU_DB_URL manquante</li>
+                    <li>Nettoyage truncate CASCADE entre tests</li>
+                    <li>Fin de partie, événements, objectifs</li>
                 </ul>
             </div>
             <div class="test-card animate-item">
                 <div class="test-number">3</div>
-                <h4>Tests E2E</h4>
+                <h4>Tests de régression</h4>
                 <ul>
-                    <li>Parcours utilisateur complet</li>
-                    <li>Inscription → quiz → progression</li>
-                    <li>Scénarios métier réels</li>
-                    <li>Déclenchés sur chaque PR</li>
+                    <li>Snapshots sur event, goal level</li>
+                    <li>Bugs corrigés protégés d'une réintroduction</li>
+                    <li>Isolation via clear des caches LRU en beforeEach</li>
+                    <li>Assertion expectRejection(code) strictes</li>
                 </ul>
             </div>
         </div>
@@ -1143,25 +1145,25 @@
             <div class="pipeline-step">
                 <i class="fas fa-code-branch"></i>
                 <h4>Push PR</h4>
-                <p>Déclencheur CI</p>
+                <p>CI sur toute une branche</p>
             </div>
             <span class="pipeline-arrow"><i class="fas fa-arrow-right"></i></span>
             <div class="pipeline-step">
                 <i class="fas fa-search"></i>
                 <h4>Lint + Types</h4>
-                <p>ESLint + TSC</p>
+                <p>ESLint + TSC --noEmit</p>
             </div>
             <span class="pipeline-arrow"><i class="fas fa-arrow-right"></i></span>
             <div class="pipeline-step">
                 <i class="fas fa-cube"></i>
-                <h4>Build Docker</h4>
-                <p>+ Prisma client</p>
+                <h4>Prisma + Migrations</h4>
+                <p>db:generate + migrate:deploy</p>
             </div>
             <span class="pipeline-arrow"><i class="fas fa-arrow-right"></i></span>
             <div class="pipeline-step">
                 <i class="fas fa-vial"></i>
-                <h4>Tests</h4>
-                <p>Unit + Integ + E2E</p>
+                <h4>Tests + Coverage</h4>
+                <p>Unit + Integration (seuil 90 % lignes) </p>
             </div>
             <span class="pipeline-arrow"><i class="fas fa-arrow-right"></i></span>
             <div class="pipeline-step">
