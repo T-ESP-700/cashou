@@ -1,9 +1,13 @@
 // Service métier pour la gestion des actifs du jeu
 // Couche d'abstraction entre les routers et la base de données
-import type { Asset, PrismaClient } from "@cashou/db-app";
+import type { Asset, GameInstance, Level, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {AssetCreateSchema, AssetDataSchema} from "../schemas-zod/asset-schema.ts";
 import { GameTimeService } from "./game-time.service.ts";
+
+type GameInstanceWithLevel = GameInstance & {
+    level: Level | null;
+};
 
 export interface AssetUnlockInfo {
     available: boolean;
@@ -128,7 +132,7 @@ export class AssetService {
         if (!gameInstance?.level) return map;
 
         const duration = gameInstance.level.duration ?? 365;
-        const currentGameDay = this.gameTimeService.getCurrentGameDay(gameInstance as any);
+        const currentGameDay = this.gameTimeService.getCurrentGameDay(gameInstance as GameInstanceWithLevel);
 
         // Un asset débloqué par un event l'est dès que cet event s'est réellement déclenché.
         // Rejouer le seuil en jours désynchronise : le job pg-boss peut se déclencher quelques
@@ -173,7 +177,7 @@ export class AssetService {
             select: { level: { select: { levelAssets: { select: { assetId: true } } } } },
         });
         if (!gameInstance?.level || gameInstance.level.levelAssets.length === 0) return null;
-        return new Set(gameInstance.level.levelAssets.map((la) => la.assetId));
+        return new Set(gameInstance.level.levelAssets.map((la: { assetId: number }) => la.assetId));
     }
 
     /**
