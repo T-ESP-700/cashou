@@ -38,11 +38,20 @@ enum SubmarketType {
 }
 
 // Cible d'un impact d'événement :
-// - PRICE : multiplie le cours de l'actif (AssetHistory.value) — actions
-// - RATE  : multiplie le taux d'intérêt annuel (Asset.rate) — livrets/épargne
+// - PRICE      : multiplie le cours de l'actif (AssetHistory.value) — actions
+// - RATE       : multiplie le taux d'intérêt annuel (Asset.rate) — livrets/épargne
+// - CASH_GRANT : crédite Impact.amount directement au wallet du joueur (ex: cadeau)
 enum ImpactType {
-  PRICE @map("Price")
-  RATE  @map("Rate")
+  PRICE       @map("Price")
+  RATE        @map("Rate")
+  CASH_GRANT  @map("CashGrant")
+}
+
+// Catégorie d'un tip/indice pédagogique — une par palier d'étoile.
+// Plusieurs Tip peuvent partager la même catégorie (ordonnés par `position`).
+enum TipCategory {
+  FIRST_STAR  @map("FirstStar")
+  SECOND_STAR @map("SecondStar")
 }
 
 // Modèle User avec better-auth + relations Cashou
@@ -155,6 +164,8 @@ model Level {
   userLevelCompletions UserLevelCompletion[]
   notionLevels         NotionLevel[]
   assetUnlocks         AssetUnlock[]
+  startingHoldings     LevelStartingHolding[]
+  tips                 Tip[]
 
   @@map("levels")
 }
@@ -336,6 +347,7 @@ model Asset {
   impacts        Impact[]
   holdings       Holding[]
   assetUnlocks   AssetUnlock[]
+  levelStartingHoldings LevelStartingHolding[]
 
   @@map("assets")
 }
@@ -379,6 +391,7 @@ model Impact {
   assetId     Int?       @map("asset_id")
   coef        Float?
   impactType  ImpactType @default(PRICE) @map("impact_type")
+  amount      Decimal?   // Montant fixe crédité au wallet — utilisé seulement par CASH_GRANT
   createdAt   DateTime   @default(now()) @map("created_at")
   updatedAt   DateTime   @updatedAt @map("updated_at")
 
@@ -518,7 +531,7 @@ model Holding {
   walletId       Int       @map("wallet_id")
   assetId        Int       @map("asset_id")
   gameInstanceId Int       @map("game_instance_id")
-  quantity       Decimal // Montant investi (en €) ou nombre de parts
+  quantity       Decimal // Montant investi (en €) ou nombre de parts — inclut les intérêts déjà capitalisés
   acquiredAt     DateTime  @default(now()) @map("acquired_at") // Date d'acquisition pour calcul intérêts
   lastInterestAt DateTime? @map("last_interest_at") // Dernier calcul d'intérêts (pour livrets)
   createdAt      DateTime  @default(now()) @map("created_at")
@@ -704,6 +717,41 @@ model AssetUnlock {
 
   @@unique([levelId, assetId])
   @@map("asset_unlocks")
+}
+
+// Asset non-vide au démarrage d'un niveau (ex: Livret A déjà provisionné).
+// Consommé par WalletService.create lors de la création du wallet d'une partie :
+// crée directement un Holding pour chaque ligne, sans passer par une Transaction
+// (ce n'est pas un achat du joueur).
+model LevelStartingHolding {
+  id        Int      @id @default(autoincrement())
+  levelId   Int      @map("level_id")
+  assetId   Int      @map("asset_id")
+  quantity  Decimal // Montant déjà placé sur cet actif au jour 0
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  level Level @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([levelId, assetId])
+  @@map("level_starting_holdings")
+}
+
+// Indice pédagogique affiché au joueur, par palier d'étoile (cf. TipCategory).
+// Plusieurs tips peuvent partager la même catégorie ; `position` fixe leur ordre.
+model Tip {
+  id        Int         @id @default(autoincrement())
+  levelId   Int         @map("level_id")
+  category  TipCategory
+  text      String
+  position  Int         @default(1)
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  level Level @relation(fields: [levelId], references: [id], onDelete: Cascade)
+
+  @@map("tips")
 }
 
 model DicoEntry {

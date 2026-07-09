@@ -203,15 +203,19 @@ async function main() {
   }
   console.log(`✅ Niveau créé: ${level.title} (Niveau ${level.number}) — durée ${level.duration}j, speed ${level.speed}`);
 
-  await prisma.levelAsset.deleteMany({ where: { levelId: level.id } });
-  await prisma.levelAsset.createMany({
-    data: [
-      { levelId: level.id, assetId: livretA.id },
-      { levelId: level.id, assetId: livretLED.id },
-    ],
-    skipDuplicates: true,
-  });
-  console.log(`✅ Assets du niveau liés: ${livretA.symbol}, ${livretLED.symbol}`);
+  // 5b. Lier les actifs du niveau 1 (LevelAsset) — indispensable depuis que d'autres niveaux
+  // partagent le même marché/sous-marché : sans ça, un niveau sans lignes LevelAsset voit
+  // TOUS les actifs de la base (donc aussi ceux d'autres niveaux, ex: LDDS du niveau 2).
+  console.log('🔗 Liaison niveau-actifs...');
+  for (const asset of [livretA, livretLED]) {
+    const existingLevelAsset = await prisma.levelAsset.findFirst({
+      where: { levelId: level.id, assetId: asset.id },
+    });
+    if (!existingLevelAsset) {
+      await prisma.levelAsset.create({ data: { levelId: level.id, assetId: asset.id } });
+    }
+  }
+  console.log(`✅ Level-Assets créés: ${livretA.symbol}, ${livretLED.symbol} liés au niveau 1`);
 
   // 6. Créer l'Event "Baisse du taux du Livret A"
   console.log('🎯 Création de l\'événement...');

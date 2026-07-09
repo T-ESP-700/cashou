@@ -164,6 +164,9 @@ export default function TransactionScreen() {
   // State
   const [asset, setAsset] = useState<AssetData | null>(null);
   const [amount, setAmount] = useState('');
+  // true quand le montant vient du bouton "Max" (dépôt) : le serveur recalculera le montant
+  // exact au moment de la confirmation, pour ne jamais être en retard sur les intérêts courants.
+  const [isMaxSelected, setIsMaxSelected] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
   const [currentHolding, setCurrentHolding] = useState(0); // raw quantity (invested amount)
   const [currentHoldingValue, setCurrentHoldingValue] = useState(0); // total value (invested + interests)
@@ -195,8 +198,9 @@ export default function TransactionScreen() {
           setWalletBalance(Number(wallet.amount) || 0);
         }
 
-        // Fetch current holding for this asset (for sell)
-        if (type === 'sell' && gameInstanceId) {
+        // Fetch current holding for this asset (needed for sell's max amount, and for
+        // buy's plafond-aware max amount: Max doit tenir compte de ce qui est déjà placé).
+        if (gameInstanceId) {
           try {
             const portfolio = await trpcClient.investment.getPortfolio.query({
               walletId,
@@ -206,7 +210,7 @@ export default function TransactionScreen() {
             const item = portfolio.items.find((i: any) => i.holding.assetId === aid);
             if (item) {
               setCurrentHolding(Math.round(item.currentValue)); // raw quantity (for backend)
-              setCurrentHoldingValue(Math.round(item.totalValue)); // with interests (for display)
+              setCurrentHoldingValue(Math.round(item.totalValue)); // with interests (for display + plafond)
             }
           } catch (e) {
             console.error('Error fetching portfolio for sell:', e);
@@ -292,7 +296,7 @@ export default function TransactionScreen() {
       const min = asset.minAmount != null ? Number(asset.minAmount) : 1;
       const maxFromCap =
         asset.maxAmount != null
-          ? Math.max(0, Number(asset.maxAmount) - currentHolding)
+          ? Math.max(0, Number(asset.maxAmount) - currentHoldingValue)
           : walletBalance;
       const cap = Math.min(walletBalance, maxFromCap);
       if (cap >= min) {
@@ -304,7 +308,7 @@ export default function TransactionScreen() {
     const min = asset.minAmount != null ? Number(asset.minAmount) : 1;
     const maxFromCap =
       asset.maxAmount != null
-        ? Math.max(0, Number(asset.maxAmount) - currentHolding)
+        ? Math.max(0, Number(asset.maxAmount) - currentHoldingValue)
         : walletBalance;
     const cap = Math.min(walletBalance, maxFromCap);
     if (cap <= 0) return;
@@ -400,6 +404,7 @@ export default function TransactionScreen() {
 
   const handleQuickAmount = (value: number) => {
     setAmount(value.toString());
+    setIsMaxSelected(false);
   };
 
   // Convert a user-entered value amount to raw quantity for the backend
@@ -414,10 +419,11 @@ export default function TransactionScreen() {
     if (type === 'buy') {
       let maxBuy = walletBalance;
       if (asset?.maxAmount) {
-        const remaining = Number(asset.maxAmount) - currentHolding;
+        const remaining = Math.max(0, Number(asset.maxAmount) - currentHoldingValue);
         maxBuy = Math.min(walletBalance, remaining);
       }
       setAmount(Math.floor(maxBuy).toString());
+      setIsMaxSelected(true);
     } else {
       // For sell: show total value (invested + interests)
       setAmount(Math.floor(currentHoldingValue).toString());
@@ -438,8 +444,10 @@ export default function TransactionScreen() {
       if (asset?.minAmount && numAmount < Number(asset.minAmount)) {
         return `Montant minimum: ${asset.minAmount} EUR`;
       }
-      if (asset?.maxAmount) {
-        const maxAllowed = Number(asset.maxAmount) - currentHolding;
+      // Si "Max" a été utilisé, le serveur recalcule le montant exact à la confirmation
+      // (cf. depositMax) : pas de pré-check ici, il serait basé sur les mêmes données figées.
+      if (!isMaxSelected && asset?.maxAmount) {
+        const maxAllowed = Math.max(0, Number(asset.maxAmount) - currentHoldingValue);
         if (numAmount > maxAllowed) {
           return `Plafond atteint. Maximum: ${Math.round(maxAllowed)} EUR`;
         }
@@ -528,6 +536,7 @@ export default function TransactionScreen() {
           assetId,
           amount: numAmount,
           gameInstanceId,
+          depositMax: isMaxSelected,
         });
         if (
           tr?.sessionActive &&
@@ -644,7 +653,7 @@ export default function TransactionScreen() {
                 Plafond
               </Text>
               <Text style={[styles.balanceValue, { color: theme.text }]}>
-                {Math.round(currentHolding)} / {Math.round(Number(asset.maxAmount))} EUR
+                {Math.round(currentHoldingValue)} / {Math.round(Number(asset.maxAmount))} EUR
               </Text>
             </View>
           )}
@@ -674,7 +683,7 @@ export default function TransactionScreen() {
             <TextInput
               style={[styles.input, { color: theme.text, borderColor: theme.border }]}
               value={amount}
-              onChangeText={setAmount}
+              onChangeText={(text) => { setAmount(text); setIsMaxSelected(false); }}
               keyboardType="decimal-pad"
               placeholder="0"
               placeholderTextColor={theme.text + '50'}
