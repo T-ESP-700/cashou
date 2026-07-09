@@ -2501,7 +2501,7 @@ export default function GameCurrentScreen() {
                       {asset.title ?? asset.symbol ?? 'Asset'}
                     </Text>
                     <Text style={[styles.assetsSheetRowPrice, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
-                      {asset.maxAmount != null ? `${Number(asset.maxAmount).toLocaleString('fr-FR')}€` : (getAdjustedRate(asset.id, asset.rate) != null ? `${getAdjustedRate(asset.id, asset.rate)}%` : '—')}
+                      {getAdjustedRate(asset.id, asset.rate) != null ? `${getAdjustedRate(asset.id, asset.rate)}%` : '—'}
                     </Text>
                   </View>
                   {asset.submarket?.title && (
