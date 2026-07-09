@@ -130,13 +130,30 @@ export class AssetService {
         const duration = gameInstance.level.duration ?? 365;
         const currentGameDay = this.gameTimeService.getCurrentGameDay(gameInstance as any);
 
+        // Un asset débloqué par un event l'est dès que cet event s'est réellement déclenché.
+        // Rejouer le seuil en jours désynchronise : le job pg-boss peut se déclencher quelques
+        // dizaines de ms avant `scheduledAt`, ce qui vaut presque un jour de jeu aux vitesses
+        // élevées (niveau 1 : speed 1 314 000). L'event met alors la partie en pause au jour N-1,
+        // le seuil N n'est jamais atteint et l'asset reste verrouillé pour toujours.
+        const triggeredLevelEventIds = new Set(
+            (
+                await this.prisma.gameInstanceEvent.findMany({
+                    where: { gameInstanceId, triggeredAt: { not: null } },
+                    select: { levelEventId: true },
+                })
+            ).map((e: { levelEventId: number }) => e.levelEventId)
+        );
+
         for (const unlock of gameInstance.level.assetUnlocks) {
             const percent = unlock.levelEvent
                 ? unlock.levelEvent.triggerPercent
                 : (unlock.unlockPercent ?? 0);
             const unlockGameDay = Math.floor((duration * percent) / 100);
+            const available = unlock.levelEvent
+                ? triggeredLevelEventIds.has(unlock.levelEvent.id) || currentGameDay >= unlockGameDay
+                : currentGameDay >= unlockGameDay;
             map.set(unlock.assetId, {
-                available: currentGameDay >= unlockGameDay,
+                available,
                 unlockGameDay,
                 afterEventTitle: unlock.levelEvent?.event?.title ?? null,
             });
