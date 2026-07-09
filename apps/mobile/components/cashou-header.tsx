@@ -187,8 +187,13 @@ export function CashouHeader({
       />
 
       {dimmed && (
+        // Voile du tutoriel : capte les touches (onStartShouldSetResponder → responder) pour
+        // rendre les boutons du header (retour, info, menu) NON cliquables tant qu'une seule
+        // zone est mise en avant ailleurs. Sans ça, le voile était purement visuel
+        // (pointerEvents="none") et l'utilisateur pouvait quitter le tuto via ces boutons.
         <View
-          pointerEvents="none"
+          onStartShouldSetResponder={() => true}
+          onResponderRelease={() => {}}
           style={[
             styles.dimOverlay,
             // top: 0 → le voile recouvre AUSSI la zone safe-area / status bar (sinon une bande

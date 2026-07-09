@@ -41,9 +41,11 @@ export const assetRouter = t.router({
      * @input {id: number} - ID de l'actif recherché, validé par assetIdSchema
      */
     getById: t.procedure
-        .input(assetIdSchema) // Validation automatique de l'entrée
+        .input(assetIdSchema.extend({
+            gameInstanceId: z.number().int().positive().optional(),
+        }))
         .query(async ({ input }) => {
-            return await assetService.findOne(input.id);
+            return await assetService.findOne(input.id, input.gameInstanceId);
         }),
 
     /**
@@ -85,8 +87,7 @@ export const assetRouter = t.router({
             gameInstanceId: z.number().min(1, "L'ID de la partie doit être un nombre > 0")
         }))
         .query(async ({ input }) => {
-            const assets = await assetService.findForGame(input.gameInstanceId);
-            return assets.filter((asset) => asset.available);
+            return await assetService.findAvailableForGame(input.gameInstanceId);
         }),
 
     /**

@@ -1,9 +1,13 @@
 // Service métier pour la gestion des actifs du jeu
 // Couche d'abstraction entre les routers et la base de données
-import type { Asset, PrismaClient } from "@cashou/db-app";
+import type { Asset, GameInstance, Level, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {AssetCreateSchema, AssetDataSchema} from "../schemas-zod/asset-schema.ts";
 import { GameTimeService } from "./game-time.service.ts";
+
+type GameInstanceWithLevel = GameInstance & {
+    level: Level | null;
+};
 
 export interface AssetUnlockInfo {
     available: boolean;
@@ -50,17 +54,18 @@ export class AssetService {
      * @param id - Identifiant unique de l'actif
      * @returns Promise<Asset | null> - L'actif trouvé ou null si inexistant
      */
-    async findOne(id: number): Promise<Asset | null> {
+    async findOne(id: number, gameInstanceId?: number): Promise<Asset | null> {
         return this.prisma.asset.findUnique({
             where: { id },
             include: {
-                // Même structure que findAll pour la cohérence des données
                 market: true,
                 submarket: true,
                 field: true,
                 assetHistories: true,
                 eventAssets: true,
-                transactions: true
+                transactions: gameInstanceId
+                    ? { where: { gameInstanceId } }
+                    : true
             }
         });
     }
@@ -106,6 +111,48 @@ export class AssetService {
     }
 
     /**
+     * Récupère les actifs autorisés pour la partie en cours.
+     * La source de vérité est la table level_assets seedée par niveau.
+     * Fallback: si aucun mapping n'existe encore pour un ancien seed, on retourne
+     * tous les actifs pour préserver le fonctionnement historique.
+     */
+    async findAvailableForGame(gameInstanceId: number): Promise<Asset[]> {
+        const gameInstance = await this.prisma.gameInstance.findUnique({
+            where: { id: gameInstanceId },
+            select: { levelId: true },
+        });
+
+        if (!gameInstance?.levelId) {
+            return [];
+        }
+
+        const levelAssets = await this.prisma.levelAsset.findMany({
+            where: { levelId: gameInstance.levelId },
+            include: {
+                asset: {
+                    include: {
+                        market: true,
+                        submarket: true,
+                        field: true,
+                        assetHistories: true,
+                        eventAssets: true,
+                        transactions: true,
+                    },
+                },
+            },
+            orderBy: {
+                asset: { title: 'asc' },
+            },
+        });
+
+        if (levelAssets.length > 0) {
+            return levelAssets.map((levelAsset) => levelAsset.asset);
+        }
+
+        return this.findAll();
+    }
+
+    /**
      * Disponibilité des assets verrouillés pour une partie, évaluée À LA LECTURE.
      * Aucune mutation : on compare le jour de jeu courant au jour de déblocage
      * (dérivé du triggerPercent de l'event, ou de unlockPercent). Cohérent avec
@@ -128,15 +175,32 @@ export class AssetService {
         if (!gameInstance?.level) return map;
 
         const duration = gameInstance.level.duration ?? 365;
-        const currentGameDay = this.gameTimeService.getCurrentGameDay(gameInstance as any);
+        const currentGameDay = this.gameTimeService.getCurrentGameDay(gameInstance as GameInstanceWithLevel);
+
+        // Un asset débloqué par un event l'est dès que cet event s'est réellement déclenché.
+        // Rejouer le seuil en jours désynchronise : le job pg-boss peut se déclencher quelques
+        // dizaines de ms avant `scheduledAt`, ce qui vaut presque un jour de jeu aux vitesses
+        // élevées (niveau 1 : speed 1 314 000). L'event met alors la partie en pause au jour N-1,
+        // le seuil N n'est jamais atteint et l'asset reste verrouillé pour toujours.
+        const triggeredLevelEventIds = new Set(
+            (
+                await this.prisma.gameInstanceEvent.findMany({
+                    where: { gameInstanceId, triggeredAt: { not: null } },
+                    select: { levelEventId: true },
+                })
+            ).map((e: { levelEventId: number }) => e.levelEventId)
+        );
 
         for (const unlock of gameInstance.level.assetUnlocks) {
             const percent = unlock.levelEvent
                 ? unlock.levelEvent.triggerPercent
                 : (unlock.unlockPercent ?? 0);
             const unlockGameDay = Math.floor((duration * percent) / 100);
+            const available = unlock.levelEvent
+                ? triggeredLevelEventIds.has(unlock.levelEvent.id) || currentGameDay >= unlockGameDay
+                : currentGameDay >= unlockGameDay;
             map.set(unlock.assetId, {
-                available: currentGameDay >= unlockGameDay,
+                available,
                 unlockGameDay,
                 afterEventTitle: unlock.levelEvent?.event?.title ?? null,
             });
@@ -145,34 +209,54 @@ export class AssetService {
     }
 
     /**
-     * True si l'asset est disponible dans cette partie.
-     * Un asset sans règle de verrou est disponible par défaut.
+     * Assets explicitement liés au niveau d'une partie (table LevelAsset).
+     * Retourne `null` si le niveau n'a AUCUNE ligne LevelAsset configurée :
+     * dans ce cas on ne restreint rien, pour ne pas casser les niveaux existants
+     * qui n'ont jamais rempli cette table (comportement historique préservé).
+     */
+    async getLevelAssetIds(gameInstanceId: number): Promise<Set<number> | null> {
+        const gameInstance = await this.prisma.gameInstance.findUnique({
+            where: { id: gameInstanceId },
+            select: { level: { select: { levelAssets: { select: { assetId: true } } } } },
+        });
+        if (!gameInstance?.level || gameInstance.level.levelAssets.length === 0) return null;
+        return new Set(gameInstance.level.levelAssets.map((la: { assetId: number }) => la.assetId));
+    }
+
+    /**
+     * True si l'asset est disponible dans cette partie : il doit appartenir au niveau
+     * (LevelAsset, si configuré) ET ne pas être encore verrouillé par un AssetUnlock.
      */
     async isAssetAvailableForGame(assetId: number, gameInstanceId: number): Promise<boolean> {
-        const state = await this.getUnlockState(gameInstanceId);
+        const [levelAssetIds, state] = await Promise.all([
+            this.getLevelAssetIds(gameInstanceId),
+            this.getUnlockState(gameInstanceId),
+        ]);
+        if (levelAssetIds && !levelAssetIds.has(assetId)) return false;
         return state.get(assetId)?.available ?? true;
     }
 
     /**
      * Liste des actifs annotés de leur disponibilité pour une partie donnée.
+     * Filtrée sur les assets liés au niveau (LevelAsset) quand ce niveau en configure.
      * `available` = false pour un asset encore verrouillé ; `unlock` porte de quoi
      * afficher l'indice côté UI ("Disponible après …").
      */
     async findForGame(gameInstanceId: number) {
         const [assets, state] = await Promise.all([
-            this.findAll(),
+            this.findAvailableForGame(gameInstanceId),
             this.getUnlockState(gameInstanceId),
         ]);
         return assets.map((asset) => {
-            const info = state.get(asset.id);
-            return {
-                ...asset,
-                available: info?.available ?? true,
-                unlock: info
-                    ? { unlockGameDay: info.unlockGameDay, afterEventTitle: info.afterEventTitle }
-                    : null,
-            };
-        });
+                const info = state.get(asset.id);
+                return {
+                    ...asset,
+                    available: info?.available ?? true,
+                    unlock: info
+                        ? { unlockGameDay: info.unlockGameDay, afterEventTitle: info.afterEventTitle }
+                        : null,
+                };
+            });
     }
 
     /**

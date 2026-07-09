@@ -84,7 +84,10 @@ export default function AssetDetailScreen() {
       try {
         setLoading(true);
         setError(null);
-        const data = await trpcClient.asset.getById.query({ id: parseInt(assetId) });
+        const data = await trpcClient.asset.getById.query({
+          id: parseInt(assetId),
+          ...(gameInstanceId ? { gameInstanceId: parseInt(gameInstanceId) } : {}),
+        });
         setAsset(data);
 
         // Fetch price history with event coefs applied

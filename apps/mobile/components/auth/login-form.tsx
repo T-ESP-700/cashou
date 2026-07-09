@@ -13,11 +13,18 @@ interface LoginFormProps {
     onSuccess?: () => void;
 }
 
-const isDev = process.env.EXPO_PUBLIC_DEV_MODE === "true";
+// __DEV__ is compiled to `false` in production bundles, so the prefill cannot
+// survive a release build even if EXPO_PUBLIC_DEV_MODE is set on the builder.
+const shouldPrefillCredentials =
+    __DEV__ && process.env.EXPO_PUBLIC_DEV_MODE === "true";
 
 export function LoginForm({ onSuccess }: LoginFormProps) {
-    const [email, setEmail] = useState(isDev ? "test@gmail.com" : "");
-    const [password, setPassword] = useState(isDev ? "azerty123456" : "");
+    const [email, setEmail] = useState(
+        shouldPrefillCredentials ? "test@gmail.com" : "",
+    );
+    const [password, setPassword] = useState(
+        shouldPrefillCredentials ? "azerty123456" : "",
+    );
     const [isLoading, setIsLoading] = useState(false);
     const { colors, spacing } = useCashouTheme();
     const { showAlert } = useAlert();

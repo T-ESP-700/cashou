@@ -160,7 +160,6 @@ export class LevelService {
             pointsRequired: src.pointsRequired ?? null,
             historyStartDay: src.historyStartDay ?? null,
             startDate: src.startDate ?? null,
-
             description: src.description ?? null,
             tip: src.tip ?? null,
         };

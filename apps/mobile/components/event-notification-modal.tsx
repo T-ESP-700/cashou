@@ -23,11 +23,8 @@ export function EventNotificationModal() {
   const pathname = usePathname();
   const { eventNotification, clearEventNotification, setPendingEventCompletion, setRequestedAssetsSheetGameId } = useNotifications();
   const level1Tour = useOptionalLevel1Tour();
-  // Restrict the modal to "Invest only" only when the level actually has another livret
-  // to migrate to. For levels with a single livret (new level 1), allow "Plus tard".
   const restrictToAssetsOnly =
     Boolean(level1Tour?.sessionActive) &&
-    Boolean(level1Tour?.hasOtherSavings) &&
     (level1Tour?.eventPhase ?? 0) === 0 &&
     level1Tour?.step !== Level1TourStep.Done;
 
@@ -110,6 +107,17 @@ export function EventNotificationModal() {
               <Text allowFontScaling={false} style={[styles.description, { color: colors.text }]}>
                 {eventNotification.body ?? 'Un événement vient de se produire dans le jeu. Consultez vos assets pour voir les changements.'}
               </Text>
+
+              {/* Note explicative (pendant le tuto) : rôle général de cette fenêtre — informer
+                  d'un événement, mettre la partie en pause, et proposer les actions à mener. */}
+              {Boolean(level1Tour?.sessionActive) && (
+                <View style={[styles.infoNote, { backgroundColor: `${colors.text}0D`, borderColor: colors.border }]}>
+                  <Ionicons name="information-circle-outline" size={18} color={colors.text} style={{ marginTop: 1 }} />
+                  <Text allowFontScaling={false} style={[styles.infoNoteText, { color: colors.text }]}>
+                    Cette fenêtre te prévient d'un événement du jeu. La partie reste en pause le temps que tu la lises : prends connaissance du changement, puis choisis une action ci-dessous.
+                  </Text>
+                </View>
+              )}
 
               {/* Tutorial bubble: absolutely overlaid, same pattern as end-game modal */}
               {restrictToAssetsOnly && level1Tour && (
@@ -220,6 +228,24 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     opacity: 0.85,
     marginBottom: 16,
+  },
+  infoNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    alignSelf: 'stretch',
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 16,
+  },
+  infoNoteText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: 'Anybody',
+    lineHeight: 18,
+    opacity: 0.85,
   },
   tourBubbleAbs: {
     position: 'absolute',

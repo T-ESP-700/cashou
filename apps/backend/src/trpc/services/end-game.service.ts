@@ -8,6 +8,7 @@ import { GameTimeService } from "./game-time.service.ts";
 import { LevelCompletionService } from "./level-completion.service.ts";
 import { AssetHistoryService } from "./asset-history.service.ts";
 import { broadcastToGame, broadcastGameState } from "../../ws/game-socket.ts";
+import { rateBasedInterest } from "../../lib/interest.ts";
 
 type HoldingWithAsset = Holding & {
     asset: Asset;
@@ -79,9 +80,13 @@ export class EndGameService {
 
         if (!level || quantity === 0) return 0;
 
-        // Price-based calculation
+        const feePct = asset.managementFee != null ? Number(asset.managementFee) : 0;
+
+        // Price-based calculation (assets that have a price history)
         const currentPrice = await this.assetHistoryService.getCurrentPrice(asset.id, gameInstance.id);
         if (currentPrice) {
+            let returnRate: number | null = null;
+
             // Get average acquisition price from BUY transactions
             const buyTransactions = await this.prisma.transaction.findMany({
                 where: {
@@ -103,28 +108,38 @@ export class EndGameService {
                         totalQty += txQty;
                     }
                 }
-
                 if (totalQty > 0 && totalSpent > 0) {
                     const avgAcquisitionPrice = totalSpent / totalQty;
-                    const returnRate = (currentPrice - avgAcquisitionPrice) / avgAcquisitionPrice;
-                    return Math.round(quantity * returnRate);
+                    returnRate = (currentPrice - avgAcquisitionPrice) / avgAcquisitionPrice;
                 }
             }
 
-            // Fallback: use game start price
-            const history = await this.assetHistoryService.findForGame(asset.id, gameInstance.id);
-            if (history.length > 0) {
-                const historyStartDay = level.historyStartDay ?? 0;
-                const startPoint = history[Math.min(historyStartDay, history.length - 1)];
-                const startPrice = startPoint?.value ? Number(startPoint.value) : currentPrice;
-                if (startPrice > 0) {
-                    const returnRate = (currentPrice - startPrice) / startPrice;
-                    return Math.round(quantity * returnRate);
+            if (returnRate === null) {
+                // Fallback: use game start price
+                const history = await this.assetHistoryService.findForGame(asset.id, gameInstance.id);
+                if (history.length > 0) {
+                    const historyStartDay = level.historyStartDay ?? 0;
+                    const startPoint = history[Math.min(historyStartDay, history.length - 1)];
+                    const startPrice = startPoint?.value ? Number(startPoint.value) : currentPrice;
+                    if (startPrice > 0) {
+                        returnRate = (currentPrice - startPrice) / startPrice;
+                    }
                 }
+            }
+
+            if (returnRate !== null) {
+                const gross = quantity * returnRate;
+                // Annual management fee drags the realised return (felt over time).
+                let drag = 0;
+                if (feePct > 0) {
+                    const { held } = await this.gameTimeService.holdingGameDayWindow(gameInstance, new Date(holding.acquiredAt));
+                    drag = quantity * (feePct / 100) * (held / 365);
+                }
+                return Math.round(gross - drag);
             }
         }
 
-        // Fallback: rate-based
+        // Rate-based calculation (capital-guaranteed assets without price history)
         if (asset.rate) {
             const elapsedRealSeconds = await this.gameTimeService.calculateElapsedTimeSince(
                 gameInstance, new Date(holding.acquiredAt)
@@ -254,7 +269,7 @@ export class EndGameService {
 
             console.log(`[EndGame] Goal "${goal.title}" (id=${goal.id}): type=${goal.goalType}, value=${goal.goalValue}, isMandatory=${levelGoal.isMandatory}`);
 
-            const validated = this.validateGoal(goal.goalType, goal.goalValue, totalValue, startBalance, gameInstance.holdings as HoldingWithAsset[], gameInstance.transactions as any[]);
+            const validated = await this.validateGoal(goal.goalType, goal.goalValue, totalValue, startBalance, gameInstance.holdings as HoldingWithAsset[], gameInstance.transactions as any[], gameInstance as GameInstanceWithLevel, totalInterests);
 
             console.log(`[EndGame] → validated=${validated} (totalValue ${totalValue} >= goalValue ${goal.goalValue} ? ${totalValue >= (goal.goalValue || 0)})`);
 
@@ -415,12 +430,12 @@ export class EndGameService {
         if (!wallet) throw new Error(`Aucun wallet trouvé pour la partie ${gameInstanceId}`);
 
         let totalAssetsValue = 0;
-        // let totalInterests = 0; // Désactivé : valeur cumulée plus exposée dans le résultat de fin de partie, à réactiver si besoin de reporting détaillé
+        let totalInterests = 0;
         for (const holding of gameInstance.holdings) {
             const holdingWithAsset = holding as HoldingWithAsset;
             const quantity = holdingWithAsset.quantity ? Number(holdingWithAsset.quantity) : 0;
             const interests = await this.calculateInterests(holdingWithAsset, gameInstance as GameInstanceWithLevel);
-            // totalInterests += interests;
+            totalInterests += interests;
             totalAssetsValue += quantity + interests;
         }
 
@@ -431,7 +446,7 @@ export class EndGameService {
         for (const levelGoal of gameInstance.level.levelGoals) {
             const goal = levelGoal.goal;
             if (!goal) continue;
-            const validated = this.validateGoal(goal.goalType, goal.goalValue, totalValue, startBalance, gameInstance.holdings as HoldingWithAsset[], gameInstance.transactions as any[]);
+            const validated = await this.validateGoal(goal.goalType, goal.goalValue, totalValue, startBalance, gameInstance.holdings as HoldingWithAsset[], gameInstance.transactions as any[], gameInstance as GameInstanceWithLevel, totalInterests);
             goalResults.push({
                 id: goal.id,
                 title: goal.title || "Objectif sans titre",
@@ -487,14 +502,16 @@ export class EndGameService {
      * @param startBalance - Solde de départ
      * @returns boolean - true si l'objectif est validé
      */
-    private validateGoal(
+    private async validateGoal(
         goalType: string | null,
         goalValue: number | null,
         finalBalance: number,
         startBalance: number,
         holdings: HoldingWithAsset[],
-        transactions: any[] = []
-    ): boolean {
+        transactions: any[] = [],
+        gameInstance?: GameInstanceWithLevel,
+        totalInterests: number = 0
+    ): Promise<boolean> {
         if (!goalType) {
             // Pas de type défini = objectif validé par défaut
             return true;
@@ -538,6 +555,75 @@ export class EndGameService {
                 const distinctSubmarkets = new Set([...submarketIdsFromTx, ...submarketIdsFromHoldings]);
                 console.log(`[EndGame] min_submarkets_invested: fromTx=${submarketIdsFromTx.size}, fromHoldings=${submarketIdsFromHoldings.size}, total=${distinctSubmarkets.size} (need >= ${value})`);
                 return distinctSubmarkets.size >= value;
+
+            case 'min_distinct_assets_invested': {
+                // Nombre minimum d'assets distincts avec un holding non-nul (ex: "2 livrets en simultané")
+                const distinctAssets = new Set(
+                    holdings.filter(h => Number(h.quantity) > 0).map(h => h.assetId)
+                );
+                console.log(`[EndGame] min_distinct_assets_invested: ${distinctAssets.size} (need >= ${value})`);
+                return distinctAssets.size >= value;
+            }
+
+            case 'livret_a_at_max': {
+                // Le holding LIVRET_A doit atteindre (ou dépasser) le plafond de l'asset. Un dépôt
+                // seul ne peut jamais dépasser le plafond (bloqué à la source) : c'est justement la
+                // capitalisation des intérêts, pas encore fusionnée dans `quantity` tant que l'event
+                // annuel de capitalisation n'est pas passé, qui peut le faire dépasser — il faut donc
+                // compter les intérêts déjà courus (live), pas seulement `quantity` brut.
+                const livretAHolding = holdings.find(h => h.asset.symbol === 'LIVRET_A');
+                const maxAmount = livretAHolding?.asset.maxAmount != null ? Number(livretAHolding.asset.maxAmount) : null;
+                if (!livretAHolding || maxAmount == null) return false;
+                const liveInterest = gameInstance ? await this.calculateInterests(livretAHolding, gameInstance) : 0;
+                const totalValue = Number(livretAHolding.quantity) + liveInterest;
+                console.log(`[EndGame] livret_a_at_max: quantity=${livretAHolding.quantity} + interests=${liveInterest} = ${totalValue} (need >= ${maxAmount})`);
+                return totalValue >= maxAmount;
+            }
+
+            case 'max_interest_efficiency': {
+                // Compare l'intérêt réellement généré à l'intérêt théorique maximal
+                // atteignable : Livret A rempli au plafond dès le jour 0, et le montant
+                // de l'event CASH_GRANT (ex: "Cadeau !") placé sur LDDS le jour de l'event.
+                // `value` = seuil de tolérance en % (ex: 95 → 95% de l'idéal suffit).
+                const level = gameInstance?.level;
+                if (!level) return false;
+
+                const livretA = holdings.find(h => h.asset.symbol === 'LIVRET_A')?.asset
+                    ?? await this.prisma.asset.findUnique({ where: { symbol: 'LIVRET_A' } });
+                const ldds = holdings.find(h => h.asset.symbol === 'LDDS')?.asset
+                    ?? await this.prisma.asset.findUnique({ where: { symbol: 'LDDS' } });
+                if (!livretA || !ldds) return false;
+
+                const duration = level.duration ?? 0;
+                const levelEvent = await this.prisma.levelEvent.findFirst({
+                    where: { levelId: level.id },
+                    include: { event: { include: { impacts: true } } },
+                });
+                const eventGameDay = levelEvent ? Math.floor(duration * (levelEvent.triggerPercent / 100)) : 0;
+                const giftAmount = (levelEvent?.event?.impacts ?? [])
+                    .filter((i: any) => i.impactType === 'CASH_GRANT' && i.amount != null)
+                    .reduce((sum: number, i: any) => sum + Number(i.amount), 0);
+
+                const idealInterest =
+                    rateBasedInterest({
+                        quantity: Number(livretA.maxAmount ?? 0),
+                        annualRatePct: livretA.rate ?? 0,
+                        managementFeePct: livretA.managementFee ?? 0,
+                        fromGameDay: 0,
+                        toGameDay: duration,
+                    }) +
+                    rateBasedInterest({
+                        quantity: giftAmount,
+                        annualRatePct: ldds.rate ?? 0,
+                        managementFeePct: ldds.managementFee ?? 0,
+                        fromGameDay: eventGameDay,
+                        toGameDay: duration,
+                    });
+
+                console.log(`[EndGame] max_interest_efficiency: actual=${totalInterests}, ideal=${idealInterest} (need >= ${value || 95}%)`);
+                if (idealInterest <= 0) return true;
+                return totalInterests >= idealInterest * ((value || 95) / 100);
+            }
 
             default:
                 // Type inconnu = objectif validé par défaut

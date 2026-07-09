@@ -164,6 +164,9 @@ export default function TransactionScreen() {
   // State
   const [asset, setAsset] = useState<AssetData | null>(null);
   const [amount, setAmount] = useState('');
+  // true quand le montant vient du bouton "Max" (dépôt) : le serveur recalculera le montant
+  // exact au moment de la confirmation, pour ne jamais être en retard sur les intérêts courants.
+  const [isMaxSelected, setIsMaxSelected] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
   const [currentHolding, setCurrentHolding] = useState(0); // raw quantity (invested amount)
   const [currentHoldingValue, setCurrentHoldingValue] = useState(0); // total value (invested + interests)
@@ -195,8 +198,9 @@ export default function TransactionScreen() {
           setWalletBalance(Number(wallet.amount) || 0);
         }
 
-        // Fetch current holding for this asset (for sell)
-        if (type === 'sell' && gameInstanceId) {
+        // Fetch current holding for this asset (needed for sell's max amount, and for
+        // buy's plafond-aware max amount: Max doit tenir compte de ce qui est déjà placé).
+        if (gameInstanceId) {
           try {
             const portfolio = await trpcClient.investment.getPortfolio.query({
               walletId,
@@ -206,7 +210,7 @@ export default function TransactionScreen() {
             const item = portfolio.items.find((i: any) => i.holding.assetId === aid);
             if (item) {
               setCurrentHolding(Math.round(item.currentValue)); // raw quantity (for backend)
-              setCurrentHoldingValue(Math.round(item.totalValue)); // with interests (for display)
+              setCurrentHoldingValue(Math.round(item.totalValue)); // with interests (for display + plafond)
             }
           } catch (e) {
             console.error('Error fetching portfolio for sell:', e);
@@ -253,8 +257,20 @@ export default function TransactionScreen() {
         isLivretAAsset(asset),
     );
 
-  // Un seul des deux est vrai à la fois : pilote tout le parcours guidé de cet écran.
-  const tourGuidedHere = tourDepositHere || tourWithdrawHere;
+  // Seconde partie des actions du premier événement : replacer sur un AUTRE livret (DDS) le
+  // cash retiré du Livret A. Même parcours guidé (voile + spotlights + confirmer en lumière)
+  // que le dépôt initial, mais en mode achat sur le livret alternatif.
+  const tourMoveToOtherLivretHere =
+    Boolean(
+      level1Tour?.sessionActive &&
+        level1Tour.step === Level1TourStep.WithdrawAndMoveToOtherLivret &&
+        type === 'buy' &&
+        asset &&
+        isSavingsLivretOtherThanA(asset),
+    );
+
+  // Un seul des trois est vrai à la fois : pilote tout le parcours guidé de cet écran.
+  const tourGuidedHere = tourDepositHere || tourWithdrawHere || tourMoveToOtherLivretHere;
 
   const tourLivretPrefillAppliedRef = useRef(false);
 
@@ -274,10 +290,25 @@ export default function TransactionScreen() {
       }
       return;
     }
+    if (tourMoveToOtherLivretHere) {
+      // Déplacement post-event : on propose de replacer TOUT le cash disponible (issu du
+      // retrait du Livret A) sur l'autre livret, dans la limite du plafond.
+      const min = asset.minAmount != null ? Number(asset.minAmount) : 1;
+      const maxFromCap =
+        asset.maxAmount != null
+          ? Math.max(0, Number(asset.maxAmount) - currentHoldingValue)
+          : walletBalance;
+      const cap = Math.min(walletBalance, maxFromCap);
+      if (cap >= min) {
+        tourLivretPrefillAppliedRef.current = true;
+        setAmount(String(Math.floor(cap)));
+      }
+      return;
+    }
     const min = asset.minAmount != null ? Number(asset.minAmount) : 1;
     const maxFromCap =
       asset.maxAmount != null
-        ? Math.max(0, Number(asset.maxAmount) - currentHolding)
+        ? Math.max(0, Number(asset.maxAmount) - currentHoldingValue)
         : walletBalance;
     const cap = Math.min(walletBalance, maxFromCap);
     if (cap <= 0) return;
@@ -287,23 +318,30 @@ export default function TransactionScreen() {
       tourLivretPrefillAppliedRef.current = true;
       setAmount(String(Math.floor(suggested)));
     }
-  }, [tourGuidedHere, tourWithdrawHere, amount, asset, walletBalance, currentHolding, currentHoldingValue]);
+  }, [tourGuidedHere, tourWithdrawHere, tourMoveToOtherLivretHere, amount, asset, walletBalance, currentHolding, currentHoldingValue]);
 
   // Tuto étape 2 : auto-scroll pour cadrer la carte Montant, voile + spotlight sur le champ
   const scrollRef = useRef<ScrollView>(null);
   const [montantCardY, setMontantCardY] = useState(0);
   const tourScrolledRef = useRef(false);
 
-  // Sous-parcours guidé (dépôt ou retrait) : 'amount' (champ Montant) → 'quick' (montants rapides) → 'confirm' (bouton)
-  const [tourDepositSubStep, setTourDepositSubStep] = useState<'amount' | 'quick' | 'confirm'>('amount');
+  // Sous-parcours guidé (dépôt ou retrait) en DEUX temps :
+  //   'amount'  → champ Montant mis en lumière + bouton flottant « Suivant »
+  //   'confirm' → montants rapides ET « Confirmer le dépôt » mis en lumière (plus de « Suivant »)
+  //               pour forcer la validation directe de la somme pré-remplie (200 €).
+  const [tourDepositSubStep, setTourDepositSubStep] = useState<'amount' | 'confirm'>('amount');
   useEffect(() => {
     if (tourGuidedHere) setTourDepositSubStep('amount');
   }, [tourGuidedHere]);
   const tourVeilActive = tourGuidedHere; // voile présent durant tout le sous-parcours
   const spotAmount = tourGuidedHere && tourDepositSubStep === 'amount';
-  const spotQuick = tourGuidedHere && tourDepositSubStep === 'quick';
+  // En phase 'confirm' on éclaire le bouton de confirmation (action finale forcée). Les montants
+  // rapides ne sont mis en avant QUE pour le retrait / le déplacement, où le montant reste
+  // modifiable. Pour le PREMIER DÉPÔT la valeur est verrouillée à 200 € (voir plus bas) : on ne
+  // met donc pas ses montants rapides en avant (ils sont désactivés).
+  const spotQuick = (tourWithdrawHere || tourMoveToOtherLivretHere) && tourDepositSubStep === 'confirm';
   const spotConfirm = tourGuidedHere && tourDepositSubStep === 'confirm';
-  const handleTourNext = () => setTourDepositSubStep((s) => (s === 'amount' ? 'quick' : 'confirm'));
+  const handleTourNext = () => setTourDepositSubStep('confirm');
 
   // Highlight "propre" (bordure blanche + ombre) appliqué au bouton confirmer en phase
   // 'confirm' — identique au bouton « Commencer » et aux boutons Déposer/Retirer.
@@ -325,10 +363,14 @@ export default function TransactionScreen() {
   // Textes des bulles, adaptés au dépôt ou au retrait.
   const spotAmountMessage = tourWithdrawHere
     ? "Retires l'argent placé sur ton Livret A"
-    : 'Déposes un montant à placer dans ton Livret A';
+    : tourMoveToOtherLivretHere
+      ? "Place ici l'argent retiré de ton Livret A"
+      : "On place 200 € sur ton Livret A pour ce premier dépôt. C'est ici, dans une vraie partie, que tu pourras saisir librement le montant de ton choix.";
   const spotQuickMessage = tourWithdrawHere
     ? 'Ou choisis le montant à retirer'
-    : 'Ou choisis en un clic le montant à placer';
+    : tourMoveToOtherLivretHere
+      ? 'Ou choisis en un clic le montant à déplacer'
+      : 'Ou choisis en un clic le montant à placer';
 
   // Cadrer la carte Montant (+ montants rapides) une fois mesurée, à l'entrée de l'étape
   useEffect(() => {
@@ -362,6 +404,7 @@ export default function TransactionScreen() {
 
   const handleQuickAmount = (value: number) => {
     setAmount(value.toString());
+    setIsMaxSelected(false);
   };
 
   // Convert a user-entered value amount to raw quantity for the backend
@@ -376,10 +419,11 @@ export default function TransactionScreen() {
     if (type === 'buy') {
       let maxBuy = walletBalance;
       if (asset?.maxAmount) {
-        const remaining = Number(asset.maxAmount) - currentHolding;
+        const remaining = Math.max(0, Number(asset.maxAmount) - currentHoldingValue);
         maxBuy = Math.min(walletBalance, remaining);
       }
       setAmount(Math.floor(maxBuy).toString());
+      setIsMaxSelected(true);
     } else {
       // For sell: show total value (invested + interests)
       setAmount(Math.floor(currentHoldingValue).toString());
@@ -400,8 +444,10 @@ export default function TransactionScreen() {
       if (asset?.minAmount && numAmount < Number(asset.minAmount)) {
         return `Montant minimum: ${asset.minAmount} EUR`;
       }
-      if (asset?.maxAmount) {
-        const maxAllowed = Number(asset.maxAmount) - currentHolding;
+      // Si "Max" a été utilisé, le serveur recalcule le montant exact à la confirmation
+      // (cf. depositMax) : pas de pré-check ici, il serait basé sur les mêmes données figées.
+      if (!isMaxSelected && asset?.maxAmount) {
+        const maxAllowed = Math.max(0, Number(asset.maxAmount) - currentHoldingValue);
         if (numAmount > maxAllowed) {
           return `Plafond atteint. Maximum: ${Math.round(maxAllowed)} EUR`;
         }
@@ -490,6 +536,7 @@ export default function TransactionScreen() {
           assetId,
           amount: numAmount,
           gameInstanceId,
+          depositMax: isMaxSelected,
         });
         if (
           tr?.sessionActive &&
@@ -562,7 +609,14 @@ export default function TransactionScreen() {
       <ScrollView
         ref={scrollRef}
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 100 },
+          // Pendant le tuto : le contenu remplit AU MOINS tout le viewport pour que le voile
+          // (absoluteFill dans le contenu) recouvre l'écran entier. Sans ça, quand le contenu
+          // est plus court que l'écran, une bande claire restait visible sous le contenu.
+          tourVeilActive && { flexGrow: 1 },
+        ]}
         keyboardShouldPersistTaps="handled"
       >
         {/* Header */}
@@ -599,7 +653,7 @@ export default function TransactionScreen() {
                 Plafond
               </Text>
               <Text style={[styles.balanceValue, { color: theme.text }]}>
-                {Math.round(currentHolding)} / {Math.round(Number(asset.maxAmount))} EUR
+                {Math.round(currentHoldingValue)} / {Math.round(Number(asset.maxAmount))} EUR
               </Text>
             </View>
           )}
@@ -629,10 +683,12 @@ export default function TransactionScreen() {
             <TextInput
               style={[styles.input, { color: theme.text, borderColor: theme.border }]}
               value={amount}
-              onChangeText={setAmount}
+              onChangeText={(text) => { setAmount(text); setIsMaxSelected(false); }}
               keyboardType="decimal-pad"
               placeholder="0"
               placeholderTextColor={theme.text + '50'}
+              // Premier dépôt guidé : valeur verrouillée à 200 € (non éditable).
+              editable={!tourDepositHere}
             />
             <Text style={[styles.inputSuffix, { color: theme.text }]}>EUR</Text>
           </View>
@@ -651,34 +707,40 @@ export default function TransactionScreen() {
             Montants rapides
           </Text>
           <View style={styles.quickAmountsGrid}>
-            {quickAmounts.map((value) => (
+            {quickAmounts.map((value) => {
+              // Premier dépôt guidé : montant verrouillé à 200 € → montants rapides désactivés.
+              const disabled = value > maxAvailable || tourDepositHere;
+              return (
               <TouchableOpacity
                 key={value}
                 style={[
                   styles.quickAmountButton,
                   { backgroundColor: theme.card },
-                  value > maxAvailable && styles.quickAmountDisabled,
+                  disabled && styles.quickAmountDisabled,
                 ]}
                 onPress={() => handleQuickAmount(value)}
-                disabled={value > maxAvailable}
+                disabled={disabled}
               >
                 <Text
                   style={[
                     styles.quickAmountText,
-                    { color: value > maxAvailable ? theme.text + '50' : theme.text },
+                    { color: disabled ? theme.text + '50' : theme.text },
                   ]}
                 >
                   {value} EUR
                 </Text>
               </TouchableOpacity>
-            ))}
+              );
+            })}
             <TouchableOpacity
               style={[
                 styles.quickAmountButton,
                 styles.maxButton,
                 { backgroundColor: theme.accent },
+                tourDepositHere && styles.quickAmountDisabled,
               ]}
               onPress={handleMaxAmount}
+              disabled={tourDepositHere}
             >
               <Text style={styles.maxButtonText}>MAX</Text>
             </TouchableOpacity>
@@ -725,35 +787,25 @@ export default function TransactionScreen() {
         )}
       </View>
 
-      {/* Bouton flottant "Suivant" : visible tant qu'on n'est pas sur la phase Confirmer */}
+      {/* Bouton flottant "Suivant" : visible tant qu'on n'est pas sur la phase Confirmer.
+          Utilise le composant ActionPillButton (texte bleu foncé sur fond accent) pour rester
+          cohérent avec tous les autres boutons de l'app. */}
       {tourVeilActive && !spotConfirm && (
-        <TouchableOpacity
-          onPress={handleTourNext}
-          activeOpacity={0.85}
+        <View
           style={{
             position: 'absolute',
             right: 20,
             bottom: insets.bottom + 92,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            backgroundColor: theme.accent,
-            paddingVertical: 10,
-            paddingHorizontal: 18,
-            borderRadius: 24,
             zIndex: 40,
             elevation: 40,
-            shadowColor: '#000',
-            shadowOpacity: 0.25,
-            shadowRadius: 8,
-            shadowOffset: { width: 0, height: 4 },
           }}
         >
-          <Text style={{ color: '#FFFFFF', fontFamily: CashouTheme.fonts.subheading, fontSize: 15, fontWeight: '600' }}>
-            Suivant
-          </Text>
-          <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
-        </TouchableOpacity>
+          <ActionPillButton
+            label="Suivant"
+            iconName="chevron-forward"
+            onPress={handleTourNext}
+          />
+        </View>
       )}
     </KeyboardAvoidingView>
   );

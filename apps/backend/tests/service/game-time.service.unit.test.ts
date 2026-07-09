@@ -241,34 +241,44 @@ describe("GameTimeService", () => {
   });
 
   describe("calculateElapsedTimeSince", () => {
-    test("retourne 0 si paused sans pausedAt et pas ended", () => {
-      const gi = makeGameInstance({ isPaused: true, pausedAt: null });
-      expect(service.calculateElapsedTimeSince(gi, new Date())).toBe(0);
+    beforeEach(() => {
+      // Test unitaire pur : on stubbe l'accès DB aux intervalles de pause
+      // (intervalCount: 0 → le service utilise le fallback legacy totalPausedDuration)
+      (service as unknown as {
+        pauseIntervalService: { getPausedSecondsWithinWindow: () => Promise<{ pausedSeconds: number; intervalCount: number }> };
+      }).pauseIntervalService = {
+        getPausedSecondsWithinWindow: async () => ({ pausedSeconds: 0, intervalCount: 0 }),
+      };
     });
 
-    test("calcule depuis sinceDate", () => {
+    test("retourne 0 si paused sans pausedAt et pas ended", async () => {
+      const gi = makeGameInstance({ isPaused: true, pausedAt: null });
+      expect(await service.calculateElapsedTimeSince(gi, new Date())).toBe(0);
+    });
+
+    test("calcule depuis sinceDate", async () => {
       const createdAt = new Date(Date.now() - 100_000);
       const sinceDate = new Date(Date.now() - 30_000);
       const gi = makeGameInstance({ createdAt });
-      const elapsed = service.calculateElapsedTimeSince(gi, sinceDate);
+      const elapsed = await service.calculateElapsedTimeSince(gi, sinceDate);
       expect(elapsed).toBeGreaterThanOrEqual(25);
       expect(elapsed).toBeLessThanOrEqual(35);
     });
 
-    test("utilise game start si sinceDate est antérieure", () => {
+    test("utilise game start si sinceDate est antérieure", async () => {
       const createdAt = new Date(Date.now() - 50_000);
       const sinceDate = new Date(Date.now() - 200_000); // bien avant le createdAt
       const gi = makeGameInstance({ createdAt });
-      const elapsed = service.calculateElapsedTimeSince(gi, sinceDate);
+      const elapsed = await service.calculateElapsedTimeSince(gi, sinceDate);
       // doit être borné à elapsed depuis createdAt (50s), pas 200s
       expect(elapsed).toBeGreaterThanOrEqual(45);
       expect(elapsed).toBeLessThanOrEqual(55);
     });
 
-    test("ne descend jamais sous 0", () => {
+    test("ne descend jamais sous 0", async () => {
       const createdAt = new Date(Date.now() - 10_000);
       const gi = makeGameInstance({ createdAt, totalPausedDuration: 99999 });
-      expect(service.calculateElapsedTimeSince(gi, createdAt)).toBe(0);
+      expect(await service.calculateElapsedTimeSince(gi, createdAt)).toBe(0);
     });
   });
 
