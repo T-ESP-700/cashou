@@ -66,11 +66,41 @@ export class WalletService {
      // 💾 Create the wallet record
      const wallet = await this.prisma.wallet.create({ data: normalizedData });
 
+     // 🌱 Seed non-empty starting assets configured on the level (ex: Livret A déjà
+     // provisionné). Ce sont des Holding créés directement, sans Transaction : ce
+     // n'est pas un achat du joueur, juste l'état initial de la partie.
+     if (wallet.gameInstanceId) {
+       await this.seedStartingHoldings(wallet.gameInstanceId, wallet.id);
+     }
+
      // 🔢 Convert Decimal to number for API output
      return {
        ...wallet,
        amount: wallet.amount ? Number(wallet.amount) : wallet.amount,
      };
+   }
+
+   private async seedStartingHoldings(gameInstanceId: number, walletId: number): Promise<void> {
+     const gameInstance = await this.prisma.gameInstance.findUnique({
+       where: { id: gameInstanceId },
+       select: { levelId: true },
+     });
+     if (!gameInstance?.levelId) return;
+
+     const startingHoldings = await this.prisma.levelStartingHolding.findMany({
+       where: { levelId: gameInstance.levelId },
+     });
+     if (startingHoldings.length === 0) return;
+
+     await this.prisma.holding.createMany({
+       data: startingHoldings.map((sh) => ({
+         walletId,
+         assetId: sh.assetId,
+         gameInstanceId,
+         quantity: sh.quantity,
+       })),
+       skipDuplicates: true,
+     });
    }
 
   /**

@@ -126,6 +126,8 @@ export function LevelInfoModal({ visible, onClose, level, goals, notions = [], f
         { id: 1, title: 'Objectif principal', description: 'Complétez le niveau avec succès', isMandatory: true },
         { id: 2, title: 'Bonus', description: 'Atteignez les objectifs secondaires', isMandatory: false }
       ];
+  const mandatoryGoals = displayGoals.filter((g) => g.isMandatory !== false);
+  const bonusGoals = displayGoals.filter((g) => g.isMandatory === false);
 
   // La tab "Notions" n'apparaît que si le niveau a des notions associées
   const hasNotions = notions.length > 0;
@@ -251,41 +253,65 @@ export function LevelInfoModal({ visible, onClose, level, goals, notions = [], f
                         Objectifs
                       </Text>
 
-                      {/* Explication du système d'objectifs (principal vs bonus) */}
-                      <Text style={[styles.levelInfoSlideIntro, { color: colors.text }]}>
-                        L'objectif principal est obligatoire : le réussir valide le niveau et te rapporte ta première étoile. Les objectifs bonus sont optionnels et rapportent chacun une étoile supplémentaire.
-                      </Text>
+                      {/* Explication du système d'objectifs — réservée au tuto niveau 1 (lockForTutorial),
+                          les niveaux suivants n'ont plus besoin de cette explication pédagogique. */}
+                      {lockForTutorial && (
+                        <Text style={[styles.levelInfoSlideIntro, { color: colors.text }]}>
+                          L'objectif principal est obligatoire : le réussir valide le niveau et te rapporte ta première étoile. Les objectifs bonus sont optionnels et rapportent chacun une étoile supplémentaire.
+                        </Text>
+                      )}
 
-                      {/* Goals List */}
-                      {displayGoals.map((goal, index) => {
-                        const isMandatory = goal.isMandatory !== false;
-                        return (
-                          <View
-                            key={goal.id}
-                            style={[
-                              styles.levelInfoGoalCard,
-                              { backgroundColor: colors.secondary },
-                              index < displayGoals.length - 1 && { marginBottom: 8 },
-                            ]}
-                          >
-                            <Text
+                      {/* Objectifs principaux (groupés sous un seul titre, singulier/pluriel selon le nombre) */}
+                      {mandatoryGoals.length > 0 && (
+                        <View style={styles.levelInfoGoalSection}>
+                          <Text style={[styles.levelInfoGoalBadge, { color: colors.accent }]}>
+                            {mandatoryGoals.length > 1 ? 'Objectifs principaux' : 'Objectif principal'}
+                          </Text>
+                          {mandatoryGoals.map((goal, index) => (
+                            <View
+                              key={goal.id}
                               style={[
-                                styles.levelInfoGoalBadge,
-                                { color: colors.text },
-                                isMandatory && { color: colors.accent },
+                                styles.levelInfoGoalCard,
+                                { backgroundColor: colors.secondary },
+                                index < mandatoryGoals.length - 1 && { marginBottom: 8 },
                               ]}
                             >
-                              {isMandatory ? 'Objectif principal' : 'Bonus'}
-                            </Text>
-                            <Text style={[styles.levelInfoGoalTitle, { color: colors.text }]}>
-                              {goal.title || `Objectif ${index + 1}`}
-                            </Text>
-                            <Text style={[styles.levelInfoGoalDescription, { color: colors.text }]}>
-                              {goal.description || 'À accomplir'}
-                            </Text>
-                          </View>
-                        );
-                      })}
+                              <Text style={[styles.levelInfoGoalTitle, { color: colors.text }]}>
+                                {goal.title || `Objectif ${index + 1}`}
+                              </Text>
+                              <Text style={[styles.levelInfoGoalDescription, { color: colors.text }]}>
+                                {goal.description || 'À accomplir'}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+
+                      {/* Objectifs bonus (groupés sous un seul titre, singulier/pluriel selon le nombre) */}
+                      {bonusGoals.length > 0 && (
+                        <View style={[styles.levelInfoGoalSection, mandatoryGoals.length > 0 && { marginTop: 14 }]}>
+                          <Text style={[styles.levelInfoGoalBadge, { color: colors.text }]}>
+                            {bonusGoals.length > 1 ? 'Objectifs bonus' : 'Bonus'}
+                          </Text>
+                          {bonusGoals.map((goal, index) => (
+                            <View
+                              key={goal.id}
+                              style={[
+                                styles.levelInfoGoalCard,
+                                { backgroundColor: colors.secondary },
+                                index < bonusGoals.length - 1 && { marginBottom: 8 },
+                              ]}
+                            >
+                              <Text style={[styles.levelInfoGoalTitle, { color: colors.text }]}>
+                                {goal.title || `Bonus ${index + 1}`}
+                              </Text>
+                              <Text style={[styles.levelInfoGoalDescription, { color: colors.text }]}>
+                                {goal.description || 'À accomplir'}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
                     </View>
 
                     {/* Page 2: Notions (affichée seulement si le niveau en a) */}
@@ -299,10 +325,12 @@ export function LevelInfoModal({ visible, onClose, level, goals, notions = [], f
                           Notions
                         </Text>
 
-                        {/* Explication : à quoi servent les notions */}
-                        <Text style={[styles.levelInfoSlideIntro, { color: colors.text }]}>
-                          Les notions sont les concepts financiers clés abordés dans ce niveau. Appuie sur une notion pour dérouler son explication.
-                        </Text>
+                        {/* Explication : à quoi servent les notions — réservée au tuto niveau 1 */}
+                        {lockForTutorial && (
+                          <Text style={[styles.levelInfoSlideIntro, { color: colors.text }]}>
+                            Les notions sont les concepts financiers clés abordés dans ce niveau. Appuie sur une notion pour dérouler son explication.
+                          </Text>
+                        )}
 
                         {/* Notions (accordéon) */}
                         {notions.map((notion, index) => {
@@ -486,6 +514,9 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
+  },
+  levelInfoGoalSection: {
+    width: '100%',
   },
   levelInfoGoalCard: {
     borderRadius: 12,

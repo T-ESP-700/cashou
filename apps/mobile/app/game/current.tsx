@@ -2247,10 +2247,13 @@ export default function GameCurrentScreen() {
               ))}
             </View>
 
-            {/* Légende du système d'étoiles : explique comment gagner chacune des 3 étoiles. */}
-            <Text allowFontScaling={false} style={[styles.endGameStarsLegend, { color: theme.text }]}>
-              3 étoiles à gagner : 1 pour l'objectif principal, 1 pour l'objectif bonus et 1 pour le quiz.
-            </Text>
+            {/* Légende du système d'étoiles : explique comment gagner chacune des 3 étoiles.
+                Réservée au tuto niveau 1 — les niveaux suivants connaissent déjà le principe. */}
+            {levelData?.level?.number === 1 && (
+              <Text allowFontScaling={false} style={[styles.endGameStarsLegend, { color: theme.text }]}>
+                3 étoiles à gagner : 1 pour l'objectif principal, 1 pour l'objectif bonus et 1 pour le quiz.
+              </Text>
+            )}
 
             {/* Tuto fin de partie : bulle DANS LE FLUX, juste au-dessus des boutons (flèche vers
                 le bas → elle pointe les boutons). Placée en flux (et non en absolu par-dessus le

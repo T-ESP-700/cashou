@@ -162,34 +162,57 @@ export class AssetService {
     }
 
     /**
-     * True si l'asset est disponible dans cette partie.
-     * Un asset sans règle de verrou est disponible par défaut.
+     * Assets explicitement liés au niveau d'une partie (table LevelAsset).
+     * Retourne `null` si le niveau n'a AUCUNE ligne LevelAsset configurée :
+     * dans ce cas on ne restreint rien, pour ne pas casser les niveaux existants
+     * qui n'ont jamais rempli cette table (comportement historique préservé).
+     */
+    async getLevelAssetIds(gameInstanceId: number): Promise<Set<number> | null> {
+        const gameInstance = await this.prisma.gameInstance.findUnique({
+            where: { id: gameInstanceId },
+            select: { level: { select: { levelAssets: { select: { assetId: true } } } } },
+        });
+        if (!gameInstance?.level || gameInstance.level.levelAssets.length === 0) return null;
+        return new Set(gameInstance.level.levelAssets.map((la) => la.assetId));
+    }
+
+    /**
+     * True si l'asset est disponible dans cette partie : il doit appartenir au niveau
+     * (LevelAsset, si configuré) ET ne pas être encore verrouillé par un AssetUnlock.
      */
     async isAssetAvailableForGame(assetId: number, gameInstanceId: number): Promise<boolean> {
-        const state = await this.getUnlockState(gameInstanceId);
+        const [levelAssetIds, state] = await Promise.all([
+            this.getLevelAssetIds(gameInstanceId),
+            this.getUnlockState(gameInstanceId),
+        ]);
+        if (levelAssetIds && !levelAssetIds.has(assetId)) return false;
         return state.get(assetId)?.available ?? true;
     }
 
     /**
      * Liste des actifs annotés de leur disponibilité pour une partie donnée.
+     * Filtrée sur les assets liés au niveau (LevelAsset) quand ce niveau en configure.
      * `available` = false pour un asset encore verrouillé ; `unlock` porte de quoi
      * afficher l'indice côté UI ("Disponible après …").
      */
     async findForGame(gameInstanceId: number) {
-        const [assets, state] = await Promise.all([
+        const [assets, state, levelAssetIds] = await Promise.all([
             this.findAll(),
             this.getUnlockState(gameInstanceId),
+            this.getLevelAssetIds(gameInstanceId),
         ]);
-        return assets.map((asset) => {
-            const info = state.get(asset.id);
-            return {
-                ...asset,
-                available: info?.available ?? true,
-                unlock: info
-                    ? { unlockGameDay: info.unlockGameDay, afterEventTitle: info.afterEventTitle }
-                    : null,
-            };
-        });
+        return assets
+            .filter((asset) => !levelAssetIds || levelAssetIds.has(asset.id))
+            .map((asset) => {
+                const info = state.get(asset.id);
+                return {
+                    ...asset,
+                    available: info?.available ?? true,
+                    unlock: info
+                        ? { unlockGameDay: info.unlockGameDay, afterEventTitle: info.afterEventTitle }
+                        : null,
+                };
+            });
     }
 
     /**
