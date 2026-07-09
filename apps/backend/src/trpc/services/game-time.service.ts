@@ -1,4 +1,6 @@
-import type { GameInstance, Level, LevelEvent } from "@cashou/db-app";
+import type { GameInstance, Level, LevelEvent, PrismaClient } from "@cashou/db-app";
+import defaultPrisma from "../../database.ts";
+import { GamePauseIntervalService } from "./game-pause-interval.service.ts";
 
 export interface GameTimeInfo {
   /** Total game duration in real seconds */
@@ -29,6 +31,14 @@ type LevelEventWithEvent = LevelEvent & {
 };
 
 export class GameTimeService {
+  private prisma: PrismaClient;
+  private pauseIntervalService: GamePauseIntervalService;
+
+  constructor(prismaClient?: PrismaClient) {
+    this.prisma = prismaClient || defaultPrisma;
+    this.pauseIntervalService = new GamePauseIntervalService(this.prisma);
+  }
+
   /**
    * Calculate total game duration in real seconds
    * Formula: (duration / speed) * 86400
@@ -47,33 +57,27 @@ export class GameTimeService {
    * Uses createdAt as game start time
    */
   calculateElapsedTime(gameInstance: GameInstanceWithLevel): number {
-    // If paused without pausedAt and NOT ended: preparation mode (never started), elapsed = 0
+    // If paused without pausedAt (created in preparation mode, never started), elapsed = 0
     if (gameInstance.isPaused && !gameInstance.pausedAt && !gameInstance.isEnded) {
       return 0;
     }
 
-    // Use endedAt as reference time for ended games, otherwise use now
-    const referenceTime = gameInstance.isEnded && gameInstance.endedAt
-      ? new Date(gameInstance.endedAt)
-      : new Date();
+    const referenceTime =
+      gameInstance.isEnded && gameInstance.endedAt
+        ? new Date(gameInstance.endedAt)
+        : gameInstance.isPaused && gameInstance.pausedAt
+          ? new Date(gameInstance.pausedAt)
+          : new Date();
     const startTime = new Date(gameInstance.createdAt);
 
-    // Total real time since start
+    // Total real time since start (clock frozen at referenceTime when paused/ended)
     let totalElapsed = Math.floor(
       (referenceTime.getTime() - startTime.getTime()) / 1000
     );
 
-    // Subtract accumulated pause duration
+    // Subtract accumulated pause duration from completed pauses
     const pausedDuration = gameInstance.totalPausedDuration ?? 0;
     totalElapsed -= pausedDuration;
-
-    // If currently paused (and not ended), also subtract current pause duration
-    if (gameInstance.isPaused && gameInstance.pausedAt && !gameInstance.isEnded) {
-      const currentPauseDuration = Math.floor(
-        (referenceTime.getTime() - new Date(gameInstance.pausedAt).getTime()) / 1000
-      );
-      totalElapsed -= currentPauseDuration;
-    }
 
     return Math.max(0, totalElapsed);
   }
@@ -205,55 +209,61 @@ export class GameTimeService {
    * @param sinceDate - The date to calculate elapsed time from
    * @returns Elapsed real seconds since the given date (excluding pauses)
    */
-  calculateElapsedTimeSince(
+  async calculateElapsedTimeSince(
     gameInstance: GameInstanceWithLevel,
     sinceDate: Date
-  ): number {
-    // If paused without pausedAt and NOT ended: preparation mode (never started), elapsed = 0
+  ): Promise<number> {
+    // If paused without pausedAt (never started), elapsed = 0
     if (gameInstance.isPaused && !gameInstance.pausedAt && !gameInstance.isEnded) {
       return 0;
     }
 
-    // Use endedAt as reference time for ended games, otherwise use now
-    const referenceTime = gameInstance.isEnded && gameInstance.endedAt
+    const now = gameInstance.isEnded && gameInstance.endedAt
       ? new Date(gameInstance.endedAt)
-      : new Date();
+      : gameInstance.isPaused && gameInstance.pausedAt
+        ? new Date(gameInstance.pausedAt)
+        : new Date();
     const startTime = new Date(sinceDate);
     const gameStartTime = new Date(gameInstance.createdAt);
 
     // If sinceDate is before game start, use game start
     const effectiveStartTime = startTime < gameStartTime ? gameStartTime : startTime;
+    const effectiveEndTime =
+      gameInstance.isPaused && gameInstance.pausedAt
+        ? new Date(gameInstance.pausedAt)
+        : now;
 
-    // Total real time since the effective start
-    let totalElapsed = Math.floor(
-      (referenceTime.getTime() - effectiveStartTime.getTime()) / 1000
-    );
-
-    // Calculate pause duration that occurred during this period
-    const pausedDuration = gameInstance.totalPausedDuration ?? 0;
-
-    // Calculate what fraction of the total game time is since our start date
-    const gameElapsedSinceCreation = Math.floor(
-      (referenceTime.getTime() - gameStartTime.getTime()) / 1000
-    );
-
-    // Proportionally subtract pause duration
-    if (gameElapsedSinceCreation > 0) {
-      const pauseFraction = (referenceTime.getTime() - effectiveStartTime.getTime()) /
-                           (referenceTime.getTime() - gameStartTime.getTime());
-      const pauseToSubtract = Math.floor(pausedDuration * pauseFraction);
-      totalElapsed -= pauseToSubtract;
+    if (effectiveEndTime <= effectiveStartTime) {
+      return 0;
     }
 
-    // If currently paused (and not ended), also subtract current pause duration proportionally
-    if (gameInstance.isPaused && gameInstance.pausedAt && !gameInstance.isEnded) {
-      const pauseStartTime = new Date(gameInstance.pausedAt);
-      if (pauseStartTime > effectiveStartTime) {
-        const currentPauseDuration = Math.floor(
-          (referenceTime.getTime() - pauseStartTime.getTime()) / 1000
-        );
-        totalElapsed -= currentPauseDuration;
-      }
+    const grossElapsed = Math.floor(
+      (effectiveEndTime.getTime() - effectiveStartTime.getTime()) / 1000
+    );
+
+    const { pausedSeconds, intervalCount } =
+      await this.pauseIntervalService.getPausedSecondsWithinWindow(
+        gameInstance.id,
+        effectiveStartTime,
+        effectiveEndTime,
+      );
+
+    if (intervalCount > 0) {
+      return Math.max(0, grossElapsed - pausedSeconds);
+    }
+
+    // Fallback for legacy games created before pause intervals existed.
+    let totalElapsed = grossElapsed;
+    const pausedDuration = gameInstance.totalPausedDuration ?? 0;
+    const gameElapsedSinceCreation = Math.floor(
+      (effectiveEndTime.getTime() - gameStartTime.getTime()) / 1000
+    );
+    if (gameElapsedSinceCreation > 0) {
+      const pauseFraction =
+        (effectiveEndTime.getTime() - effectiveStartTime.getTime()) /
+        (effectiveEndTime.getTime() - gameStartTime.getTime());
+      const pauseToSubtract = Math.floor(pausedDuration * pauseFraction);
+      totalElapsed -= pauseToSubtract;
     }
 
     return Math.max(0, totalElapsed);
@@ -269,5 +279,60 @@ export class GameTimeService {
     const speed = level.speed ?? 1;
     // Real seconds to game days: realSeconds * speed / 86400
     return (realSeconds * speed) / 86400;
+  }
+
+  /**
+   * Map a holding's lifetime onto the level's absolute game-day timeline
+   * (the same timeline on which events trigger at duration × triggerPercent).
+   * Returns the day the holding was acquired (`from`), the current day (`to`,
+   * capped at the level duration) and the number of game days held (`held`).
+   * Used by interest calculations that must integrate rate-changing events.
+   */
+  async holdingGameDayWindow(
+    gameInstance: GameInstanceWithLevel,
+    acquiredAt: Date
+  ): Promise<{ from: number; to: number; held: number; duration: number }> {
+    const level = gameInstance.level;
+    const duration = level?.duration ?? 365;
+    if (!level) {
+      return { from: 0, to: 0, held: 0, duration };
+    }
+    const heldSeconds = await this.calculateElapsedTimeSince(gameInstance, acquiredAt);
+    const held = this.convertRealSecondsToGameDays(level, heldSeconds);
+    const totalSeconds = this.calculateElapsedTime(gameInstance);
+    const current = Math.min(duration, this.convertRealSecondsToGameDays(level, totalSeconds));
+    return { from: Math.max(0, current - held), to: current, held, duration };
+  }
+
+  /**
+   * Current absolute game day for a game instance (0-based, capped at level.duration).
+   * Mirrors the calculation used by AssetHistoryService so price- and rate-impacts
+   * are anchored on the exact same game-day timeline.
+   */
+  getCurrentGameDay(gameInstance: GameInstanceWithLevel): number {
+    const level = gameInstance.level;
+    if (!level) return 0;
+
+    const speed = level.speed ?? 1;
+    const duration = level.duration ?? 365;
+
+    // Created in preparation mode and never started → day 0
+    if (gameInstance.isPaused && !gameInstance.pausedAt && !gameInstance.isEnded) {
+      return 0;
+    }
+
+    const now =
+      gameInstance.isEnded && gameInstance.endedAt
+        ? gameInstance.endedAt.getTime()
+        : gameInstance.isPaused && gameInstance.pausedAt
+          ? gameInstance.pausedAt.getTime()
+          : Date.now();
+
+    const elapsedRealSeconds = Math.max(
+      0,
+      (now - gameInstance.createdAt.getTime()) / 1000 - (gameInstance.totalPausedDuration ?? 0)
+    );
+
+    return Math.min(duration, Math.floor((elapsedRealSeconds * speed) / 86400));
   }
 }

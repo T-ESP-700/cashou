@@ -26,7 +26,7 @@ export function GameEndNotificationHandler() {
       // Navigate to game screen so the end-game modal can be shown
       console.log('[GameEndHandler] Navigating to game screen for game', gameInstanceId);
       clearGameEndNotification();
-      router.push({
+      router.replace({
         pathname: '/game/current',
         params: { gameId: String(gameInstanceId) },
       });

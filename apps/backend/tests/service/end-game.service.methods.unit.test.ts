@@ -67,6 +67,10 @@ function buildPrisma() {
     assetHistory: {
       findMany: mock(async (): Promise<unknown[]> => []),
     },
+    // getRateImpacts() lit le taux de l'asset ; null ⇒ aucun changement de taux en cours de partie.
+    asset: {
+      findUnique: mock(async (): Promise<unknown> => null),
+    },
     transaction: {
       findMany: mock(async (): Promise<unknown[]> => []),
       create: mock(async () => ({})),
@@ -81,6 +85,9 @@ function buildPrisma() {
       findMany: mock(async (): Promise<unknown[]> => []),
       update: mock(async () => ({})),
     },
+    // calculateElapsedTimeSince() déduit désormais les intervalles de pause, lus en SQL brut.
+    $queryRaw: mock(async (): Promise<unknown[]> => []),
+    $executeRaw: mock(async (): Promise<number> => 0),
     $transaction: mock(async (cb: (tx: unknown) => unknown) => {
       // Fournit le même mock prisma dans la transaction
       return cb({

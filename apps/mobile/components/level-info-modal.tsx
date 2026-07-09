@@ -9,6 +9,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Pressable,
+  Platform,
   Animated,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
@@ -21,8 +22,6 @@ const OVERLAY_PH = 18;
 const BACKDROP_PADDING = 6;
 const BACKDROP_MAX_WIDTH = 410;
 const BACKDROP_RATIO = 0.97;
-const TOTAL_PAGES = 2;
-
 interface LevelInfoData {
   id: number;
   title: string | null;
@@ -40,15 +39,28 @@ interface GoalData {
   isMandatory?: boolean;
 }
 
+interface NotionData {
+  id: number;
+  name: string | null;
+  description: string | null;
+}
+
 interface LevelInfoModalProps {
   visible: boolean;
   onClose: () => void;
   level: LevelInfoData | null;
   goals: GoalData[];
+  notions?: NotionData[];
   fromCurrentScreen?: boolean;
+  /**
+   * Tutoriel niveau 1 : verrouille la modale de début de partie. Le fond agit comme masque
+   * (aucune fermeture au clic extérieur ni via le bouton retour Android) et le bouton d'action
+   * est mis en surbrillance (« visible ») pour forcer l'utilisateur à avancer par ce bouton.
+   */
+  lockForTutorial?: boolean;
 }
 
-export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScreen = false }: LevelInfoModalProps) {
+export function LevelInfoModal({ visible, onClose, level, goals, notions = [], fromCurrentScreen = false, lockForTutorial = false }: LevelInfoModalProps) {
   const { colors, isDark } = useCashouTheme();
   const [currentPage, setCurrentPage] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
@@ -57,9 +69,15 @@ export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScre
   const pageWidth = backdropWidth - BACKDROP_PADDING * 2;
 
   // Height animation
-  const pageHeights = useRef<number[]>([0, 0]);
+  const pageHeights = useRef<number[]>([0, 0, 0]);
   const animatedHeight = useRef(new Animated.Value(0)).current;
   const [measured, setMeasured] = useState(false);
+
+  // Accordéon des notions : quelles notions sont dépliées
+  const [expandedNotions, setExpandedNotions] = useState<Record<number, boolean>>({});
+  const toggleNotion = useCallback((id: number) => {
+    setExpandedNotions((prev) => ({ ...prev, [id]: !prev[id] }));
+  }, []);
 
   const animateToPage = useCallback((page: number) => {
     const targetHeight = pageHeights.current[page];
@@ -75,19 +93,24 @@ export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScre
 
   const handlePageLayout = useCallback((pageIndex: number, height: number) => {
     if (height <= 0) return;
+    const prevHeight = pageHeights.current[pageIndex];
     pageHeights.current[pageIndex] = height;
     // Once page 0 is measured, set height instantly and enable animated mode
     if (pageIndex === 0 && !measured) {
       animatedHeight.setValue(height);
       setMeasured(true);
+    } else if (measured && pageIndex === currentPage && height !== prevHeight) {
+      // Le contenu de la page visible a changé de hauteur (ex: notion dépliée) → suivre
+      animateToPage(pageIndex);
     }
-  }, [animatedHeight, measured]);
+  }, [animatedHeight, measured, currentPage, animateToPage]);
 
   // Reset to first page when modal opens
   useEffect(() => {
     if (visible) {
       setCurrentPage(0);
       setMeasured(false);
+      setExpandedNotions({});
       scrollRef.current?.scrollTo({ x: 0, animated: false });
     }
   }, [visible]);
@@ -103,7 +126,12 @@ export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScre
         { id: 1, title: 'Objectif principal', description: 'Complétez le niveau avec succès', isMandatory: true },
         { id: 2, title: 'Bonus', description: 'Atteignez les objectifs secondaires', isMandatory: false }
       ];
+  const mandatoryGoals = displayGoals.filter((g) => g.isMandatory !== false);
+  const bonusGoals = displayGoals.filter((g) => g.isMandatory === false);
 
+  // La tab "Notions" n'apparaît que si le niveau a des notions associées
+  const hasNotions = notions.length > 0;
+  const totalPages = hasNotions ? 3 : 2;
   const formatDuration = (duration: number | null): string => {
     if (!duration) return '30 jours';
     return `${duration} jours`;
@@ -117,7 +145,7 @@ export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScre
     }
   };
 
-  const isLastPage = currentPage === TOTAL_PAGES - 1;
+  const isLastPage = currentPage === totalPages - 1;
 
   const handleButtonPress = () => {
     if (!isLastPage) {
@@ -153,14 +181,16 @@ export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScre
       transparent
       animationType="fade"
       statusBarTranslucent
-      onRequestClose={onClose}
+      // Pendant le tuto, le bouton retour Android ne doit pas non plus fermer la modale.
+      onRequestClose={lockForTutorial ? () => {} : onClose}
     >
       <BlurView
         intensity={60}
         tint={isDark ? 'dark' : 'light'}
         style={styles.levelInfoBlur}
       >
-        <Pressable style={styles.levelInfoOverlay} onPress={onClose}>
+        {/* Fond « masque » : verrouillé pendant le tuto → le clic extérieur ne ferme plus rien. */}
+        <Pressable style={styles.levelInfoOverlay} onPress={lockForTutorial ? undefined : onClose}>
           <View
             onStartShouldSetResponder={() => true}
             style={[styles.levelInfoCardBackdrop, { backgroundColor: colors.secondary }]}
@@ -223,44 +253,137 @@ export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScre
                         Objectifs
                       </Text>
 
-                      {/* Goals List */}
-                      {displayGoals.map((goal, index) => {
-                        const isMandatory = goal.isMandatory !== false;
-                        return (
-                          <View
-                            key={goal.id}
-                            style={[
-                              styles.levelInfoGoalCard,
-                              { backgroundColor: colors.secondary },
-                              index < displayGoals.length - 1 && { marginBottom: 8 },
-                            ]}
-                          >
-                            <Text
+                      {/* Explication du système d'objectifs — réservée au tuto niveau 1 (lockForTutorial),
+                          les niveaux suivants n'ont plus besoin de cette explication pédagogique. */}
+                      {lockForTutorial && (
+                        <Text style={[styles.levelInfoSlideIntro, { color: colors.text }]}>
+                          L'objectif principal est obligatoire : le réussir valide le niveau et te rapporte ta première étoile. Les objectifs bonus sont optionnels et rapportent chacun une étoile supplémentaire.
+                        </Text>
+                      )}
+
+                      {/* Objectifs principaux (groupés sous un seul titre, singulier/pluriel selon le nombre) */}
+                      {mandatoryGoals.length > 0 && (
+                        <View style={styles.levelInfoGoalSection}>
+                          <Text style={[styles.levelInfoGoalBadge, { color: colors.accent }]}>
+                            {mandatoryGoals.length > 1 ? 'Objectifs principaux' : 'Objectif principal'}
+                          </Text>
+                          {mandatoryGoals.map((goal, index) => (
+                            <View
+                              key={goal.id}
                               style={[
-                                styles.levelInfoGoalBadge,
-                                { color: colors.text },
-                                isMandatory && { color: colors.accent },
+                                styles.levelInfoGoalCard,
+                                { backgroundColor: colors.secondary },
+                                index < mandatoryGoals.length - 1 && { marginBottom: 8 },
                               ]}
                             >
-                              {isMandatory ? 'Objectif principal' : 'Bonus'}
-                            </Text>
-                            <Text style={[styles.levelInfoGoalTitle, { color: colors.text }]}>
-                              {goal.title || `Objectif ${index + 1}`}
-                            </Text>
-                            <Text style={[styles.levelInfoGoalDescription, { color: colors.text }]}>
-                              {goal.description || 'À accomplir'}
-                            </Text>
-                          </View>
-                        );
-                      })}
+                              <Text style={[styles.levelInfoGoalTitle, { color: colors.text }]}>
+                                {goal.title || `Objectif ${index + 1}`}
+                              </Text>
+                              <Text style={[styles.levelInfoGoalDescription, { color: colors.text }]}>
+                                {goal.description || 'À accomplir'}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+
+                      {/* Objectifs bonus (groupés sous un seul titre, singulier/pluriel selon le nombre) */}
+                      {bonusGoals.length > 0 && (
+                        <View style={[styles.levelInfoGoalSection, mandatoryGoals.length > 0 && { marginTop: 14 }]}>
+                          <Text style={[styles.levelInfoGoalBadge, { color: colors.text }]}>
+                            {bonusGoals.length > 1 ? 'Objectifs bonus' : 'Bonus'}
+                          </Text>
+                          {bonusGoals.map((goal, index) => (
+                            <View
+                              key={goal.id}
+                              style={[
+                                styles.levelInfoGoalCard,
+                                { backgroundColor: colors.secondary },
+                                index < bonusGoals.length - 1 && { marginBottom: 8 },
+                              ]}
+                            >
+                              <Text style={[styles.levelInfoGoalTitle, { color: colors.text }]}>
+                                {goal.title || `Bonus ${index + 1}`}
+                              </Text>
+                              <Text style={[styles.levelInfoGoalDescription, { color: colors.text }]}>
+                                {goal.description || 'À accomplir'}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
                     </View>
+
+                    {/* Page 2: Notions (affichée seulement si le niveau en a) */}
+                    {hasNotions && (
+                      <View
+                        style={[styles.levelInfoPage, { width: pageWidth }]}
+                        onLayout={(e) => handlePageLayout(2, e.nativeEvent.layout.height)}
+                      >
+                        {/* Title */}
+                        <Text style={[styles.levelInfoTitle, { color: colors.text }]}>
+                          Notions
+                        </Text>
+
+                        {/* Explication : à quoi servent les notions — réservée au tuto niveau 1 */}
+                        {lockForTutorial && (
+                          <Text style={[styles.levelInfoSlideIntro, { color: colors.text }]}>
+                            Les notions sont les concepts financiers clés abordés dans ce niveau. Appuie sur une notion pour dérouler son explication.
+                          </Text>
+                        )}
+
+                        {/* Notions (accordéon) */}
+                        {notions.map((notion, index) => {
+                          const expanded = !!expandedNotions[notion.id];
+                          return (
+                          <View
+                            key={notion.id}
+                            style={[
+                              styles.levelInfoNotionCard,
+                              { backgroundColor: colors.secondary },
+                              index < notions.length - 1 && { marginBottom: 8 },
+                            ]}
+                          >
+                            <Pressable
+                              style={styles.levelInfoNotionHeader}
+                              onPress={() => toggleNotion(notion.id)}
+                              hitSlop={8}
+                            >
+                              <Text style={[styles.levelInfoNotionName, { color: colors.text }]} numberOfLines={2}>
+                                {notion.name || `Notion ${index + 1}`}
+                              </Text>
+                              <Ionicons
+                                name={expanded ? 'chevron-up' : 'chevron-down'}
+                                size={18}
+                                color={colors.text}
+                                style={styles.levelInfoNotionChevron}
+                              />
+                            </Pressable>
+                            {expanded && !!notion.description && (
+                              <Text style={[styles.levelInfoNotionDescription, { color: colors.text }]}>
+                                {notion.description}
+                              </Text>
+                            )}
+                          </View>
+                          );
+                        })}
+                      </View>
+                    )}
                   </ScrollView>
                 </Animated.View>
 
                 {/* Page Indicator */}
                 <View style={styles.levelInfoDots}>
-                  <View style={[styles.levelInfoDot, { backgroundColor: colors.progressBarBackground }, currentPage === 0 && { backgroundColor: colors.accent }]} />
-                  <View style={[styles.levelInfoDot, { backgroundColor: colors.progressBarBackground }, currentPage === 1 && { backgroundColor: colors.accent }]} />
+                  {Array.from({ length: totalPages }).map((_, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.levelInfoDot,
+                        { backgroundColor: colors.progressBarBackground },
+                        currentPage === i && { backgroundColor: colors.accent },
+                      ]}
+                    />
+                  ))}
                 </View>
 
                 {/* Button */}
@@ -269,6 +392,9 @@ export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScre
                     label={buttonLabel}
                     customIcon={buttonIcon}
                     onPress={handleButtonPress}
+                    // Bouton « visible » : mis en avant (bordure blanche) pendant le tuto pour
+                    // signaler l'unique action autorisée sur cette modale verrouillée.
+                    style={lockForTutorial ? tourFocusedPillStyle : undefined}
                   />
                 </View>
               </View>
@@ -278,6 +404,20 @@ export function LevelInfoModal({ visible, onClose, level, goals, fromCurrentScre
     </Modal>
   );
 }
+
+// Surbrillance « visible » du bouton d'action pendant le tuto (même rendu que la modale
+// d'événement et les pills de l'écran de jeu, pour une signalétique cohérente).
+const tourFocusedPillStyle =
+  Platform.OS === 'android'
+    ? { borderWidth: 3, borderColor: '#FFFFFF', elevation: 20 }
+    : {
+        borderWidth: 3,
+        borderColor: '#FFFFFF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.4,
+        shadowRadius: 8,
+      };
 
 const styles = StyleSheet.create({
   levelInfoBlur: {
@@ -333,6 +473,14 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 14,
   },
+  levelInfoSlideIntro: {
+    fontSize: 13,
+    fontFamily: 'Anybody',
+    textAlign: 'center',
+    lineHeight: 19,
+    opacity: 0.75,
+    marginBottom: 14,
+  },
   levelInfoCardsRow: {
     flexDirection: 'row',
     gap: 8,
@@ -367,6 +515,9 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
   },
+  levelInfoGoalSection: {
+    width: '100%',
+  },
   levelInfoGoalCard: {
     borderRadius: 12,
     padding: 14,
@@ -381,6 +532,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Anybody',
     marginBottom: 4,
+  },
+  levelInfoNotionCard: {
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  levelInfoNotionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  levelInfoNotionName: {
+    flex: 1,
+    textAlign: 'left',
+    paddingRight: 26, // gouttière pour le chevron, aligne le titre sur la description
+    fontSize: 16,
+    fontFamily: 'Anybody',
+    fontWeight: '600',
+  },
+  levelInfoNotionChevron: {
+    position: 'absolute',
+    right: 0,
+  },
+  levelInfoNotionDescription: {
+    fontSize: 13,
+    fontFamily: 'Anybody',
+    textAlign: 'left',
+    paddingRight: 26, // même marge droite que le titre
+    opacity: 0.7,
+    lineHeight: 20,
+    marginTop: 8,
   },
   levelInfoGoalDescription: {
     fontSize: 13,

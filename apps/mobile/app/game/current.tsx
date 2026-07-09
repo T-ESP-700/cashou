@@ -1,6 +1,16 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Modal,
+  TextInput,
+  Platform,
+} from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, Fragment } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +27,16 @@ import { useHeader, useGameHeaderSubtitle } from '@/hooks/use-header';
 import { useNotifications } from '@/hooks/use-notifications';
 import { LevelInfoModal } from '@/components/level-info-modal';
 import { ActionPillButton, GoalStarIcon } from '@/components/ui';
+import { Level1TourOverlay } from '@/components/level1-tour-overlay';
+import { Level1TourCoachBubble } from '@/components/level1-tour-coach-bubble';
+import { useLevel1Tour } from '@/contexts/level1-tour-context';
+import {
+  Level1TourStep,
+  tourBubbleForStep,
+  tourSpotlightText,
+  isLivretAAsset,
+  isSavingsLivretOtherThanA,
+} from '@/constants/level1-tour';
 import QuizActionIcon from '@/assets/images/quiz-action.svg';
 import RecapActionIcon from '@/assets/images/recap-action.svg';
 
@@ -33,6 +53,7 @@ interface AssetData {
   symbol: string | null;
   rate: number | null;
   description: string | null;
+  submarket?: { type?: string | null; title?: string | null } | null;
 }
 
 interface HoldingData {
@@ -54,6 +75,12 @@ interface LevelGoalData {
   goal: { id: number; title: string | null; description: string | null };
 }
 
+interface NotionData {
+  id: number;
+  name: string | null;
+  description: string | null;
+}
+
 interface LevelData {
   level: {
     id: number;
@@ -66,6 +93,7 @@ interface LevelData {
   } | null;
   goals?: GoalData[];
   levelGoals?: LevelGoalData[];
+  notions?: NotionData[];
 }
 
 interface GameTimeState {
@@ -114,6 +142,15 @@ const GAME_START_DATE = new Date(today.getFullYear(), today.getMonth(), today.ge
 const UPDATE_INTERVAL_MS = 1000;
 const PORTFOLIO_REFRESH_INTERVAL_MS = 3_000;
 
+/** Étapes du tuto situées avant la résolution du premier événement (eventPhase 0). */
+const PRE_EVENT_TOUR_STEPS: ReadonlySet<Level1TourStep> = new Set([
+  Level1TourStep.OpenInvestSheet,
+  Level1TourStep.SelectLivretAInSheet,
+  Level1TourStep.DepositOnLivretA,
+  Level1TourStep.CloseSheetAndPressStart,
+  Level1TourStep.WaitFirstEvent,
+]);
+
 // Constantes pour l'animation visuelle de la date
 const DAY_ANIMATION_MS = 30; // Vitesse par jour (30ms = très rapide)
 const MONTH_PAUSE_MS = 150; // Pause supplémentaire au changement de mois
@@ -124,7 +161,11 @@ export default function GameCurrentScreen() {
   const { showAlert } = useAlert();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { pendingEventCompletion, setPendingEventCompletion, isOnAssetsScreen, setActiveGameInstanceId, eventNotification, triggerPendingEventCheck, shouldOpenAssetsSheet, setShouldOpenAssetsSheet } = useNotifications();
+  const { pendingEventCompletion, setPendingEventCompletion, isOnAssetsScreen, setActiveGameInstanceId, eventNotification, triggerPendingEventCheck, requestedAssetsSheetGameId, setRequestedAssetsSheetGameId } = useNotifications();
+  const tour = useLevel1Tour();
+  const tourRef = useRef(tour);
+  tourRef.current = tour;
+  const level1TourInitSeqRef = useRef(0);
   const { setOptions: setHeaderOptions } = useHeader();
   const { state: realtimeState, setGameInstanceId: setRealtimeGameInstanceId, formattedGameDate } = useGameRealtime();
 
@@ -145,6 +186,12 @@ export default function GameCurrentScreen() {
   const [isEndingGame, setIsEndingGame] = useState(false);
   const [showEndGameModal, setShowEndGameModal] = useState(false);
   const [endGameResult, setEndGameResult] = useState<EndGameResult | null>(null);
+  // Sous-parcours guidé de la modale de fin (tuto) : 'quiz' (spotlight bouton Quiz) → 'recap'
+  // (spotlight bouton Récap). Réinitialisé à chaque ouverture de la modale.
+  const [endGameTourSubStep, setEndGameTourSubStep] = useState<'quiz' | 'recap'>('quiz');
+  useEffect(() => {
+    if (showEndGameModal) setEndGameTourSubStep('quiz');
+  }, [showEndGameModal]);
   const [levelQuizId, setLevelQuizId] = useState<number | null>(null);
   const [isReplayCreating, setIsReplayCreating] = useState(false);
   const [showLevelInfoModal, setShowLevelInfoModal] = useState(false);
@@ -155,9 +202,18 @@ export default function GameCurrentScreen() {
 
   // Assets bottom sheet state
   const assetsSheetRef = useRef<BottomSheetModal>(null);
+  const [bottomChromeHeight, setBottomChromeHeight] = useState(() =>
+    Math.round(96 + insets.bottom),
+  );
+  const prevPendingEventRef = useRef(false);
   const skipResumeOnCloseRef = useRef(false); // Don't resume game when closing sheet to navigate to asset-detail
   const navigatedToAssetDetailRef = useRef(false); // Track if we navigated away to asset-detail
   const [allAssets, setAllAssets] = useState<any[]>([]);
+  // Roster COMPLET du niveau (actifs débloqués ET verrouillés), annoté de `available`.
+  // Sert à la configuration statique du tutoriel (ex: "ce niveau a-t-il une autre épargne
+  // que le Livret A ?"), indépendamment de ce qui est achetable maintenant. Ne PAS l'utiliser
+  // pour l'achat : `allAssets` (filtré) est la seule source des actifs achetables.
+  const [levelRoster, setLevelRoster] = useState<any[]>([]);
   const [assetsLoading, setAssetsLoading] = useState(false);
   const [assetsSearchQuery, setAssetsSearchQuery] = useState('');
   const [selectedSubmarketId, setSelectedSubmarketId] = useState<number | null>(null);
@@ -184,6 +240,21 @@ export default function GameCurrentScreen() {
     timePassed: '0m',
     successes: 0,
   });
+
+  const tourFocusedPillStyle = useMemo(
+    () =>
+      Platform.OS === 'android'
+        ? { borderWidth: 3, borderColor: '#FFFFFF', elevation: 20 }
+        : {
+            borderWidth: 3,
+            borderColor: '#FFFFFF',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: 0.4,
+            shadowRadius: 8,
+          },
+    [],
+  );
 
   // === Realtime provider sync ===
   // Register the gameInstanceId with the centralized realtime provider.
@@ -323,7 +394,24 @@ export default function GameCurrentScreen() {
     const effectiveWalletId = wId ?? walletId;
     try {
       const holdingsData = await trpcClient.holding.getByGameInstance.query({ gameInstanceId: gInstanceId });
-      setHoldings((holdingsData as HoldingData[]) ?? []);
+      const hd = (holdingsData as HoldingData[]) ?? [];
+      setHoldings(hd);
+      const tr = tourRef.current;
+      if (tr.sessionActive) {
+        await tr.syncHoldings(
+          hd.map((h) => ({
+            quantity: h.quantity,
+            asset: h.asset
+              ? {
+                  id: h.asset.id,
+                  title: h.asset.title,
+                  symbol: h.asset.symbol,
+                  submarket: h.asset.submarket ?? null,
+                }
+              : null,
+          }))
+        );
+      }
 
       // Load portfolio snapshot (values + net invested from transactions)
       if (effectiveWalletId) {
@@ -440,6 +528,11 @@ export default function GameCurrentScreen() {
       setWalletId(wallet.id);
       setIsPaused(true);
       setIsGameEnded(false);
+      // Une instance de préparation n'a jamais été démarrée : sans ce reset, un "Réinitialiser le
+      // niveau" laisse gameHasBeenStarted/pendingEventCompletion de la partie précédente et la barre
+      // d'action affiche "Reprendre" (désactivé par le tuto) au lieu de "Commencer".
+      setGameHasBeenStarted(false);
+      setPendingEventCompletion(null);
       setHoldings([]);
       setHoldingDeposited({});
       setHoldingWithdrawn({});
@@ -765,18 +858,26 @@ export default function GameCurrentScreen() {
   // Quand la modale d'event demande d'ouvrir le sheet assets,
   // on garde la partie en pause jusqu'à ce que le joueur clique explicitement sur "Reprendre".
   useEffect(() => {
-    if (!shouldOpenAssetsSheet) return;
+    if (!requestedAssetsSheetGameId) return;
     // Attendre que gameInstanceId et walletId soient initialisés avant d'ouvrir le sheet
     if (!gameInstanceId || !walletId) return;
-    setShouldOpenAssetsSheet(false);
-    setIsAssetsSheetOpen(true); // Freeze date animation immediately
+    if (requestedAssetsSheetGameId !== gameInstanceId) return;
 
+    setRequestedAssetsSheetGameId(null);
+    // Surtout ne pas lever isAssetsSheetOpen ici : handleAddAsset court-circuite sur ce drapeau, la
+    // sheet ne s'ouvrirait jamais et l'écran resterait marqué "sheet ouverte" (voile figé, aucune
+    // consigne). handleAddAsset le lève lui-même dès qu'il décide d'ouvrir.
     const openAssetsFromEvent = async () => {
-      handleAddAsset();
+      // La demande arrive au montage de l'écran (navigation depuis la modale d'event) : la
+      // BottomSheetModal n'a pas encore de ref et present() serait un no-op silencieux.
+      for (let i = 0; i < 20 && !assetsSheetRef.current; i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      await handleAddAsset();
     };
 
     openAssetsFromEvent();
-  }, [shouldOpenAssetsSheet, gameInstanceId, walletId]);
+  }, [requestedAssetsSheetGameId, gameInstanceId, walletId, handleAddAsset, setRequestedAssetsSheetGameId]);
 
   // Fetch triggered impacts on mount and when eventNotification changes
   useEffect(() => {
@@ -1004,6 +1105,14 @@ export default function GameCurrentScreen() {
     setHeaderOptions({
       showBackButton: true,
       title: `Niveau ${stats.level}`,
+      onBackPress: () => {
+        const canGoBack = 'canGoBack' in router && typeof router.canGoBack === 'function' && router.canGoBack();
+        if (canGoBack) {
+          router.back();
+          return;
+        }
+        router.replace('/(tabs)');
+      },
       onTitlePress: isGameEnded ? undefined : () => setShowLevelInfoModal(true),
     });
   }, [setHeaderOptions, stats.level, isGameEnded]);
@@ -1014,6 +1123,36 @@ export default function GameCurrentScreen() {
   const localFormattedDate = gameInstanceId
     ? `${String(gameDate.getDate()).padStart(2, '0')}/${String(gameDate.getMonth() + 1).padStart(2, '0')}/${gameDate.getFullYear()}`
     : null;
+  // Les étapes "in-sheet" (choix d'un livret) sont guidées par la bulle coach de la sheet. Quand la
+  // sheet est fermée — retour arrière, rechargement de l'app — l'écran n'a plus aucune consigne et
+  // "Reprendre" est désactivé : on ré-affiche alors l'overlay pour renvoyer vers "Investir".
+  const tourStepNeedsAssetsSheet =
+    tour.step === Level1TourStep.SelectLivretAForWithdraw ||
+    tour.step === Level1TourStep.WithdrawAndMoveToOtherLivret;
+  const tutorialOverlayVisible =
+    tour.sessionActive &&
+    // La sheet a son propre voile + bulle coach ; superposer l'overlay masquerait sa bulle derrière.
+    !isAssetsSheetOpen &&
+    (tour.step === Level1TourStep.OpenInvestSheet ||
+      tour.step === Level1TourStep.CloseSheetAndPressStart ||
+      tour.step === Level1TourStep.FirstEventResume ||
+      tour.step === Level1TourStep.PostEventOpenAssets ||
+      tour.step === Level1TourStep.PostEventResume ||
+      tourStepNeedsAssetsSheet);
+  const tutorialOverlayMessage = tourStepNeedsAssetsSheet
+    ? 'Appuies sur « Investir » pour rouvrir tes actifs et poursuivre le tutoriel.'
+    : tourBubbleForStep(tour.step, tour.eventPhase);
+
+  // Barre d'action : exactement une pastille allumée à chaque étape guidée, jamais zéro.
+  const tourFocusesInvestPill =
+    tour.sessionActive &&
+    (tour.step === Level1TourStep.OpenInvestSheet ||
+      tour.step === Level1TourStep.PostEventOpenAssets ||
+      tourStepNeedsAssetsSheet);
+  const tourFocusesResumePill =
+    tour.sessionActive &&
+    (tour.step === Level1TourStep.FirstEventResume ||
+      tour.step === Level1TourStep.PostEventResume);
   // Don't inject subtitle until level is loaded (avoids header flicker)
   useGameHeaderSubtitle(
     stats.level > 0 ? (formattedGameDate ?? localFormattedDate) : null,
@@ -1031,10 +1170,23 @@ export default function GameCurrentScreen() {
     }
   }, [isGameEnded, setHeaderOptions]);
 
-  // Dim header when assets bottom sheet is open
+  // Dim header when the tutorial overlay is visible
   useEffect(() => {
-    setHeaderOptions({ dimmed: isAssetsSheetOpen });
-  }, [isAssetsSheetOpen, setHeaderOptions]);
+    setHeaderOptions({ dimmed: tutorialOverlayVisible });
+  }, [tutorialOverlayVisible, setHeaderOptions]);
+
+  // Re-assert the header dim each time this screen regains focus. Necessary because
+  // transaction/asset-detail reset `dimmed: false` in their unmount cleanup; when we pop
+  // back to a still-guided step (e.g. PostEventResume), that cleanup can run AFTER the
+  // effect above (whose deps didn't change), leaving the header un-dimmed. The focus
+  // callback runs once the popped screen has finished unmounting, so it wins the race.
+  const tutorialOverlayVisibleRef = useRef(tutorialOverlayVisible);
+  tutorialOverlayVisibleRef.current = tutorialOverlayVisible;
+  useFocusEffect(
+    useCallback(() => {
+      setHeaderOptions({ dimmed: tutorialOverlayVisibleRef.current });
+    }, [setHeaderOptions])
+  );
 
   // Auto-show level info modal for new games (when no gameId is passed)
   useEffect(() => {
@@ -1044,6 +1196,152 @@ export default function GameCurrentScreen() {
       setShowLevelInfoModal(true);
     }
   }, [gameId, levelData, isLoading]);
+
+  useEffect(() => {
+    // Require levelData (not necessarily level nested object — some payloads can be minimal).
+    if (isLoading || !user || !gameInstanceId || !levelData) return;
+    const initSeq = ++level1TourInitSeqRef.current;
+    let cancelled = false;
+    void (async () => {
+      try {
+        let hasRecord = false;
+        try {
+          hasRecord = await trpcClient.levelCompletion.hasCompletedLevelByNumber.query({
+            levelNumber: 1,
+          });
+        } catch (completionErr) {
+          // Backend unreachable, old client, or missing procedure — still start the tour for level 1.
+          console.warn('[GameCurrent] levelCompletion.hasCompletedLevelByNumber failed, assuming no completion', completionErr);
+        }
+        if (cancelled || initSeq !== level1TourInitSeqRef.current) return;
+        const resolvedLevelNumber =
+          levelData.level?.number != null && Number.isFinite(Number(levelData.level.number))
+            ? Number(levelData.level.number)
+            : stats.level > 0
+              ? stats.level
+              : null;
+        const levelForTour = resolvedLevelNumber ?? (stats.level === 1 ? 1 : null);
+        await tourRef.current.initFromGameScreen({
+          userId: user.id,
+          gameInstanceId,
+          levelNumber: levelForTour,
+          hasLevel1CompletionRecord: Boolean(hasRecord),
+        });
+      } catch (e) {
+        console.warn('[GameCurrent] level1 tour init failed', e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isLoading,
+    user,
+    gameInstanceId,
+    levelData?.level?.number,
+    levelData?.level?.id,
+    stats.level,
+  ]);
+
+  // Réconciliation tuto ↔ partie. Les étapes d'avant-partie n'avancent normalement que sur des
+  // notifications ponctuelles (notifyGameClockStarted, arrivée de l'événement). Si l'une est manquée
+  // — chrono du niveau 1 très court, remontage d'écran, rechargement de l'app — le tuto reste
+  // derrière la partie et aucune pastille n'est plus cliquable. On resynchronise donc à chaque
+  // rendu depuis l'état faisant autorité (partie démarrée / événement en attente) plutôt que sur le
+  // front montant de `pendingEventCompletion`.
+  useEffect(() => {
+    const eventPending = gameInstanceId != null && pendingEventCompletion === gameInstanceId;
+    if (!tourRef.current.sessionActive || !gameInstanceId) {
+      prevPendingEventRef.current = eventPending;
+      return;
+    }
+    prevPendingEventRef.current = eventPending;
+
+    const t = tourRef.current;
+    if (t.eventPhase !== 0) return;
+    if (!PRE_EVENT_TOUR_STEPS.has(t.step)) return;
+
+    void (async () => {
+      if (eventPending) {
+        // `hasOtherSavings` vient du roster du niveau : tant qu'il n'est pas chargé, on ne peut pas
+        // choisir entre le parcours mono-livret et le rééquilibrage.
+        if (levelRoster.length === 0) return;
+        // If the level only exposes Livret A (no other savings to migrate to), the
+        // event is purely narrative — skip the rebalance flow and head straight to resume.
+        await t.goToStep(
+          t.hasOtherSavings
+            ? Level1TourStep.PostEventOpenAssets
+            : Level1TourStep.FirstEventResume
+        );
+        return;
+      }
+      // La partie tourne déjà mais le tuto en est encore à la préparation : rattrapage.
+      if (gameHasBeenStarted && t.step !== Level1TourStep.WaitFirstEvent) {
+        await t.goToStep(Level1TourStep.WaitFirstEvent);
+      }
+    })();
+  }, [
+    gameInstanceId,
+    pendingEventCompletion,
+    gameHasBeenStarted,
+    levelRoster.length,
+    tour.sessionActive,
+    tour.step,
+    tour.eventPhase,
+    tour.hasOtherSavings,
+  ]);
+
+  useEffect(() => {
+    const t = tourRef.current;
+    if (!t.sessionActive) return;
+    if (t.step !== Level1TourStep.OpenInvestSheet) return;
+    if (!isAssetsSheetOpen) return;
+    void t.goToStep(Level1TourStep.SelectLivretAInSheet);
+  }, [tour.sessionActive, tour.step, isAssetsSheetOpen]);
+
+  useEffect(() => {
+    const t = tourRef.current;
+    if (!t.sessionActive) return;
+    if (t.step !== Level1TourStep.PostEventOpenAssets) return;
+    if (!isAssetsSheetOpen) return;
+    void t.goToStep(Level1TourStep.SelectLivretAForWithdraw);
+  }, [tour.sessionActive, tour.step, isAssetsSheetOpen]);
+
+  useEffect(() => {
+    const t = tourRef.current;
+    if (!t.sessionActive || t.step !== Level1TourStep.SelectLivretAInSheet) return;
+    if (allAssets.length === 0) return;
+    const hasLivret = allAssets.some((a: { title?: string | null; symbol?: string | null }) =>
+      isLivretAAsset({ title: a.title, symbol: a.symbol })
+    );
+    if (!hasLivret) void t.abortTour();
+  }, [tour.sessionActive, tour.step, allAssets]);
+
+  // Tell the tour whether the active level exposes any non-Livret-A savings asset.
+  // Drives the post-event branching (multi-livret rebalance vs. single-livret resume).
+  // Uses the FULL roster (not the filtered buy list) so a still-locked asset like the
+  // Livret DDS is taken into account before its unlock event — without ever exposing it
+  // as purchasable.
+  useEffect(() => {
+    if (!tour.sessionActive) return;
+    if (levelRoster.length === 0) return;
+    const hasOther = levelRoster.some((a: { title?: string | null; symbol?: string | null; submarket?: { type?: string | null; title?: string | null } | null }) =>
+      isSavingsLivretOtherThanA({ title: a.title, symbol: a.symbol, submarket: a.submarket })
+    );
+    tourRef.current.setHasOtherSavings(hasOther);
+  }, [tour.sessionActive, levelRoster]);
+
+  useEffect(() => {
+    if (!tour.sessionActive) return;
+    if (
+      tour.step === Level1TourStep.SelectLivretAInSheet ||
+      tour.step === Level1TourStep.SelectLivretAForWithdraw ||
+      tour.step === Level1TourStep.WithdrawAndMoveToOtherLivret
+    ) {
+      setAssetsSearchQuery('');
+      setSelectedSubmarketId(null);
+    }
+  }, [tour.sessionActive, tour.step]);
 
   useEffect(() => {
     const fetchLevelQuizId = async () => {
@@ -1064,8 +1362,18 @@ export default function GameCurrentScreen() {
     fetchLevelQuizId();
   }, [levelData?.level?.id]);
 
-  const handleOpenRecap = () => {
+  const handleOpenRecap = async () => {
     if (!gameInstanceId) return;
+    if (
+      endGameResult?.success &&
+      levelQuizId &&
+      tour.sessionActive &&
+      tour.step === Level1TourStep.AwaitEndGameChoice
+    ) {
+      await tour.goToStep(Level1TourStep.SummaryQuizPrompt);
+    } else if (tour.sessionActive && tour.step === Level1TourStep.AwaitEndGameChoice) {
+      await tour.abortTour();
+    }
     setShowEndGameModal(false);
     trpcClient.notification.markGameEndAsRead.mutate({ gameInstanceId }).catch(console.error);
     router.replace({
@@ -1074,11 +1382,14 @@ export default function GameCurrentScreen() {
     });
   };
 
-  const handleOpenQuiz = () => {
+  const handleOpenQuiz = async () => {
     if (!endGameResult?.success) return;
     if (!levelQuizId) {
       showAlert('Quiz indisponible', "Aucun quiz n'est associe a ce niveau pour le moment.");
       return;
+    }
+    if (tour.sessionActive) {
+      await tour.abortTour();
     }
     setShowEndGameModal(false);
     if (gameInstanceId) {
@@ -1129,6 +1440,11 @@ export default function GameCurrentScreen() {
       setHoldingDeposited({});
       setHoldingWithdrawn({});
       setIsPaused(true);
+      // router.replace() ne remonte pas l'écran : sans ces deux resets, la nouvelle partie hérite du
+      // cycle de vie de la précédente et la barre d'action propose "Reprendre" au lieu de
+      // "Commencer" — que le tuto, lui, demande d'appuyer.
+      setGameHasBeenStarted(false);
+      setPendingEventCompletion(null);
 
       setGameInstanceId(newGame.id);
       setWalletId(wallet.id);
@@ -1155,25 +1471,44 @@ export default function GameCurrentScreen() {
     }
   };
 
-  // Fetch all assets for the bottom sheet
-  const fetchAllAssets = useCallback(async () => {
+  // Fetch only the assets available for the current game level
+  const fetchAvailableAssets = useCallback(async () => {
+    if (!gameInstanceId) return;
+
     try {
       setAssetsLoading(true);
-      const data = await trpcClient.asset.getAll.query();
+      const data = await trpcClient.asset.getAvailableForGame.query({ gameInstanceId });
       setAllAssets(data as any[]);
     } catch (err) {
       console.error('Error fetching assets:', err);
     } finally {
       setAssetsLoading(false);
     }
-  }, []);
+  }, [gameInstanceId]);
 
-  // Fetch all assets on mount for submarket badges
+  // Fetch available assets on mount for submarket badges
   useEffect(() => {
     if (gameInstanceId) {
-      fetchAllAssets();
+      fetchAvailableAssets();
     }
-  }, [gameInstanceId, fetchAllAssets]);
+  }, [gameInstanceId, fetchAvailableAssets]);
+
+  // Fetch the FULL level roster (incl. locked assets) once — used only to inform the
+  // tutorial about the level's configuration (e.g. presence of another savings asset).
+  // The roster is static for a level, so a single fetch on mount is enough.
+  useEffect(() => {
+    if (!gameInstanceId) return;
+    let cancelled = false;
+    trpcClient.asset.getForGame
+      .query({ gameInstanceId })
+      .then((data: any[]) => {
+        if (!cancelled) setLevelRoster(data);
+      })
+      .catch((err: unknown) => console.error('Error fetching level roster:', err));
+    return () => {
+      cancelled = true;
+    };
+  }, [gameInstanceId]);
 
   // Extract unique submarkets from assets
   const submarkets = useMemo(() => {
@@ -1201,6 +1536,53 @@ export default function GameCurrentScreen() {
     }
     return result;
   }, [allAssets, selectedSubmarketId, assetsSearchQuery]);
+
+  // Dans le drawer, l'étape "DepositOnLivretA" (fiche) est traitée comme "SelectLivretAInSheet" :
+  // si l'utilisateur rouvre le drawer sans avoir déposé, on le re-guide vers le Livret A.
+  // "PostEventOpenAssets" est traitée comme "SelectLivretAForWithdraw" : l'effet qui fait avancer
+  // l'étape ne s'exécute qu'après la peinture, et sans ce mapping la sheet apparaît une frame sans
+  // carte mise en avant — donc sans bulle coach, écran voilé et muet.
+  const drawerTourStep =
+    tour.step === Level1TourStep.DepositOnLivretA
+      ? Level1TourStep.SelectLivretAInSheet
+      : tour.step === Level1TourStep.PostEventOpenAssets
+        ? Level1TourStep.SelectLivretAForWithdraw
+        : tour.step;
+
+  // Une ligne cible existe-t-elle pour l'étape en cours ? Sinon on ne verrouille pas la sheet :
+  // sans carte à mettre en avant il n'y a ni halo ni bulle coach, et le joueur se retrouverait
+  // enfermé dans une liste voilée et muette (asset encore verrouillé, filtre de recherche actif…).
+  const tourTargetRowExists = useMemo(() => {
+    if (!tour.sessionActive) return false;
+    if (
+      drawerTourStep === Level1TourStep.SelectLivretAInSheet ||
+      drawerTourStep === Level1TourStep.SelectLivretAForWithdraw
+    ) {
+      return filteredAssets.some((a: any) => isLivretAAsset({ title: a.title, symbol: a.symbol }));
+    }
+    if (drawerTourStep === Level1TourStep.WithdrawAndMoveToOtherLivret) {
+      return filteredAssets.some((a: any) =>
+        isSavingsLivretOtherThanA({ title: a.title, symbol: a.symbol, submarket: a.submarket })
+      );
+    }
+    return false;
+  }, [tour.sessionActive, drawerTourStep, filteredAssets]);
+
+  const tourRestrictsAssetPicker = tourTargetRowExists;
+
+  const assetsListForSheet = filteredAssets;
+
+  // Index de la carte mise en avant par le tuto (pour assombrir davantage les cartes en dessous)
+  const tourHighlightIndex = useMemo(() => {
+    if (!tourRestrictsAssetPicker) return -1;
+    return assetsListForSheet.findIndex((asset: any) =>
+      ((drawerTourStep === Level1TourStep.SelectLivretAInSheet ||
+        drawerTourStep === Level1TourStep.SelectLivretAForWithdraw) &&
+        isLivretAAsset({ title: asset.title, symbol: asset.symbol })) ||
+      (drawerTourStep === Level1TourStep.WithdrawAndMoveToOtherLivret &&
+        isSavingsLivretOtherThanA({ title: asset.title, symbol: asset.symbol, submarket: asset.submarket })),
+    );
+  }, [assetsListForSheet, tourRestrictsAssetPicker, drawerTourStep]);
 
   // Map assetId → submarket info for badge display
   const assetSubmarketMap = useMemo(() => {
@@ -1232,6 +1614,25 @@ export default function GameCurrentScreen() {
     return Math.round(stats.cash + holdingsTotal);
   }, [stats.cash, holdings, holdingValues]);
 
+  // Handle assombri pour le tuto : même voile (rgba(0,0,0,0.5)) que le contenu, par-dessus
+  // le fond blanc, avec coins arrondis alignés sur le sheet → continuité avec le voile.
+  const renderDarkHandle = useCallback(
+    () => (
+      <View
+        style={{
+          backgroundColor: 'rgba(0, 0, 0, 0.39)',
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          paddingVertical: 11,
+          alignItems: 'center',
+        }}
+      >
+        <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: theme.borderLight }} />
+      </View>
+    ),
+    [theme.borderLight],
+  );
+
   // Render backdrop for assets sheet
   const renderAssetsBackdrop = useCallback(
     (props: any) => (
@@ -1240,10 +1641,13 @@ export default function GameCurrentScreen() {
         disappearsOnIndex={-1}
         appearsOnIndex={0}
         opacity={0.5}
-        pressBehavior="close"
+        // Pendant les étapes guidées (ex: « clique sur le Livret A »), l'appui sur le fond en
+        // haut ne doit PAS fermer la sheet : on force l'action demandée. La fermeture
+        // programmatique (sélection d'un actif → ref.dismiss()) reste possible.
+        pressBehavior={tourRestrictsAssetPicker ? 'none' : 'close'}
       />
     ),
-    []
+    [tourRestrictsAssetPicker]
   );
 
   // Handle assets sheet state changes (pause/resume game)
@@ -1252,8 +1656,11 @@ export default function GameCurrentScreen() {
     // En mode préparation (avant "Démarrer"), pas de pause/resume
     if (!gameHasBeenStarted) {
       if (index < 0) {
+        setIsAssetsSheetOpen(false);
         setAssetsSearchQuery('');
         setSelectedSubmarketId(null);
+      } else {
+        setIsAssetsSheetOpen(true);
       }
       return;
     }
@@ -1305,9 +1712,17 @@ export default function GameCurrentScreen() {
     }
   }, [gameInstanceId, gameHasBeenStarted, isPaused, isAwaitingEventResume]);
 
-  const handleAddAsset = async () => {
+  const handleAddAsset = useCallback(async () => {
     if (!gameInstanceId || !walletId) {
       showAlert('Erreur', 'Initialisation en cours, veuillez patienter...');
+      return;
+    }
+    const ta = tourRef.current;
+    if (ta.sessionActive && ta.step === Level1TourStep.CloseSheetAndPressStart) {
+      showAlert('Tutoriel', tourBubbleForStep(ta.step, ta.eventPhase));
+      return;
+    }
+    if (isAssetsSheetOpen) {
       return;
     }
     // Mark sheet as open immediately to freeze date animation
@@ -1321,12 +1736,19 @@ export default function GameCurrentScreen() {
         console.error('[GameCurrentScreen] Error pausing for assets sheet:', err);
       }
     }
-    // Fetch assets if not loaded yet
-    if (allAssets.length === 0) {
-      fetchAllAssets();
+    // Always refetch: asset availability is time-dependent. Assets unlock as the
+    // game progresses past their trigger event, so the list must reflect the
+    // current game day each time the sheet is opened (not just on first load).
+    await fetchAvailableAssets();
+    if (assetsSheetRef.current) {
+      assetsSheetRef.current.present();
+    } else {
+      // La sheet n'est pas montée : sans ce retour arrière, isAssetsSheetOpen resterait vrai alors
+      // qu'aucune sheet n'est affichée (écran voilé, tuto sans consigne, boutons inertes).
+      console.warn('[GameCurrentScreen] assets sheet not mounted — aborting open');
+      setIsAssetsSheetOpen(false);
     }
-    assetsSheetRef.current?.present();
-  };
+  }, [fetchAvailableAssets, gameHasBeenStarted, gameInstanceId, isAssetsSheetOpen, showAlert, walletId]);
 
   const handleResumeAfterEvent = async () => {
     if (!gameInstanceId || !isAwaitingEventResume) {
@@ -1354,6 +1776,7 @@ export default function GameCurrentScreen() {
 
       setIsPaused(false);
       console.log('[GameCurrentScreen] ✅ Event completed, game resumed');
+      await tourRef.current.notifyEventResumeCompleted();
     } catch (err) {
       console.error('[GameCurrentScreen] Error resuming after event:', err);
       showAlert('Erreur', 'Impossible de reprendre la partie');
@@ -1408,6 +1831,13 @@ export default function GameCurrentScreen() {
 
   const handleHoldingPress = async (holding: HoldingData) => {
     if (!gameInstanceId || !walletId || !holding.asset) return;
+    const trh = tourRef.current;
+    if (trh.sessionActive && trh.step === Level1TourStep.SelectLivretAForWithdraw) {
+      if (!isLivretAAsset(holding.asset)) {
+        showAlert('Tutoriel', tourBubbleForStep(trh.step, trh.eventPhase));
+        return;
+      }
+    }
     // Pause the game while on asset-detail
     if (gameHasBeenStarted) {
       try {
@@ -1457,6 +1887,7 @@ export default function GameCurrentScreen() {
         isPaused: false,
         pausedAt: null,
       });
+      await tourRef.current.notifyGameClockStarted();
     } catch (err) {
       console.error('Error starting game:', err);
       showAlert('Erreur', 'Impossible de demarrer la partie');
@@ -1476,8 +1907,29 @@ export default function GameCurrentScreen() {
       return;
     }
 
+    const trStart = tourRef.current;
+    if (trStart.sessionActive) {
+      const st = trStart.step;
+      if (
+        st === Level1TourStep.OpenInvestSheet ||
+        st === Level1TourStep.SelectLivretAInSheet ||
+        st === Level1TourStep.DepositOnLivretA
+      ) {
+        showAlert('Tutoriel', tourBubbleForStep(st, trStart.eventPhase));
+        return;
+      }
+      if (st === Level1TourStep.CloseSheetAndPressStart && holdings.length === 0) {
+        showAlert('Tutoriel', "Placez d'abord de l'argent sur le Livret A.");
+        return;
+      }
+    }
+
     // Vérifier si des investissements ont été faits
     if (holdings.length === 0) {
+      if (trStart.sessionActive && trStart.step !== Level1TourStep.CloseSheetAndPressStart) {
+        showAlert('Tutoriel', tourBubbleForStep(trStart.step, trStart.eventPhase));
+        return;
+      }
       setShowNoInvestmentModal(true);
       return;
     }
@@ -1488,6 +1940,10 @@ export default function GameCurrentScreen() {
 
   // Confirmation pour démarrer sans investissement
   const handleConfirmStartWithoutInvestment = async () => {
+    if (tourRef.current.sessionActive) {
+      showAlert('Tutoriel', 'Suivez les étapes : investissez sur le Livret A avant de commencer.');
+      return;
+    }
     setShowNoInvestmentModal(false);
     await startGameNow();
   };
@@ -1510,6 +1966,8 @@ export default function GameCurrentScreen() {
                 userId: user.id,
                 levelId: parseInt(levelId, 10),
               });
+
+              await tourRef.current.abortTour();
 
               // Reinitialiser les etats locaux
               setGameInstanceId(null);
@@ -1543,6 +2001,18 @@ export default function GameCurrentScreen() {
   };
 
   const hasPrimaryGoalSuccess = endGameResult?.success === true;
+  // Parcours guidé du tuto sur la modale de fin : on est à l'étape AwaitEndGameChoice avec un
+  // succès (donc les boutons Récap + Quiz sont affichés).
+  const endGameTourGuided = Boolean(
+    tour.sessionActive &&
+      showEndGameModal &&
+      hasPrimaryGoalSuccess &&
+      tour.step === Level1TourStep.AwaitEndGameChoice,
+  );
+  const endGameBubbleMessage =
+    endGameTourSubStep === 'recap'
+      ? 'Ou regarde le récap de ta partie !'
+      : 'Bravo ! Tu as terminé la partie. Fais le quiz pour gagner ta troisième étoile.';
   const modalContent = endGameResult?.modal;
   // Use actual stars from level completion if available, otherwise derive from modal type
   const modalStarFillCount = endGameResult?.stars
@@ -1655,61 +2125,6 @@ export default function GameCurrentScreen() {
         })}
       </ScrollView>
 
-      {/* Bottom Game Controls */}
-      {!isGameEnded && (
-        <View style={[styles.bottomControls, { paddingBottom: insets.bottom + 8 }]}>
-          {isInPreparation ? (
-            <View style={styles.startButtonsContainer}>
-              <ActionPillButton
-                label="Investir"
-                iconName="add"
-                onPress={handleAddAsset}
-              />
-              <ActionPillButton
-                label="Commencer"
-                iconName="play"
-                onPress={handleStartGame}
-                isLoading={isStarting}
-              />
-            </View>
-          ) : isAwaitingEventResume ? (
-            <View style={styles.startButtonsContainer}>
-              <ActionPillButton
-                label="Investir"
-                iconName="add"
-                onPress={handleAddAsset}
-              />
-              <ActionPillButton
-                label="Reprendre"
-                iconName="play"
-                onPress={handleResumeAfterEvent}
-                isLoading={isStarting}
-              />
-            </View>
-          ) : hasGameStarted && isPaused && !isAssetsSheetOpen ? (
-            <View style={styles.startButtonsContainer}>
-              <ActionPillButton
-                label="Investir"
-                iconName="add"
-                onPress={handleAddAsset}
-              />
-              <ActionPillButton
-                label="Reprendre"
-                iconName="play"
-                onPress={handleManualResume}
-                isLoading={isStarting}
-              />
-            </View>
-          ) : (
-            <ActionPillButton
-              label="Investir"
-              iconName="add"
-              onPress={handleAddAsset}
-            />
-          )}
-        </View>
-      )}
-
       {/* Modal de confirmation si aucun investissement */}
       <Modal
         visible={showNoInvestmentModal}
@@ -1771,7 +2186,7 @@ export default function GameCurrentScreen() {
           tint={isDark ? 'dark' : 'light'}
           style={styles.endGameBlur}
         >
-          <View style={[styles.endGameOverlay, { backgroundColor: 'transparent' }]}>
+          <View style={[styles.endGameOverlay, { backgroundColor: endGameTourGuided ? 'rgba(28,30,51,0.55)' : 'transparent' }]}>
             <View style={[styles.endGameCardBackdrop, { backgroundColor: theme.secondary }]}>
             <View style={[styles.endGameCard, { backgroundColor: theme.card, shadowColor: theme.border }]}>
             <Text allowFontScaling={false} style={[styles.endGameTitle, { fontFamily: 'Anybody', color: theme.text }]}>
@@ -1835,20 +2250,59 @@ export default function GameCurrentScreen() {
               ))}
             </View>
 
-            <View style={styles.endGameActions}>
+            {/* Légende du système d'étoiles : explique comment gagner chacune des 3 étoiles.
+                Réservée au tuto niveau 1 — les niveaux suivants connaissent déjà le principe. */}
+            {levelData?.level?.number === 1 && (
+              <Text allowFontScaling={false} style={[styles.endGameStarsLegend, { color: theme.text }]}>
+                3 étoiles à gagner : 1 pour l'objectif principal, 1 pour l'objectif bonus et 1 pour le quiz.
+              </Text>
+            )}
+
+            {/* Tuto fin de partie : bulle DANS LE FLUX, juste au-dessus des boutons (flèche vers
+                le bas → elle pointe les boutons). Placée en flux (et non en absolu par-dessus le
+                titre) pour ne plus masquer le titre / le message / les étoiles de la modale. */}
+            {endGameTourGuided && (
+              <View style={{ width: '100%', zIndex: 20, elevation: 20 }}>
+                <Level1TourCoachBubble tail="down" message={endGameBubbleMessage} />
+              </View>
+            )}
+
+            <View style={[styles.endGameActions, endGameTourGuided && { zIndex: 20, elevation: 20 }]}>
               {hasPrimaryGoalSuccess ? (
                 <>
                   <ActionPillButton
                     label="Récap"
                     customIcon={<RecapActionIcon width={22} height={22} />}
-                    onPress={handleOpenRecap}
-                    style={{ flex: 1 }}
+                    onPress={() => {
+                      void handleOpenRecap();
+                    }}
+                    // Pendant le tuto, Récap n'est actionnable qu'au 2e sous-pas (frame « recap »).
+                    disabled={endGameTourGuided && endGameTourSubStep !== 'recap'}
+                    style={StyleSheet.flatten([
+                      { flex: 1 },
+                      endGameTourGuided && endGameTourSubStep === 'recap' ? tourFocusedPillStyle : null,
+                      endGameTourGuided && endGameTourSubStep !== 'recap' ? { opacity: 0.35 } : null,
+                    ])}
                   />
                   <ActionPillButton
                     label="Quiz"
                     customIcon={<QuizActionIcon width={18} height={18} />}
-                    onPress={handleOpenQuiz}
-                    style={{ flex: 1 }}
+                    onPress={() => {
+                      // Durant le tuto, le bouton Quiz ne lance PAS le quiz : il fait avancer vers
+                      // la frame suivante (spotlight du bouton Récap, qui mène au vrai récap).
+                      if (endGameTourGuided && endGameTourSubStep === 'quiz') {
+                        setEndGameTourSubStep('recap');
+                        return;
+                      }
+                      void handleOpenQuiz();
+                    }}
+                    // Pendant le tuto, Quiz n'est actionnable qu'au 1er sous-pas (frame « quiz »).
+                    disabled={endGameTourGuided && endGameTourSubStep !== 'quiz'}
+                    style={StyleSheet.flatten([
+                      { flex: 1 },
+                      endGameTourGuided && endGameTourSubStep === 'quiz' ? tourFocusedPillStyle : null,
+                      endGameTourGuided && endGameTourSubStep !== 'quiz' ? { opacity: 0.35 } : null,
+                    ])}
                   />
                 </>
               ) : (
@@ -1861,6 +2315,17 @@ export default function GameCurrentScreen() {
                 />
               )}
             </View>
+
+            {/* Voile du tuto : assombrit toute la carte sauf le bouton mis en avant (zIndex 20) */}
+            {endGameTourGuided && (
+              <View
+                pointerEvents="none"
+                style={[
+                  StyleSheet.absoluteFillObject,
+                  { backgroundColor: 'rgba(28,30,51,0.55)', borderRadius: 30, zIndex: 10 },
+                ]}
+              />
+            )}
             </View>
           </View>
           </View>
@@ -1872,6 +2337,9 @@ export default function GameCurrentScreen() {
         visible={showLevelInfoModal}
         onClose={() => setShowLevelInfoModal(false)}
         fromCurrentScreen
+        // Tuto niveau 1 : modale verrouillée (masque + bouton en surbrillance) pour forcer
+        // l'utilisateur à la traverser via son bouton plutôt qu'en tapant en dehors.
+        lockForTutorial={tour.sessionActive}
         level={levelData?.level ? {
           ...levelData.level,
           description: levelData.level.description ?? null,
@@ -1884,6 +2352,7 @@ export default function GameCurrentScreen() {
             isMandatory: lg.isMandatory,
           })) ?? levelData?.goals) ?? []
         }
+        notions={levelData?.notions ?? []}
       />
 
       {/* Assets Bottom Sheet */}
@@ -1891,9 +2360,18 @@ export default function GameCurrentScreen() {
         ref={assetsSheetRef}
         snapPoints={['85%']}
         onChange={handleAssetsSheetChange}
-        enablePanDownToClose
+        // Pendant les étapes guidées, on interdit aussi le glissement vers le bas pour fermer,
+        // afin que le joueur ne puisse pas quitter la sheet autrement qu'en suivant le tuto.
+        enablePanDownToClose={!tourRestrictsAssetPicker}
         backdropComponent={renderAssetsBackdrop}
-        backgroundStyle={{ backgroundColor: theme.background }}
+        backgroundStyle={{
+          backgroundColor: theme.background,
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+        }}
+        // Pendant le tuto : handle personnalisé qui porte le même voile que le contenu
+        // (rgba(0,0,0,0.5) par-dessus le fond blanc) → pas de bande claire en haut.
+        handleComponent={tourRestrictsAssetPicker ? renderDarkHandle : undefined}
         handleIndicatorStyle={{
           backgroundColor: theme.borderLight,
           width: 40,
@@ -1903,65 +2381,121 @@ export default function GameCurrentScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 24 }}
         >
-          {/* Search */}
-          <View style={[styles.assetsSheetSearch, { backgroundColor: theme.card, borderColor: theme.borderLight }]}>
-            <TextInput
-              style={[styles.assetsSheetSearchInput, { color: theme.text, fontFamily: CashouTheme.fonts.body }]}
-              placeholder="Rechercher"
-              placeholderTextColor={theme.iconMuted}
-              value={assetsSearchQuery}
-              onChangeText={setAssetsSearchQuery}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
+          {!tourRestrictsAssetPicker && (
+            <>
+              <View style={[styles.assetsSheetSearch, { backgroundColor: theme.card, borderColor: theme.borderLight }]}>
+                <TextInput
+                  style={[styles.assetsSheetSearchInput, { color: theme.text, fontFamily: CashouTheme.fonts.body }]}
+                  placeholder="Rechercher"
+                  placeholderTextColor={theme.iconMuted}
+                  value={assetsSearchQuery}
+                  onChangeText={setAssetsSearchQuery}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
 
-          {/* Submarket Tabs */}
-          <Text style={[styles.assetsSheetSectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
-            Trendings
-          </Text>
-          <View style={[styles.assetsSheetTabsBar, { backgroundColor: theme.card, borderColor: theme.borderLight }]}>
-            <TouchableOpacity
-              style={[
-                styles.assetsSheetTab,
-                selectedSubmarketId === null && { backgroundColor: theme.accent },
-              ]}
-              onPress={() => setSelectedSubmarketId(null)}
-            >
-              <Text style={[styles.assetsSheetTabText, { color: theme.text, fontFamily: CashouTheme.fonts.body }]}>
-                Tous
+              <Text style={[styles.assetsSheetSectionTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
+                Trendings
               </Text>
-            </TouchableOpacity>
-            {submarkets.map((sm) => (
-              <TouchableOpacity
-                key={sm.id}
-                style={[
-                  styles.assetsSheetTab,
-                  selectedSubmarketId === sm.id && { backgroundColor: theme.accent },
-                ]}
-                onPress={() => setSelectedSubmarketId(sm.id)}
-              >
-                <Text style={[styles.assetsSheetTabText, { color: theme.text, fontFamily: CashouTheme.fonts.body }]}>
-                  {sm.title}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+              <View style={[styles.assetsSheetTabsBar, { backgroundColor: theme.card, borderColor: theme.borderLight }]}>
+                <TouchableOpacity
+                  style={[
+                    styles.assetsSheetTab,
+                    selectedSubmarketId === null && { backgroundColor: theme.accent },
+                  ]}
+                  onPress={() => setSelectedSubmarketId(null)}
+                >
+                  <Text style={[styles.assetsSheetTabText, { color: theme.text, fontFamily: CashouTheme.fonts.body }]}>
+                    Tous
+                  </Text>
+                </TouchableOpacity>
+                {submarkets.map((sm) => (
+                  <TouchableOpacity
+                    key={sm.id}
+                    style={[
+                      styles.assetsSheetTab,
+                      selectedSubmarketId === sm.id && { backgroundColor: theme.accent },
+                    ]}
+                    onPress={() => setSelectedSubmarketId(sm.id)}
+                  >
+                    <Text style={[styles.assetsSheetTabText, { color: theme.text, fontFamily: CashouTheme.fonts.body }]}>
+                      {sm.title}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          )}
 
           {/* Asset List */}
           {assetsLoading ? (
             <ActivityIndicator size="large" color={theme.accent} style={{ marginTop: 24 }} />
           ) : (
-            filteredAssets.map((asset: any) => (
+            <>
+            {assetsListForSheet.map((asset: any) => {
+              const tourHighlightThisRow =
+                tour.sessionActive &&
+                ((drawerTourStep === Level1TourStep.SelectLivretAInSheet &&
+                  isLivretAAsset({ title: asset.title, symbol: asset.symbol })) ||
+                  (drawerTourStep === Level1TourStep.SelectLivretAForWithdraw &&
+                    isLivretAAsset({ title: asset.title, symbol: asset.symbol })) ||
+                  (drawerTourStep === Level1TourStep.WithdrawAndMoveToOtherLivret &&
+                    isSavingsLivretOtherThanA({
+                      title: asset.title,
+                      symbol: asset.symbol,
+                      submarket: asset.submarket,
+                    })));
+              return (
+              <Fragment key={asset.id}>
+              {tourHighlightThisRow && (
+                // zIndex élevé : la bulle passe AU-DESSUS du voile sombre
+                <View style={{ zIndex: 20 }}>
+                  <Level1TourCoachBubble message={tourSpotlightText(drawerTourStep)} />
+                </View>
+              )}
               <TouchableOpacity
-                key={asset.id}
-                style={[styles.assetsSheetRow, { backgroundColor: theme.card }]}
+                style={[
+                  styles.assetsSheetRow,
+                  { backgroundColor: theme.card },
+                  // Carte cible : au-dessus du voile (zIndex/elevation) + halo accent
+                  tourHighlightThisRow && {
+                    zIndex: 20,
+                    borderWidth: 2,
+                    borderColor: theme.accent,
+                    shadowColor: theme.accent,
+                    shadowOpacity: 0.35,
+                    shadowRadius: 12,
+                    shadowOffset: { width: 0, height: 4 },
+                    elevation: 0,
+                  },
+                ]}
                 activeOpacity={0.7}
+                disabled={
+                  tour.sessionActive &&
+                  ((drawerTourStep === Level1TourStep.SelectLivretAInSheet &&
+                    !isLivretAAsset({ title: asset.title, symbol: asset.symbol })) ||
+                    (drawerTourStep === Level1TourStep.SelectLivretAForWithdraw &&
+                      !isLivretAAsset({ title: asset.title, symbol: asset.symbol })) ||
+                    (drawerTourStep === Level1TourStep.WithdrawAndMoveToOtherLivret &&
+                      !isSavingsLivretOtherThanA({
+                        title: asset.title,
+                        symbol: asset.symbol,
+                        submarket: asset.submarket,
+                      })))
+                }
                 onPress={() => {
-                  skipResumeOnCloseRef.current = true;
-                  navigatedToAssetDetailRef.current = true;
-                  assetsSheetRef.current?.dismiss();
-                  router.push(`/game/asset-detail?id=${asset.id}&gameInstanceId=${gameInstanceId}&walletId=${walletId}`);
+                  void (async () => {
+                    const tu = tourRef.current;
+                    if (tu.sessionActive && tu.step === Level1TourStep.SelectLivretAInSheet) {
+                      if (!isLivretAAsset({ title: asset.title, symbol: asset.symbol })) return;
+                      await tu.goToStep(Level1TourStep.DepositOnLivretA);
+                    }
+                    skipResumeOnCloseRef.current = true;
+                    navigatedToAssetDetailRef.current = true;
+                    assetsSheetRef.current?.dismiss();
+                    router.push(`/game/asset-detail?id=${asset.id}&gameInstanceId=${gameInstanceId}&walletId=${walletId}`);
+                  })();
                 }}
               >
                 <View style={styles.assetsSheetRowLeft}>
@@ -1970,7 +2504,7 @@ export default function GameCurrentScreen() {
                       {asset.title ?? asset.symbol ?? 'Asset'}
                     </Text>
                     <Text style={[styles.assetsSheetRowPrice, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>
-                      {asset.maxAmount != null ? `${Number(asset.maxAmount).toLocaleString('fr-FR')}€` : (getAdjustedRate(asset.id, asset.rate) != null ? `${getAdjustedRate(asset.id, asset.rate)}%` : '—')}
+                      {getAdjustedRate(asset.id, asset.rate) != null ? `${getAdjustedRate(asset.id, asset.rate)}%` : '—'}
                     </Text>
                   </View>
                   {asset.submarket?.title && (
@@ -1982,15 +2516,131 @@ export default function GameCurrentScreen() {
                   )}
                 </View>
               </TouchableOpacity>
-            ))
+              </Fragment>
+              );
+            })}
+            {tourRestrictsAssetPicker && tourHighlightIndex >= 0 && (
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: -20,
+                  right: -20,
+                  bottom: -(insets.bottom + 24),
+                  backgroundColor: 'rgba(0, 0, 0, 0.39)', // aligné sur le backdrop du sheet
+                  zIndex: 10,
+                }}
+              />
+            )}
+            </>
           )}
-          {!assetsLoading && filteredAssets.length === 0 && (
+          {!assetsLoading && assetsListForSheet.length === 0 && (
             <Text style={{ color: theme.text, fontFamily: CashouTheme.fonts.body, textAlign: 'center', marginTop: 24, opacity: 0.6 }}>
               Aucun asset trouvé
             </Text>
           )}
         </BottomSheetScrollView>
       </BottomSheetModal>
+
+      <Level1TourOverlay
+        visible={tutorialOverlayVisible}
+        message={tutorialOverlayMessage}
+        reserveBottomPx={bottomChromeHeight}
+      />
+
+      {/* Bottom Game Controls — rendered after overlay + higher z-index so buttons stay clear and tappable */}
+      {!isGameEnded && (
+        <View
+          style={[
+            styles.bottomControls,
+            {
+              paddingBottom: insets.bottom + 8,
+              zIndex: 400,
+              ...(Platform.OS === 'android' ? { elevation: 400 } : {}),
+            },
+          ]}
+          onLayout={(e) => setBottomChromeHeight(e.nativeEvent.layout.height)}
+        >
+          {isInPreparation ? (
+            <View style={styles.startButtonsContainer}>
+              <ActionPillButton
+                label="Investir"
+                iconName="add"
+                onPress={handleAddAsset}
+                disabled={
+                  tour.sessionActive &&
+                  tour.step === Level1TourStep.CloseSheetAndPressStart
+                }
+                style={tourFocusesInvestPill ? tourFocusedPillStyle : undefined}
+              />
+              <ActionPillButton
+                label="Commencer"
+                iconName="play"
+                onPress={handleStartGame}
+                isLoading={isStarting}
+                disabled={
+                  tour.sessionActive &&
+                  (tour.step === Level1TourStep.OpenInvestSheet ||
+                    tour.step === Level1TourStep.SelectLivretAInSheet ||
+                    tour.step === Level1TourStep.DepositOnLivretA)
+                }
+                style={
+                  tour.sessionActive && tour.step === Level1TourStep.CloseSheetAndPressStart
+                    ? tourFocusedPillStyle
+                    : undefined
+                }
+              />
+            </View>
+          ) : isAwaitingEventResume ? (
+            <View style={styles.startButtonsContainer}>
+              <ActionPillButton
+                label="Investir"
+                iconName="add"
+                onPress={handleAddAsset}
+                disabled={
+                  tour.sessionActive &&
+                  tour.step === Level1TourStep.CloseSheetAndPressStart
+                }
+                style={tourFocusesInvestPill ? tourFocusedPillStyle : undefined}
+              />
+              <ActionPillButton
+                label="Reprendre"
+                iconName="play"
+                onPress={handleResumeAfterEvent}
+                isLoading={isStarting}
+                // Ne désactiver que si une autre pastille est allumée : sinon l'écran n'offre
+                // plus aucune action possible.
+                disabled={tourFocusesInvestPill}
+                style={tourFocusesResumePill ? tourFocusedPillStyle : undefined}
+              />
+            </View>
+          ) : hasGameStarted && isPaused && !isAssetsSheetOpen ? (
+            <View style={styles.startButtonsContainer}>
+              <ActionPillButton
+                label="Investir"
+                iconName="add"
+                onPress={handleAddAsset}
+                style={tourFocusesInvestPill ? tourFocusedPillStyle : undefined}
+              />
+              <ActionPillButton
+                label="Reprendre"
+                iconName="play"
+                onPress={handleManualResume}
+                isLoading={isStarting}
+                style={tourFocusesResumePill ? tourFocusedPillStyle : undefined}
+              />
+            </View>
+          ) : (
+            <ActionPillButton
+              label="Investir"
+              iconName="add"
+              onPress={handleAddAsset}
+              style={tourFocusesInvestPill ? tourFocusedPillStyle : undefined}
+            />
+          )}
+        </View>
+      )}
     </View>
     </GestureHandlerRootView>
   );
@@ -2174,6 +2824,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#F7B167",
     paddingHorizontal: 7,
     paddingVertical: 5,
+  },
+  endGameStarsLegend: {
+    fontSize: 12,
+    fontFamily: "Anybody",
+    textAlign: "center",
+    lineHeight: 17,
+    opacity: 0.7,
+    marginBottom: 6,
+    paddingHorizontal: 8,
   },
   endGameActions: {
     flexDirection: "row",

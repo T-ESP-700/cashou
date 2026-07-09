@@ -10,6 +10,8 @@ export const impactDataSchema = z.object({
     submarketId: z.number().int().positive("L'ID du sous-marché doit être un nombre positif").nullish(),
     assetId: z.number().int().positive("L'ID de l'actif doit être un nombre positif").nullish(),
     coef: z.number().nullish(),
+    // PRICE = impact sur le cours (actions), RATE = impact sur le taux annuel (livrets)
+    impactType: z.enum(["PRICE", "RATE"]).nullish(),
 });
 export type ImpactDataSchema = z.infer<typeof impactDataSchema>;
 

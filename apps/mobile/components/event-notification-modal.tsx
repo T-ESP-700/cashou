@@ -4,6 +4,7 @@ import {
   Text,
   Modal,
   Pressable,
+  Platform,
   StyleSheet,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
@@ -12,12 +13,20 @@ import { useRouter, usePathname } from 'expo-router';
 import { useCashouTheme } from '@/hooks/use-cashou-theme';
 import { useNotifications } from '@/hooks/use-notifications';
 import { ActionPillButton } from '@/components/ui';
+import { useOptionalLevel1Tour } from '@/contexts/level1-tour-context';
+import { tourBubbleForStep, Level1TourStep } from '@/constants/level1-tour';
+import { Level1TourCoachBubble } from '@/components/level1-tour-coach-bubble';
 
 export function EventNotificationModal() {
   const { colors, isDark } = useCashouTheme();
   const router = useRouter();
   const pathname = usePathname();
-  const { eventNotification, clearEventNotification, setPendingEventCompletion, setShouldOpenAssetsSheet } = useNotifications();
+  const { eventNotification, clearEventNotification, setPendingEventCompletion, setRequestedAssetsSheetGameId } = useNotifications();
+  const level1Tour = useOptionalLevel1Tour();
+  const restrictToAssetsOnly =
+    Boolean(level1Tour?.sessionActive) &&
+    (level1Tour?.eventPhase ?? 0) === 0 &&
+    level1Tour?.step !== Level1TourStep.Done;
 
   const isVisible = eventNotification !== null;
 
@@ -47,11 +56,11 @@ export function EventNotificationModal() {
     clearEventNotification();
 
     // Signal current.tsx to open the assets bottom sheet
-    setShouldOpenAssetsSheet(true);
+    setRequestedAssetsSheetGameId(gameInstanceId);
 
     if (!isOnCurrentScreen) {
-      // Navigate to /game/current — the shouldOpenAssetsSheet effect will fire on mount
-      router.push({
+      // Navigate to /game/current — the assets sheet request will be consumed on mount
+      router.replace({
         pathname: '/game/current',
         params: { gameId: gameInstanceId.toString() },
       });
@@ -75,7 +84,10 @@ export function EventNotificationModal() {
         tint={isDark ? 'dark' : 'light'}
         style={styles.blur}
       >
-        <Pressable style={styles.overlay} onPress={handleClose}>
+        <View style={[styles.overlay, { backgroundColor: restrictToAssetsOnly ? 'rgba(28,30,51,0.55)' : 'transparent' }]}>
+          {!restrictToAssetsOnly && (
+            <Pressable style={StyleSheet.absoluteFillObject} onPress={handleClose} />
+          )}
           <View
             onStartShouldSetResponder={() => true}
             style={[styles.cardBackdrop, { backgroundColor: colors.secondary }]}
@@ -96,28 +108,74 @@ export function EventNotificationModal() {
                 {eventNotification.body ?? 'Un événement vient de se produire dans le jeu. Consultez vos assets pour voir les changements.'}
               </Text>
 
+              {/* Note explicative (pendant le tuto) : rôle général de cette fenêtre — informer
+                  d'un événement, mettre la partie en pause, et proposer les actions à mener. */}
+              {Boolean(level1Tour?.sessionActive) && (
+                <View style={[styles.infoNote, { backgroundColor: `${colors.text}0D`, borderColor: colors.border }]}>
+                  <Ionicons name="information-circle-outline" size={18} color={colors.text} style={{ marginTop: 1 }} />
+                  <Text allowFontScaling={false} style={[styles.infoNoteText, { color: colors.text }]}>
+                    Cette fenêtre te prévient d'un événement du jeu. La partie reste en pause le temps que tu la lises : prends connaissance du changement, puis choisis une action ci-dessous.
+                  </Text>
+                </View>
+              )}
+
+              {/* Tutorial bubble: absolutely overlaid, same pattern as end-game modal */}
+              {restrictToAssetsOnly && level1Tour && (
+                <View
+                  pointerEvents="box-none"
+                  style={styles.tourBubbleAbs}
+                >
+                  <Level1TourCoachBubble
+                    tail="down"
+                    message={tourBubbleForStep(Level1TourStep.PostEventOpenAssets, level1Tour.eventPhase)}
+                  />
+                </View>
+              )}
+
               {/* Buttons */}
-              <View style={styles.actions}>
-                <ActionPillButton
-                  label="Plus tard"
-                  iconName="checkmark"
-                  onPress={handleClose}
-                  style={{ flex: 1 }}
-                />
-                <ActionPillButton
-                  label="Investir"
-                  iconName="add"
-                  onPress={handleGoToAssets}
-                  style={{ flex: 1 }}
-                />
+              <View style={[styles.actions, restrictToAssetsOnly && { zIndex: 20, elevation: 20 }]}>
+                <View style={styles.btnWrap}>
+                  <ActionPillButton
+                    label="Plus tard"
+                    iconName="checkmark"
+                    onPress={handleClose}
+                    style={StyleSheet.flatten([
+                      styles.btnFull,
+                      restrictToAssetsOnly ? { opacity: 0.35 } : null,
+                    ])}
+                  />
+                </View>
+                <View style={styles.btnWrap}>
+                  <ActionPillButton
+                    label="Investir"
+                    iconName="add"
+                    onPress={handleGoToAssets}
+                    style={StyleSheet.flatten([
+                      styles.btnFull,
+                      restrictToAssetsOnly ? tourFocusedPillStyle : null,
+                    ])}
+                  />
+                </View>
               </View>
             </View>
           </View>
-        </Pressable>
+        </View>
       </BlurView>
     </Modal>
   );
 }
+
+const tourFocusedPillStyle =
+  Platform.OS === 'android'
+    ? { borderWidth: 3, borderColor: '#FFFFFF', elevation: 20 }
+    : {
+        borderWidth: 3,
+        borderColor: '#FFFFFF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.4,
+        shadowRadius: 8,
+      };
 
 const styles = StyleSheet.create({
   blur: {
@@ -171,10 +229,42 @@ const styles = StyleSheet.create({
     opacity: 0.85,
     marginBottom: 16,
   },
+  infoNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    alignSelf: 'stretch',
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 16,
+  },
+  infoNoteText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: 'Anybody',
+    lineHeight: 18,
+    opacity: 0.85,
+  },
+  tourBubbleAbs: {
+    position: 'absolute',
+    top: 14,
+    left: 14,
+    right: 14,
+    zIndex: 30,
+    elevation: 30,
+  },
   actions: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 8,
+    width: '100%',
+  },
+  btnWrap: {
+    flex: 1,
+  },
+  btnFull: {
     width: '100%',
   },
 });
