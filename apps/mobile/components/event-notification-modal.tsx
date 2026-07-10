@@ -23,8 +23,11 @@ export function EventNotificationModal() {
   const pathname = usePathname();
   const { eventNotification, clearEventNotification, setPendingEventCompletion, setRequestedAssetsSheetGameId } = useNotifications();
   const level1Tour = useOptionalLevel1Tour();
+  // Restrict the modal to "Invest only" only when the level actually has another livret
+  // to migrate to. For levels with a single livret (new level 1), allow "Plus tard".
   const restrictToAssetsOnly =
     Boolean(level1Tour?.sessionActive) &&
+    Boolean(level1Tour?.hasOtherSavings) &&
     (level1Tour?.eventPhase ?? 0) === 0 &&
     level1Tour?.step !== Level1TourStep.Done;
 

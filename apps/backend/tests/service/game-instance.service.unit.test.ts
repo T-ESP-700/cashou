@@ -104,6 +104,9 @@ function buildPrisma() {
       findMany: mock(async (): Promise<unknown[]> => []),
       update: mock(async () => ({})),
     },
+    // endPause() reçoit `tx` comme exécuteur et y écrit en SQL brut.
+    $queryRaw: mock(async (): Promise<unknown[]> => []),
+    $executeRaw: mock(async (): Promise<number> => 0),
   };
   const prisma = {
     gameInstance: {
@@ -128,6 +131,9 @@ function buildPrisma() {
       deleteMany: mock(async () => ({ count: 0 })),
       update: mock(async () => ({})),
     },
+    // GamePauseIntervalService écrit les intervalles de pause en SQL brut.
+    $queryRaw: mock(async (): Promise<unknown[]> => []),
+    $executeRaw: mock(async (): Promise<number> => 0),
     $transaction: mock(async (cb: (t: typeof tx) => Promise<unknown>) => {
       const res = await cb(tx);
       return Array.isArray(res) ? res : [res];

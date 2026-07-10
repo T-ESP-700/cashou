@@ -111,48 +111,6 @@ export class AssetService {
     }
 
     /**
-     * Récupère les actifs autorisés pour la partie en cours.
-     * La source de vérité est la table level_assets seedée par niveau.
-     * Fallback: si aucun mapping n'existe encore pour un ancien seed, on retourne
-     * tous les actifs pour préserver le fonctionnement historique.
-     */
-    async findAvailableForGame(gameInstanceId: number): Promise<Asset[]> {
-        const gameInstance = await this.prisma.gameInstance.findUnique({
-            where: { id: gameInstanceId },
-            select: { levelId: true },
-        });
-
-        if (!gameInstance?.levelId) {
-            return [];
-        }
-
-        const levelAssets = await this.prisma.levelAsset.findMany({
-            where: { levelId: gameInstance.levelId },
-            include: {
-                asset: {
-                    include: {
-                        market: true,
-                        submarket: true,
-                        field: true,
-                        assetHistories: true,
-                        eventAssets: true,
-                        transactions: true,
-                    },
-                },
-            },
-            orderBy: {
-                asset: { title: 'asc' },
-            },
-        });
-
-        if (levelAssets.length > 0) {
-            return levelAssets.map((levelAsset) => levelAsset.asset);
-        }
-
-        return this.findAll();
-    }
-
-    /**
      * Disponibilité des assets verrouillés pour une partie, évaluée À LA LECTURE.
      * Aucune mutation : on compare le jour de jeu courant au jour de déblocage
      * (dérivé du triggerPercent de l'event, ou de unlockPercent). Cohérent avec
@@ -243,11 +201,14 @@ export class AssetService {
      * afficher l'indice côté UI ("Disponible après …").
      */
     async findForGame(gameInstanceId: number) {
-        const [assets, state] = await Promise.all([
-            this.findAvailableForGame(gameInstanceId),
+        const [assets, state, levelAssetIds] = await Promise.all([
+            this.findAll(),
             this.getUnlockState(gameInstanceId),
+            this.getLevelAssetIds(gameInstanceId),
         ]);
-        return assets.map((asset) => {
+        return assets
+            .filter((asset) => !levelAssetIds || levelAssetIds.has(asset.id))
+            .map((asset) => {
                 const info = state.get(asset.id);
                 return {
                     ...asset,

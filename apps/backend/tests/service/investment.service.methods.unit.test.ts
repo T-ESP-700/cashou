@@ -40,6 +40,9 @@ function makeGameInstance() {
       speed: 1,
       duration: 30,
       historyStartDay: 0,
+      // Vides = aucun gating par niveau ni verrou d'actif : tous les actifs restent disponibles.
+      levelAssets: [],
+      assetUnlocks: [],
     },
     createdAt: new Date(Date.now() - 172800000),
     isPaused: false,
@@ -68,6 +71,7 @@ function createMockPrisma() {
     wallet: { findUnique: mock(async (): Promise<unknown | null> => makeWallet()) },
     asset: { findUnique: mock(async (): Promise<unknown | null> => makeAsset()) },
     gameInstance: { findUnique: mock(async (): Promise<unknown | null> => makeGameInstance()) },
+    gameInstanceEvent: { findMany: mock(async (): Promise<unknown[]> => []) },
     holding: { findMany: mock(async (): Promise<unknown[]> => []) },
     transaction: { findMany: mock(async (): Promise<unknown[]> => []) },
     $transaction: mock(async (cb: (tx: unknown) => unknown) => cb(txClient)),
@@ -100,6 +104,8 @@ function buildService(prisma: MockPrisma) {
   stub.assetHistoryService = {
     getCurrentPrice: mock(async () => 10000),
     findForGame: mock(async () => []),
+    // Vide = aucun changement de taux en cours de partie : le taux reste constant.
+    getRateImpacts: mock(async () => []),
   };
   stub.gameTimeService = {
     calculateElapsedTimeSince: mock(() => 86400),
@@ -165,6 +171,9 @@ describe("InvestmentService.buy", () => {
     (service as unknown as { holdingService: { findByWalletAndAsset: AnyMock } }).holdingService.findByWalletAndAsset = mock(async () => ({
       id: 5,
       quantity: new Prisma.Decimal(50),
+      // buy() calcule les intérêts courus du holding existant, ce qui déréférence holding.asset
+      // (la vraie requête inclut la relation).
+      asset: makeAsset(),
     }));
     await service.buy({ walletId: 10, assetId: 20, amount: 100, gameInstanceId: 100 });
     expect(prisma._txClient.holding.update).toHaveBeenCalledTimes(1);

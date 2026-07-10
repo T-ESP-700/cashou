@@ -355,17 +355,13 @@ export class InvestmentService {
       return 0;
     }
 
-    const feePct = asset.managementFee != null ? Number(asset.managementFee) : 0;
-
-    // Try price-based calculation first (assets that have a price history)
+    // Try price-based calculation first
     const currentPrice = await this.assetHistoryService.getCurrentPrice(
       asset.id,
       gameInstance.id
     );
 
     if (currentPrice) {
-      let returnRate: number | null = null;
-
       // Get average acquisition price from BUY transactions for this holding
       const buyTransactions = await this.prisma.transaction.findMany({
         where: {
@@ -389,39 +385,31 @@ export class InvestmentService {
             totalQty += txQty;
           }
         }
+
         if (totalQty > 0 && totalSpent > 0) {
           const avgAcquisitionPrice = totalSpent / totalQty;
           // Return = quantity × (currentPrice / acquisitionPrice - 1)
-          returnRate = (currentPrice - avgAcquisitionPrice) / avgAcquisitionPrice;
+          const returnRate = (currentPrice - avgAcquisitionPrice) / avgAcquisitionPrice;
+          return Math.round(quantity * returnRate);
         }
       }
 
-      if (returnRate === null) {
-        // No buy transactions with price — estimate from the game start price
-        const history = await this.assetHistoryService.findForGame(asset.id, gameInstance.id);
-        if (history.length > 0) {
-          const historyStartDay = level.historyStartDay ?? 0;
-          const startPoint = history[Math.min(historyStartDay, history.length - 1)];
-          const startPrice = startPoint?.value ? Number(startPoint.value) : currentPrice;
-          if (startPrice > 0) {
-            returnRate = (currentPrice - startPrice) / startPrice;
-          }
+      // No buy transactions with price — estimate from history at acquisition time
+      // Use the game start price as fallback acquisition price
+      const history = await this.assetHistoryService.findForGame(asset.id, gameInstance.id);
+      if (history.length > 0) {
+        const historyStartDay = level.historyStartDay ?? 0;
+        // Price at game start (when holdings could first be acquired)
+        const startPoint = history[Math.min(historyStartDay, history.length - 1)];
+        const startPrice = startPoint?.value ? Number(startPoint.value) : currentPrice;
+        if (startPrice > 0) {
+          const returnRate = (currentPrice - startPrice) / startPrice;
+          return Math.round(quantity * returnRate);
         }
-      }
-
-      if (returnRate !== null) {
-        const gross = quantity * returnRate;
-        // Annual management fee drags the realised return (felt over time).
-        let drag = 0;
-        if (feePct > 0) {
-          const { held } = await this.gameTimeService.holdingGameDayWindow(gameInstance, new Date(holding.acquiredAt));
-          drag = quantity * (feePct / 100) * (held / 365);
-        }
-        return Math.round(gross - drag);
       }
     }
 
-    // Fallback: rate-based calculation (capital-guaranteed assets without history)
+    // Fallback: rate-based calculation (for levels without price history)
     if (asset.rate) {
       const annualRate = asset.rate;
       const elapsedRealSeconds = await this.gameTimeService.calculateElapsedTimeSince(

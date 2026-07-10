@@ -6,7 +6,6 @@ import type { AssetHistory, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import type {AssetHistoryCreateSchema, AssetHistoryDataSchema} from "../schemas-zod/asset-history-schema.ts";
 import { gameCache, cached } from "../../lib/cache.ts";
-import { impactCoefForAsset } from "../../lib/interest.ts";
 
 export class AssetHistoryService {
     private prisma: PrismaClient;
@@ -128,13 +127,6 @@ export class AssetHistoryService {
             return [];
         }
 
-        // Asset's field/submarket — needed to resolve sector-wide impacts
-        // (impacts targeting a fieldId + submarketId rather than a single assetId).
-        const asset = await this.prisma.asset.findUnique({
-            where: { id: assetId },
-            select: { id: true, fieldId: true, submarketId: true },
-        });
-
         const level = gameInstance.level;
         const speed = level.speed ?? 1;
         const duration = level.duration ?? 365;
@@ -179,17 +171,17 @@ export class AssetHistoryService {
             const eventGameDay = Math.floor(duration * (le.triggerPercent / 100));
             const eventHistoryDay = historyStartDay + eventGameDay;
 
-            // An event may carry several impacts touching this asset, either
-            // asset-specific (assetId) or sector-wide (fieldId + submarketId).
+            // Find the coef for this specific asset.
             // Only PRICE impacts touch the price curve; RATE impacts are handled
             // separately by getRateImpacts() (they modify the annual rate, not the price).
-            if (!asset) continue;
-            const priceImpacts = le.event.impacts.filter(
-                (imp) => imp.impactType !== "RATE"
+            const impact = le.event.impacts.find(
+                (imp: any) => imp.assetId === assetId && imp.impactType !== "RATE"
             );
-            const eventCoef = impactCoefForAsset(priceImpacts, asset);
-            if (eventCoef != null) {
-                eventImpacts.push({ historyDay: eventHistoryDay, coef: eventCoef });
+            if (impact?.coef != null) {
+                eventImpacts.push({
+                    historyDay: eventHistoryDay,
+                    coef: impact.coef,
+                });
             }
         }
 

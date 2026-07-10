@@ -50,6 +50,10 @@ function makePrismaMock() {
         };
       },
     },
+    // create() amorce les holdings de départ du niveau ; sans levelId, rien à amorcer.
+    gameInstance: {
+      findUnique: async (): Promise<{ levelId: number | null } | null> => null,
+    },
   };
 
   void prisma.wallet.findMany;

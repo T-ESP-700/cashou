@@ -87,7 +87,8 @@ export const assetRouter = t.router({
             gameInstanceId: z.number().min(1, "L'ID de la partie doit être un nombre > 0")
         }))
         .query(async ({ input }) => {
-            return await assetService.findAvailableForGame(input.gameInstanceId);
+            const assets = await assetService.findForGame(input.gameInstanceId);
+            return assets.filter((asset) => asset.available);
         }),
 
     /**

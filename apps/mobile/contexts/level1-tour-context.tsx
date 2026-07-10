@@ -30,7 +30,10 @@ interface Level1TourContextValue {
   sessionActive: boolean;
   step: Level1TourStep;
   eventPhase: number;
-  /** Whether the level roster includes a savings livret other than Livret A. */
+  /**
+   * True when the level offers at least one savings livret other than Livret A.
+   * Drives the post-event branching (multi-livret rebalance vs. simple acknowledge).
+   */
   hasOtherSavings: boolean;
   restrictEventModalToAssetsOnly: boolean;
 
@@ -45,7 +48,7 @@ interface Level1TourContextValue {
 
   syncHoldings: (holdings: HoldingLike[]) => Promise<void>;
 
-  /** Sync flag from current.tsx once the level asset roster is loaded. */
+  /** Sync flag from current.tsx once available assets are fetched. */
   setHasOtherSavings: (value: boolean) => void;
 
   notifyEventResumeCompleted: () => Promise<void>;
@@ -228,7 +231,9 @@ export function Level1TourProvider({ children }: { children: React.ReactNode }) 
     if (!storageContextRef.current) return;
     const s = stepRef.current;
     if (s === Level1TourStep.FirstEventResume) {
-      await applyState(Level1TourStep.WaitFirstEvent, 1);
+      // Single-livret flow (e.g. new level 1 with only Livret A): event is purely
+      // narrative, so resuming after it leads directly to the end-game choice.
+      await applyState(Level1TourStep.AwaitEndGameChoice, 1);
       return;
     }
     if (s === Level1TourStep.PostEventResume) {

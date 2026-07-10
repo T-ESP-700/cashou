@@ -1717,12 +1717,12 @@ export default function GameCurrentScreen() {
       showAlert('Erreur', 'Initialisation en cours, veuillez patienter...');
       return;
     }
+    if (isAssetsSheetOpen) {
+      return;
+    }
     const ta = tourRef.current;
     if (ta.sessionActive && ta.step === Level1TourStep.CloseSheetAndPressStart) {
       showAlert('Tutoriel', tourBubbleForStep(ta.step, ta.eventPhase));
-      return;
-    }
-    if (isAssetsSheetOpen) {
       return;
     }
     // Mark sheet as open immediately to freeze date animation
@@ -1775,6 +1775,10 @@ export default function GameCurrentScreen() {
       }
 
       setIsPaused(false);
+      // The event that just resolved may have unlocked new assets — refresh the
+      // available-assets list so they appear immediately (e.g. Livret DDS after
+      // "Baisse du taux du Livret A").
+      await fetchAvailableAssets();
       console.log('[GameCurrentScreen] ✅ Event completed, game resumed');
       await tourRef.current.notifyEventResumeCompleted();
     } catch (err) {
