@@ -5,7 +5,7 @@
 
 ## Base applicative — `@cashou/db-app`
 
-_31 modèles, 4 énumérations._
+_38 modèles, 6 énumérations._
 
 ```mermaid
 erDiagram
@@ -69,6 +69,7 @@ erDiagram
     Int startBalance "nullable"
     Int pointsRequired "nullable"
     Int historyStartDay "nullable"
+    DateTime startDate "nullable"
     String description "nullable"
     String tip "nullable"
     DateTime createdAt
@@ -98,6 +99,13 @@ erDiagram
     Int levelId FK
     Int goalId FK
     Boolean isMandatory
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  LevelAsset {
+    Int id PK
+    Int levelId FK
+    Int assetId FK
     DateTime createdAt
     DateTime updatedAt
   }
@@ -157,6 +165,7 @@ erDiagram
     Int submarketId FK "nullable"
     Decimal maxAmount "nullable"
     Decimal minAmount "nullable"
+    Float managementFee "nullable"
     DateTime createdAt
     DateTime updatedAt
   }
@@ -185,6 +194,8 @@ erDiagram
     Int submarketId FK "nullable"
     Int assetId FK "nullable"
     Float coef "nullable"
+    ImpactType impactType
+    Decimal amount "nullable"
     DateTime createdAt
     DateTime updatedAt
   }
@@ -205,6 +216,15 @@ erDiagram
     DateTime createdAt
     DateTime updatedAt
     Int marketId FK "nullable"
+  }
+  GameInstancePauseInterval {
+    Int id PK
+    Int gameInstanceId FK
+    DateTime startedAt
+    DateTime endedAt "nullable"
+    String reason "nullable"
+    DateTime createdAt
+    DateTime updatedAt
   }
   GameInstanceEvent {
     Int id PK
@@ -325,6 +345,47 @@ erDiagram
     DateTime createdAt
     DateTime updatedAt
   }
+  Notion {
+    Int id PK
+    String name "nullable"
+    String description "nullable"
+    String tags "array"
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  NotionLevel {
+    Int id PK
+    Int notionId FK
+    Int levelId FK
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  AssetUnlock {
+    Int id PK
+    Int levelId FK
+    Int assetId FK
+    Int levelEventId FK "nullable"
+    Int unlockPercent "nullable"
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  LevelStartingHolding {
+    Int id PK
+    Int levelId FK
+    Int assetId FK
+    Decimal quantity
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  Tip {
+    Int id PK
+    Int levelId FK
+    TipCategory category
+    String text
+    Int position
+    DateTime createdAt
+    DateTime updatedAt
+  }
   DicoEntry {
     Int id PK
     String term
@@ -344,15 +405,22 @@ erDiagram
   User ||--o{ Session : "SessionToUser"
   Level |o--o{ GameInstance : "GameInstanceToLevel"
   Level ||--o{ LevelGoal : "LevelToLevelGoal"
+  Level ||--o{ LevelAsset : "LevelToLevelAsset"
   Level ||--o{ LevelEvent : "LevelToLevelEvent"
   Level |o--o{ Quiz : "LevelToQuiz"
   Level ||--o{ UserLevelCompletion : "LevelToUserLevelCompletion"
+  Level ||--o{ NotionLevel : "LevelToNotionLevel"
+  Level ||--o{ AssetUnlock : "AssetUnlockToLevel"
+  Level ||--o{ LevelStartingHolding : "LevelToLevelStartingHolding"
+  Level ||--o{ Tip : "LevelToTip"
   Event ||--o{ LevelEvent : "EventToLevelEvent"
   Event |o--o{ EventAsset : "EventToEventAsset"
   Event |o--o{ Impact : "EventToImpact"
   Event |o--o{ Notification : "EventToNotification"
   Goal ||--o{ LevelGoal : "GoalToLevelGoal"
+  Asset ||--o{ LevelAsset : "AssetToLevelAsset"
   LevelEvent ||--o{ GameInstanceEvent : "GameInstanceEventToLevelEvent"
+  LevelEvent |o--o{ AssetUnlock : "AssetUnlockToLevelEvent"
   Market |o--o{ GameInstance : "GameInstanceToMarket"
   Market |o--o{ Submarket : "MarketToSubmarket"
   Market |o--o{ Field : "FieldToMarket"
@@ -367,12 +435,15 @@ erDiagram
   Asset |o--o{ Transaction : "AssetToTransaction"
   Asset |o--o{ Impact : "AssetToImpact"
   Asset ||--o{ Holding : "AssetToHolding"
+  Asset ||--o{ AssetUnlock : "AssetToAssetUnlock"
+  Asset ||--o{ LevelStartingHolding : "AssetToLevelStartingHolding"
   GameInstance |o--o{ GameUser : "GameInstanceToGameUser"
   GameInstance |o--o{ Wallet : "GameInstanceToWallet"
   GameInstance |o--o{ Transaction : "GameInstanceToTransaction"
   GameInstance |o--o{ Notification : "GameInstanceToNotification"
   GameInstance ||--o{ Holding : "GameInstanceToHolding"
   GameInstance ||--o{ GameInstanceEvent : "GameInstanceToGameInstanceEvent"
+  GameInstance ||--o{ GameInstancePauseInterval : "GameInstanceToGameInstancePauseInterval"
   GameInstance |o--o{ UserQuiz : "GameInstanceToUserQuiz"
   Wallet |o--o{ Transaction : "TransactionToWallet"
   Wallet ||--o{ Holding : "HoldingToWallet"
@@ -383,6 +454,7 @@ erDiagram
   Question |o--o{ UserAnswer : "QuestionToUserAnswer"
   Question |o--o{ QuizQuestion : "QuestionToQuizQuestion"
   Answer |o--o{ UserAnswer : "AnswerToUserAnswer"
+  Notion ||--o{ NotionLevel : "NotionToNotionLevel"
 ```
 
 ### Énumérations
@@ -391,6 +463,8 @@ erDiagram
 - **QuizType** : `DAILY`, `MCQ`
 - **NotificationType** : `QUIZ`, `NEWS`, `REMINDER`, `PROFILE`, `EVENT`, `GAME_END`
 - **SubmarketType** : `SAVINGS`, `INSURANCE`, `STOCK`
+- **ImpactType** : `PRICE`, `RATE`, `CASH_GRANT`
+- **TipCategory** : `FIRST_STAR`, `SECOND_STAR`
 
 ---
 
