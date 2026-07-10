@@ -7,6 +7,7 @@ import type {
 import { GameTimeService, type GameTimeInfo } from "./game-time.service.ts";
 import { GameEventTriggerService } from "./game-event-trigger.service.ts";
 import { GameInstanceEventService } from "./game-instance-event.service.ts";
+import { GamePauseIntervalService } from "./game-pause-interval.service.ts";
 import { cancelGameJobs } from "../../lib/job-queue.ts";
 import { broadcastToGame, broadcastGameState } from "../../ws/game-socket.ts";
 
@@ -15,12 +16,14 @@ export class GameInstanceService {
   private gameTimeService: GameTimeService;
   private gameEventTriggerService: GameEventTriggerService;
   private gameInstanceEventService: GameInstanceEventService;
+  private gamePauseIntervalService: GamePauseIntervalService;
 
   constructor(prismaClient?: PrismaClient) {
     this.prisma = prismaClient || defaultPrisma;
-    this.gameTimeService = new GameTimeService();
+    this.gameTimeService = new GameTimeService(this.prisma);
     this.gameEventTriggerService = new GameEventTriggerService(this.prisma);
     this.gameInstanceEventService = new GameInstanceEventService(this.prisma);
+    this.gamePauseIntervalService = new GamePauseIntervalService(this.prisma);
   }
 
   /**
@@ -262,10 +265,12 @@ export class GameInstanceService {
     // Cancel all scheduled jobs for this game
     await cancelGameJobs(id);
 
+    const pauseStartedAt = new Date();
     const updated = await this.prisma.gameInstance.update({
       where: { id },
-      data: { isPaused: true, pausedAt: new Date() },
+      data: { isPaused: true, pausedAt: pauseStartedAt },
     });
+    await this.gamePauseIntervalService.startPause(id, pauseStartedAt, "manual_pause");
 
     // Broadcast pause to WebSocket clients
     broadcastToGame(String(id), {
@@ -299,6 +304,7 @@ export class GameInstanceService {
     // or previous completeEvent/endGame), force-unpause without calculating pause duration.
     if (!gameInstance.pausedAt) {
       console.warn(`[GameInstanceService] resume(): game ${id} has isPaused=true but pausedAt=null — force-unpausing`);
+      await this.gamePauseIntervalService.endPause(id, new Date());
       const forceResumed = await this.prisma.gameInstance.update({
         where: { id },
         data: { isPaused: false, pausedAt: null, actionRequired: false },
@@ -328,6 +334,7 @@ export class GameInstanceService {
     const pauseDurationSeconds = Math.floor(
       (Date.now() - new Date(gameInstance.pausedAt).getTime()) / 1000
     );
+    const pauseEndedAt = new Date();
 
     const newTotalPausedDuration =
       (gameInstance.totalPausedDuration ?? 0) + pauseDurationSeconds;
@@ -345,6 +352,7 @@ export class GameInstanceService {
           totalPausedDuration: newTotalPausedDuration,
         },
       });
+      await this.gamePauseIntervalService.endPause(id, pauseEndedAt, tx);
 
       // Shift all non-triggered GameInstanceEvent.scheduledAt forward
       await gameInstanceEventService.shiftScheduledEvents(id, pauseDurationSeconds);
@@ -409,6 +417,7 @@ export class GameInstanceService {
         totalPausedDuration: 0,
       },
     });
+    await this.gamePauseIntervalService.clearIntervals(id);
 
     // Schedule the first event
     if (gameInstance.levelId) {

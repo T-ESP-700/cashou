@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import { ExpoPushService } from "./expo-push.service.ts";
+import { GamePauseIntervalService } from "./game-pause-interval.service.ts";
 import { broadcastToGame, broadcastGameState } from "../../ws/game-socket.ts";
 
 type PrismaTx = Prisma.TransactionClient;
@@ -26,10 +27,12 @@ interface ProcessEventResult {
 export class GameEventProcessorService {
   private prisma: PrismaClient;
   private expoPushService: ExpoPushService;
+  private gamePauseIntervalService: GamePauseIntervalService;
 
   constructor(prismaClient?: PrismaClient) {
     this.prisma = prismaClient || defaultPrisma;
     this.expoPushService = new ExpoPushService();
+    this.gamePauseIntervalService = new GamePauseIntervalService(this.prisma);
   }
 
   private buildPendingPayload(
@@ -219,7 +222,11 @@ export class GameEventProcessorService {
         },
         levelEvent: {
           include: {
-            event: true,
+            event: {
+              include: {
+                impacts: true,
+              },
+            },
           },
         },
       },
@@ -296,6 +303,26 @@ export class GameEventProcessorService {
             pausedAt: pauseTimestamp,
           },
         });
+        await this.gamePauseIntervalService.startPause(
+          gameInstance.id,
+          pauseTimestamp,
+          "event_pause",
+          tx,
+        );
+
+        // Cash grant (ex: "Cadeau !") : crédit direct du wallet, sans Transaction —
+        // ce n'est pas un achat/vente du joueur, donc ça ne doit pas apparaître
+        // dans son historique de transactions.
+        const cashGrantTotal = (event.impacts ?? [])
+          .filter((impact) => impact.impactType === "CASH_GRANT" && impact.amount != null)
+          .reduce((sum, impact) => sum + Number(impact.amount), 0);
+
+        if (cashGrantTotal > 0) {
+          await tx.wallet.updateMany({
+            where: { gameInstanceId: gameInstance.id },
+            data: { amount: { increment: cashGrantTotal } },
+          });
+        }
 
         await tx.notification.create({
           data: {

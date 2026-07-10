@@ -17,6 +17,8 @@ import { useNotifications } from '@/hooks/use-notifications';
 import { useAuth } from '@/hooks/use-auth';
 import { useHeader, useGameHeaderSubtitle } from '@/hooks/use-header';
 import { useGameRealtime } from '@/hooks/use-game-realtime';
+import { useOptionalLevel1Tour } from '@/contexts/level1-tour-context';
+import { Level1TourStep, isLivretAAsset, isSavingsLivretOtherThanA, tourBubbleForStep } from '@/constants/level1-tour';
 
 // UI representation of an asset for display purposes
 type AssetItem = {
@@ -25,6 +27,8 @@ type AssetItem = {
   tags: string[];
   changePct: number;
   submarketType?: string; // 'Savings' | 'Insurance' | 'Stock'
+  available?: boolean; // false = verrouillé (pas encore débloqué dans la partie)
+  unlockAfter?: string | null; // titre de l'event qui débloque l'asset
 };
 
 
@@ -32,6 +36,7 @@ export default function AssetsScreen() {
   const { colors: theme, isDark, status } = useCashouTheme();
   const router = useRouter();
   const params = useLocalSearchParams();
+  const level1TourMain = useOptionalLevel1Tour();
   const { setIsOnAssetsScreen, activeGameInstanceId, pendingEventCompletion, setAssetsScreenDepth, assetsScreenDepthRef, setPausedByAssets, pausedByAssets } = useNotifications();
   const { user } = useAuth();
 
@@ -84,7 +89,11 @@ export default function AssetsScreen() {
     try {
       setLoading(true);
       setError(null);
-      const data: any[] = await trpcClient.asset.getAll.query();
+      // En partie : getForGame annote chaque asset de sa disponibilité (verrou par niveau).
+      // Hors partie : fallback sur getAll.
+      const data: any[] = gameInstanceId
+        ? await trpcClient.asset.getForGame.query({ gameInstanceId: parseInt(gameInstanceId) })
+        : await trpcClient.asset.getAll.query();
 
       // Fetch current prices + daily change in one call per asset
       const priceData: Record<number, { price: number; changePct: number } | null> = {};
@@ -125,6 +134,8 @@ export default function AssetsScreen() {
           ].filter(Boolean) as string[],
           changePct,
           submarketType: subType,
+          available: a.available !== false,
+          unlockAfter: a?.unlock?.afterEventTitle ?? null,
         };
       });
       setAssets(mapped);
@@ -265,6 +276,14 @@ export default function AssetsScreen() {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+        {level1TourMain?.sessionActive &&
+          level1TourMain.step === Level1TourStep.PostEventOpenAssets && (
+            <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
+              <Text style={{ color: theme.text, fontFamily: CashouTheme.fonts.body, fontSize: 14, lineHeight: 20 }}>
+                {tourBubbleForStep(Level1TourStep.PostEventOpenAssets, level1TourMain.eventPhase)}
+              </Text>
+            </View>
+          )}
           {/* Section title */}
         {!isSearching && (
           <View style={[styles.sectionHeader, { backgroundColor: theme.secondary }]}>
@@ -350,37 +369,84 @@ interface AssetCardProps {
 function AssetCard({ asset, isDark, router, gameInstanceId, walletId }: AssetCardProps) {
   const theme = isDark ? CashouTheme.colors.dark : CashouTheme.colors.light;
   const positive = asset.changePct >= 0;
+  const level1Tour = useOptionalLevel1Tour();
+
+  const locked = asset.available === false;
 
   const handlePress = () => {
+    if (locked) return; // asset verrouillé : non cliquable
+    const t = level1Tour;
+    if (t?.sessionActive && t.step === Level1TourStep.SelectLivretAForWithdraw) {
+      if (!isLivretAAsset({ title: asset.name })) return;
+    }
+    if (t?.sessionActive && t.step === Level1TourStep.WithdrawAndMoveToOtherLivret) {
+      if (
+        !isSavingsLivretOtherThanA({
+          title: asset.name,
+          symbol: null,
+          submarket: { type: asset.submarketType ?? null },
+        })
+      ) {
+        return;
+      }
+    }
     const params = new URLSearchParams({ id: asset.id });
     if (gameInstanceId) params.append('gameInstanceId', gameInstanceId);
     if (walletId) params.append('walletId', walletId);
     router.push(`/game/asset-detail?${params.toString()}`);
   };
 
+  const cardDisabled = Boolean(
+    level1Tour?.sessionActive &&
+      ((level1Tour.step === Level1TourStep.SelectLivretAForWithdraw &&
+        !isLivretAAsset({ title: asset.name })) ||
+        (level1Tour.step === Level1TourStep.WithdrawAndMoveToOtherLivret &&
+          !isSavingsLivretOtherThanA({
+            title: asset.name,
+            symbol: null,
+            submarket: { type: asset.submarketType ?? null },
+          })))
+  );
+
   return (
-    <TouchableOpacity activeOpacity={0.8} style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={handlePress}>
+    <TouchableOpacity
+      activeOpacity={0.8}
+      style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border, opacity: (cardDisabled || locked) ? 0.4 : 1 }]}
+      disabled={cardDisabled || locked}
+      onPress={handlePress}
+    >
       <Text style={[styles.cardTitle, { color: theme.text, fontFamily: CashouTheme.fonts.subheading }]}>{asset.name}</Text>
-      <View style={styles.tagsRow}>
-        {asset.tags.map((t) => (
-          <View key={t} style={[styles.tag, { backgroundColor: theme.secondary, borderColor: theme.borderLight }]}>
-            <Text style={{ color: theme.text, fontSize: 12, fontFamily: CashouTheme.fonts.body }}>{t}</Text>
+      {locked ? (
+        <View style={styles.changeRow}>
+          <Ionicons name="lock-closed" size={15} color={theme.text} />
+          <Text style={{ marginLeft: 6, color: theme.text, fontSize: 12, fontFamily: CashouTheme.fonts.body, flexShrink: 1 }}>
+            {asset.unlockAfter ? `Disponible après « ${asset.unlockAfter} »` : 'Bientôt disponible'}
+          </Text>
+        </View>
+      ) : (
+        <>
+          <View style={styles.tagsRow}>
+            {asset.tags.map((t) => (
+              <View key={t} style={[styles.tag, { backgroundColor: theme.secondary, borderColor: theme.borderLight }]}>
+                <Text style={{ color: theme.text, fontSize: 12, fontFamily: CashouTheme.fonts.body }}>{t}</Text>
+              </View>
+            ))}
           </View>
-        ))}
-      </View>
-      <View style={styles.changeRow}>
-        {asset.submarketType === 'SAVINGS' ? (
-          <>
-            <Ionicons name="lock-closed" size={16} color="#4CAF50" />
-            <Text style={{ marginLeft: 4, color: '#4CAF50', fontFamily: CashouTheme.fonts.subheading }}>{asset.changePct}%/an garanti</Text>
-          </>
-        ) : (
-          <>
-            <Ionicons name={positive ? 'caret-up' : 'caret-down'} size={18} color="#FFB472" />
-            <Text style={{ marginLeft: 4, color: theme.text, fontFamily: CashouTheme.fonts.subheading }}>{Math.abs(asset.changePct).toFixed(2)}%</Text>
-          </>
-        )}
-      </View>
+          <View style={styles.changeRow}>
+            {asset.submarketType === 'SAVINGS' ? (
+              <>
+                <Ionicons name="lock-closed" size={16} color="#4CAF50" />
+                <Text style={{ marginLeft: 4, color: '#4CAF50', fontFamily: CashouTheme.fonts.subheading }}>{asset.changePct}%/an garanti</Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name={positive ? 'caret-up' : 'caret-down'} size={18} color="#FFB472" />
+                <Text style={{ marginLeft: 4, color: theme.text, fontFamily: CashouTheme.fonts.subheading }}>{Math.abs(asset.changePct).toFixed(2)}%</Text>
+              </>
+            )}
+          </View>
+        </>
+      )}
     </TouchableOpacity>
   );
 }

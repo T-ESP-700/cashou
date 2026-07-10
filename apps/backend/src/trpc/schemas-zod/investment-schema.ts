@@ -5,6 +5,10 @@ export const buySchema = z.object({
   assetId: z.number().int().positive("L'ID de l'asset est requis"),
   amount: z.number().positive("Le montant doit être positif"),
   gameInstanceId: z.number().int().positive("L'ID de l'instance de jeu est requis"),
+  // Si true, `amount` est ignoré et le serveur calcule lui-même le dépôt maximum possible
+  // (solde du wallet vs capacité restante du plafond), au moment exact de l'exécution —
+  // immunise le bouton "Max" contre la dérive due aux intérêts qui courent en continu.
+  depositMax: z.boolean().optional(),
 });
 
 export const sellSchema = z.object({

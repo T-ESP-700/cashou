@@ -50,6 +50,10 @@ function makePrismaMock() {
         };
       },
     },
+    // create() amorce les holdings de départ du niveau ; sans levelId, rien à amorcer.
+    gameInstance: {
+      findUnique: async (): Promise<{ levelId: number | null } | null> => null,
+    },
   };
 
   void prisma.wallet.findMany;
@@ -114,9 +118,26 @@ describe("WalletService — Tests unitaires", () => {
     const updated = await service.update(7, { amount: 3000 });
     expect(updated).toMatchObject({ id: 7 });
     const updateCall = calls.find((c) => c.method === "update");
-    expect(updateCall?.args).toMatchObject({ 
-      where: { id: 7 }, 
-      data: { amount: 3000 } 
+    expect(updateCall?.args).toMatchObject({
+      where: { id: 7 },
+      data: { amount: 3000 }
     });
+  });
+
+  it("delete transmet where.id", async () => {
+    // Petit mock avec delete pour couvrir cette méthode.
+    const calls: { id: number }[] = [];
+    const prisma = {
+      wallet: {
+        delete: async (a: { where: { id: number } }) => {
+          calls.push({ id: a.where.id });
+          return { id: a.where.id, userId: null, amount: null, gameInstanceId: null, createdAt: new Date(), updatedAt: new Date() };
+        },
+      },
+    };
+    const service = new WalletService(prisma as unknown as PrismaClient);
+    const res = await service.delete(9);
+    expect(res.id).toBe(9);
+    expect(calls[0]?.id).toBe(9);
   });
 });

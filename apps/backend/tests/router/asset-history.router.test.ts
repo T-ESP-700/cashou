@@ -90,3 +90,74 @@ describe("assetHistory.router — Validations Zod", () => {
     expect(caller.delete({ id: 0 })).rejects.toBeDefined();
   });
 });
+
+describe("assetHistory.router — Méthodes additionnelles", () => {
+  const extraMethods = [
+    "findByAssetIdAndPeriod",
+    "findLatestByAssetId",
+    "findForGame",
+    "getCurrentPrice",
+    "getCurrentPriceWithChange",
+  ] as const;
+
+  const callsByMethod: Record<string, unknown[][]> = {};
+  const originals: Record<string, unknown> = {};
+
+  beforeEach(() => {
+    for (const k of Object.keys(callsByMethod)) delete callsByMethod[k];
+    for (const m of extraMethods) {
+      callsByMethod[m] = [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      originals[m] = (AssetHistoryService.prototype as any)[m];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (AssetHistoryService.prototype as any)[m] = async function (...args: unknown[]) {
+        callsByMethod[m]!.push(args);
+        return null;
+      };
+    }
+  });
+
+  afterEach(() => {
+    for (const m of extraMethods) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (AssetHistoryService.prototype as any)[m] = originals[m];
+    }
+  });
+
+  it("getByAssetIdAndPeriod → findByAssetIdAndPeriod(assetId, start, end)", async () => {
+    const caller = assetHistoryRouter.createCaller({} as Ctx);
+    await caller.getByAssetIdAndPeriod({
+      assetId: 1,
+      startDate: "2024-01-01",
+      endDate: "2024-12-31",
+    });
+    const args = callsByMethod.findByAssetIdAndPeriod?.[0];
+    expect(args?.[0]).toBe(1);
+    expect(args?.[1]).toBeInstanceOf(Date);
+    expect(args?.[2]).toBeInstanceOf(Date);
+  });
+
+  it("getLatestByAssetId → findLatestByAssetId(assetId)", async () => {
+    const caller = assetHistoryRouter.createCaller({} as Ctx);
+    await caller.getLatestByAssetId({ assetId: 5 });
+    expect(callsByMethod.findLatestByAssetId?.[0]?.[0]).toBe(5);
+  });
+
+  it("getForGame → findForGame(assetId, gameInstanceId)", async () => {
+    const caller = assetHistoryRouter.createCaller({} as Ctx);
+    await caller.getForGame({ assetId: 1, gameInstanceId: 2 });
+    expect(callsByMethod.findForGame?.[0]).toEqual([1, 2]);
+  });
+
+  it("getCurrentPrice → getCurrentPrice(assetId, gameInstanceId)", async () => {
+    const caller = assetHistoryRouter.createCaller({} as Ctx);
+    await caller.getCurrentPrice({ assetId: 1, gameInstanceId: 2 });
+    expect(callsByMethod.getCurrentPrice?.[0]).toEqual([1, 2]);
+  });
+
+  it("getPriceWithChange → getCurrentPriceWithChange(assetId, gameInstanceId)", async () => {
+    const caller = assetHistoryRouter.createCaller({} as Ctx);
+    await caller.getPriceWithChange({ assetId: 1, gameInstanceId: 2 });
+    expect(callsByMethod.getCurrentPriceWithChange?.[0]).toEqual([1, 2]);
+  });
+});

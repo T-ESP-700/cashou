@@ -192,6 +192,9 @@ describe("GameEventProcessorService", () => {
             },
           },
           notification: prisma.notification,
+          // La mise en pause sur event ouvre un intervalle de pause via startPause(…, tx), en SQL brut.
+          $queryRaw: async () => [],
+          $executeRaw: async () => 0,
         }),
     };
 

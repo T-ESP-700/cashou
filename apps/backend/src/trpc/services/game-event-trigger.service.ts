@@ -2,17 +2,20 @@ import type { PrismaClient } from "@cashou/db-app";
 import defaultPrisma from "../../database.ts";
 import { GameTimeService } from "./game-time.service.ts";
 import { GameInstanceEventService } from "./game-instance-event.service.ts";
+import { GamePauseIntervalService } from "./game-pause-interval.service.ts";
 import { scheduleGameEnd, scheduleGameEvent, cancelGameEvent } from "../../lib/job-queue.ts";
 
 export class GameEventTriggerService {
   private prisma: PrismaClient;
   private gameTimeService: GameTimeService;
   private gameInstanceEventService: GameInstanceEventService;
+  private gamePauseIntervalService: GamePauseIntervalService;
 
   constructor(prismaClient?: PrismaClient) {
     this.prisma = prismaClient || defaultPrisma;
-    this.gameTimeService = new GameTimeService();
+    this.gameTimeService = new GameTimeService(this.prisma);
     this.gameInstanceEventService = new GameInstanceEventService(prismaClient);
+    this.gamePauseIntervalService = new GamePauseIntervalService(this.prisma);
   }
 
   /**
@@ -51,12 +54,13 @@ export class GameEventTriggerService {
     const levelEvents = gameInstance.level.levelEvents;
     const currentIndex = gameInstance.currentEventIndex ?? 0;
     const nextIndex = currentIndex + 1;
+    const pauseEndedAt = new Date();
 
     // Calculate pause duration
     let pauseDuration = 0;
     if (gameInstance.pausedAt) {
       pauseDuration = Math.floor(
-        (Date.now() - new Date(gameInstance.pausedAt).getTime()) / 1000
+        (pauseEndedAt.getTime() - new Date(gameInstance.pausedAt).getTime()) / 1000
       );
     }
 
@@ -74,6 +78,7 @@ export class GameEventTriggerService {
         totalPausedDuration: newTotalPausedDuration,
       },
     });
+    await this.gamePauseIntervalService.endPause(gameInstanceId, pauseEndedAt);
 
     // Shift all non-triggered GameInstanceEvent.scheduledAt forward by the pause duration
     // This ensures that future events account for the time the game was paused

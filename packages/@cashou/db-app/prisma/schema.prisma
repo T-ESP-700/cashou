@@ -3,7 +3,8 @@
 
 generator client {
   provider      = "prisma-client-js"
-  binaryTargets = ["native", "darwin-arm64", "linux-arm64-openssl-1.1.x"]
+  output        = "../src/generated/client"
+  binaryTargets = ["native", "darwin-arm64", "linux-arm64-openssl-1.1.x", "linux-arm64-openssl-3.0.x"]
 }
 
 datasource db {
@@ -35,6 +36,23 @@ enum SubmarketType {
   SAVINGS   @map("Savings")
   INSURANCE @map("Insurance")
   STOCK     @map("Stock")
+}
+
+// Cible d'un impact d'événement :
+// - PRICE      : multiplie le cours de l'actif (AssetHistory.value) — actions
+// - RATE       : multiplie le taux d'intérêt annuel (Asset.rate) — livrets/épargne
+// - CASH_GRANT : crédite Impact.amount directement au wallet du joueur (ex: cadeau)
+enum ImpactType {
+  PRICE       @map("Price")
+  RATE        @map("Rate")
+  CASH_GRANT  @map("CashGrant")
+}
+
+// Catégorie d'un tip/indice pédagogique — une par palier d'étoile.
+// Plusieurs Tip peuvent partager la même catégorie (ordonnés par `position`).
+enum TipCategory {
+  FIRST_STAR  @map("FirstStar")
+  SECOND_STAR @map("SecondStar")
 }
 
 // Modèle User avec better-auth + relations Cashou
@@ -131,6 +149,7 @@ model Level {
   startBalance   Int?     @map("start_balance")
   pointsRequired  Int?     @map("points_required")
   historyStartDay Int?     @map("history_start_day") // Day index in AssetHistory where the game begins
+  startDate       DateTime? @map("start_date") // Simulated calendar date of game-day 0 (in-game timeline anchor)
   description     String?
   tip            String?
   createdAt       DateTime @default(now()) @map("created_at")
@@ -140,9 +159,14 @@ model Level {
   users         User[]
   gameInstances        GameInstance[]
   levelGoals           LevelGoal[]
+  levelAssets          LevelAsset[]
   levelEvents          LevelEvent[]
   quiz                 Quiz[]
   userLevelCompletions UserLevelCompletion[]
+  notionLevels         NotionLevel[]
+  assetUnlocks         AssetUnlock[]
+  startingHoldings     LevelStartingHolding[]
+  tips                 Tip[]
 
   @@map("levels")
 }
@@ -196,6 +220,20 @@ model LevelGoal {
   @@map("level_goals")
 }
 
+model LevelAsset {
+  id        Int      @id @default(autoincrement())
+  levelId   Int      @map("level_id")
+  assetId   Int      @map("asset_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  level Level @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([levelId, assetId])
+  @@map("level_assets")
+}
+
 model LevelEvent {
   id             Int      @id @default(autoincrement())
   levelId        Int      @map("level_id")
@@ -209,6 +247,7 @@ model LevelEvent {
   level              Level               @relation(fields: [levelId], references: [id])
   event              Event               @relation(fields: [eventId], references: [id])
   gameInstanceEvents GameInstanceEvent[]
+  assetUnlocks       AssetUnlock[]
 
   @@map("level_events")
 }
@@ -294,6 +333,7 @@ model Asset {
   submarketId Int?     @map("submarket_id")
   maxAmount   Decimal? @map("max_amount") // Plafond (ex: 22950 pour Livret A)
   minAmount   Decimal? @map("min_amount") // Montant minimum (ex: 10€)
+  managementFee Float? @map("management_fee") // Frais de gestion annuels en % (ex: 0.6 pour un fonds euros)
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -303,9 +343,12 @@ model Asset {
   field          Field?         @relation(fields: [fieldId], references: [id])
   assetHistories AssetHistory[]
   eventAssets    EventAsset[]
+  levelAssets    LevelAsset[]
   transactions   Transaction[]
   impacts        Impact[]
   holdings       Holding[]
+  assetUnlocks   AssetUnlock[]
+  levelStartingHoldings LevelStartingHolding[]
 
   @@map("assets")
 }
@@ -343,13 +386,15 @@ model EventAsset {
 
 model Impact {
   id          Int      @id @default(autoincrement())
-  eventId     Int?     @map("event_id")
-  fieldId     Int?     @map("field_id")
-  submarketId Int?     @map("submarket_id")
-  assetId     Int?     @map("asset_id")
+  eventId     Int?       @map("event_id")
+  fieldId     Int?       @map("field_id")
+  submarketId Int?       @map("submarket_id")
+  assetId     Int?       @map("asset_id")
   coef        Float?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  impactType  ImpactType @default(PRICE) @map("impact_type")
+  amount      Decimal?   // Montant fixe crédité au wallet — utilisé seulement par CASH_GRANT
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
 
   // Relations
   // Note: Validation métier requise - doit avoir soit assetId, soit (submarketId + fieldId)
@@ -390,9 +435,24 @@ model GameInstance {
   notifications Notification[]
   holdings      Holding[]
   gameInstanceEvents GameInstanceEvent[]
+  pauseIntervals GameInstancePauseInterval[]
   userQuiz      UserQuiz[]
 
   @@map("game_instances")
+}
+
+model GameInstancePauseInterval {
+  id             Int      @id @default(autoincrement())
+  gameInstanceId Int      @map("game_instance_id")
+  startedAt      DateTime @map("started_at")
+  endedAt        DateTime? @map("ended_at")
+  reason         String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  gameInstance GameInstance @relation(fields: [gameInstanceId], references: [id], onDelete: Cascade)
+
+  @@map("game_instance_pause_intervals")
 }
 
 model GameInstanceEvent {
@@ -472,7 +532,7 @@ model Holding {
   walletId       Int       @map("wallet_id")
   assetId        Int       @map("asset_id")
   gameInstanceId Int       @map("game_instance_id")
-  quantity       Decimal // Montant investi (en €) ou nombre de parts
+  quantity       Decimal // Montant investi (en €) ou nombre de parts — inclut les intérêts déjà capitalisés
   acquiredAt     DateTime  @default(now()) @map("acquired_at") // Date d'acquisition pour calcul intérêts
   lastInterestAt DateTime? @map("last_interest_at") // Dernier calcul d'intérêts (pour livrets)
   createdAt      DateTime  @default(now()) @map("created_at")
@@ -607,6 +667,92 @@ model Notification {
   event        Event?        @relation(fields: [eventId], references: [id])
 
   @@map("notifications")
+}
+
+model Notion {
+  id          Int      @id @default(autoincrement())
+  name        String?
+  description String?
+  tags        String[] @default([])
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  notionLevels NotionLevel[]
+
+  @@map("notions")
+}
+
+model NotionLevel {
+  id        Int      @id @default(autoincrement())
+  notionId  Int      @map("notion_id")
+  levelId   Int      @map("level_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  notion Notion @relation(fields: [notionId], references: [id], onDelete: Cascade)
+  level  Level  @relation(fields: [levelId], references: [id], onDelete: Cascade)
+
+  @@unique([notionId, levelId])
+  @@map("notion_levels")
+}
+
+// Verrouillage d'un asset dans un niveau : il n'est disponible qu'à partir
+// d'un moment du jeu. Évalué à la lecture, par game-instance (cf. AssetService).
+// Condition de déblocage : soit après un LevelEvent (levelEventId), soit à
+// unlockPercent % de la durée. Un asset sans ligne ici est disponible d'emblée.
+model AssetUnlock {
+  id            Int      @id @default(autoincrement())
+  levelId       Int      @map("level_id")
+  assetId       Int      @map("asset_id")
+  levelEventId  Int?     @map("level_event_id") // déblocage après cet event du niveau
+  unlockPercent Int?     @map("unlock_percent")  // OU à X% de la durée (fallback si pas d'event)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  level      Level       @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  asset      Asset       @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  levelEvent LevelEvent? @relation(fields: [levelEventId], references: [id], onDelete: SetNull)
+
+  @@unique([levelId, assetId])
+  @@map("asset_unlocks")
+}
+
+// Asset non-vide au démarrage d'un niveau (ex: Livret A déjà provisionné).
+// Consommé par WalletService.create lors de la création du wallet d'une partie :
+// crée directement un Holding pour chaque ligne, sans passer par une Transaction
+// (ce n'est pas un achat du joueur).
+model LevelStartingHolding {
+  id        Int      @id @default(autoincrement())
+  levelId   Int      @map("level_id")
+  assetId   Int      @map("asset_id")
+  quantity  Decimal // Montant déjà placé sur cet actif au jour 0
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  level Level @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([levelId, assetId])
+  @@map("level_starting_holdings")
+}
+
+// Indice pédagogique affiché au joueur, par palier d'étoile (cf. TipCategory).
+// Plusieurs tips peuvent partager la même catégorie ; `position` fixe leur ordre.
+model Tip {
+  id        Int         @id @default(autoincrement())
+  levelId   Int         @map("level_id")
+  category  TipCategory
+  text      String
+  position  Int         @default(1)
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  level Level @relation(fields: [levelId], references: [id], onDelete: Cascade)
+
+  @@map("tips")
 }
 
 model DicoEntry {

@@ -88,5 +88,5 @@ jobs:
         run: bun run db:generate
       - name: Run migrations (app + backoffice)
         run: bun run migrate:deploy
-      - name: Run tests
-        run: bun run --filter backend test --timeout 30000
+      - name: Run tests with coverage (seuil 90 % défini dans apps/backend/bunfig.toml)
+        run: bun run --filter backend test --coverage --timeout 30000
