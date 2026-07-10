@@ -10,6 +10,9 @@ dist
 build
 *.tgz
 
+# Generated API documentation (régénérable via `bun run docs:api`)
+apps/backend/docs/openapi.json
+
 # Code coverage
 coverage
 *.lcov
