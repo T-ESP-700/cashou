@@ -310,32 +310,29 @@ async function main() {
   console.log(`✅ Level-Goal créé: Level ${level.number} ↔ Goal "${goal.title}" (obligatoire)`);
 
   // 9b. Optional: create a bonus goal for level 1 (demonstrates mandatory vs bonus)
-  const bonusGoalTitle = "Gagner au moins 100";
+  const BONUS_AMOUNT = 100;
+  const bonusGoalTitle = `Gagner au moins ${BONUS_AMOUNT}€`;
+  // Legacy title had no currency unit — match it so we update instead of duplicating.
+  const legacyBonusGoalTitle = `Gagner au moins ${BONUS_AMOUNT}`;
+  const bonusGoalData = {
+    description: `Avoir au moins ${BONUS_AMOUNT}€ de plus que ton capital de départ à la fin du niveau.`,
+    successMessage: `Tu as même réussi à faire plus de ${BONUS_AMOUNT}€ de plus-value !`,
+    failureMessage: "Par contre, tu n’as pas atteint l’objectif secondaire cette fois.",
+    goalType: "wallet_min",
+    goalValue: (level.startBalance ?? 2000) + BONUS_AMOUNT
+  };
   let bonusGoal = await prisma.goal.findFirst({
-    where: { title: bonusGoalTitle }
+    where: { title: { in: [bonusGoalTitle, legacyBonusGoalTitle] } }
   });
   if (bonusGoal) {
     bonusGoal = await prisma.goal.update({
       where: { id: bonusGoal.id },
-      data: {
-        description: "Avoir au moins 100 cashou de plus que ton capital de départ à la fin du niveau.",
-        successMessage: "Tu as même réussi à faire plus de 100 cashou de plus-value !",
-        failureMessage: "Par contre, tu n’as pas atteint l’objectif secondaire cette fois.",
-        goalType: "wallet_min",
-        goalValue: (level.startBalance ?? 2000) + 100
-      }
+      data: { title: bonusGoalTitle, ...bonusGoalData }
     });
     console.log(`✅ Objectif bonus mis à jour: ${bonusGoal.title}`);
   } else {
     bonusGoal = await prisma.goal.create({
-      data: {
-        title: bonusGoalTitle,
-        description: "Avoir au moins 100 de plus que ton capital de départ à la fin du niveau.",
-        successMessage: "Tu as même réussi à faire plus de 100 cashou de plus-value !",
-        failureMessage: "Par contre, tu n’as pas atteint l’objectif secondaire cette fois.",
-        goalType: "wallet_min",
-        goalValue: (level.startBalance ?? 2000) + 100
-      }
+      data: { title: bonusGoalTitle, ...bonusGoalData }
     });
     console.log(`✅ Objectif bonus créé: ${bonusGoal.title}`);
   }

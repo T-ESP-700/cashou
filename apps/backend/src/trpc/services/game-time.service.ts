@@ -214,10 +214,13 @@ export class GameTimeService {
       return 0;
     }
 
-    // Use endedAt as reference time for ended games, otherwise use now
+    // Reference time freezes the game clock: endedAt for ended games, pausedAt
+    // while paused (so holdings acquired during a pause do not accrue), else now.
     const referenceTime = gameInstance.isEnded && gameInstance.endedAt
       ? new Date(gameInstance.endedAt)
-      : new Date();
+      : gameInstance.isPaused && gameInstance.pausedAt
+        ? new Date(gameInstance.pausedAt)
+        : new Date();
     const startTime = new Date(sinceDate);
     const gameStartTime = new Date(gameInstance.createdAt);
 
@@ -243,17 +246,6 @@ export class GameTimeService {
                            (referenceTime.getTime() - gameStartTime.getTime());
       const pauseToSubtract = Math.floor(pausedDuration * pauseFraction);
       totalElapsed -= pauseToSubtract;
-    }
-
-    // If currently paused (and not ended), also subtract current pause duration proportionally
-    if (gameInstance.isPaused && gameInstance.pausedAt && !gameInstance.isEnded) {
-      const pauseStartTime = new Date(gameInstance.pausedAt);
-      if (pauseStartTime > effectiveStartTime) {
-        const currentPauseDuration = Math.floor(
-          (referenceTime.getTime() - pauseStartTime.getTime()) / 1000
-        );
-        totalElapsed -= currentPauseDuration;
-      }
     }
 
     return Math.max(0, totalElapsed);
