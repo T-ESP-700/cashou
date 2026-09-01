@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cashou - ESP Days</title>
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=Rowdies:400,700|Baloo+2:400,500,600,700,800|ABeeZee:400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cashou: {
+                            navy: '#3444A3',
+                            primary: '#FFB472',
+                        },
+                    },
+                    fontFamily: {
+                        heading: ['Rowdies', 'cursive'],
+                        body: ['Baloo 2', 'sans-serif'],
+                        orange: ['ABeeZee', 'sans-serif'],
+                    },
+                },
+            },
+        };
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            overflow: hidden;
+            height: 100vh;
+            height: 100dvh;
+        }
+
+        .slide {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .slide.active {
+            display: flex;
+        }
+
+        .animate-item {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+
+        .animate-item.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        body.no-transitions * {
+            transition: none !important;
+        }
+
+        .icon-badge {
+            width: 4rem;
+            height: 4rem;
+            border-radius: 9999px;
+            border: 2px solid #FFB472;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #FFB472;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .slide-indicator {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.25);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .indicator.active {
+            background: #FFB472;
+            transform: scale(1.3);
+        }
+    </style>
+</head>
+<body class="bg-cashou-navy text-white font-body">
+
+    <!-- Slide 0: Accroche — fond affiche.svg (billet en feu), logo, tagline, logo Epitech -->
+    <div class="slide active flex-col items-center justify-center relative overflow-hidden bg-cashou-navy" style="background-image: url('bg-flames.png'); background-size: 420px auto; background-position: left bottom; background-repeat: no-repeat;" data-slide="0">
+        <div class="relative z-10 flex flex-col items-center px-10 w-full animate-item">
+            <img src="cashou-wordmark.png" alt="Cashou" class="w-64 md:w-96">
+            <p class="font-orange text-white text-xl md:text-2xl mt-6 text-center max-w-2xl">
+                L'app qui vous apprend à gérer votre argent en toute sécurité !
+            </p>
+        </div>
+
+        <img src="epitech-logo-white.png" alt="Epitech" class="absolute bottom-8 right-8 z-10 w-28 md:w-36 animate-item">
+    </div>
+
+    <!-- Slide 1: Le constat — stats du site, mise en page à plat façon flyer -->
+    <div class="slide flex-col items-center justify-center px-10" data-slide="1">
+        <h2 class="font-heading font-bold text-white text-5xl md:text-6xl mb-14 text-center animate-item">
+            Pourquoi Cashou ?
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-10 max-w-4xl w-full">
+            <div class="animate-item">
+                <p class="font-orange text-cashou-primary text-5xl md:text-6xl leading-none">35%</p>
+                <p class="text-white/90 text-lg md:text-xl mt-2">des Français comptent investir dans les 12 prochains mois</p>
+                <p class="text-white/50 text-sm mt-1">Baromètre AMF 2025</p>
+            </div>
+            <div class="animate-item">
+                <p class="font-orange text-cashou-primary text-5xl md:text-6xl leading-none">73%</p>
+                <p class="text-white/90 text-lg md:text-xl mt-2">s'estiment pas assez informés ou éduqués pour investir</p>
+                <p class="text-white/50 text-sm mt-1">Bricks.co, enquête 2025</p>
+            </div>
+            <div class="animate-item">
+                <p class="font-orange text-cashou-primary text-5xl md:text-6xl leading-none">82%</p>
+                <p class="text-white/90 text-lg md:text-xl mt-2">disent que leur entourage n'est pas mieux éduqué qu'eux</p>
+                <p class="text-white/50 text-sm mt-1">Bricks.co, enquête 2025</p>
+            </div>
+            <div class="animate-item">
+                <p class="font-orange text-cashou-primary text-5xl md:text-6xl leading-none">44%</p>
+                <p class="text-white/90 text-lg md:text-xl mt-2">décident seuls de leur placement, sans accompagnement</p>
+                <p class="text-white/50 text-sm mt-1">Baromètre AMF 2025</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 2: Notre solution — contenu gardé, mise en page façon flyer_verso ("c'est...") -->
+    <div class="slide flex-col items-center justify-center px-10" data-slide="2">
+        <h2 class="font-heading font-bold text-white text-5xl md:text-6xl mb-14 text-center animate-item">
+            Notre solution
+        </h2>
+        <div class="flex flex-col gap-10 max-w-3xl w-full">
+            <div class="flex items-center gap-6 animate-item">
+                <div class="icon-badge"><i class="fas fa-gamepad"></i></div>
+                <div>
+                    <p class="font-orange text-cashou-primary text-2xl">Gamification</p>
+                    <p class="text-white/90 text-lg mt-1">L'éducation financière transformée en expérience ludique et engageante</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-6 animate-item">
+                <div class="icon-badge"><i class="fas fa-shield-halved"></i></div>
+                <div>
+                    <p class="font-orange text-cashou-primary text-2xl">Zéro risque</p>
+                    <p class="text-white/90 text-lg mt-1">Simulation complète : on apprend en se trompant, sans jamais perdre d'argent réel</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-6 animate-item">
+                <div class="icon-badge"><i class="fas fa-route"></i></div>
+                <div>
+                    <p class="font-orange text-cashou-primary text-2xl">Un accompagnement pas à pas</p>
+                    <p class="text-white/90 text-lg mt-1">Fini de décider seul dans le flou : Cashou guide chaque décision, niveau après niveau</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 3: Comment ça marche — repris de HowItWorks.astro (site) -->
+    <div class="slide flex-col items-center justify-center px-10" data-slide="3">
+        <h2 class="font-heading font-bold text-white text-5xl md:text-6xl mb-14 text-center animate-item">
+            Comment ça marche
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-10 max-w-4xl w-full">
+            <div class="flex items-start gap-5 animate-item">
+                <div class="icon-badge font-orange text-2xl flex-shrink-0">01</div>
+                <div>
+                    <p class="font-orange text-cashou-primary text-xl">Créez votre compte</p>
+                    <p class="text-white/90 text-base mt-1">Inscrivez-vous en quelques secondes et commencez votre parcours d'apprentissage</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-5 animate-item">
+                <div class="icon-badge font-orange text-2xl flex-shrink-0">02</div>
+                <div>
+                    <p class="font-orange text-cashou-primary text-xl">Commencer le premier niveau de démo</p>
+                    <p class="text-white/90 text-base mt-1">Recevez votre portefeuille virtuel et des objectifs de départ adapté à vos connaissances</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-5 animate-item">
+                <div class="icon-badge font-orange text-2xl flex-shrink-0">03</div>
+                <div>
+                    <p class="font-orange text-cashou-primary text-xl">Prenez des décisions</p>
+                    <p class="text-white/90 text-base mt-1">Analysez les marchés, investissez dans des actifs virtuels et réagissez aux événements qui surgissent au cours de la partie</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-5 animate-item">
+                <div class="icon-badge font-orange text-2xl flex-shrink-0">04</div>
+                <div>
+                    <p class="font-orange text-cashou-primary text-xl">Progressez et apprenez</p>
+                    <p class="text-white/90 text-base mt-1">Complétez les quiz quotidiens, débloquez de nouveaux niveaux et documentez-vous grâce au dictionnaire financier</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 4: Fonctionnalités — copie fidèle de Features.astro (diapo), mise en page à plat -->
+    <div class="slide flex-col items-center justify-center px-10" data-slide="4">
+        <h2 class="font-heading font-bold text-white text-5xl md:text-6xl mb-14 text-center animate-item">
+            Fonctionnalités
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl">
+            <div class="bg-white/5 rounded-xl border border-cashou-primary/30 p-8 flex flex-col items-center text-center animate-item">
+                <i class="fas fa-gamepad text-cashou-primary text-4xl mb-4"></i>
+                <h3 class="font-orange text-white text-2xl md:text-3xl">Apprentissage par le jeu</h3>
+            </div>
+            <div class="bg-white/5 rounded-xl border border-cashou-primary/30 p-8 flex flex-col items-center text-center animate-item">
+                <i class="fas fa-chart-line text-cashou-primary text-4xl mb-4"></i>
+                <h3 class="font-orange text-white text-2xl md:text-3xl">Portefeuille virtuel</h3>
+            </div>
+            <div class="bg-white/5 rounded-xl border border-cashou-primary/30 p-8 flex flex-col items-center text-center animate-item">
+                <i class="fas fa-trophy text-cashou-primary text-4xl mb-4"></i>
+                <h3 class="font-orange text-white text-2xl md:text-3xl">Système de points</h3>
+            </div>
+            <div class="bg-white/5 rounded-xl border border-cashou-primary/30 p-8 flex flex-col items-center text-center animate-item">
+                <i class="fas fa-calendar-day text-cashou-primary text-4xl mb-4"></i>
+                <h3 class="font-orange text-white text-2xl md:text-3xl">Quiz quotidiens</h3>
+            </div>
+            <div class="bg-white/5 rounded-xl border border-cashou-primary/30 p-8 flex flex-col items-center text-center animate-item">
+                <i class="fas fa-book-open text-cashou-primary text-4xl mb-4"></i>
+                <h3 class="font-orange text-white text-2xl md:text-3xl">Dictionnaire financier</h3>
+            </div>
+            <div class="bg-white/5 rounded-xl border border-cashou-primary/30 p-8 flex flex-col items-center text-center animate-item">
+                <i class="fas fa-lock text-cashou-primary text-4xl mb-4"></i>
+                <h3 class="font-orange text-white text-2xl md:text-3xl">100% sécurisé</h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 5: Chiffres clés produit — sourcés de niveaux20.md -->
+    <div class="slide flex-col items-center justify-center px-10" data-slide="5">
+        <h2 class="font-heading font-bold text-white text-5xl md:text-6xl mb-14 text-center animate-item">
+            Le jeu, en chiffres
+        </h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-x-10 gap-y-10 max-w-4xl w-full">
+            <div class="text-center animate-item">
+                <p class="font-orange text-cashou-primary text-5xl md:text-6xl leading-none">20</p>
+                <p class="text-white/90 text-base md:text-lg mt-2">niveaux de jeu</p>
+            </div>
+            <div class="text-center animate-item">
+                <p class="font-orange text-cashou-primary text-5xl md:text-6xl leading-none">6</p>
+                <p class="text-white/90 text-base md:text-lg mt-2">catégories de placement</p>
+            </div>
+            <div class="text-center animate-item">
+                <p class="font-orange text-cashou-primary text-5xl md:text-6xl leading-none">39</p>
+                <p class="text-white/90 text-base md:text-lg mt-2">actifs simulés</p>
+            </div>
+            <div class="text-center animate-item">
+                <p class="font-orange text-cashou-primary text-5xl md:text-6xl leading-none">8</p>
+                <p class="text-white/90 text-base md:text-lg mt-2">types de produits financiers</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 6: Notre équipe — repris de Team.astro (site) -->
+    <div class="slide flex-col items-center justify-center px-10" data-slide="6">
+        <h2 class="font-heading font-bold text-white text-5xl md:text-6xl mb-14 text-center animate-item">
+            Notre équipe
+        </h2>
+        <div class="flex flex-wrap items-start justify-center gap-8 md:gap-10 max-w-4xl">
+            <div class="flex flex-col items-center gap-3 animate-item">
+                <img src="team-flavie.jpg" alt="Flavie" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
+                <p class="font-orange text-cashou-primary text-lg">Flavie</p>
+                <p class="text-white/70 text-sm text-center">Développeuse<br>Full-Stack</p>
+            </div>
+            <div class="flex flex-col items-center gap-3 animate-item">
+                <img src="team-chloe.jpg" alt="Chloé" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
+                <p class="font-orange text-cashou-primary text-lg">Chloé</p>
+                <p class="text-white/70 text-sm text-center">Product<br>Manager</p>
+            </div>
+            <div class="flex flex-col items-center gap-3 animate-item">
+                <img src="team-yohan.jpg" alt="Yohan" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
+                <p class="font-orange text-cashou-primary text-lg">Yohan</p>
+                <p class="text-white/70 text-sm text-center">Développeur<br>Backend</p>
+            </div>
+            <div class="flex flex-col items-center gap-3 animate-item">
+                <img src="team-clement.jpg" alt="Clément" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
+                <p class="font-orange text-cashou-primary text-lg">Clément</p>
+                <p class="text-white/70 text-sm text-center">Développeur<br>Frontend</p>
+            </div>
+            <div class="flex flex-col items-center gap-3 animate-item">
+                <img src="team-tom.jpg" alt="Tom" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
+                <p class="font-orange text-cashou-primary text-lg">Tom</p>
+                <p class="text-white/70 text-sm text-center">DevOps<br>Engineer</p>
+            </div>
+            <div class="flex flex-col items-center gap-3 animate-item">
+                <img src="team-nafissatou.jpg" alt="Nafissatou" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
+                <p class="font-orange text-cashou-primary text-lg">Nafissatou</p>
+                <p class="text-white/70 text-sm text-center">Designer<br>UX/UI</p>
+            </div>
+            <div class="flex flex-col items-center gap-3 animate-item">
+                <img src="team-francois.jpg" alt="François" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
+                <p class="font-orange text-cashou-primary text-lg">François</p>
+                <p class="text-white/70 text-sm text-center">Lead<br>Developer</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 7: Vidéo (~60-90s, décrite à l'oral avant lancement) -->
+    <div class="slide flex-col items-center justify-center" data-slide="7">
+        <h2 class="font-heading font-bold text-white text-5xl md:text-6xl mb-8 animate-item">
+            Cashou en action
+        </h2>
+        <div class="w-full max-w-[380px] aspect-[9/16] bg-black rounded-[2rem] border-4 border-cashou-primary overflow-hidden shadow-2xl animate-item">
+            <!-- Déposer le fichier vidéo dans ce dossier et ajuster le nom ci-dessous -->
+            <video controls poster="cashou-logo.png" class="w-full h-full object-contain">
+                <source src="demo.mp4" type="video/mp4">
+            </video>
+        </div>
+    </div>
+
+    <!-- Slide 8: Conclusion / CTA (~15s) -->
+    <div class="slide flex-col items-center justify-center px-10" data-slide="8">
+        <h2 class="font-heading font-bold text-cashou-primary text-7xl md:text-8xl animate-item">Cashou</h2>
+        <p class="text-white text-xl md:text-2xl mt-6 text-center animate-item">
+            Apprenez à investir avant d'investir pour de vrai
+        </p>
+    </div>
+
+    <!-- Slide indicators -->
+    <div class="slide-indicator">
+        <span class="indicator active" onclick="goToSlide(0)"></span>
+        <span class="indicator" onclick="goToSlide(1)"></span>
+        <span class="indicator" onclick="goToSlide(2)"></span>
+        <span class="indicator" onclick="goToSlide(3)"></span>
+        <span class="indicator" onclick="goToSlide(4)"></span>
+        <span class="indicator" onclick="goToSlide(5)"></span>
+        <span class="indicator" onclick="goToSlide(6)"></span>
+        <span class="indicator" onclick="goToSlide(7)"></span>
+        <span class="indicator" onclick="goToSlide(8)"></span>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        let slideAnimations = {};
+        const slides = document.querySelectorAll('.slide');
+        const indicators = document.querySelectorAll('.indicator');
+        const totalSlides = slides.length;
+
+        slides.forEach((slide, index) => {
+            slideAnimations[index] = 0;
+        });
+
+        function getAnimateItems(slideIndex) {
+            const slide = slides[slideIndex];
+            return slide ? slide.querySelectorAll('.animate-item') : [];
+        }
+
+        function resetSlideAnimations(slideIndex) {
+            const items = getAnimateItems(slideIndex);
+            items.forEach(item => {
+                item.classList.remove('visible');
+            });
+            slideAnimations[slideIndex] = 0;
+        }
+
+        function showSlide(n, revealAll = false) {
+            if (revealAll) {
+                document.body.classList.add('no-transitions');
+            }
+
+            slides[currentSlide].classList.remove('active');
+            indicators[currentSlide].classList.remove('active');
+
+            currentSlide = (n + totalSlides) % totalSlides;
+
+            slides[currentSlide].classList.add('active');
+            indicators[currentSlide].classList.add('active');
+
+            resetSlideAnimations(currentSlide);
+
+            const items = getAnimateItems(currentSlide);
+            items.forEach((item) => {
+                item.classList.add('visible');
+            });
+            slideAnimations[currentSlide] = items.length;
+
+            if (revealAll) {
+                setTimeout(() => {
+                    document.body.classList.remove('no-transitions');
+                }, 10);
+            }
+        }
+
+        function nextSlide() {
+            showSlide(currentSlide + 1, true);
+        }
+
+        function previousSlide() {
+            showSlide(currentSlide - 1, true);
+        }
+
+        function goToSlide(n) {
+            showSlide(n, true);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') {
+                e.preventDefault();
+                nextSlide();
+            }
+            else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
+                e.preventDefault();
+                previousSlide();
+            }
+        });
+
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            if (touchEndX > touchStartX + 50) nextSlide();
+            if (touchEndX < touchStartX - 50) previousSlide();
+        });
+
+        let wheelDeltaX = 0;
+        let lastWheelTime = 0;
+        let isChangingSlide = false;
+
+        document.addEventListener('wheel', (e) => {
+            if (isChangingSlide) {
+                e.preventDefault();
+                return;
+            }
+
+            if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+                e.preventDefault();
+                const now = Date.now();
+
+                if (now - lastWheelTime > 50) {
+                    wheelDeltaX = 0;
+                }
+
+                wheelDeltaX += e.deltaX;
+                lastWheelTime = now;
+
+                if (Math.abs(wheelDeltaX) > 500) {
+                    isChangingSlide = true;
+                    if (wheelDeltaX > 0) {
+                        showSlide(currentSlide + 1, true);
+                    } else {
+                        showSlide(currentSlide - 1, true);
+                    }
+                    wheelDeltaX = 0;
+
+                    setTimeout(() => {
+                        isChangingSlide = false;
+                    }, 400);
+                }
+            }
+        }, { passive: false });
+
+        showSlide(0, true);
+    </script>
+</body>
+</html>
