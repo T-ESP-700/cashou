@@ -8,6 +8,23 @@ The Cashou backend is built with **Bun** and uses **tRPC** for type-safe API cal
 - **tRPC Endpoint**: `/api/trpc/*`
 - **Auth Endpoint**: `/api/auth/*`
 
+### 📖 Documentation interactive (générée automatiquement)
+
+Une référence d'API **interactive** est générée automatiquement depuis le routeur
+tRPC (via `z.toJSONSchema()`, natif Zod v4) — elle couvre les 283 procédures et
+reste toujours synchronisée avec le code, sans annotation manuelle.
+
+- **UI Scalar** : lancer le serveur (`bun run dev`) puis ouvrir
+  [`http://localhost:3000/api/docs`](http://localhost:3000/api/docs)
+- **Spec OpenAPI brute** : `http://localhost:3000/api/openapi.json`
+- **Export hors-ligne** (artefact versionné) : `bun run docs:api`
+  → écrit [`apps/backend/docs/openapi.json`](./openapi.json), ouvrable dans
+  n'importe quel viewer OpenAPI (editor.swagger.io, extension VS Code…)
+
+> Le document ci-dessous reste une référence rédigée à la main, utile pour les
+> exemples et le contexte métier ; la doc interactive fait foi pour les schémas
+> d'entrée exacts.
+
 ---
 
 ## Table of Contents
