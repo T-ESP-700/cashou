@@ -78,6 +78,26 @@
             flex-shrink: 0;
         }
 
+        .cashou-card {
+            --cashou-card-radius: 0.75rem;
+            --cashou-card-border-width: 1px;
+            border: var(--cashou-card-border-width) solid rgba(255, 255, 255, 0.15);
+            border-radius: var(--cashou-card-radius);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .cashou-corner-badge {
+            --cashou-badge-inset: 0.5rem;
+            position: absolute;
+            top: var(--cashou-badge-inset);
+            right: var(--cashou-badge-inset);
+            border-radius: calc(
+                var(--cashou-card-radius)
+                - var(--cashou-card-border-width)
+                - var(--cashou-badge-inset)
+            );
+        }
+
         .slide-indicator {
             position: fixed;
             bottom: 24px;
@@ -126,37 +146,30 @@
             <div class="col-span-2 flex flex-col items-center gap-3 animate-item">
                 <img src="team-flavie.jpg" alt="Flavie" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
                 <p class="font-orange text-cashou-primary text-lg">Flavie</p>
-                <p class="text-white/70 text-sm text-center">Développeuse<br>Full-Stack</p>
             </div>
             <div class="col-span-2 flex flex-col items-center gap-3 animate-item">
                 <img src="team-chloe.jpg" alt="Chloé" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
                 <p class="font-orange text-cashou-primary text-lg">Chloé</p>
-                <p class="text-white/70 text-sm text-center">Product<br>Manager</p>
             </div>
             <div class="col-span-2 flex flex-col items-center gap-3 animate-item">
                 <img src="team-yohan.jpg" alt="Yohan" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
                 <p class="font-orange text-cashou-primary text-lg">Yohan</p>
-                <p class="text-white/70 text-sm text-center">Développeur<br>Backend</p>
             </div>
             <div class="col-span-2 flex flex-col items-center gap-3 animate-item">
                 <img src="team-clement.jpg" alt="Clément" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
                 <p class="font-orange text-cashou-primary text-lg">Clément</p>
-                <p class="text-white/70 text-sm text-center">Développeur<br>Frontend</p>
             </div>
             <div class="col-span-2 col-start-2 flex flex-col items-center gap-3 animate-item">
                 <img src="team-tom.jpg" alt="Tom" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
                 <p class="font-orange text-cashou-primary text-lg">Tom</p>
-                <p class="text-white/70 text-sm text-center">DevOps<br>Engineer</p>
             </div>
             <div class="col-span-2 flex flex-col items-center gap-3 animate-item">
                 <img src="team-nafissatou.jpg" alt="Nafissatou" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
                 <p class="font-orange text-cashou-primary text-lg">Nafissatou</p>
-                <p class="text-white/70 text-sm text-center">Designer<br>UX/UI</p>
             </div>
             <div class="col-span-2 flex flex-col items-center gap-3 animate-item">
                 <img src="team-francois.jpg" alt="François" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
                 <p class="font-orange text-cashou-primary text-lg">François</p>
-                <p class="text-white/70 text-sm text-center">Lead<br>Developer</p>
             </div>
         </div>
     </div>
@@ -236,27 +249,27 @@
             Fonctionnalités
         </h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl">
-            <div class="bg-white/5 rounded-xl border border-cashou-primary/30 p-8 flex flex-col items-center text-center animate-item">
+            <div class="cashou-card p-5 md:p-6 flex flex-col items-center text-center animate-item">
                 <i class="fas fa-gamepad text-cashou-primary text-4xl mb-4"></i>
                 <h3 class="font-orange text-white text-2xl md:text-3xl">Apprentissage par le jeu</h3>
             </div>
-            <div class="bg-white/5 rounded-xl border border-cashou-primary/30 p-8 flex flex-col items-center text-center animate-item">
+            <div class="cashou-card p-5 md:p-6 flex flex-col items-center text-center animate-item">
                 <i class="fas fa-chart-line text-cashou-primary text-4xl mb-4"></i>
                 <h3 class="font-orange text-white text-2xl md:text-3xl">Portefeuille virtuel</h3>
             </div>
-            <div class="bg-white/5 rounded-xl border border-cashou-primary/30 p-8 flex flex-col items-center text-center animate-item">
+            <div class="cashou-card p-5 md:p-6 flex flex-col items-center text-center animate-item">
                 <i class="fas fa-trophy text-cashou-primary text-4xl mb-4"></i>
                 <h3 class="font-orange text-white text-2xl md:text-3xl">Système de points</h3>
             </div>
-            <div class="bg-white/5 rounded-xl border border-cashou-primary/30 p-8 flex flex-col items-center text-center animate-item">
+            <div class="cashou-card p-5 md:p-6 flex flex-col items-center text-center animate-item">
                 <i class="fas fa-calendar-day text-cashou-primary text-4xl mb-4"></i>
                 <h3 class="font-orange text-white text-2xl md:text-3xl">Quiz quotidiens</h3>
             </div>
-            <div class="bg-white/5 rounded-xl border border-cashou-primary/30 p-8 flex flex-col items-center text-center animate-item">
+            <div class="cashou-card p-5 md:p-6 flex flex-col items-center text-center animate-item">
                 <i class="fas fa-book-open text-cashou-primary text-4xl mb-4"></i>
                 <h3 class="font-orange text-white text-2xl md:text-3xl">Dictionnaire financier</h3>
             </div>
-            <div class="bg-white/5 rounded-xl border border-cashou-primary/30 p-8 flex flex-col items-center text-center animate-item">
+            <div class="cashou-card p-5 md:p-6 flex flex-col items-center text-center animate-item">
                 <i class="fas fa-lock text-cashou-primary text-4xl mb-4"></i>
                 <h3 class="font-orange text-white text-2xl md:text-3xl">100% sécurisé</h3>
             </div>
@@ -305,28 +318,88 @@
         <h2 class="font-heading font-bold text-white text-5xl md:text-6xl mb-14 text-center animate-item">
             Le jeu, en chiffres
         </h2>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-x-10 gap-y-10 max-w-4xl w-full">
-            <div class="text-center animate-item">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-5 max-w-5xl w-full">
+            <div class="cashou-card p-5 md:p-6 text-center animate-item">
                 <p class="font-orange text-cashou-primary text-5xl md:text-6xl leading-none">20</p>
                 <p class="text-white/90 text-base md:text-lg mt-2">niveaux de jeu</p>
             </div>
-            <div class="text-center animate-item">
+            <div class="cashou-card p-5 md:p-6 text-center animate-item">
                 <p class="font-orange text-cashou-primary text-5xl md:text-6xl leading-none">6</p>
                 <p class="text-white/90 text-base md:text-lg mt-2">catégories de placement</p>
             </div>
-            <div class="text-center animate-item">
+            <div class="cashou-card p-5 md:p-6 text-center animate-item">
                 <p class="font-orange text-cashou-primary text-5xl md:text-6xl leading-none">39</p>
                 <p class="text-white/90 text-base md:text-lg mt-2">actifs simulés</p>
             </div>
-            <div class="text-center animate-item">
+            <div class="cashou-card p-5 md:p-6 text-center animate-item">
                 <p class="font-orange text-cashou-primary text-5xl md:text-6xl leading-none">8</p>
                 <p class="text-white/90 text-base md:text-lg mt-2">types de produits financiers</p>
             </div>
         </div>
     </div>
 
-    <!-- Slide 8: Conclusion — reprise de la slide d'accroche -->
-    <div class="slide flex-col items-center justify-center relative overflow-hidden bg-cashou-navy" style="background-image: url('bg-flames.png'); background-size: 420px auto; background-position: left bottom; background-repeat: no-repeat;" data-slide="8">
+    <!-- Slide 8: Business model -->
+    <div class="slide flex-col items-center justify-center px-10" data-slide="8">
+        <h2 class="font-heading font-bold text-white text-5xl md:text-6xl mb-12 text-center animate-item">
+            Business model
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full">
+            <div class="cashou-card relative p-5 md:p-6 animate-item">
+                <span class="cashou-corner-badge bg-cashou-primary px-3 py-1 font-orange text-sm text-cashou-navy">B2C</span>
+                <div class="icon-badge mb-6"><i class="fas fa-user"></i></div>
+                <p class="font-orange text-cashou-primary text-2xl md:text-3xl">Gratuit pour les utilisateurs</p>
+                <p class="mt-3 text-base md:text-lg leading-relaxed text-white/85">
+                    Une formule accessible à tous pour apprendre à épargner et investir sans barrière à l’entrée.
+                </p>
+            </div>
+            <div class="cashou-card relative p-5 md:p-6 animate-item">
+                <span class="cashou-corner-badge border border-cashou-primary/50 px-3 py-1 font-orange text-sm text-cashou-primary">B2B</span>
+                <div class="icon-badge mb-6"><i class="fas fa-building"></i></div>
+                <p class="font-orange text-cashou-primary text-2xl md:text-3xl">Marque blanche</p>
+                <p class="mt-3 text-base md:text-lg leading-relaxed text-white/85">
+                    Une application personnalisée pour les entreprises, commercialisée sous la forme d’une licence annuelle.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 9: Fonctionnalités à venir et offre premium -->
+    <div class="slide flex-col items-center justify-center px-10" data-slide="9">
+        <h2 class="font-heading font-bold text-white text-5xl md:text-6xl mb-9 text-center animate-item">
+            Et demain ?
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl w-full">
+            <div class="cashou-card p-5 md:p-6 text-center animate-item">
+                <i class="fas fa-users text-cashou-primary text-3xl mb-3"></i>
+                <h3 class="font-orange text-white text-xl md:text-2xl">Multijoueur</h3>
+                <p class="mt-2 text-sm md:text-base text-white/70">Apprendre, jouer et progresser à plusieurs.</p>
+            </div>
+            <div class="cashou-card p-5 md:p-6 text-center animate-item">
+                <i class="fas fa-layer-group text-cashou-primary text-3xl mb-3"></i>
+                <h3 class="font-orange text-white text-xl md:text-2xl">Plus de supports d’épargne</h3>
+                <p class="mt-2 text-sm md:text-base text-white/70">Diversifier les stratégies et les apprentissages.</p>
+            </div>
+            <div class="cashou-card p-5 md:p-6 text-center animate-item">
+                <i class="fas fa-medal text-cashou-primary text-3xl mb-3"></i>
+                <h3 class="font-orange text-white text-xl md:text-2xl">Badges &amp; succès</h3>
+                <p class="mt-2 text-sm md:text-base text-white/70">Valoriser chaque étape de la progression.</p>
+            </div>
+        </div>
+        <div class="mt-6 max-w-5xl w-full rounded-2xl border border-cashou-primary/50 bg-cashou-primary/10 px-6 py-5 md:px-8 animate-item">
+            <div class="flex flex-col md:flex-row md:items-center gap-4 md:gap-7">
+                <div class="flex items-center gap-3 md:min-w-max">
+                    <i class="fas fa-crown text-cashou-primary text-3xl"></i>
+                    <p class="font-orange text-cashou-primary text-2xl">Demain, une formule premium</p>
+                </div>
+                <p class="text-sm md:text-base leading-relaxed text-white/85 md:border-l md:border-white/20 md:pl-7">
+                    Avec davantage de contenu et le multijoueur : équipes plus grandes, règles personnalisées et fonctionnalités supplémentaires.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 10: Conclusion — reprise de la slide d'accroche -->
+    <div class="slide flex-col items-center justify-center relative overflow-hidden bg-cashou-navy" style="background-image: url('bg-flames.png'); background-size: 420px auto; background-position: left bottom; background-repeat: no-repeat;" data-slide="10">
         <div class="relative z-10 flex flex-col items-center px-10 w-full animate-item">
             <img src="cashou-wordmark.png" alt="Cashou" class="w-64 md:w-96">
             <p class="font-orange text-white text-xl md:text-2xl mt-6 text-center max-w-2xl">
@@ -348,6 +421,8 @@
         <span class="indicator" onclick="goToSlide(6)"></span>
         <span class="indicator" onclick="goToSlide(7)"></span>
         <span class="indicator" onclick="goToSlide(8)"></span>
+        <span class="indicator" onclick="goToSlide(9)"></span>
+        <span class="indicator" onclick="goToSlide(10)"></span>
     </div>
 
     <script>
@@ -356,6 +431,9 @@
         const slides = document.querySelectorAll('.slide');
         const indicators = document.querySelectorAll('.indicator');
         const totalSlides = slides.length;
+        const revealVideoOnFinalAdvance = new URLSearchParams(window.location.search)
+            .has('reveal-video-on-final-advance');
+        let finalVideoRevealed = false;
 
         slides.forEach((slide, index) => {
             slideAnimations[index] = 0;
@@ -384,6 +462,10 @@
 
             currentSlide = (n + totalSlides) % totalSlides;
 
+            if (currentSlide !== totalSlides - 1) {
+                finalVideoRevealed = false;
+            }
+
             slides[currentSlide].classList.add('active');
             indicators[currentSlide].classList.add('active');
 
@@ -411,6 +493,14 @@
         }
 
         function nextSlide() {
+            if (revealVideoOnFinalAdvance && currentSlide === totalSlides - 1 && !finalVideoRevealed) {
+                finalVideoRevealed = true;
+                if (window.parent !== window) {
+                    window.parent.postMessage({ type: 'revealvideo' }, '*');
+                }
+                return;
+            }
+
             showSlide(currentSlide + 1, true);
         }
 
@@ -475,9 +565,9 @@
                 if (Math.abs(wheelDeltaX) > 500) {
                     isChangingSlide = true;
                     if (wheelDeltaX > 0) {
-                        showSlide(currentSlide + 1, true);
+                        nextSlide();
                     } else {
-                        showSlide(currentSlide - 1, true);
+                        previousSlide();
                     }
                     wheelDeltaX = 0;
 

@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cashou - ESP Days (iPhone révélé sur la dernière slide)</title>
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=Baloo+2:400,600|ABeeZee:400&display=swap" rel="stylesheet">
+    <style>
+        /*
+         * Variante de la version "iPhone animée" de presentation-esp-days.html :
+         *   - à gauche  : la présentation d'origine, chargée telle quelle dans une iframe,
+         *                 qui prend tout l'espace restant ;
+         *   - à droite  : un iPhone 16 Pro dessiné en CSS, dont l'écran affiche en boucle
+         *                 la capture verticale centrée dans film.mov, lancée à la demande
+         *                 avec la touche V. Le téléphone apparaît uniquement après une
+         *                 navigation vers la droite depuis la dernière slide.
+         *
+         * La vidéo attendue est `film.mov`, dans le même dossier que ce fichier HTML.
+         * Ajuster VIDEO_SRC ci-dessous si son nom change.
+         *
+         * Toute la géométrie du téléphone est exprimée en millimètres réels de l'iPhone 16 Pro
+         * (corps 71,5 x 149,6 mm, écran 66,6 x 144,8 mm) via la variable --mm, qui vaut
+         * 1 mm en unités de container query : le mockup suit la hauteur disponible sans se déformer.
+         */
+        :root {
+            --navy: #3444A3;
+            --primary: #FFB472;
+            --gutter: 32px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            background: var(--navy);
+            color: #fff;
+            font-family: 'Baloo 2', sans-serif;
+        }
+
+        body {
+            display: flex;
+            flex-direction: row;
+            height: 100vh;
+            height: 100dvh;
+        }
+
+        /* --- Présentation (gauche, espace restant) --- */
+        .deck {
+            flex: 1 1 auto;
+            min-width: 0;
+            height: 100%;
+        }
+
+        .deck iframe {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border: 0;
+            background: var(--navy);
+        }
+
+        /* --- iPhone 16 Pro (droite, pleine hauteur) --- */
+        .phone {
+            flex: 0 0 auto;
+            height: 100%;
+            padding: var(--gutter);
+        }
+
+        /* Le téléphone reste masqué jusqu'à l'étape supplémentaire après la dernière slide. */
+        .phone {
+            width: 0;
+            padding-inline: 0;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateX(2rem);
+            pointer-events: none;
+            transition:
+                width 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+                padding-inline 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+                opacity 0.35s ease-out,
+                transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        body.video-visible .phone {
+            width: calc((100dvh - (2 * var(--gutter))) * 71.5 / 149.6 + (2 * var(--gutter)));
+            padding-inline: var(--gutter);
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .phone {
+                transition: none;
+            }
+        }
+
+        .iphone {
+            position: relative;
+            height: 100%;
+            aspect-ratio: 71.5 / 149.6;
+            container-type: size;
+        }
+
+        .iphone > * {
+            --mm: calc(100cqw / 71.5);
+        }
+
+        /* Châssis titane */
+        .chassis {
+            position: absolute;
+            inset: 0;
+            border-radius: calc(var(--mm) * 12.7);
+            background: linear-gradient(160deg, #6b6b6f 0%, #3a3a3d 18%, #2a2a2d 50%, #3d3d40 82%, #19191b 100%);
+            box-shadow:
+                0 30px 60px -20px rgba(0, 0, 0, 0.6),
+                inset 0 0 0 calc(var(--mm) * 0.25) rgba(255, 255, 255, 0.18);
+        }
+
+        /* Bord noir en verre entre le titane et l'écran */
+        .glass {
+            position: absolute;
+            inset: calc(var(--mm) * 1.0);
+            border-radius: calc(var(--mm) * 11.7);
+            background: #050505;
+        }
+
+        /* Zone d'affichage de l'iPhone */
+        .screen {
+            position: absolute;
+            inset: calc(var(--mm) * 2.45);
+            border-radius: calc(var(--mm) * 10.3);
+            overflow: hidden;
+            background: #000;
+        }
+
+        .screen video {
+            width: 100%;
+            height: 100%;
+            /* film.mov est un canvas 16:9 avec la capture verticale au centre. */
+            object-fit: cover;
+            object-position: center;
+            display: block;
+        }
+
+        /* Dynamic Island (masque physique, superposé à la vidéo) */
+        .island {
+            position: absolute;
+            top: calc(var(--mm) * 4.3); /* 2,45 mm de bordure + 1,85 mm depuis le haut de l’écran */
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(var(--mm) * 20.7);
+            height: calc(var(--mm) * 6.1);
+            border-radius: 999px;
+            background: #000;
+            z-index: 2;
+        }
+
+        /* Boutons latéraux */
+        .btn {
+            position: absolute;
+            width: calc(var(--mm) * 1.0);
+            border-radius: calc(var(--mm) * 0.4);
+            background: linear-gradient(180deg, #4a4a4e, #2b2b2e 50%, #4a4a4e);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+        }
+
+        .btn.left  { left: calc(var(--mm) * -0.9); }
+        .btn.right { right: calc(var(--mm) * -0.9); }
+
+        .btn.action      { top: calc(var(--mm) * 30.5); height: calc(var(--mm) * 7); }
+        .btn.volume-up   { top: calc(var(--mm) * 43.5); height: calc(var(--mm) * 11.5); }
+        .btn.volume-down { top: calc(var(--mm) * 58.5); height: calc(var(--mm) * 11.5); }
+        .btn.power       { top: calc(var(--mm) * 47.5); height: calc(var(--mm) * 20); }
+        .btn.camera      { top: calc(var(--mm) * 105); height: calc(var(--mm) * 10); width: calc(var(--mm) * 0.5); right: calc(var(--mm) * -0.4); }
+
+        /* Placeholder affiché tant que la vidéo n'est pas disponible */
+        .placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.25rem;
+            padding: 2rem;
+            text-align: center;
+            background: var(--navy);
+        }
+
+        .placeholder img {
+            width: 40%;
+            max-width: 160px;
+        }
+
+        .placeholder p {
+            font-family: 'ABeeZee', sans-serif;
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .placeholder code {
+            display: inline-block;
+            margin-top: 0.25rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--primary);
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.9rem;
+        }
+
+        .screen.ready .placeholder { display: none; }
+        .screen:not(.ready) video { visibility: hidden; }
+
+        /* Indice affiché sur la première image tant que la vidéo n'est pas lancée */
+        .hint {
+            display: none;
+            position: absolute;
+            left: 50%;
+            bottom: 10%;
+            transform: translateX(-50%);
+            padding: 0.6rem 1.1rem;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.65);
+            color: #fff;
+            font-family: 'ABeeZee', sans-serif;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            z-index: 3;
+        }
+
+        .hint kbd {
+            display: inline-block;
+            padding: 0.1rem 0.5rem;
+            border-radius: 0.4rem;
+            background: var(--primary);
+            color: var(--navy);
+            font-family: inherit;
+            font-weight: 700;
+        }
+
+        .screen.ready:not(.playing) .hint { display: block; }
+    </style>
+</head>
+<body>
+
+    <main class="deck">
+        <iframe id="deck" src="presentation-esp-days.html?reveal-video-on-final-advance" title="Présentation Cashou - ESP Days" allow="autoplay"></iframe>
+    </main>
+
+    <aside class="phone" aria-label="Démo vidéo" aria-hidden="true">
+        <div class="iphone">
+            <div class="chassis"></div>
+            <div class="glass"></div>
+            <div class="btn left action"></div>
+            <div class="btn left volume-up"></div>
+            <div class="btn left volume-down"></div>
+            <div class="btn right power"></div>
+            <div class="btn right camera"></div>
+            <div class="screen" id="screen">
+                <video id="demo" loop muted playsinline preload="auto"></video>
+                <div class="placeholder">
+                    <img src="cashou-logo.png" alt="Cashou">
+                    <p>
+                        Enregistrement d’écran iPhone à déposer ici&nbsp;:<br>
+                        <code id="video-name"></code>
+                    </p>
+                </div>
+                <div class="hint">Appuyez sur <kbd>V</kbd> pour lancer la vidéo</div>
+            </div>
+            <div class="island"></div>
+        </div>
+    </aside>
+
+    <script>
+        // Nom du fichier vidéo (relatif à ce fichier HTML). Boucle infinie, sans son.
+        // La vidéo ne démarre pas seule : la touche V lance / met en pause la lecture
+        // (Espace est déjà utilisée par la présentation pour passer à la slide suivante).
+        const VIDEO_SRC = 'film.mov';
+
+        const frame = document.getElementById('deck');
+        const screen = document.getElementById('screen');
+        const video = document.getElementById('demo');
+        const videoWrapper = document.querySelector('.phone');
+        document.getElementById('video-name').textContent = VIDEO_SRC;
+
+        // --- Vidéo : n'affiche le lecteur qu'une fois le fichier réellement chargé,
+        //     et reflète l'état de lecture sur l'écran (classes ready / playing) ---
+        video.addEventListener('loadeddata', () => screen.classList.add('ready'));
+        video.addEventListener('error', () => screen.classList.remove('ready'));
+        video.addEventListener('play', () => screen.classList.add('playing'));
+        video.addEventListener('pause', () => screen.classList.remove('playing'));
+        video.src = VIDEO_SRC;
+
+        function toggleVideo() {
+            if (video.readyState === 0) return; // fichier absent
+            if (video.paused) {
+                video.play().catch(() => {});
+            } else {
+                video.pause();
+            }
+        }
+
+        function handleKey(key) {
+            if (typeof key === 'string' && key.toLowerCase() === 'v') toggleVideo();
+        }
+
+        // Le téléphone n'est révélé qu'après une navigation supplémentaire vers la droite
+        // depuis la dernière slide. Tout changement de slide le masque à nouveau.
+        function setVideoVisible(isVisible) {
+            document.body.classList.toggle('video-visible', isVisible);
+            videoWrapper.setAttribute('aria-hidden', String(!isVisible));
+
+            if (!isVisible && !video.paused) {
+                video.pause();
+            }
+        }
+
+        window.addEventListener('message', (e) => {
+            if (e.source !== frame.contentWindow || !e.data) return;
+
+            if (e.data.type === 'keydown') {
+                handleKey(e.data.key);
+            }
+
+            if (e.data.type === 'slidechange') {
+                setVideoVisible(false);
+            }
+
+            if (e.data.type === 'revealvideo') {
+                setVideoVisible(true);
+            }
+        });
+
+        // --- Clavier : garder le focus dans l'iframe pour que les flèches / espace
+        //     pilotent la présentation d'origine (pas d'accès au script de l'iframe en file://).
+        function focusDeck() {
+            frame.focus();
+            try { frame.contentWindow.focus(); } catch (_) { /* origine opaque, ignoré */ }
+        }
+
+        frame.addEventListener('load', focusDeck);
+        window.addEventListener('focus', focusDeck);
+        document.addEventListener('keydown', (e) => {
+            handleKey(e.key);
+            focusDeck();
+        });
+        // Un clic sur le téléphone ne doit pas voler le focus à la présentation.
+        document.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            focusDeck();
+        });
+
+        focusDeck();
+    </script>
+</body>
+</html>
