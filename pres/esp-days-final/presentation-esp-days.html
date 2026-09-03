@@ -414,6 +414,11 @@
         }
 
         document.addEventListener('keydown', (e) => {
+            // Relais des touches vers la page parente quand le deck est intégré
+            // (versions -video / -iphone) ; sans effet quand il est ouvert seul.
+            if (window.parent !== window) {
+                window.parent.postMessage({ type: 'keydown', key: e.key }, '*');
+            }
             if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') {
                 e.preventDefault();
                 nextSlide();
