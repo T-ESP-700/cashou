@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cashou - ESP Days (version vidéo)</title>
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=Baloo+2:400,600|ABeeZee:400&display=swap" rel="stylesheet">
+    <style>
+        /*
+         * Version "vidéo" de presentation-esp-days.html :
+         *   - à gauche  : la présentation d'origine, chargée telle quelle dans une iframe,
+         *                 qui prend tout l'espace restant ;
+         *   - à droite  : une vidéo verticale au ratio des iPhone récents (1206x2622, iPhone 16 Pro) qui tourne en boucle, lancée à la demande avec la touche V.
+         *
+         * Déposer la vidéo dans ce dossier sous le nom `demo.mp4` (même fichier que
+         * celui attendu par la slide "Cashou en action"), ou ajuster VIDEO_SRC ci-dessous.
+         */
+        :root {
+            --navy: #3444A3;
+            --primary: #FFB472;
+            --gutter: 32px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            background: var(--navy);
+            color: #fff;
+            font-family: 'Baloo 2', sans-serif;
+        }
+
+        body {
+            display: flex;
+            flex-direction: row;
+            height: 100vh;
+            height: 100dvh;
+        }
+
+        /* --- Présentation (gauche, espace restant) --- */
+        .deck {
+            flex: 1 1 auto;
+            min-width: 0;
+            height: 100%;
+        }
+
+        .deck iframe {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border: 0;
+            background: var(--navy);
+        }
+
+        /* --- Vidéo verticale (droite, pleine hauteur, ratio iPhone 16 Pro) --- */
+        .phone {
+            flex: 0 0 auto;
+            height: 100%;
+            padding: var(--gutter);
+        }
+
+        .phone-frame {
+            position: relative;
+            height: 100%;
+            aspect-ratio: 1206 / 2622;
+            background: #000;
+            border: 4px solid var(--primary);
+            border-radius: 3.5rem;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .phone-frame video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        /* Placeholder affiché tant que la vidéo n'est pas disponible */
+        .placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.25rem;
+            padding: 2rem;
+            text-align: center;
+            background: var(--navy);
+        }
+
+        .placeholder img {
+            width: 40%;
+            max-width: 160px;
+        }
+
+        .placeholder p {
+            font-family: 'ABeeZee', sans-serif;
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        .placeholder code {
+            display: inline-block;
+            margin-top: 0.25rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--primary);
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.9rem;
+        }
+
+        .phone-frame.ready .placeholder { display: none; }
+        .phone-frame:not(.ready) video { visibility: hidden; }
+
+        /* Indice affiché sur la première image tant que la vidéo n'est pas lancée */
+        .hint {
+            display: none;
+            position: absolute;
+            left: 50%;
+            bottom: 10%;
+            transform: translateX(-50%);
+            padding: 0.6rem 1.1rem;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.65);
+            color: #fff;
+            font-family: 'ABeeZee', sans-serif;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            z-index: 3;
+        }
+
+        .hint kbd {
+            display: inline-block;
+            padding: 0.1rem 0.5rem;
+            border-radius: 0.4rem;
+            background: var(--primary);
+            color: var(--navy);
+            font-family: inherit;
+            font-weight: 700;
+        }
+
+        .phone-frame.ready:not(.playing) .hint { display: block; }
+    </style>
+</head>
+<body>
+
+    <main class="deck">
+        <iframe id="deck" src="presentation-esp-days.html" title="Présentation Cashou - ESP Days" allow="autoplay"></iframe>
+    </main>
+
+    <aside class="phone" aria-label="Démo vidéo">
+        <div class="phone-frame" id="phone">
+            <video id="demo" loop muted playsinline preload="auto"></video>
+            <div class="placeholder">
+                <img src="cashou-logo.png" alt="Cashou">
+                <p>
+                    Enregistrement d’écran iPhone (1206&nbsp;×&nbsp;2622) à déposer ici&nbsp;:<br>
+                    <code id="video-name"></code>
+                </p>
+            </div>
+            <div class="hint">Appuyez sur <kbd>V</kbd> pour lancer la vidéo</div>
+        </div>
+    </aside>
+
+    <script>
+        // Nom du fichier vidéo (relatif à ce fichier HTML). Boucle infinie, sans son.
+        // La vidéo ne démarre pas seule : la touche V lance / met en pause la lecture
+        // (Espace est déjà utilisée par la présentation pour passer à la slide suivante).
+        const VIDEO_SRC = 'demo.mp4';
+
+        const frame = document.getElementById('deck');
+        const phone = document.getElementById('phone');
+        const video = document.getElementById('demo');
+        document.getElementById('video-name').textContent = VIDEO_SRC;
+
+        // --- Vidéo : n'affiche le lecteur qu'une fois le fichier réellement chargé,
+        //     et reflète l'état de lecture sur le cadre (classes ready / playing) ---
+        video.addEventListener('loadeddata', () => phone.classList.add('ready'));
+        video.addEventListener('error', () => phone.classList.remove('ready'));
+        video.addEventListener('play', () => phone.classList.add('playing'));
+        video.addEventListener('pause', () => phone.classList.remove('playing'));
+        video.src = VIDEO_SRC;
+
+        function toggleVideo() {
+            if (video.readyState === 0) return; // fichier absent
+            if (video.paused) {
+                video.play().catch(() => {});
+            } else {
+                video.pause();
+            }
+        }
+
+        function handleKey(key) {
+            if (typeof key === 'string' && key.toLowerCase() === 'v') toggleVideo();
+        }
+
+        // Les touches pressées dans l'iframe sont relayées par la présentation via postMessage
+        // (seul canal possible entre deux fichiers ouverts en file://).
+        window.addEventListener('message', (e) => {
+            if (e.source === frame.contentWindow && e.data && e.data.type === 'keydown') {
+                handleKey(e.data.key);
+            }
+        });
+
+        // --- Clavier : garder le focus dans l'iframe pour que les flèches / espace
+        //     pilotent la présentation d'origine (pas d'accès au script de l'iframe en file://).
+        function focusDeck() {
+            frame.focus();
+            try { frame.contentWindow.focus(); } catch (_) { /* origine opaque, ignoré */ }
+        }
+
+        frame.addEventListener('load', focusDeck);
+        window.addEventListener('focus', focusDeck);
+        document.addEventListener('keydown', (e) => {
+            handleKey(e.key);
+            focusDeck();
+        });
+        // Un clic sur le panneau vidéo ne doit pas voler le focus à la présentation.
+        document.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            focusDeck();
+        });
+
+        focusDeck();
+    </script>
+</body>
+</html>
