@@ -117,8 +117,62 @@
         <img src="epitech-logo-white.png" alt="Epitech" class="absolute bottom-8 right-8 z-10 w-28 md:w-36 animate-item">
     </div>
 
-    <!-- Slide 1: Le constat — stats du site, mise en page à plat façon flyer -->
+    <!-- Slide 1: Notre équipe — repris de Team.astro (site) -->
     <div class="slide flex-col items-center justify-center px-10" data-slide="1">
+        <h2 class="font-heading font-bold text-white text-5xl md:text-6xl mb-14 text-center animate-item">
+            Notre équipe
+        </h2>
+        <div class="grid grid-cols-8 gap-x-5 md:gap-x-8 gap-y-8 max-w-4xl w-full">
+            <div class="col-span-2 flex flex-col items-center gap-3 animate-item">
+                <img src="team-flavie.jpg" alt="Flavie" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
+                <p class="font-orange text-cashou-primary text-lg">Flavie</p>
+                <p class="text-white/70 text-sm text-center">Développeuse<br>Full-Stack</p>
+            </div>
+            <div class="col-span-2 flex flex-col items-center gap-3 animate-item">
+                <img src="team-chloe.jpg" alt="Chloé" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
+                <p class="font-orange text-cashou-primary text-lg">Chloé</p>
+                <p class="text-white/70 text-sm text-center">Product<br>Manager</p>
+            </div>
+            <div class="col-span-2 flex flex-col items-center gap-3 animate-item">
+                <img src="team-yohan.jpg" alt="Yohan" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
+                <p class="font-orange text-cashou-primary text-lg">Yohan</p>
+                <p class="text-white/70 text-sm text-center">Développeur<br>Backend</p>
+            </div>
+            <div class="col-span-2 flex flex-col items-center gap-3 animate-item">
+                <img src="team-clement.jpg" alt="Clément" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
+                <p class="font-orange text-cashou-primary text-lg">Clément</p>
+                <p class="text-white/70 text-sm text-center">Développeur<br>Frontend</p>
+            </div>
+            <div class="col-span-2 col-start-2 flex flex-col items-center gap-3 animate-item">
+                <img src="team-tom.jpg" alt="Tom" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
+                <p class="font-orange text-cashou-primary text-lg">Tom</p>
+                <p class="text-white/70 text-sm text-center">DevOps<br>Engineer</p>
+            </div>
+            <div class="col-span-2 flex flex-col items-center gap-3 animate-item">
+                <img src="team-nafissatou.jpg" alt="Nafissatou" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
+                <p class="font-orange text-cashou-primary text-lg">Nafissatou</p>
+                <p class="text-white/70 text-sm text-center">Designer<br>UX/UI</p>
+            </div>
+            <div class="col-span-2 flex flex-col items-center gap-3 animate-item">
+                <img src="team-francois.jpg" alt="François" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
+                <p class="font-orange text-cashou-primary text-lg">François</p>
+                <p class="text-white/70 text-sm text-center">Lead<br>Developer</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 2: Problématique -->
+    <div class="slide flex-col items-center justify-center px-10" data-slide="2">
+        <h2 class="font-heading font-bold text-white text-5xl md:text-6xl mb-12 text-center animate-item">
+            Problématique
+        </h2>
+        <p class="font-orange text-cashou-primary text-xl md:text-2xl lg:text-3xl leading-snug text-center max-w-6xl animate-item">
+            Comment rendre l’apprentissage de l’épargne et de l’investissement accessible et ludique pour aider les particuliers à mieux gérer leur argent ?
+        </p>
+    </div>
+
+    <!-- Slide 3: Le constat — stats du site, mise en page à plat façon flyer -->
+    <div class="slide flex-col items-center justify-center px-10" data-slide="3">
         <h2 class="font-heading font-bold text-white text-5xl md:text-6xl mb-14 text-center animate-item">
             Pourquoi Cashou ?
         </h2>
@@ -146,8 +200,8 @@
         </div>
     </div>
 
-    <!-- Slide 2: Notre solution — contenu gardé, mise en page façon flyer_verso ("c'est...") -->
-    <div class="slide flex-col items-center justify-center px-10" data-slide="2">
+    <!-- Slide 4: Notre solution — contenu gardé, mise en page façon flyer_verso ("c'est...") -->
+    <div class="slide flex-col items-center justify-center px-10" data-slide="4">
         <h2 class="font-heading font-bold text-white text-5xl md:text-6xl mb-14 text-center animate-item">
             Notre solution
         </h2>
@@ -176,45 +230,8 @@
         </div>
     </div>
 
-    <!-- Slide 3: Comment ça marche — repris de HowItWorks.astro (site) -->
-    <div class="slide flex-col items-center justify-center px-10" data-slide="3">
-        <h2 class="font-heading font-bold text-white text-5xl md:text-6xl mb-14 text-center animate-item">
-            Comment ça marche
-        </h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-10 max-w-4xl w-full">
-            <div class="flex items-start gap-5 animate-item">
-                <div class="icon-badge font-orange text-2xl flex-shrink-0">01</div>
-                <div>
-                    <p class="font-orange text-cashou-primary text-xl">Créez votre compte</p>
-                    <p class="text-white/90 text-base mt-1">Inscrivez-vous en quelques secondes et commencez votre parcours d'apprentissage</p>
-                </div>
-            </div>
-            <div class="flex items-start gap-5 animate-item">
-                <div class="icon-badge font-orange text-2xl flex-shrink-0">02</div>
-                <div>
-                    <p class="font-orange text-cashou-primary text-xl">Commencer le premier niveau de démo</p>
-                    <p class="text-white/90 text-base mt-1">Recevez votre portefeuille virtuel et des objectifs de départ adapté à vos connaissances</p>
-                </div>
-            </div>
-            <div class="flex items-start gap-5 animate-item">
-                <div class="icon-badge font-orange text-2xl flex-shrink-0">03</div>
-                <div>
-                    <p class="font-orange text-cashou-primary text-xl">Prenez des décisions</p>
-                    <p class="text-white/90 text-base mt-1">Analysez les marchés, investissez dans des actifs virtuels et réagissez aux événements qui surgissent au cours de la partie</p>
-                </div>
-            </div>
-            <div class="flex items-start gap-5 animate-item">
-                <div class="icon-badge font-orange text-2xl flex-shrink-0">04</div>
-                <div>
-                    <p class="font-orange text-cashou-primary text-xl">Progressez et apprenez</p>
-                    <p class="text-white/90 text-base mt-1">Complétez les quiz quotidiens, débloquez de nouveaux niveaux et documentez-vous grâce au dictionnaire financier</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Slide 4: Fonctionnalités — copie fidèle de Features.astro (diapo), mise en page à plat -->
-    <div class="slide flex-col items-center justify-center px-10" data-slide="4">
+    <!-- Slide 5: Fonctionnalités — copie fidèle de Features.astro (diapo), mise en page à plat -->
+    <div class="slide flex-col items-center justify-center px-10" data-slide="5">
         <h2 class="font-heading font-bold text-white text-5xl md:text-6xl mb-14 text-center animate-item">
             Fonctionnalités
         </h2>
@@ -246,8 +263,45 @@
         </div>
     </div>
 
-    <!-- Slide 5: Chiffres clés produit — sourcés de niveaux20.md -->
-    <div class="slide flex-col items-center justify-center px-10" data-slide="5">
+    <!-- Slide 6: Comment ça marche — repris de HowItWorks.astro (site) -->
+    <div class="slide flex-col items-center justify-center px-10" data-slide="6">
+        <h2 class="font-heading font-bold text-white text-5xl md:text-6xl mb-14 text-center animate-item">
+            Comment ça marche
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-10 max-w-4xl w-full">
+            <div class="flex items-start gap-5 animate-item">
+                <div class="icon-badge font-orange text-2xl flex-shrink-0">01</div>
+                <div>
+                    <p class="font-orange text-cashou-primary text-xl">Créez votre compte</p>
+                    <p class="text-white/90 text-base mt-1">Inscrivez-vous en quelques secondes et commencez votre parcours d'apprentissage</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-5 animate-item">
+                <div class="icon-badge font-orange text-2xl flex-shrink-0">02</div>
+                <div>
+                    <p class="font-orange text-cashou-primary text-xl">Commencez le premier niveau de démo</p>
+                    <p class="text-white/90 text-base mt-1">Recevez votre portefeuille virtuel et des objectifs de départ adaptés à vos connaissances</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-5 animate-item">
+                <div class="icon-badge font-orange text-2xl flex-shrink-0">03</div>
+                <div>
+                    <p class="font-orange text-cashou-primary text-xl">Prenez des décisions</p>
+                    <p class="text-white/90 text-base mt-1">Analysez les marchés, investissez dans des actifs virtuels et réagissez aux événements qui surgissent au cours de la partie</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-5 animate-item">
+                <div class="icon-badge font-orange text-2xl flex-shrink-0">04</div>
+                <div>
+                    <p class="font-orange text-cashou-primary text-xl">Progressez et apprenez</p>
+                    <p class="text-white/90 text-base mt-1">Complétez les quiz quotidiens, débloquez de nouveaux niveaux et documentez-vous grâce au dictionnaire financier</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 7: Chiffres clés produit — sourcés de niveaux20.md -->
+    <div class="slide flex-col items-center justify-center px-10" data-slide="7">
         <h2 class="font-heading font-bold text-white text-5xl md:text-6xl mb-14 text-center animate-item">
             Le jeu, en chiffres
         </h2>
@@ -271,69 +325,16 @@
         </div>
     </div>
 
-    <!-- Slide 6: Notre équipe — repris de Team.astro (site) -->
-    <div class="slide flex-col items-center justify-center px-10" data-slide="6">
-        <h2 class="font-heading font-bold text-white text-5xl md:text-6xl mb-14 text-center animate-item">
-            Notre équipe
-        </h2>
-        <div class="flex flex-wrap items-start justify-center gap-8 md:gap-10 max-w-4xl">
-            <div class="flex flex-col items-center gap-3 animate-item">
-                <img src="team-flavie.jpg" alt="Flavie" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
-                <p class="font-orange text-cashou-primary text-lg">Flavie</p>
-                <p class="text-white/70 text-sm text-center">Développeuse<br>Full-Stack</p>
-            </div>
-            <div class="flex flex-col items-center gap-3 animate-item">
-                <img src="team-chloe.jpg" alt="Chloé" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
-                <p class="font-orange text-cashou-primary text-lg">Chloé</p>
-                <p class="text-white/70 text-sm text-center">Product<br>Manager</p>
-            </div>
-            <div class="flex flex-col items-center gap-3 animate-item">
-                <img src="team-yohan.jpg" alt="Yohan" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
-                <p class="font-orange text-cashou-primary text-lg">Yohan</p>
-                <p class="text-white/70 text-sm text-center">Développeur<br>Backend</p>
-            </div>
-            <div class="flex flex-col items-center gap-3 animate-item">
-                <img src="team-clement.jpg" alt="Clément" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
-                <p class="font-orange text-cashou-primary text-lg">Clément</p>
-                <p class="text-white/70 text-sm text-center">Développeur<br>Frontend</p>
-            </div>
-            <div class="flex flex-col items-center gap-3 animate-item">
-                <img src="team-tom.jpg" alt="Tom" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
-                <p class="font-orange text-cashou-primary text-lg">Tom</p>
-                <p class="text-white/70 text-sm text-center">DevOps<br>Engineer</p>
-            </div>
-            <div class="flex flex-col items-center gap-3 animate-item">
-                <img src="team-nafissatou.jpg" alt="Nafissatou" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
-                <p class="font-orange text-cashou-primary text-lg">Nafissatou</p>
-                <p class="text-white/70 text-sm text-center">Designer<br>UX/UI</p>
-            </div>
-            <div class="flex flex-col items-center gap-3 animate-item">
-                <img src="team-francois.jpg" alt="François" class="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-2 border-cashou-primary">
-                <p class="font-orange text-cashou-primary text-lg">François</p>
-                <p class="text-white/70 text-sm text-center">Lead<br>Developer</p>
-            </div>
+    <!-- Slide 8: Conclusion — reprise de la slide d'accroche -->
+    <div class="slide flex-col items-center justify-center relative overflow-hidden bg-cashou-navy" style="background-image: url('bg-flames.png'); background-size: 420px auto; background-position: left bottom; background-repeat: no-repeat;" data-slide="8">
+        <div class="relative z-10 flex flex-col items-center px-10 w-full animate-item">
+            <img src="cashou-wordmark.png" alt="Cashou" class="w-64 md:w-96">
+            <p class="font-orange text-white text-xl md:text-2xl mt-6 text-center max-w-2xl">
+                L'app qui vous apprend à gérer votre argent en toute sécurité !
+            </p>
         </div>
-    </div>
 
-    <!-- Slide 7: Vidéo (~60-90s, décrite à l'oral avant lancement) -->
-    <div class="slide flex-col items-center justify-center" data-slide="7">
-        <h2 class="font-heading font-bold text-white text-5xl md:text-6xl mb-8 animate-item">
-            Cashou en action
-        </h2>
-        <div class="w-full max-w-[380px] aspect-[9/16] bg-black rounded-[2rem] border-4 border-cashou-primary overflow-hidden shadow-2xl animate-item">
-            <!-- Déposer le fichier vidéo dans ce dossier et ajuster le nom ci-dessous -->
-            <video controls poster="cashou-logo.png" class="w-full h-full object-contain">
-                <source src="demo.mp4" type="video/mp4">
-            </video>
-        </div>
-    </div>
-
-    <!-- Slide 8: Conclusion / CTA (~15s) -->
-    <div class="slide flex-col items-center justify-center px-10" data-slide="8">
-        <h2 class="font-heading font-bold text-cashou-primary text-7xl md:text-8xl animate-item">Cashou</h2>
-        <p class="text-white text-xl md:text-2xl mt-6 text-center animate-item">
-            Apprenez à investir avant d'investir pour de vrai
-        </p>
+        <img src="epitech-logo-white.png" alt="Epitech" class="absolute bottom-8 right-8 z-10 w-28 md:w-36 animate-item">
     </div>
 
     <!-- Slide indicators -->
@@ -385,6 +386,14 @@
 
             slides[currentSlide].classList.add('active');
             indicators[currentSlide].classList.add('active');
+
+            if (window.parent !== window) {
+                window.parent.postMessage({
+                    type: 'slidechange',
+                    index: currentSlide,
+                    title: slides[currentSlide].querySelector('h2')?.textContent.trim() || '',
+                }, '*');
+            }
 
             resetSlideAnimations(currentSlide);
 

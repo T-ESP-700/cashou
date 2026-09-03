@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cashou - ESP Days (version iPhone)</title>
+    <title>Cashou - ESP Days (version iPhone animée)</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=Baloo+2:400,600|ABeeZee:400&display=swap" rel="stylesheet">
     <style>
         /*
-         * Version "iPhone" de presentation-esp-days.html :
+         * Version "iPhone animée" de presentation-esp-days.html :
          *   - à gauche  : la présentation d'origine, chargée telle quelle dans une iframe,
          *                 qui prend tout l'espace restant ;
          *   - à droite  : un iPhone 16 Pro dessiné en CSS, dont l'écran affiche en boucle
@@ -65,6 +65,34 @@
             flex: 0 0 auto;
             height: 100%;
             padding: var(--gutter);
+        }
+
+        /* Le téléphone reste masqué avant la slide « Fonctionnalités ». */
+        .phone {
+            width: 0;
+            padding-inline: 0;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateX(2rem);
+            pointer-events: none;
+            transition:
+                width 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+                padding-inline 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+                opacity 0.35s ease-out,
+                transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        body.video-visible .phone {
+            width: calc((100dvh - (2 * var(--gutter))) * 71.5 / 149.6 + (2 * var(--gutter)));
+            padding-inline: var(--gutter);
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .phone {
+                transition: none;
+            }
         }
 
         .iphone {
@@ -222,7 +250,7 @@
         <iframe id="deck" src="presentation-esp-days.html" title="Présentation Cashou - ESP Days" allow="autoplay"></iframe>
     </main>
 
-    <aside class="phone" aria-label="Démo vidéo">
+    <aside class="phone" aria-label="Démo vidéo" aria-hidden="true">
         <div class="iphone">
             <div class="chassis"></div>
             <div class="glass"></div>
@@ -255,6 +283,7 @@
         const frame = document.getElementById('deck');
         const screen = document.getElementById('screen');
         const video = document.getElementById('demo');
+        const videoWrapper = document.querySelector('.phone');
         document.getElementById('video-name').textContent = VIDEO_SRC;
 
         // --- Vidéo : n'affiche le lecteur qu'une fois le fichier réellement chargé,
@@ -280,9 +309,19 @@
 
         // Les touches pressées dans l'iframe sont relayées par la présentation via postMessage
         // (seul canal possible entre deux fichiers ouverts en file://).
+        const FEATURES_SLIDE_INDEX = 5;
+
         window.addEventListener('message', (e) => {
-            if (e.source === frame.contentWindow && e.data && e.data.type === 'keydown') {
+            if (e.source !== frame.contentWindow || !e.data) return;
+
+            if (e.data.type === 'keydown') {
                 handleKey(e.data.key);
+            }
+
+            if (e.data.type === 'slidechange') {
+                const isVideoVisible = e.data.index >= FEATURES_SLIDE_INDEX;
+                document.body.classList.toggle('video-visible', isVideoVisible);
+                videoWrapper.setAttribute('aria-hidden', String(!isVideoVisible));
             }
         });
 
